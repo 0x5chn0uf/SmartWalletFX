@@ -1,28 +1,63 @@
-# Logs
-logs
-*.log
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.env
+venv/
+.venv/
+
+# Node/React
+node_modules/
+/frontend/build
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-dev-debug.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Database
+*.sqlite
+*.db
+
+# Logs
+*.log
 
 # Dependency directories
-node_modules/
-
-# Environment variables
-.env
+dev-debug.log
 
 # Editor directories and files
-.idea
-.vscode
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-
-# OS specific
-.DS_Store
 
 # Task files
 tasks.json
@@ -36,3 +71,27 @@ custom_modes/
 memory-bank/
 .roomodes
 .windsurfrules
+
+# Dependencies
+__pycache__/
+*.pyc
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build
+/build
+/dist
+*.egg-info/
+
+# Coverage
+.coverage
+coverage/
+htmlcov/
+
+# Testing
+.pytest_cache/
