@@ -1,0 +1,7 @@
+[bandit]
+exclude_dirs: ['tests', 'venv', '.env', '.git', '__pycache__', 'node_modules']
+skips: ['B101', 'B311']  # Skip assert statements and random number warnings
+targets: ['backend']
+
+[bandit.assert_used]
+skips: ['test_*.py', '*_test.py'] 

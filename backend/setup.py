@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 setup(
     name="smartwalletfx",
@@ -15,4 +15,4 @@ setup(
         "pydantic-settings>=2.0.0",
         "python-multipart==0.0.9",
     ],
-) 
+)
