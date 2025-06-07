@@ -3,6 +3,9 @@
 # Run Flake8 for linting
 flake8 backend/
 
+# Run Black for formatting
+black backend/
+
 # Run Bandit for security analysis
 bandit -r backend/
 
