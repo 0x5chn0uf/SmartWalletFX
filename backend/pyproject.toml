@@ -3,14 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "smartwalletfx-backend"
+name = "backend"
 version = "0.1.0"
 description = "Backend for SmartWalletFX crypto portfolio tracker"
 readme = "../README.md"
 requires-python = ">=3.11"
 license = "MIT"
 authors = [
-    { name = "SmartWalletFX Team" },
+    { name = "SmartWalletFX" },
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
