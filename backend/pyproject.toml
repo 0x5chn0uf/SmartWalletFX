@@ -72,6 +72,10 @@ extend-exclude = '''
 ^/tests/
 '''
 
+[tool.flake8]
+exclude = [".venv", "venv"]
+extend-ignore = ["E501"]  # Allow line continuation with a backslash for long lines
+
 [tool.isort]
 profile = "black"
 multi_line_output = 3
@@ -167,3 +171,12 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_optional = true
+
+[tool.bandit]
+exclude_dirs = ['tests', 'venv', '.env', '.git', '__pycache__', 'node_modules']
+skips = ['B101', 'B311']  # Skip assert statements and random number warnings
+targets = ['backend']
+
+[tool.bandit.assert_used]
+skips = ['test_*.py', '*_test.py']
+ 

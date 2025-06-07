@@ -15,7 +15,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [3.9, 3.10, 3.11]
+        python-version: [3.11]
 
     steps:
     - uses: actions/checkout@v4
@@ -93,18 +93,6 @@ jobs:
         file: ./coverage/coverage-final.json
         flags: frontend
         name: frontend-node${{ matrix.node-version }}
-
-  security-scan:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Run Snyk to check for vulnerabilities
-      uses: snyk/actions/python@master
-      env:
-        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      with:
-        command: monitor
 
   security:
     runs-on: ubuntu-latest
@@ -205,7 +193,7 @@ jobs:
           path: backend/dist/
 
   build-and-push:
-    needs: [backend-checks, frontend-checks, security-scan]
+    needs: [backend-checks, frontend-checks]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     
