@@ -1,7 +1,7 @@
 import re
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Integer, Numeric, String
+from sqlalchemy import Column, DateTime, Integer, Numeric, String, JSON
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -15,6 +15,8 @@ class Token(Base):
     symbol = Column(String, index=True, nullable=False)
     name = Column(String, nullable=False)
     decimals = Column(Integer, default=18)
+    chain = Column(String, nullable=True)  # ETH, POLYGON, etc.
+    extra_metadata = Column(JSON, nullable=True)
     current_price_usd = Column(Numeric(precision=18, scale=8), nullable=True)
     last_price_update = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -28,6 +30,7 @@ class Token(Base):
     historical_balances = relationship(
         "HistoricalBalance", back_populates="token"
     )
+    # transactions = relationship("Transaction", back_populates="token")
 
     def __repr__(self):
         return f"<Token {self.symbol}>"

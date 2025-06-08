@@ -1,6 +1,8 @@
 from app.core.database import Base, engine
 
+import asyncio
 
-def init_db() -> None:
+async def init_db() -> None:
     """Initialize the database by creating all tables."""
-    Base.metadata.create_all(bind=engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)

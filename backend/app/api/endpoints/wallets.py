@@ -1,7 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.schemas.wallet import WalletCreate, WalletResponse
@@ -17,16 +17,16 @@ db_dependency = Depends(get_db)
     response_model=WalletResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def create_wallet(wallet: WalletCreate, db: Session = db_dependency):
-    return WalletUsecase.create_wallet(db, wallet)
+async def create_wallet(wallet: WalletCreate, db: AsyncSession = db_dependency):
+    return await WalletUsecase.create_wallet(db, wallet)
 
 
 @router.get("/wallets", response_model=List[WalletResponse])
-def list_wallets(db: Session = db_dependency):
-    return WalletUsecase.list_wallets(db)
+async def list_wallets(db: AsyncSession = db_dependency):
+    return await WalletUsecase.list_wallets(db)
 
 
 @router.delete("/wallets/{address}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_wallet(address: str, db: Session = db_dependency):
-    WalletUsecase.delete_wallet(db, address)
+async def delete_wallet(address: str, db: AsyncSession = db_dependency):
+    await WalletUsecase.delete_wallet(db, address)
     return None

@@ -4,13 +4,13 @@ from app.stores.wallet_store import WalletStore
 
 class WalletUsecase:
     @staticmethod
-    def create_wallet(db, wallet: WalletCreate) -> WalletResponse:
-        return WalletStore.create_wallet(db, wallet)
+    async def create_wallet(db, wallet: WalletCreate) -> WalletResponse:
+        return await WalletStore.create(db, address=wallet.address, name=wallet.name)
 
     @staticmethod
-    def list_wallets(db) -> list[WalletResponse]:
-        return WalletStore.list_wallets(db)
+    async def list_wallets(db) -> list[WalletResponse]:
+        return await WalletStore.list_all(db)
 
     @staticmethod
-    def delete_wallet(db, address: str):
-        WalletStore.delete_wallet(db, address)
+    async def delete_wallet(db, address: str):
+        await WalletStore.delete(db, address)
