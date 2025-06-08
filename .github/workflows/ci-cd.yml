@@ -164,4 +164,60 @@ jobs:
       - name: Deploy
         run: |
           echo "Deploying backend to production..."
-          # Add deployment commands here 
+          # Add deployment commands here
+
+  notify:
+    needs: [deploy-backend, build-backend]  # This ensures notifications run after all jobs
+    if: always()  # This ensures the job runs even if previous jobs fail
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check workflow status
+        id: check
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "color=dc3545" >> $GITHUB_OUTPUT
+            echo "icon=❌" >> $GITHUB_OUTPUT
+          else
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "color=28a745" >> $GITHUB_OUTPUT
+            echo "icon=✅" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Deployment Status
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const run_link = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+            const status = "${{ steps.check.outputs.status }}";
+            const icon = "${{ steps.check.outputs.icon }}";
+            
+            const message = `${icon} Workflow ${context.workflow} ${status}\n
+            Branch: ${context.ref}
+            Commit: ${context.sha}
+            Author: ${context.actor}
+            Details: ${run_link}`;
+            
+            await github.rest.issues.createComment({
+              owner: owner,
+              repo: repo,
+              issue_number: context.issue.number || context.payload.pull_request?.number,
+              body: message
+            }).catch(e => console.log('No PR/Issue associated with this run'));
+
+      - name: Notify on Success
+        if: steps.check.outputs.status == 'success'
+        run: |
+          echo "✅ CI/CD Pipeline completed successfully!"
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "View run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+      - name: Notify on Failure
+        if: steps.check.outputs.status == 'failure'
+        run: |
+          echo "❌ CI/CD Pipeline failed!"
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "View run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" 
