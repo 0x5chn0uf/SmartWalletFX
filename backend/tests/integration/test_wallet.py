@@ -1,11 +1,18 @@
-import pytest
 import asyncio
+
+import pytest
 from httpx import AsyncClient
-from app.main import create_app
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+
 from app.core import database
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from app.main import create_app
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///./test_integration.db"
+
 
 @pytest.mark.asyncio
 async def test_create_wallet(test_app, db_session):
@@ -19,11 +26,15 @@ async def test_create_wallet(test_app, db_session):
         assert data["address"] == addr
         assert data["name"] == "Integration"
 
+
 @pytest.mark.asyncio
 async def test_create_wallet_invalid_address(test_app, db_session):
     async with AsyncClient(app=test_app, base_url="http://test") as client:
-        response = await client.post("/wallets", json={"address": "invalid_address"})
+        response = await client.post(
+            "/wallets", json={"address": "invalid_address"}
+        )
         assert response.status_code == 422
+
 
 @pytest.mark.asyncio
 async def test_list_wallets(test_app, db_session):
@@ -31,6 +42,7 @@ async def test_list_wallets(test_app, db_session):
         response = await client.get("/wallets")
         assert response.status_code == 200
         assert isinstance(response.json(), list)
+
 
 @pytest.mark.asyncio
 async def test_duplicate_wallet(test_app, db_session):
@@ -40,6 +52,7 @@ async def test_duplicate_wallet(test_app, db_session):
         response = await client.post("/wallets", json={"address": addr})
         assert response.status_code == 400
         assert "Wallet address already exists" in response.json()["detail"]
+
 
 @pytest.mark.asyncio
 async def test_delete_wallet(test_app, db_session):

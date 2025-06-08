@@ -1,8 +1,10 @@
 import pytest
-from app.schemas.wallet import WalletCreate
-from app.usecase.wallet_usecase import WalletUsecase
 from fastapi import HTTPException
 from pydantic import ValidationError
+
+from app.schemas.wallet import WalletCreate
+from app.usecase.wallet_usecase import WalletUsecase
+
 
 @pytest.mark.asyncio
 async def test_create_wallet_success(db_session):
@@ -13,6 +15,7 @@ async def test_create_wallet_success(db_session):
     assert wallet.address == data.address
     assert wallet.name == "UC"
 
+
 @pytest.mark.asyncio
 async def test_create_wallet_duplicate(db_session):
     data = WalletCreate(address="0xabcdefabcdefabcdefabcdefabcdefabcdefabce")
@@ -22,10 +25,12 @@ async def test_create_wallet_duplicate(db_session):
     assert exc.value.status_code == 400
     assert "already exists" in exc.value.detail
 
+
 @pytest.mark.asyncio
 async def test_create_wallet_invalid_address(db_session):
     with pytest.raises(ValidationError):
         WalletCreate(address="notanaddress")
+
 
 @pytest.mark.asyncio
 async def test_list_wallets(db_session):
@@ -39,6 +44,7 @@ async def test_list_wallets(db_session):
     )
     wallets = await WalletUsecase.list_wallets(db_session)
     assert len(wallets) == 2
+
 
 @pytest.mark.asyncio
 async def test_delete_wallet_success(db_session):

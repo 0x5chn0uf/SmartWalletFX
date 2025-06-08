@@ -5,7 +5,14 @@ from app.api.api import api_router
 from app.core.config import settings
 from app.core.init_db import init_db
 
+
 def create_app() -> FastAPI:
+    """
+    Create and configure the FastAPI application instance.
+    Sets up CORS, database initialization, and API routers.
+    Returns:
+        FastAPI: The configured FastAPI app instance.
+    """
     app = FastAPI(
         title=settings.PROJECT_NAME,
         version=settings.VERSION,
@@ -24,10 +31,15 @@ def create_app() -> FastAPI:
     # Initialize database tables on startup
     @app.on_event("startup")
     async def on_startup():
+        """
+        FastAPI startup event handler.
+        Initializes the database tables asynchronously.
+        """
         await init_db()
 
     # Import and include API routers
     app.include_router(api_router)
     return app
+
 
 app = create_app()

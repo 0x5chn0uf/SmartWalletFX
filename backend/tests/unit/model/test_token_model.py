@@ -1,5 +1,7 @@
 import pytest
+
 from app.models import Token
+
 
 def test_create_token(db_session):
     token = Token(address="0x123", symbol="TKN", name="Token", decimals=18)
@@ -10,6 +12,7 @@ def test_create_token(db_session):
     assert token.symbol == "TKN"
     assert token.name == "Token"
     assert token.decimals == 18
+
 
 def test_token_address_validation(db_session):
     valid_token = Token(
@@ -22,6 +25,7 @@ def test_token_address_validation(db_session):
     )
     assert valid_token.validate_address() is True
     assert invalid_token.validate_address() is False
+
 
 def test_token_symbol_validation(db_session):
     valid_token = Token(
@@ -36,6 +40,7 @@ def test_token_symbol_validation(db_session):
     )
     assert valid_token.validate_symbol() is True
     assert invalid_token.validate_symbol() is False
+
 
 def test_token_decimals_validation(db_session):
     valid_token = Token(
@@ -53,6 +58,7 @@ def test_token_decimals_validation(db_session):
     assert valid_token.validate_decimals() is True
     assert invalid_token.validate_decimals() is False
 
+
 def test_token_price_validation(db_session):
     valid_token = Token(
         address="0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
@@ -68,5 +74,6 @@ def test_token_price_validation(db_session):
     )
     assert valid_token.validate_price() is True
     assert invalid_token.validate_price() is False
+
 
 # Add more tests for token validation and edge cases here.

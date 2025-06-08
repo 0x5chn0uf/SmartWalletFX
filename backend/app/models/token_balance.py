@@ -7,6 +7,11 @@ from app.core.database import Base
 
 
 class TokenBalance(Base):
+    """
+    SQLAlchemy model for a token balance associated with a wallet.
+    Represents the amount of a specific token held by a wallet.
+    """
+
     __tablename__ = "token_balances"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -28,5 +33,8 @@ class TokenBalance(Base):
         orm_mode = True
 
     def __repr__(self):
+        """
+        Return a string representation of the token balance instance.
+        """
         return f"<TokenBalance wallet_id={self.wallet_id} \
             token_id={self.token_id}>"

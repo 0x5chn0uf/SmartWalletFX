@@ -1,16 +1,30 @@
+import re
 from datetime import datetime
 from typing import Optional
-import re
 
 from pydantic import BaseModel, Field, validator
 
 
 class WalletCreate(BaseModel):
+    """
+    Pydantic schema for wallet creation input.
+    Used for validating wallet creation requests.
+    """
+
     address: str = Field(..., description="EVM wallet address")
     name: Optional[str] = Field(None, description="Wallet name")
 
     @validator("address")
     def validate_address(cls, v):
+        """
+        Validate the wallet address format.
+        Args:
+            v: Wallet address string.
+        Returns:
+            str: The validated address.
+        Raises:
+            ValueError: If the address format is invalid.
+        """
         # Regex Ethereum address (0x suivi de 40 hex)
         if not re.match(r"^0x[a-fA-F0-9]{40}$", v):
             raise ValueError("Invalid Ethereum address format")
@@ -18,6 +32,11 @@ class WalletCreate(BaseModel):
 
 
 class WalletResponse(BaseModel):
+    """
+    Pydantic schema for wallet response output.
+    Used for serializing wallet data in API responses.
+    """
+
     id: int
     address: str
     name: Optional[str]
@@ -27,6 +46,10 @@ class WalletResponse(BaseModel):
     balance_usd: Optional[float]
 
     class Config:
+        """
+        Pydantic configuration for WalletResponse schema.
+        """
+
         orm_mode = True
         schema_extra = {
             "example": {

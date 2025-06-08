@@ -1,5 +1,7 @@
 import pytest
+
 from app.models import Token, TokenPrice
+
 
 def test_create_token_price(db_session):
     # Crée un token pour la FK
@@ -13,5 +15,6 @@ def test_create_token_price(db_session):
     assert price.id is not None
     assert price.token_id == token.id
     assert float(price.price_usd) == pytest.approx(123.45)
+
 
 # Add more tests for token price validation and edge cases here.

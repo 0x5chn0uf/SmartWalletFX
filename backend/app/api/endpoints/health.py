@@ -5,4 +5,9 @@ router = APIRouter()
 
 @router.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    """
+    Health check endpoint for the API.
+    Returns:
+        dict: A simple status message.
+    """
+    return {"status": "ok"}

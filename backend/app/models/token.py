@@ -1,13 +1,18 @@
 import re
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Integer, Numeric, String, JSON
+from sqlalchemy import JSON, Column, DateTime, Integer, Numeric, String
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 
 
 class Token(Base):
+    """
+    SQLAlchemy model for a blockchain token.
+    Represents a token with address, symbol, decimals, and price.
+    """
+
     __tablename__ = "tokens"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -33,23 +38,42 @@ class Token(Base):
     # transactions = relationship("Transaction", back_populates="token")
 
     def __repr__(self):
-        return f"<Token {self.symbol}>"
+        """
+        Return a string representation of the token instance.
+        """
+        return f"<Token {self.address} {self.symbol}>"
 
     def validate_address(self):
-        """Validate the token address."""
+        """
+        Validate the token contract address format (EVM or other).
+        Returns:
+            bool: True if the address is valid, False otherwise.
+        """
         evm_address_regex = r"^0x[a-fA-F0-9]{40}$"
         if re.match(evm_address_regex, self.address):
             return True
         return False
 
     def validate_symbol(self):
-        """Ensure the symbol is uppercase and not empty."""
+        """
+        Validate the token symbol format.
+        Returns:
+            bool: True if the symbol is valid, False otherwise.
+        """
         return self.symbol.isupper() and len(self.symbol) > 0
 
     def validate_decimals(self):
-        """Ensure decimals are within a valid range."""
+        """
+        Validate the decimals value for the token.
+        Returns:
+            bool: True if the decimals are valid, False otherwise.
+        """
         return 0 <= self.decimals <= 18
 
     def validate_price(self):
-        """Ensure the current price is positive if provided."""
+        """
+        Validate the price value for the token.
+        Returns:
+            bool: True if the price is valid, False otherwise.
+        """
         return self.current_price_usd is None or self.current_price_usd > 0

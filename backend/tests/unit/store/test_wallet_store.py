@@ -1,8 +1,13 @@
+import asyncio
+
 import pytest
 import pytest_asyncio
-import asyncio
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from fastapi import HTTPException
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from app.core.database import Base
 from app.models import Wallet
@@ -19,7 +24,9 @@ async def db_session():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
-    async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    async_session = async_sessionmaker(
+        engine, expire_on_commit=False, class_=AsyncSession
+    )
     async with async_session() as session:
         yield session
     async with engine.begin() as conn:
@@ -58,5 +65,7 @@ async def test_delete_wallet(db_session):
     assert await WalletStore.get_by_address(db_session, addr) is None
     # Suppression d'un wallet inexistant
     with pytest.raises(HTTPException) as exc:
-        await WalletStore.delete(db_session, "0x5555555555555555555555555555555555555555")
+        await WalletStore.delete(
+            db_session, "0x5555555555555555555555555555555555555555"
+        )
     assert exc.value.status_code == 404

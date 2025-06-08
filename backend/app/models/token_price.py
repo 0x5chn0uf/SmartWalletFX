@@ -7,6 +7,11 @@ from app.core.database import Base
 
 
 class TokenPrice(Base):
+    """
+    SQLAlchemy model for a token price record.
+    Represents the price of a token at a specific timestamp.
+    """
+
     __tablename__ = "token_prices"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -22,6 +27,9 @@ class TokenPrice(Base):
         orm_mode = True
 
     def __repr__(self):
+        """
+        Return a string representation of the token price instance.
+        """
         return f"""
             <TokenPrice token_id={self.token_id} timestamp={self.timestamp}>
         """
