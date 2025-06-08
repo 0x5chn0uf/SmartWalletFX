@@ -11,10 +11,12 @@ dependencies = [
     "fastapi",
     "uvicorn",
     "pytest",
+    "pytest-cov",
     "httpx",
     "black",
     "flake8",
     "isort",
+    "pydantic-settings",
 ]
 
 [tool.setuptools]
