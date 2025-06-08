@@ -1,9 +1,8 @@
 from datetime import datetime
 
+from app.core.database import Base
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric
 from sqlalchemy.orm import relationship
-
-from app.core.database import Base
 
 
 class TokenBalance(Base):

@@ -1,7 +1,6 @@
 import pytest
-from sqlalchemy.orm import sessionmaker
-
 from app.core.database import Base, engine
+from sqlalchemy.orm import sessionmaker
 
 # Crée une session de base de données pour les tests
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

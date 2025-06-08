@@ -1,11 +1,10 @@
 from datetime import datetime, timezone
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
-
 from app.core.database import Base
 from app.models import HistoricalBalance, Token, Wallet
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 # Test database URL
 TEST_DATABASE_URL = "sqlite:///./test.db"

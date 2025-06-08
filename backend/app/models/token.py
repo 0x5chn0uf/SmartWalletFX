@@ -1,10 +1,9 @@
 import re
 from datetime import datetime
 
+from app.core.database import Base
 from sqlalchemy import Column, DateTime, Integer, Numeric, String
 from sqlalchemy.orm import relationship
-
-from app.core.database import Base
 
 
 class Token(Base):
