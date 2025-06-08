@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "smartwalletfx"
 version = "0.1.0"
 description = "Smart Wallet FX Trading Bot"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
     "fastapi",
     "uvicorn",
@@ -45,7 +45,7 @@ extend-ignore = ["E203"]
 
 [tool.black]
 line-length = 88
-target-version = ["py311"]
+target-version = ["py313"]
 include = '\.pyi?$'
 extend-exclude = '''
 # A regex preceded with ^/ will apply only to files and directories
