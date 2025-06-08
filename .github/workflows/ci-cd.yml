@@ -100,7 +100,7 @@ jobs:
 
       - name: Run flake8
         run: |
-          flake8 backend/
+          flake8 backend/ --exclude=backend/venv
 
   test-backend:
     needs: [isort, black, flake8]

@@ -95,3 +95,6 @@ htmlcov/
 
 # Testing
 .pytest_cache/
+
+# Backend venv directory
+backend/venv/
