@@ -1,9 +1,10 @@
 import re
 from datetime import datetime
 
-from app.core.database import Base
-from sqlalchemy import Boolean, Column, DateTime, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Integer, Numeric, String
 from sqlalchemy.orm import relationship
+
+from app.core.database import Base
 
 
 class Wallet(Base):
@@ -13,12 +14,17 @@ class Wallet(Base):
     address = Column(String, unique=True, index=True)
     name = Column(String, nullable=True, default="Unnamed Wallet")
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
     is_active = Column(Boolean, default=True)
+    balance_usd = Column(Numeric(precision=18, scale=2), nullable=True)
 
     # Relationships
     token_balances = relationship("TokenBalance", back_populates="wallet")
-    historical_balances = relationship("HistoricalBalance", back_populates="wallet")
+    historical_balances = relationship(
+        "HistoricalBalance", back_populates="wallet"
+    )
 
     def __repr__(self):
         return f"<Wallet {self.address}>"

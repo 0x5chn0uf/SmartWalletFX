@@ -1,8 +1,9 @@
 from datetime import datetime
 
-from app.core.database import Base
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric
 from sqlalchemy.orm import relationship
+
+from app.core.database import Base
 
 
 class HistoricalBalance(Base):
@@ -24,4 +25,7 @@ class HistoricalBalance(Base):
         orm_mode = True
 
     def __repr__(self):
-        return f"<HistoricalBalance wallet_id={self.wallet_id} token_id={self.token_id} timestamp={self.timestamp}>"
+        return f"""
+            <HistoricalBalance wallet_id={self.wallet_id}
+            token_id={self.token_id} timestamp={self.timestamp}>
+        """

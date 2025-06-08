@@ -46,13 +46,14 @@ exclude = [
     ".git",
     "__pycache__",
     "build",
-    "dist"
+    "dist",
+    "tests/"
 ]
 max-line-length = 88
 extend-ignore = ["E203"]
 
 [tool.black]
-line-length = 88
+line-length = 79
 target-version = ['py313']
 include = '\.pyi?$'
 

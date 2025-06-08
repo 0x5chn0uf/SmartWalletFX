@@ -1,10 +1,11 @@
 from datetime import datetime, timezone
 
 import pytest
-from app.core.database import Base
-from app.models import HistoricalBalance, Token, Wallet
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
+
+from app.core.database import Base
+from app.models import HistoricalBalance, Token, Wallet
 
 # Test database URL
 TEST_DATABASE_URL = "sqlite:///./test.db"
@@ -13,7 +14,9 @@ TEST_DATABASE_URL = "sqlite:///./test.db"
 @pytest.fixture
 def db_session():
     """Create a test database session."""
-    engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
+    engine = create_engine(
+        TEST_DATABASE_URL, connect_args={"check_same_thread": False}
+    )
     Base.metadata.create_all(bind=engine)
 
     with Session(engine) as session:

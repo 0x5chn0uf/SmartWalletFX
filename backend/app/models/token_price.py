@@ -1,8 +1,9 @@
 from datetime import datetime
 
-from app.core.database import Base
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric
 from sqlalchemy.orm import relationship
+
+from app.core.database import Base
 
 
 class TokenPrice(Base):
@@ -21,4 +22,6 @@ class TokenPrice(Base):
         orm_mode = True
 
     def __repr__(self):
-        return f"<TokenPrice token_id={self.token_id} timestamp={self.timestamp}>"
+        return f"""
+            <TokenPrice token_id={self.token_id} timestamp={self.timestamp}>
+        """
