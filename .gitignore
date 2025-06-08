@@ -98,3 +98,25 @@ htmlcov/
 
 # Backend venv directory
 backend/venv/
+
+# Python virtual environments
+**/venv/
+**/env/
+**/.env/
+**/.venv/
+
+# Python byte-compiled files
+**/__pycache__/
+**/*.py[cod]
+*$py.class
+
+# Distribution / packaging
+**/dist/
+**/build/
+**/*.egg-info/
+
+# Python development
+**/.python-version
+**/.pytest_cache/
+**/.coverage
+**/htmlcov/
