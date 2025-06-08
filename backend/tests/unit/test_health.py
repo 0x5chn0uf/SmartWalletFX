@@ -19,9 +19,9 @@ client = TestClient(app)
 def test_health_check():
     """
     Given: A running FastAPI application
-    When: GET request is made to /api/v1/health
+    When: GET request is made to /health
     Then: Returns 200 status and healthy message
     """
-    response = client.get("/api/v1/health")
+    response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "healthy"}
