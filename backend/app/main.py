@@ -8,7 +8,7 @@ from app.core.init_db import init_db
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    openapi_url="/openapi.json",
 )
 
 # Set up CORS
@@ -25,4 +25,4 @@ init_db()
 
 # Import and include API routers
 
-app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(api_router)
