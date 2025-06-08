@@ -18,8 +18,6 @@ class WalletResponse(BaseModel):
     is_active: bool
     balance_usd: Optional[float]
 
-    model_config = dict(from_attributes=True)
-
     class Config:
         orm_mode = True
         schema_extra = {
