@@ -24,27 +24,22 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Get pip cache dir
-        id: pip-cache
-        run: |
-          echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
-
-      - name: Setup pip cache
-        uses: actions/cache@v4
-        id: pip-cache-step
-        with:
-          path: ${{ steps.pip-cache.outputs.dir }}
-          key: ${{ runner.os }}-pip-${{ env.CACHE_VERSION }}-${{ hashFiles('backend/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-${{ env.CACHE_VERSION }}-
-            ${{ runner.os }}-pip-
-
-      - name: Install dependencies
+      - name: Create virtual environment and install dependencies
         working-directory: ./backend
         run: |
+          python -m venv .venv
+          source .venv/bin/activate
           python -m pip install --upgrade pip
-          pip install -e .
-          pip install isort black flake8 pytest pytest-cov build wheel
+          pip install -e .[dev]
+
+      - name: Cache virtualenv
+        uses: actions/cache@v4
+        with:
+          path: backend/.venv
+          key: ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-${{ hashFiles('backend/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-
+            ${{ runner.os }}-venv-
 
   isort:
     needs: setup
@@ -58,15 +53,20 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install dependencies
-        working-directory: ./backend
-        run: |
-          pip install -e .
-          pip install isort
+      - name: Restore virtualenv
+        uses: actions/cache@v4
+        with:
+          path: backend/.venv
+          key: ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-${{ hashFiles('backend/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-
+            ${{ runner.os }}-venv-
 
       - name: Run isort
         working-directory: ./backend
-        run: isort --check-only --diff .
+        run: |
+          source .venv/bin/activate
+          isort --check-only --diff .
 
   black:
     needs: setup
@@ -80,15 +80,20 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install dependencies
-        working-directory: ./backend
-        run: |
-          pip install -e .
-          pip install black
+      - name: Restore virtualenv
+        uses: actions/cache@v4
+        with:
+          path: backend/.venv
+          key: ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-${{ hashFiles('backend/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-
+            ${{ runner.os }}-venv-
 
       - name: Run black
         working-directory: ./backend
-        run: black --check --diff .
+        run: |
+          source .venv/bin/activate
+          black --check --diff .
 
   flake8:
     needs: setup
@@ -102,15 +107,20 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install dependencies
-        working-directory: ./backend
-        run: |
-          pip install -e .
-          pip install flake8
+      - name: Restore virtualenv
+        uses: actions/cache@v4
+        with:
+          path: backend/.venv
+          key: ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-${{ hashFiles('backend/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-
+            ${{ runner.os }}-venv-
 
       - name: Run flake8
         working-directory: ./backend
-        run: flake8 . --exclude=venv,tests
+        run: |
+          source .venv/bin/activate
+          flake8 . --exclude=.venv,tests
 
   test-backend:
     needs: [isort, black, flake8]
@@ -124,15 +134,20 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install dependencies
-        working-directory: ./backend
-        run: |
-          pip install -e .
-          pip install pytest pytest-cov
+      - name: Restore virtualenv
+        uses: actions/cache@v4
+        with:
+          path: backend/.venv
+          key: ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-${{ hashFiles('backend/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-
+            ${{ runner.os }}-venv-
 
       - name: Run tests with coverage
         working-directory: ./backend
-        run: pytest -v --cov=app --cov-report=xml
+        run: |
+          source .venv/bin/activate
+          pytest -v --cov=app --cov-report=xml
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
@@ -153,15 +168,20 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install build dependencies
-        working-directory: ./backend
-        run: |
-          pip install -e .
-          pip install build wheel
+      - name: Restore virtualenv
+        uses: actions/cache@v4
+        with:
+          path: backend/.venv
+          key: ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-${{ hashFiles('backend/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-
+            ${{ runner.os }}-venv-
 
       - name: Build package
         working-directory: ./backend
-        run: python -m build
+        run: |
+          source .venv/bin/activate
+          python -m build
 
   deploy-backend:
     needs: build-backend
@@ -177,8 +197,8 @@ jobs:
           # Add deployment commands here
 
   notify:
-    needs: [deploy-backend, build-backend]  # This ensures notifications run after all jobs
-    if: always()  # This ensures the job runs even if previous jobs fail
+    needs: [deploy-backend, build-backend]
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Check workflow status
