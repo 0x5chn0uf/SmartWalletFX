@@ -24,6 +24,7 @@ def test_create_wallet(db_session):
     wallet = Wallet(
         address="0x1234567890abcdef1234567890abcdef12345678",
         name="Test Wallet",
+        balance=0.0  # Initialize balance with a default value
     )
     db_session.add(wallet)
     db_session.commit()

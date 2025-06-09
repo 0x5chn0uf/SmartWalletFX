@@ -5,7 +5,7 @@ from app.models import Token, TokenBalance, Wallet
 
 def test_create_token_balance(db_session):
     # Crée un wallet et un token pour la FK
-    wallet = Wallet(address="0x742d35Cc6634C0532925a3b844Bc454e4438f44e")
+    wallet = Wallet(address="0x742d35Cc6634C0532925a3b844Bc454e4438f44e", balance=0.0)
     token = Token(
         address="0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
         symbol="WBTC",
