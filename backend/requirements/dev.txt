@@ -33,3 +33,4 @@ mkdocs-material==9.4.8
 # Development Tools
 pre-commit==3.5.0
 debugpy==1.8.0  # Debugging support
+build==0.10.0
