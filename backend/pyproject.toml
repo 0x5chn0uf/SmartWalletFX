@@ -2,9 +2,7 @@
 requires = [
     "setuptools>=42",
     "wheel",
-    "pip>=20.1",
-    "-r requirements/base.txt",
-    "-r requirements/dev.txt"
+    "pip>=20.1"
 ]
 build-backend = "setuptools.build_meta"
 
