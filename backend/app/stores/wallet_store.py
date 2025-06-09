@@ -45,7 +45,7 @@ class WalletStore:
         Returns:
             Wallet: The created wallet instance.
         """
-        db_wallet = Wallet(address=address, name=name)
+        db_wallet = Wallet(address=address, name=name, balance=0.0)
         db.add(db_wallet)
         try:
             await db.commit()

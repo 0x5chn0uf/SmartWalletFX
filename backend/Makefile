@@ -3,8 +3,10 @@
 .PHONY: install run test lint format coverage bandit safety clean
 
 install:
-	pip install -r requirements.txt
-	pip install -r requirements-dev.txt
+	pip install -r requirements/base.txt
+
+install-dev:
+	pip install -r requirements/dev.txt
 
 run:
 	uvicorn app.main:app --host 0.0.0.0 --port 8000
