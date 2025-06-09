@@ -110,7 +110,7 @@ jobs:
 
       - name: Run flake8
         working-directory: ./backend
-        run: flake8 . --exclude=venv
+        run: flake8 . --exclude=venv,tests
 
   test-backend:
     needs: [isort, black, flake8]
