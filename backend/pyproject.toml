@@ -27,12 +27,12 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.4.3",
-    "pytest-cov>=4.1.0",
-    "black>=23.11.0",
-    "isort>=5.12.0",
-    "mypy>=1.7.1",
-    "ruff>=0.1.6",
+    "pytest==8.0.0",
+    "pytest-cov==4.1.0",
+    "black==23.11.0",
+    "isort==5.12.0",
+    "mypy==1.7.0",
+    "ruff==0.1.5",
 ]
 
 [tool.pytest.ini_options]
@@ -53,7 +53,7 @@ exclude = [
     "dist",
     "tests/"
 ]
-max-line-length = 88
+max-line-length = 79
 extend-ignore = ["E203"]
 
 [tool.black]
@@ -64,7 +64,7 @@ include = '\.pyi?$'
 [tool.isort]
 profile = "black"
 multi_line_output = 3
-line_length = 88
+line_length = 79
 
 [tool.mypy]
 python_version = "3.13"
