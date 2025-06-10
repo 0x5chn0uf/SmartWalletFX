@@ -1,5 +1,3 @@
-import asyncio
-
 import pytest
 import pytest_asyncio
 from fastapi import HTTPException
@@ -10,7 +8,6 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.core.database import Base
-from app.models import Wallet
 from app.stores.wallet_store import WalletStore
 
 TEST_DATABASE_URL = "sqlite+aiosqlite:///./test_store.db"

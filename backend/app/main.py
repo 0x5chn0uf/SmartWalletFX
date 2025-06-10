@@ -30,7 +30,7 @@ def create_app() -> FastAPI:
 
     # Initialize database tables on startup
     @app.on_event("startup")
-    async def on_startup():
+    async def on_startup() -> None:
         """
         FastAPI startup event handler.
         Initializes the database tables asynchronously.

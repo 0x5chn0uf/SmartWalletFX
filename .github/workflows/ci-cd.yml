@@ -147,7 +147,7 @@ jobs:
         working-directory: ./backend
         run: |
           source .venv/bin/activate
-          pytest -v --cov=app --cov-report=xml
+          PYTHONPATH=$(pwd) pytest -v --cov=app --cov-report=xml
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4

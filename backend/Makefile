@@ -12,13 +12,13 @@ run:
 	uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 test:
-	pytest --cov=app --cov-report=term-missing
+	PYTHONPATH=$(pwd) pytest --cov=app --cov-report=term-missing
 
 lint:
 	ruff check app tests
 	black --check app tests
 	isort --check-only app tests
-	flake8 app tests --exclude=venv,tests
+	flake8 app
 	mypy app
 
 format:
