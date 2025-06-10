@@ -17,9 +17,17 @@ class Settings(BaseSettings):
     ALCHEMY_API_KEY: Optional[str] = None
     COINGECKO_API_KEY: Optional[str] = None
 
+    # Arbitrum
+    ARBITRUM_RPC_URL: Optional[str] = None
+
     class Config:
         case_sensitive = True
         env_file = ".env"
 
 
 settings = Settings()
+
+"""
+CoinGecko is used as the price oracle for live USD values
+in the Radiant adapter.
+"""
