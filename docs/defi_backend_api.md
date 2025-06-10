@@ -5,7 +5,8 @@ This backend provides a unified API for fetching DeFi account data across multip
 
 ## Supported Protocols
 - **Radiant** (Arbitrum)
-  - Subgraph: https://thegraph.com/hosted-service/subgraph/radiant-capital/radiant-arbitrum
+  - Data Source: Direct smart contract calls using web3.py (no longer uses subgraph)
+  - See [radiant_arbitrum_contracts.md](./radiant_arbitrum_contracts.md) for contract addresses, ABI, and config instructions.
 - **Aave** (Ethereum Mainnet)
   - Subgraph: https://thegraph.com/hosted-service/subgraph/aave/protocol-v2
 - **Compound** (Ethereum Mainnet)
@@ -19,7 +20,8 @@ All endpoints return a `DeFiAccountSnapshot` for a given wallet address.
 GET /defi/radiant/{address}
 ```
 - **Success:** 200 OK, returns DeFiAccountSnapshot
-- **Not Found:** 404 if user not found on subgraph
+- **Not Found:** 404 if user not found on-chain
+- **Note:** Data is fetched live from Radiant contracts on Arbitrum using web3.py. Requires `ARBITRUM_RPC_URL` to be set in config. See [radiant_arbitrum_contracts.md](./radiant_arbitrum_contracts.md) for details on updating contract addresses, ABI files, and config.
 
 ### Aave
 ```

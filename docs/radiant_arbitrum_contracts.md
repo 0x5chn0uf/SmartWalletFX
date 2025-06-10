@@ -71,4 +71,29 @@ print(user_data)
 
 ---
 
-For the full and latest list, see the [official Radiant docs](https://docs.radiant.capital/radiant/contracts-and-security/arbitrum-contracts). 
+For the full and latest list, see the [official Radiant docs](https://docs.radiant.capital/radiant/contracts-and-security/arbitrum-contracts).
+
+## How to Update Contract Addresses, ABIs, and Config
+
+- **Contract Addresses:**
+  - All Radiant contract addresses are defined in `backend/app/constants/radiant.py`.
+  - To update an address, edit this file and redeploy/restart the backend.
+
+- **ABI Files:**
+  - ABI JSON files are stored in `backend/abis/` (e.g., `UIDataProvider.json`).
+  - To update an ABI, download the latest from Etherscan or the official Radiant repo and replace the file.
+
+- **Arbitrum RPC URL:**
+  - The backend connects to Arbitrum via the `ARBITRUM_RPC_URL` environment variable.
+  - Set this in your `.env` file for local development and in CI via `.github/workflows/ci-cd.yml`.
+  - See `.env.example` for the required variable.
+
+- **Adding New Contracts:**
+  - If Radiant adds new contracts, update both the constants file and add the new ABI to `backend/abis/`.
+  - Document the change in this file for future reference.
+
+- **Reference:**
+  - See `backend/app/adapters/radiant_contract_adapter.py` for how these are used in code.
+
+- **Testing:**
+  - Always run tests after updating addresses or ABIs to ensure compatibility. 
