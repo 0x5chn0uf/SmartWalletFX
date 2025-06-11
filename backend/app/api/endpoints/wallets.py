@@ -4,7 +4,18 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.schemas.historical_balance import (
+    HistoricalBalanceCreate,
+    HistoricalBalanceResponse,
+)
+from app.schemas.token import TokenCreate, TokenResponse
+from app.schemas.token_balance import TokenBalanceCreate, TokenBalanceResponse
+from app.schemas.token_price import TokenPriceCreate, TokenPriceResponse
 from app.schemas.wallet import WalletCreate, WalletResponse
+from app.stores.historical_balance_store import HistoricalBalanceStore
+from app.stores.token_balance_store import TokenBalanceStore
+from app.stores.token_price_store import TokenPriceStore
+from app.stores.token_store import TokenStore
 from app.usecase.wallet_usecase import WalletUsecase
 
 router = APIRouter()
@@ -55,3 +66,45 @@ async def delete_wallet(address: str, db: AsyncSession = db_dependency):
     """
     await WalletUsecase.delete_wallet(db, address)
     return None
+
+
+@router.post(
+    "/tokens",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_token(token: TokenCreate, db: AsyncSession = db_dependency):
+    return await TokenStore.create(db, token)
+
+
+@router.post(
+    "/historical_balances",
+    response_model=HistoricalBalanceResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_historical_balance(
+    hb: HistoricalBalanceCreate, db: AsyncSession = db_dependency
+):
+    return await HistoricalBalanceStore.create(db, hb)
+
+
+@router.post(
+    "/token_prices",
+    response_model=TokenPriceResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_token_price(
+    tp: TokenPriceCreate, db: AsyncSession = db_dependency
+):
+    return await TokenPriceStore.create(db, tp)
+
+
+@router.post(
+    "/token_balances",
+    response_model=TokenBalanceResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_token_balance(
+    tb: TokenBalanceCreate, db: AsyncSession = db_dependency
+):
+    return await TokenBalanceStore.create(db, tb)

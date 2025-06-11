@@ -1,3 +1,4 @@
+import os
 from typing import List, Optional
 
 from pydantic_settings import BaseSettings
@@ -11,7 +12,7 @@ class Settings(BaseSettings):
     ]  # React default port
 
     # Database
-    DATABASE_URL: str = "sqlite:///./wallet_tracker.db"
+    DATABASE_URL: str = os.environ.get("DATABASE_URL") or "sqlite:///app.db"
 
     # External APIs
     ALCHEMY_API_KEY: Optional[str] = None

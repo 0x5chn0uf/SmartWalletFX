@@ -170,3 +170,47 @@ To add a new protocol:
 2. Install dependencies in `backend/`
 3. Run the FastAPI server and visit `/docs` for OpenAPI
 4. Use the endpoints above to fetch DeFi data 
+
+## Alembic Database Migration Setup (Step-by-Step Guide)
+
+To manage database schema changes, this project uses Alembic. Here's how to set it up and use it for new features (e.g., the PortfolioSnapshot timeline):
+
+1. **Install Alembic**
+   - Already included in `requirements/base.txt`.
+
+2. **Initialize Alembic**
+   - From the `backend/` directory, run:
+     ```bash
+     alembic init migrations
+     ```
+   - This creates a `migrations/` directory and `alembic.ini` config file.
+
+3. **Configure Database URL**
+   - Edit `backend/alembic.ini` and set the `sqlalchemy.url` to your database (e.g., SQLite, PostgreSQL).
+
+4. **Import Models in env.py**
+   - Edit `backend/migrations/env.py` to import your SQLAlchemy `Base` and all models (including `PortfolioSnapshot`).
+   - Example:
+     ```python
+     from app.models.portfolio_snapshot import PortfolioSnapshot
+     from app.models import Base
+     target_metadata = Base.metadata
+     ```
+
+5. **Generate a Migration**
+   - After adding or changing models, run:
+     ```bash
+     alembic revision --autogenerate -m "create portfolio_snapshots table"
+     ```
+
+6. **Apply the Migration**
+   - Run:
+     ```bash
+     alembic upgrade head
+     ```
+
+7. **Repeat for Future Changes**
+   - For new models or schema changes, repeat steps 5-6.
+
+**Example:**
+- The PortfolioSnapshot model for the timeline feature is managed via Alembic migrations. 

@@ -15,15 +15,17 @@ def mock_settings(monkeypatch):
     )
 
 
+@pytest.mark.asyncio
 @patch("app.adapters.radiant_contract_adapter.Web3")
-def test_init_missing_rpc_url(mock_web3, monkeypatch):
+async def test_init_missing_rpc_url(mock_web3, monkeypatch):
     monkeypatch.setattr("app.core.config.settings.ARBITRUM_RPC_URL", None)
     with pytest.raises(RadiantAdapterError):
         RadiantContractAdapter()
 
 
+@pytest.mark.asyncio
 @patch("app.adapters.radiant_contract_adapter.Web3")
-def test_get_user_data_success(mock_web3, mock_settings, tmp_path):
+async def test_get_user_data_success(mock_web3, mock_settings, tmp_path):
     # Patch ABI loading
     abi_path = tmp_path / "UIDataProvider.json"
     abi_path.write_text("[]")
@@ -50,8 +52,9 @@ def test_get_user_data_success(mock_web3, mock_settings, tmp_path):
             assert result["health_factor"] == 2.5
 
 
+@pytest.mark.asyncio
 @patch("app.adapters.radiant_contract_adapter.Web3")
-def test_get_token_metadata_success(mock_web3, mock_settings):
+async def test_get_token_metadata_success(mock_web3, mock_settings):
     mock_token = MagicMock()
     mock_token.functions.symbol().call.return_value = "MOCK"
     mock_token.functions.decimals().call.return_value = 8
@@ -62,7 +65,8 @@ def test_get_token_metadata_success(mock_web3, mock_settings):
     assert decimals == 8
 
 
+@pytest.mark.asyncio
 @patch("app.adapters.radiant_contract_adapter.Web3")
-def test_to_usd(mock_web3, mock_settings):
+async def test_to_usd(mock_web3, mock_settings):
     adapter = RadiantContractAdapter(rpc_url="http://mock-rpc")
     assert adapter.to_usd(12345, "MOCK") == 12345.0

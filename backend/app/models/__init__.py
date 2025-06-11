@@ -1,5 +1,9 @@
+from app.core.database import Base
+
 from .group import Group
 from .historical_balance import HistoricalBalance
+from .portfolio_snapshot import PortfolioSnapshot
+from .portfolio_snapshot_cache import PortfolioSnapshotCache
 from .token import Token
 from .token_balance import TokenBalance
 from .token_price import TokenPrice
@@ -18,4 +22,7 @@ __all__ = [
     "User",
     "Group",
     "WalletGroup",
+    "PortfolioSnapshot",
+    "PortfolioSnapshotCache",
+    "Base",
 ]

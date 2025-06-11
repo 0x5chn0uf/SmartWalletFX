@@ -81,3 +81,24 @@ class DeFiAccountSnapshot(BaseModel):
     staked_positions: List[StakedPosition]
     health_scores: List[HealthScore]
     total_apy: Optional[float]
+
+
+class PortfolioSnapshot(BaseModel):
+    """
+    Historical snapshot of a user's DeFi portfolio for timeline visualization.
+    Used for time-series storage and retrieval.
+    """
+
+    user_address: str
+    timestamp: int  # Unix timestamp (UTC)
+    total_collateral: float
+    total_borrowings: float
+    total_collateral_usd: float
+    total_borrowings_usd: float
+    aggregate_health_score: Optional[float]
+    aggregate_apy: Optional[float]
+    collaterals: List[Collateral]
+    borrowings: List[Borrowing]
+    staked_positions: List[StakedPosition]
+    health_scores: List[HealthScore]
+    protocol_breakdown: dict  # {protocol_name: {...metrics...}}

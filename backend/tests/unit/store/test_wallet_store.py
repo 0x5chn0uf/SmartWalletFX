@@ -1,34 +1,7 @@
 import pytest
-import pytest_asyncio
 from fastapi import HTTPException
-from sqlalchemy.ext.asyncio import (
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
 
-from app.core.database import Base
 from app.stores.wallet_store import WalletStore
-
-TEST_DATABASE_URL = "sqlite+aiosqlite:///./test_store.db"
-
-
-@pytest_asyncio.fixture(autouse=True)
-async def db_session():
-    engine = create_async_engine(
-        TEST_DATABASE_URL, connect_args={"check_same_thread": False}
-    )
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-    async_session = async_sessionmaker(
-        engine, expire_on_commit=False, class_=AsyncSession
-    )
-    async with async_session() as session:
-        yield session
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    await engine.dispose()
 
 
 @pytest.mark.asyncio

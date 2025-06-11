@@ -51,6 +51,7 @@ async def test_delete_wallet_success(db_session):
     addr = "0x3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c"
     await WalletUsecase.create_wallet(db_session, WalletCreate(address=addr))
     await WalletUsecase.delete_wallet(db_session, addr)
+
     # Suppression d'un wallet inexistant
     with pytest.raises(HTTPException) as exc:
         await WalletUsecase.delete_wallet(db_session, addr)

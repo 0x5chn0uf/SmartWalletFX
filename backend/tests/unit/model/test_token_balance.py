@@ -1,32 +1,45 @@
-from app.models import Token, TokenBalance, Wallet
+import pytest
+from httpx import AsyncClient
 
 
-def test_create_token_balance(db_session):
-    # Crée un wallet et un token pour la FK
-    wallet = Wallet(
-        address="0x742d35Cc6634C0532925a3b844Bc454e4438f44e", balance=0.0
-    )
-    token = Token(
-        address="0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
-        symbol="WBTC",
-        name="Wrapped Bitcoin",
-    )
-    db_session.add_all([wallet, token])
-    db_session.commit()
-    # Crée un token balance
-    balance = TokenBalance(
-        wallet_id=wallet.id,
-        token_id=token.id,
-        balance=100000000,
-        balance_usd=20000.00,
-    )
-    db_session.add(balance)
-    db_session.commit()
-    assert balance.id is not None
-    assert balance.wallet_id == wallet.id
-    assert balance.token_id == token.id
-    assert float(balance.balance) == 100000000
-    assert float(balance.balance_usd) == 20000.00
+@pytest.mark.parametrize(
+    "address",
+    [
+        "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+        "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C598",
+    ],
+)
+@pytest.mark.asyncio
+async def test_create_token_balance(test_app, address):
+    wallet_data = {
+        "address": "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+        "name": "Test Wallet",
+    }
+    token_data = {
+        "address": address,
+        "symbol": "WBTC",
+        "name": "Wrapped Bitcoin",
+        "decimals": 18,
+    }
+    async with AsyncClient(app=test_app, base_url="http://test") as ac:
+        resp = await ac.post("/wallets", json=wallet_data)
+        assert resp.status_code == 201
+        wallet = resp.json()
+        resp = await ac.post("/tokens", json=token_data)
+        assert resp.status_code == 201
+        token = resp.json()
+        balance_data = {
+            "token_id": token["id"],
+            "wallet_id": wallet["id"],
+            "balance": 1.23,
+            "balance_usd": 20000.00,
+        }
+        resp = await ac.post("/token_balances", json=balance_data)
+        assert resp.status_code == 201
+        balance = resp.json()
+    assert balance["id"] is not None
+    assert float(balance["balance"]) == pytest.approx(1.23)
+    assert float(balance["balance_usd"]) == 20000.00
 
 
 # Add more tests for balance validation and edge cases here.
