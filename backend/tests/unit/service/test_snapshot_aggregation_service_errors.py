@@ -1,16 +1,20 @@
-import pytest
 from types import SimpleNamespace
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine
-import asyncio
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
-from app.services.snapshot_aggregation import SnapshotAggregationService
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import (
+    async_sessionmaker,
+    create_async_engine,
+)
+from sqlalchemy.orm import sessionmaker
+
 from app.models import Base  # imported lazily to avoid heavy import earlier
+from app.services.snapshot_aggregation import SnapshotAggregationService
 
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
+
 
 def fake_metrics(user_address: str):  # sync fake aggregator
     return SimpleNamespace(
@@ -56,7 +60,9 @@ def test_save_snapshot_sync_with_async_aggregator(sync_session):
     async def async_fake(user_address: str):
         return fake_metrics(user_address)
 
-    service = SnapshotAggregationService(sync_session, aggregator=async_fake)  # type: ignore
+    service = SnapshotAggregationService(
+        sync_session, aggregator=async_fake
+    )  # type: ignore
     snapshot = service.save_snapshot_sync("0xDEF")
     assert snapshot.user_address == "0xDEF"
 
@@ -70,10 +76,13 @@ async def test_build_snapshot_async():
         await conn.run_sync(Base.metadata.create_all)
     async_session = async_sessionmaker(engine, expire_on_commit=False)
     async with async_session() as session:
+
         async def async_aggr(addr: str):
             return fake_metrics(addr)
 
-        service = SnapshotAggregationService(session, aggregator=async_aggr)  # type: ignore
+        service = SnapshotAggregationService(
+            session, aggregator=async_aggr
+        )    # type: ignore
         snapshot = await service.build_snapshot("0xAAA")
         assert snapshot.user_address == "0xAAA"
     await engine.dispose()
@@ -81,7 +90,9 @@ async def test_build_snapshot_async():
 
 def test_metrics_to_snapshot_mapping():
     metrics = fake_metrics("0xZZ")
-    snapshot = SnapshotAggregationService._metrics_to_snapshot(metrics)  # type: ignore
+    snapshot = SnapshotAggregationService._metrics_to_snapshot(
+        metrics
+    )  # type: ignore
     assert snapshot.user_address == "0xZZ"
     assert snapshot.total_collateral == 1.0
-    assert snapshot.total_borrowings == 0.5 
+    assert snapshot.total_borrowings == 0.5

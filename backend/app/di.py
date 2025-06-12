@@ -11,6 +11,8 @@ def get_session_sync() -> Session:  # pragma: no cover
     return SyncSessionLocal()
 
 
-def get_snapshot_service_sync() -> SnapshotAggregationService:  # pragma: no cover
+def get_snapshot_service_sync() -> (
+    SnapshotAggregationService
+):  # pragma: no cover
     """Return SnapshotAggregationService wired with a sync session."""
-    return SnapshotAggregationService(get_session_sync()) 
+    return SnapshotAggregationService(get_session_sync())

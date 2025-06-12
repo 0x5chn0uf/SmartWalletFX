@@ -11,4 +11,4 @@ def get_snapshot_service(
     db: AsyncSession = Depends(get_db),
 ) -> SnapshotAggregationService:  # pragma: no cover – simple factory
     """Provide a SnapshotAggregationService with an injected async session."""
-    return SnapshotAggregationService(db) 
+    return SnapshotAggregationService(db)
