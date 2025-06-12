@@ -99,4 +99,3 @@ class SnapshotAggregationService:
                 for k, v in metrics.protocol_breakdown.items()
             },
         )
- 
