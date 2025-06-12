@@ -4,46 +4,47 @@ This document describes how to map data from major DeFi protocols (Aave, Compoun
 
 ## Integration Approach
 
-> **Note:** None of these protocols provide a public REST API for user/account data. All data must be fetched via:
-> - **On-chain contract calls** (using protocol-specific smart contracts)
-> - **Subgraph queries** (if available, via The Graph)
+> **Note:** With the exception of Radiant, these protocols do not provide a public REST API for user/account data. Data is fetched via:
+> - **On-chain contract calls** (used for Radiant)
+> - **Subgraph queries** (used for Aave and Compound)
 
-The table below lists the recommended contract methods and subgraph entities for each protocol and data type.
+The table below lists the data source for each protocol.
 
 ---
 
 | Protocol  | Data Needed         | How to Get It (Contract/Subgraph)                                   | Pydantic Model   | Model Field      |
 |-----------|---------------------|---------------------------------------------------------------------|------------------|------------------|
-| **Aave**  | Collateral, Debt    | `getUserReservesData(address user)` (ProtocolDataProvider contract) <br> or `userReserves` (Aave Subgraph) | Collateral, Borrowing | asset, amount    |
-|           | Health Factor       | `getUserAccountData(address user)` (ProtocolDataProvider contract) <br> or `userAccountData` (Aave Subgraph) | HealthScore      | score            |
-|           | APY, Rates          | `getReserveData(address asset)` (contract) <br> or `reserves` (Subgraph) | StakedPosition   | apy              |
-| **Compound** | Collateral, Debt | `cToken.balanceOfUnderlying(address)` (cToken contract) <br> `cToken.borrowBalanceCurrent(address)` (cToken contract) <br> or `account.tokens` (Compound Subgraph) | Collateral, Borrowing | asset, amount    |
-|           | Health              | `account.health` (Compound Subgraph)                                | HealthScore      | score            |
-|           | APY                 | `cToken.supplyRatePerBlock`, `cToken.borrowRatePerBlock` (contract) | StakedPosition   | apy              |
-| **Radiant** | Collateral, Debt  | LendingPool/DataProvider contract methods <br> or subgraph (if available) | Collateral, Borrowing | asset, amount    |
-|           | Health Factor       | DataProvider contract or subgraph                                   | HealthScore      | score            |
-|           | APY                 | DataProvider contract or subgraph                                   | StakedPosition   | apy              |
+| **Aave**  | Collateral, Debt    | `userReserves` (Aave V2 Subgraph)                                   | Collateral, Borrowing | asset, amount    |
+|           | Health Factor       | `user` (Aave V2 Subgraph)                                           | HealthScore      | score            |
+|           | APY, Rates          | `reserves` (Aave V2 Subgraph)                                       | StakedPosition   | apy              |
+| **Compound** | Collateral, Debt | `account.tokens` (Compound V2 Subgraph)                             | Collateral, Borrowing | asset, amount    |
+|           | Health              | `account.health` (Compound V2 Subgraph)                             | HealthScore      | score            |
+|           | APY                 | `market.supplyRate`, `market.borrowRate` (Compound V2 Subgraph)     | StakedPosition   | apy              |
+| **Radiant** | Collateral, Debt  | `getMTokenData`, `getFDInterestData` (Radiant DataProvider contract)  | Collateral, Borrowing | asset, amount    |
+|           | Health Factor       | `getMTokenData` (Radiant DataProvider contract)                     | HealthScore      | score            |
+|           | APY                 | `getFDInterestData` (Radiant DataProvider contract)                 | StakedPosition   | apy              |
 
 ---
 
-## Example: Aave (V2/V3)
-- **Contract:** ProtocolDataProvider (see [Aave docs](https://docs.aave.com/developers/core-contracts/pool-data-provider))
-- **Subgraph:** [Aave Subgraph](https://thegraph.com/hosted-service/subgraph/aave/protocol-v2)
-- **Methods:**
-  - `getUserReservesData(address user)` → Collateral, Borrowing
-  - `getUserAccountData(address user)` → HealthScore
+## Example: Aave (V2)
+- **Data Source:** [Aave V2 Subgraph](https://thegraph.com/hosted-service/subgraph/aave/protocol-v2)
+- **Key Entities:**
+  - `userReserves` → Collateral, Borrowing
+  - `user.healthFactor` → HealthScore
 
-## Example: Compound
-- **Contract:** cToken contracts (see [Compound docs](https://docs.compound.finance/v2/ctokens/))
-- **Subgraph:** [Compound Subgraph](https://thegraph.com/hosted-service/subgraph/graphprotocol/compound-v2)
-- **Methods:**
-  - `balanceOfUnderlying(address)` (cToken) → Collateral
-  - `borrowBalanceCurrent(address)` (cToken) → Borrowing
-  - `supplyRatePerBlock`, `borrowRatePerBlock` (cToken) → APY
+## Example: Compound (V2)
+- **Data Source:** [Compound V2 Subgraph](https://thegraph.com/hosted-service/subgraph/graphprotocol/compound-v2)
+- **Key Entities:**
+  - `account.tokens` → Collateral, Borrowing
+  - `account.health` → HealthScore
+  - `market.supplyRate` → APY
 
-## Example: Radiant
-- **Contract:** LendingPool/DataProvider (see [Radiant docs](https://docs.radiant.capital/))
-- **Subgraph:** If available, use the Radiant subgraph for user/account data.
+## Example: Radiant (V2 - Arbitrum)
+- **Data Source:** Direct smart contract calls (see [radiant_arbitrum_contracts.md](./radiant_arbitrum_contracts.md) for details)
+- **Key Methods:**
+  - `getMTokenData` (from DataProvider contract)
+  - `getFDInterestData` (from DataProvider contract)
+- **Note:** This method provides live, on-chain data and does not rely on a subgraph.
 
 ---
 

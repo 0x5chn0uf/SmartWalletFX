@@ -5,12 +5,12 @@ This backend provides a unified API for fetching DeFi account data across multip
 
 ## Supported Protocols
 - **Radiant** (Arbitrum)
-  - Data Source: Direct smart contract calls using web3.py (no longer uses subgraph)
+  - Data Source: Direct smart contract calls using web3.py.
   - See [radiant_arbitrum_contracts.md](./radiant_arbitrum_contracts.md) for contract addresses, ABI, and config instructions.
 - **Aave** (Ethereum Mainnet)
-  - Subgraph: https://thegraph.com/hosted-service/subgraph/aave/protocol-v2
+  - Data Source: TheGraph Subgraph (`https://thegraph.com/hosted-service/subgraph/aave/protocol-v2`)
 - **Compound** (Ethereum Mainnet)
-  - Subgraph: https://thegraph.com/hosted-service/subgraph/graphprotocol/compound-v2
+  - Data Source: TheGraph Subgraph (`https://thegraph.com/hosted-service/subgraph/graphprotocol/compound-v2`)
 
 ## API Endpoints
 All endpoints return a `DeFiAccountSnapshot` for a given wallet address.
@@ -37,12 +37,38 @@ GET /defi/compound/{address}
 - **Success:** 200 OK, returns DeFiAccountSnapshot
 - **Not Found:** 404 if user not found on subgraph
 
-### Portfolio Aggregation (NEW)
+### Portfolio Aggregation (Live)
 ```
 GET /defi/portfolio/{address}
 ```
-- **Success:** 200 OK, returns PortfolioMetrics (aggregated across all supported protocols)
+- Fetches live data from all supported protocols and returns an on-the-fly aggregated `PortfolioMetrics` view.
+- **Success:** 200 OK, returns PortfolioMetrics
 - **Not Found:** 200 OK with zeroed fields if user not found on any protocol
+
+### Performance Timeline (Historical)
+```
+GET /defi/timeline/{address}
+```
+- Retrieves a time-series of historical `PortfolioSnapshot` records for the given address from the local database.
+- Data is captured by a scheduled Celery background task.
+- **Success:** 200 OK, returns a list of `PortfolioSnapshot` objects.
+- **Query Parameters:**
+  - `start_date` (optional, YYYY-MM-DD): Filter snapshots from this date.
+  - `end_date` (optional, YYYY-MM-DD): Filter snapshots up to this date.
+
+### Admin: Trigger Snapshot
+```
+POST /defi/admin/trigger-snapshot
+```
+- Manually triggers the Celery background task to collect and store a portfolio snapshot for all tracked wallets.
+- This is an admin-only endpoint and requires appropriate authentication.
+- **Success:** 202 Accepted, returns the Celery task ID.
+- **Body:**
+  ```json
+  {
+    "wallet_addresses": ["0x...", "0x..."]
+  }
+  ```
 
 #### Example Response
 ```json
@@ -113,13 +139,13 @@ GET /defi/portfolio/{address}
 - `user_address`: Wallet address
 - `total_collateral`: Sum of all collateral amounts across protocols
 - `total_borrowings`: Sum of all borrowings across protocols
-- `total_collateral_usd`: USD value of all collateral (dummy, 1:1 for now)
-- `total_borrowings_usd`: USD value of all borrowings (dummy, 1:1 for now)
+- `total_collateral_usd`: USD value of all collateral
+- `total_borrowings_usd`: USD value of all borrowings
 - `aggregate_health_score`: Average health score across protocols
 - `aggregate_apy`: Weighted average APY across all staked positions
 - `collaterals`, `borrowings`, `staked_positions`, `health_scores`: Flattened lists from all protocols
 - `protocol_breakdown`: Per-protocol metrics and positions (see ProtocolBreakdown model)
-- `historical_snapshots`: (optional, null for now) Placeholder for future historical data
+- `historical_snapshots`: **(DEPRECATED)** This field is no longer used in the live aggregation response. Use the `/defi/timeline/{address}` endpoint instead.
 - `timestamp`: ISO8601 UTC timestamp of aggregation
 
 #### ProtocolBreakdown Model
@@ -127,6 +153,10 @@ GET /defi/portfolio/{address}
 - `total_collateral`, `total_borrowings`: Sums for this protocol
 - `aggregate_health_score`, `aggregate_apy`: Protocol-specific metrics
 - `collaterals`, `borrowings`, `staked_positions`, `health_scores`: Lists for this protocol
+- `DeFiAccountSnapshot`: Aggregates all above for a user at a timestamp.
+- `PortfolioMetrics`: Aggregated portfolio view (see above for fields).
+- `ProtocolBreakdown`: Per-protocol breakdown (see above).
+- `PortfolioSnapshot`: A full portfolio snapshot stored in the database, including all metrics and breakdowns for a specific point in time.
 
 ## Data Model
 See `backend/app/schemas/defi.py` for full details. Key models:
@@ -171,46 +201,17 @@ To add a new protocol:
 3. Run the FastAPI server and visit `/docs` for OpenAPI
 4. Use the endpoints above to fetch DeFi data 
 
-## Alembic Database Migration Setup (Step-by-Step Guide)
+## Database Migrations (Alembic)
+This project uses Alembic to manage database schema changes.
 
-To manage database schema changes, this project uses Alembic. Here's how to set it up and use it for new features (e.g., the PortfolioSnapshot timeline):
+- **To generate a new migration after changing a model:**
+  ```bash
+  # From the backend/ directory
+  alembic revision --autogenerate -m "Your descriptive message"
+  ```
+- **To apply migrations to the database:**
+  ```bash
+  alembic upgrade head
+  ```
 
-1. **Install Alembic**
-   - Already included in `requirements/base.txt`.
-
-2. **Initialize Alembic**
-   - From the `backend/` directory, run:
-     ```bash
-     alembic init migrations
-     ```
-   - This creates a `migrations/` directory and `alembic.ini` config file.
-
-3. **Configure Database URL**
-   - Edit `backend/alembic.ini` and set the `sqlalchemy.url` to your database (e.g., SQLite, PostgreSQL).
-
-4. **Import Models in env.py**
-   - Edit `backend/migrations/env.py` to import your SQLAlchemy `Base` and all models (including `PortfolioSnapshot`).
-   - Example:
-     ```python
-     from app.models.portfolio_snapshot import PortfolioSnapshot
-     from app.models import Base
-     target_metadata = Base.metadata
-     ```
-
-5. **Generate a Migration**
-   - After adding or changing models, run:
-     ```bash
-     alembic revision --autogenerate -m "create portfolio_snapshots table"
-     ```
-
-6. **Apply the Migration**
-   - Run:
-     ```bash
-     alembic upgrade head
-     ```
-
-7. **Repeat for Future Changes**
-   - For new models or schema changes, repeat steps 5-6.
-
-**Example:**
-- The PortfolioSnapshot model for the timeline feature is managed via Alembic migrations. 
+All schema changes, such as adding the `PortfolioSnapshot` table, must be handled through Alembic migrations. 

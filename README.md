@@ -7,10 +7,10 @@ A powerful crypto portfolio tracker providing a centralized overview of all your
 ## 🌟 Features
 
 ### 📊 Portfolio Overview
-- **Wallet Tracking:** Monitor EVM wallet balances and transactions
-- **DeFi Integration:** Track positions across Aave, Compound, and Radiant (via direct smart contract calls)
-- **Performance Analytics:** View detailed PnL, variations, and historical performance
-- **Visual Analytics:** TradingView-style charts with custom indicators
+- **Wallet Tracking:** Monitor EVM wallet balances and transactions.
+- **DeFi Integration:** Track positions across Aave, Compound, and Radiant using both direct smart contract calls and subgraph queries.
+- **Performance Timeline:** View historical portfolio performance (collateral, borrows, health score) with data collected by scheduled background jobs.
+- **Visual Analytics:** TradingView-style charts with custom indicators.
 
 ### 🎯 Smart Money Zone (SMC)
 - **Technical Indicators:** Fair Value Gaps (FVG), Order Blocks (OB), Breaker Blocks (BB)
@@ -31,10 +31,11 @@ A powerful crypto portfolio tracker providing a centralized overview of all your
 
 ### Backend
 - **Python (FastAPI)** — Modular, hexagonal architecture
-- **web3.py** — Direct smart contract calls for DeFi protocols (Aave, Compound, Radiant)
+- **web3.py** — Direct smart contract calls and subgraph interaction
 - **CoinGecko API** — Live price oracle for USD values
 - **Pydantic** — Data validation and serialization
-- **SQLite/TinyDB** — Local database
+- **PostgreSQL (via SQLAlchemy)** — Primary database for robust data storage.
+- **Celery & Redis** — Asynchronous task queue for background jobs (e.g., periodic portfolio snapshots).
 - **Task Master** — AI-powered task and roadmap management
 - **Testing:** Pytest, coverage, extensive unit/integration tests, mocking for web3 and price oracles
 - **Code Quality:** Black, isort, flake8, mypy, Bandit, Safety, pre-commit hooks
@@ -53,6 +54,7 @@ A powerful crypto portfolio tracker providing a centralized overview of all your
 - Python 3.11+
 - Node.js & npm
 - Git
+- Docker & Docker Compose
 
 ### Installation
 
@@ -62,33 +64,45 @@ A powerful crypto portfolio tracker providing a centralized overview of all your
    cd smartwalletfx
    ```
 
-2. **Set up backend**
-   ```bash
-   cd backend
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   pip install -e .           # Uses pyproject.toml (editable mode)
-   ```
-
-3. **Set up frontend**
-   ```bash
-   cd frontend
-   npm install
-   ```
-
-4. **Configure environment variables**
+2. **Configure environment variables**
    ```bash
    cp .env.example .env
    # Edit .env with your API keys (Alchemy, CoinGecko, etc.)
    ```
 
+3. **Set up backend**
+   ```bash
+   cd backend
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   pip install -e .           # Uses pyproject.toml (editable mode)
+
+   # Before running the app, start services and apply migrations
+   # docker-compose up -d
+   # alembic upgrade head
+   ```
+
+4. **Set up frontend**
+   ```bash
+   cd frontend
+   npm install
+   ```
+
 5. **Run the application**
+
+   > **Note:** The application requires a running PostgreSQL and Redis instance. Using the provided `docker-compose.yml` is recommended (`docker-compose up -d`).
+
    ```bash
    # Terminal 1 (Backend)
    cd backend
    uvicorn app.main:app
 
-   # Terminal 2 (Frontend)
+   # Terminal 2 (Celery Worker for background tasks)
+   cd backend
+   source .venv/bin/activate
+   celery -A app.celery_app.celery worker -l info
+
+   # Terminal 3 (Frontend)
    cd frontend
    npm start
    ```
@@ -98,12 +112,13 @@ A powerful crypto portfolio tracker providing a centralized overview of all your
 ## 📝 Development Status
 
 ### Current Version
-- Modular, production-ready FastAPI backend
-- DeFi integration: Aave, Compound, Radiant (via smart contracts)
-- CoinGecko price oracle integration
-- Robust, fully tested codebase (unit, integration, e2e)
-- Task Master for project management, reflection, and roadmap
-- All code quality, linting, and CI/CD checks enforced
+- **Modular Backend:** Production-ready FastAPI backend with a hexagonal architecture.
+- **DeFi Integration:** Supports Aave, Compound, and Radiant using both smart contract calls and subgraph queries.
+- **Performance Timeline:** Includes a Celery-based background scheduler to periodically capture and store portfolio snapshots in a PostgreSQL database.
+- **Price Oracles:** Live USD values fetched from CoinGecko with caching.
+- **Testing:** High test coverage (>95%) across unit, integration, and E2E tests.
+- **Project Management:** All tasks, enhancements, and technical debt are tracked via Task Master.
+- **Code Quality:** CI/CD pipeline enforces strict code quality, linting, and security checks.
 
 ### Roadmap & Future Improvements
 - Multi-oracle support, batch contract calls, advanced protocol abstraction
