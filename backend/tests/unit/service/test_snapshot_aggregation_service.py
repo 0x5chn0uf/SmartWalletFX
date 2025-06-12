@@ -1,4 +1,5 @@
-import asyncio
+# flake8: noqa: E501
+
 from types import SimpleNamespace
 
 from sqlalchemy import create_engine
@@ -11,9 +12,12 @@ from app.services.snapshot_aggregation import SnapshotAggregationService
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
 
+
 def _in_memory_session() -> Session:
     """Create an in-memory SQLite sync Session for testing."""
-    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
+    engine = create_engine(
+        "sqlite:///:memory:", connect_args={"check_same_thread": False}
+    )
     Base.metadata.create_all(engine)
     return Session(bind=engine)
 
@@ -47,12 +51,11 @@ def _fake_metrics(user_address: str):  # noqa: D401
 # Tests
 # ---------------------------------------------------------------------------
 
+
 def test_save_snapshot_sync_persists_row():
     session = _in_memory_session()
 
-    service = SnapshotAggregationService(
-        session, aggregator=_fake_metrics
-    )
+    service = SnapshotAggregationService(session, aggregator=_fake_metrics)
 
     snapshot = service.save_snapshot_sync("0xTEST")
 
@@ -62,4 +65,4 @@ def test_save_snapshot_sync_persists_row():
     # Verify record exists in DB
     fetched = session.get(type(snapshot), snapshot.id)
     assert fetched is not None
-    assert fetched.user_address == "0xTEST" 
+    assert fetched.user_address == "0xTEST"

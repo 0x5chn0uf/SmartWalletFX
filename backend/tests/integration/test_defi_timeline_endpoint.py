@@ -1,3 +1,5 @@
+# flake8: noqa: E501
+
 import asyncio
 
 import pytest
@@ -84,19 +86,25 @@ async def test_timeline_insert_and_retrieve(db_session):
     await db_session.commit()
     async with AsyncClient(app=app, base_url="http://test") as ac:
         # Query full range
-        resp = await ac.get("/defi/timeline/0xtest?from_ts=900&to_ts=2100&raw=true")
+        resp = await ac.get(
+            "/defi/timeline/0xtest?from_ts=900&to_ts=2100&raw=true"
+        )
         assert resp.status_code == status.HTTP_200_OK
         data = resp.json()
         assert len(data) == 2
         assert data[0]["timestamp"] == 1000
         assert data[1]["timestamp"] == 2000
         # Query partial range
-        resp = await ac.get("/defi/timeline/0xtest?from_ts=1500&to_ts=2100&raw=true")
+        resp = await ac.get(
+            "/defi/timeline/0xtest?from_ts=1500&to_ts=2100&raw=true"
+        )
         data = resp.json()
         assert len(data) == 1
         assert data[0]["timestamp"] == 2000
         # Query out of range
-        resp = await ac.get("/defi/timeline/0xtest?from_ts=2101&to_ts=3000&raw=true")
+        resp = await ac.get(
+            "/defi/timeline/0xtest?from_ts=2101&to_ts=3000&raw=true"
+        )
         assert resp.json() == []
 
 
@@ -187,9 +195,7 @@ async def test_timeline_response_wrapper_metadata(db_session):
     db_session.add(snap)
     await db_session.commit()
     async with AsyncClient(app=app, base_url="http://test") as ac:
-        resp = await ac.get(
-            "/defi/timeline/0xmeta?from_ts=900&to_ts=1100"
-        )
+        resp = await ac.get("/defi/timeline/0xmeta?from_ts=900&to_ts=1100")
         assert resp.status_code == status.HTTP_200_OK
         body = resp.json()
         assert set(body.keys()) == {
@@ -201,3 +207,37 @@ async def test_timeline_response_wrapper_metadata(db_session):
         }
         assert body["total"] == 1
         assert len(body["snapshots"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_timeline_response_metadata(db_session):
+    # ensure at least one snapshot exists
+    await db_session.execute(sqlalchemy.delete(PortfolioSnapshot))
+    await db_session.commit()
+    snap = PortfolioSnapshot(
+        user_address="0xmeta",
+        timestamp=1234,
+        total_collateral=1,
+        total_borrowings=0,
+        total_collateral_usd=1,
+        total_borrowings_usd=0,
+        aggregate_health_score=None,
+        aggregate_apy=None,
+        collaterals=[],
+        borrowings=[],
+        staked_positions=[],
+        health_scores=[],
+        protocol_breakdown={},
+    )
+    db_session.add(snap)
+    await db_session.commit()
+
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        resp = await ac.get("/defi/timeline/0xmeta?from_ts=1000&to_ts=2000")
+        assert resp.status_code == 200
+        payload = resp.json()
+        assert payload["interval"] == "none"
+        assert payload["limit"] == 100
+        assert payload["total"] >= 1
+        assert isinstance(payload["snapshots"], list)
+        assert payload["snapshots"][0]["user_address"] == "0xmeta"

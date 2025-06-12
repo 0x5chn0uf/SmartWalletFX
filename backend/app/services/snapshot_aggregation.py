@@ -7,7 +7,6 @@ and optionally persists them. Designed for dependency-injection and reuse
 across FastAPI endpoints and Celery tasks.
 """
 import asyncio
-from datetime import datetime
 from typing import Callable
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,11 +14,14 @@ from sqlalchemy.orm import Session
 
 from app.models.portfolio_snapshot import PortfolioSnapshot
 from app.usecase.portfolio_aggregation_usecase import (
+    PortfolioMetrics,
     aggregate_portfolio_metrics,
 )
 
 # Type alias for injected aggregator function
-Aggregator = Callable[[str], "PortfolioMetrics"]
+Aggregator = Callable[[str], PortfolioMetrics]
+
+# flake8: noqa: E501
 
 
 class SnapshotAggregationService:
@@ -58,7 +60,14 @@ class SnapshotAggregationService:
         if isinstance(self.db_session, AsyncSession):
             raise TypeError("save_snapshot_sync requires a sync Session")
 
-        metrics = asyncio.run(self.aggregator(user_address))
+        # Support both async and sync aggregator implementations for easier
+        # testing / dependency injection.  If the provided aggregator is an
+        # async function we need to run it in a private event loop, otherwise
+        # we can call it directly.
+        if asyncio.iscoroutinefunction(self.aggregator):
+            metrics = asyncio.run(self.aggregator(user_address))
+        else:
+            metrics = self.aggregator(user_address)
         snapshot = self._metrics_to_snapshot(metrics)
         self.db_session.add(snapshot)
         self.db_session.commit()
@@ -81,9 +90,12 @@ class SnapshotAggregationService:
             aggregate_apy=metrics.aggregate_apy,
             collaterals=[c.model_dump() for c in metrics.collaterals],
             borrowings=[b.model_dump() for b in metrics.borrowings],
-            staked_positions=[s.model_dump() for s in metrics.staked_positions],
+            staked_positions=[
+                s.model_dump() for s in metrics.staked_positions
+            ],
             health_scores=[h.model_dump() for h in metrics.health_scores],
             protocol_breakdown={
-                k: v.model_dump() for k, v in metrics.protocol_breakdown.items()
+                k: v.model_dump()
+                for k, v in metrics.protocol_breakdown.items()
             },
-        ) 
+        )

@@ -176,7 +176,7 @@ class PortfolioSnapshotStore:
                     or snap.timestamp > grouped[day].timestamp
                 ):
                     grouped[day] = snap
-            filtered = list(
+            filtered = list(  # noqa: C413
                 sorted(grouped.values(), key=lambda s: s.timestamp)
             )
         elif interval == "weekly":
@@ -189,7 +189,7 @@ class PortfolioSnapshotStore:
                     or snap.timestamp > grouped[week].timestamp
                 ):
                     grouped[week] = snap
-            filtered = list(
+            filtered = list(  # noqa: C413
                 sorted(grouped.values(), key=lambda s: s.timestamp)
             )
         else:

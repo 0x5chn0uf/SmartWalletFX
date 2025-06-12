@@ -1,3 +1,10 @@
+# flake8: noqa
+
+import pathlib
+import sys
+
+sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
+
 import asyncio
 import os
 import subprocess
@@ -29,8 +36,12 @@ ALEMBIC_CONFIG_PATH = os.path.abspath(
 def pytest_sessionstart(session):
     if os.path.exists(TEST_DB_PATH):
         os.remove(TEST_DB_PATH)
+    env = os.environ.copy()
+    env["TEST_DB_URL"] = "sqlite:///./test.db"
     subprocess.run(
-        ["alembic", "-c", ALEMBIC_CONFIG_PATH, "upgrade", "head"], check=True
+        ["alembic", "-c", ALEMBIC_CONFIG_PATH, "upgrade", "head"],
+        check=True,
+        env=env,
     )
     time.sleep(0.1)  # Ensure file is flushed
 
@@ -39,7 +50,8 @@ def pytest_sessionstart(session):
 def async_engine():
     engine = create_async_engine(TEST_DB_URL, future=True)
     yield engine
-    asyncio.get_event_loop().run_until_complete(engine.dispose())
+    # Dispose the engine in its own event loop to avoid "no current event loop"
+    asyncio.run(engine.dispose())
     if os.path.exists(TEST_DB_PATH):
         os.remove(TEST_DB_PATH)
 

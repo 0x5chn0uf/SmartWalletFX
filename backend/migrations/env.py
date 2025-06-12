@@ -1,3 +1,8 @@
+# Ensure project root on PYTHONPATH before importing app
+import pathlib, sys
+
+sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
+
 from logging.config import fileConfig
 
 from alembic import context
@@ -28,7 +33,9 @@ target_metadata = Base.metadata  # Set to Base.metadata for autogenerate
 
 
 def get_url():
-    return "sqlite:///./app.db"
+    import os
+
+    return os.environ.get("TEST_DB_URL", "sqlite:///./app.db")
 
 
 def run_migrations_offline() -> None:

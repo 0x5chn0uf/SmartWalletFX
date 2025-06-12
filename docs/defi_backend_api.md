@@ -49,12 +49,61 @@ GET /defi/portfolio/{address}
 ```
 GET /defi/timeline/{address}
 ```
-- Retrieves a time-series of historical `PortfolioSnapshot` records for the given address from the local database.
-- Data is captured by a scheduled Celery background task.
-- **Success:** 200 OK, returns a list of `PortfolioSnapshot` objects.
-- **Query Parameters:**
-  - `start_date` (optional, YYYY-MM-DD): Filter snapshots from this date.
-  - `end_date` (optional, YYYY-MM-DD): Filter snapshots up to this date.
+
+Returns the historical portfolio **timeline** for a wallet address. Data comes from `PortfolioSnapshot` rows collected by the Celery background task.
+
+#### Query Parameters
+
+| Name       | Type   | Default | Description |
+|------------|--------|---------|-------------|
+| `from_ts`  | int    | **required** | Unix timestamp (inclusive) marking the **start** of the range |
+| `to_ts`    | int    | **required** | Unix timestamp (inclusive) marking the **end** of the range |
+| `limit`    | int    | `100`   | Max number of snapshots to return (capped at `1000`) |
+| `offset`   | int    | `0`     | Number of snapshots to skip (basic pagination) |
+| `interval` | enum   | `none`  | Aggregation interval (`none`, `daily`, `weekly`) |
+| `raw`      | bool   | `false` | If **true**, returns a plain `PortfolioSnapshot[]` list for backwards compatibility. |
+
+#### Default Response (`raw=false`)
+
+The default response is wrapped in a `TimelineResponse` object that includes useful metadata for pagination and charting:
+
+```jsonc
+{
+  "snapshots": [
+    {
+      "user_address": "0x123...",
+      "timestamp": 1718294400,
+      "total_collateral": 1500,
+      "total_borrowings": 200.5,
+      "total_collateral_usd": 1500,
+      "total_borrowings_usd": 200.5,
+      "aggregate_health_score": 1.95,
+      "aggregate_apy": 0.04,
+      "collaterals": [],
+      "borrowings": [],
+      "staked_positions": [],
+      "health_scores": [],
+      "protocol_breakdown": {}
+    }
+  ],
+  "interval": "none",
+  "limit": 100,
+  "offset": 0,
+  "total": 1
+}
+```
+
+#### Raw Response (`raw=true`)
+
+Setting `raw=true` returns the legacy plain list with no metadata:
+
+```jsonc
+[
+  { "user_address": "0x123...", "timestamp": 1718294400, "total_collateral": 1500, ... }
+]
+```
+
+This flag exists to avoid breaking older consumers while new clients migrate to the richer `TimelineResponse` wrapper.
 
 ### Admin: Trigger Snapshot
 ```
