@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import List, Optional
 
-from sqlalchemy import and_, delete, desc, select
+from sqlalchemy import and_, delete, desc, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.portfolio_snapshot import PortfolioSnapshot
@@ -97,8 +97,10 @@ class PortfolioSnapshotStore:
                 PortfolioSnapshotCache.interval == interval,
                 PortfolioSnapshotCache.limit == limit,
                 PortfolioSnapshotCache.offset == offset,
-                (PortfolioSnapshotCache.expires_at is None)
-                | (PortfolioSnapshotCache.expires_at > now),
+                or_(
+                    PortfolioSnapshotCache.expires_at is None,
+                    PortfolioSnapshotCache.expires_at > now,
+                ),
             )
         )
         cache = result.scalars().first()
