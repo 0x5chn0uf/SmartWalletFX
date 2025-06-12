@@ -335,4 +335,54 @@ jobs:
             frontend:
               - 'frontend/**'
             backend:
-              - 'backend/**' 
+              - 'backend/**'
+
+  e2e-cypress:
+    needs: [build-backend, build-frontend, changes]
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20.x]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }} and Cypress cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Cypress dependencies
+        working-directory: ./frontend
+        run: npm ci --no-audit --fund=false
+
+      - name: Start services via docker-compose
+        run: |
+          docker compose -f docker-compose.ci.yml up -d --build
+
+      - name: Wait for backend health
+        run: |
+          for i in {1..30}; do
+            if curl -s http://localhost:8000/api/v1/health > /dev/null; then
+              echo "Backend is up" && break;
+            fi
+            echo "Waiting for backend..." && sleep 2;
+          done
+
+      - name: Run Cypress tests
+        working-directory: ./frontend
+        run: npx cypress run --browser chrome --headless
+
+      - name: Upload Cypress artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-artifacts
+          path: frontend/cypress/screenshots
+
+      - name: Shutdown docker-compose
+        if: always()
+        run: docker compose -f docker-compose.ci.yml down 
