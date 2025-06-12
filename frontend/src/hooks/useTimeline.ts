@@ -6,15 +6,23 @@ interface UseTimelineOptions {
   address: string;
   from: number;
   to: number;
+  interval?: 'none' | 'daily' | 'weekly';
+  enabled?: boolean;
 }
 
-export function useTimeline({ address, from, to }: UseTimelineOptions) {
+export function useTimeline({ address, from, to, interval, enabled = true }: UseTimelineOptions) {
   const [data, setData] = useState<PortfolioSnapshot[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let mounted = true;
+    if (!enabled) {
+      setData(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     async function fetchTimeline() {
       setLoading(true);
       setError(null);
@@ -22,20 +30,18 @@ export function useTimeline({ address, from, to }: UseTimelineOptions) {
         const snapshots = (await getTimeline(address, {
           from_ts: from,
           to_ts: to,
+          interval: interval ?? 'none',
           raw: true,
         })) as PortfolioSnapshot[];
-        if (mounted) setData(snapshots);
+        setData(snapshots);
       } catch (err) {
-        if (mounted) setError((err as Error).message);
+        setError((err as Error).message);
       } finally {
-        if (mounted) setLoading(false);
+        setLoading(false);
       }
     }
     fetchTimeline();
-    return () => {
-      mounted = false;
-    };
-  }, [address, from, to]);
+  }, [address, from, to, interval, enabled]);
 
   return { data, loading, error };
 } 
