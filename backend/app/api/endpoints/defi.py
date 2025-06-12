@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.schemas.defi import DeFiAccountSnapshot, PortfolioSnapshot
+from app.schemas.portfolio_timeline import TimelineResponse
 from app.stores.portfolio_snapshot_store import PortfolioSnapshotStore
 from app.tasks.snapshots import collect_portfolio_snapshots
 from app.usecase.defi_aave_usecase import get_aave_user_snapshot_usecase
@@ -110,7 +111,7 @@ async def get_portfolio_snapshot_usecase(db: AsyncSession):
 
 @router.get(
     "/defi/timeline/{address}",
-    response_model=List[PortfolioSnapshot],
+    response_model=TimelineResponse,
     tags=["DeFi"],
 )
 async def get_portfolio_timeline(
@@ -135,6 +136,7 @@ async def get_portfolio_timeline(
         description="Aggregation interval: none, daily, weekly",
     ),
     db: AsyncSession = db_dependency,
+    raw: bool = Query(False, description="If true, return raw list without metadata."),
 ):
     """
     Get historical portfolio snapshots (timeline) for a given wallet
@@ -144,13 +146,31 @@ async def get_portfolio_timeline(
     Supports interval aggregation with 'interval' (none, daily, weekly).
     """
     usecase = await get_portfolio_snapshot_usecase(db)
-    return await usecase.get_timeline(
+    snapshots = await usecase.get_timeline(
         address,
         from_ts,
         to_ts,
         limit=limit,
         offset=offset,
         interval=interval.value,
+    )
+
+    if raw:
+        # Backward-compat raw response
+        return TimelineResponse(  # type: ignore – FastAPI ignores extra
+            snapshots=snapshots,
+            interval=interval.value,
+            limit=limit,
+            offset=offset,
+            total=len(snapshots),
+        ).dict()["snapshots"]  # Returns list only
+
+    return TimelineResponse(
+        snapshots=snapshots,
+        interval=interval.value,
+        limit=limit,
+        offset=offset,
+        total=len(snapshots),
     )
 
 
