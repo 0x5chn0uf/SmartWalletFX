@@ -120,7 +120,7 @@ jobs:
         working-directory: ./backend
         run: |
           source .venv/bin/activate
-          flake8 . --exclude=.venv,tests
+          flake8 . --exclude=.venv,tests,migrations
 
   test-backend:
     needs: [isort, black, flake8]

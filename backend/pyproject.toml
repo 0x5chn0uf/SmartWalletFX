@@ -71,7 +71,8 @@ exclude = [
     "__pycache__",
     "build",
     "dist",
-    "tests/"
+    "tests/",
+    "migrations/"
 ]
 max-line-length = 79
 extend-ignore = ["E203"]

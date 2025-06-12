@@ -2,10 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.ext.asyncio import (
-    async_sessionmaker,
-    create_async_engine,
-)
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.models import Base  # imported lazily to avoid heavy import earlier
@@ -82,7 +79,7 @@ async def test_build_snapshot_async():
 
         service = SnapshotAggregationService(
             session, aggregator=async_aggr
-        )    # type: ignore
+        )  # type: ignore
         snapshot = await service.build_snapshot("0xAAA")
         assert snapshot.user_address == "0xAAA"
     await engine.dispose()
