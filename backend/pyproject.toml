@@ -23,6 +23,9 @@ dependencies = [
     "requests>=2.31.0",
     "web3>=6.11.3",
     "aiohttp>=3.9.1",
+    "celery>=5.3.4",
+    "redis>=5.0.0",
+    "alembic>=1.12.1",
 ]
 
 [project.optional-dependencies]
