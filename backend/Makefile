@@ -1,6 +1,6 @@
 # Makefile pour backend FastAPI
 
-.PHONY: install run test lint format coverage bandit safety clean
+.PHONY: install run test lint format coverage bandit safety clean celery-worker celery-beat alembic-upgrade
 
 install:
 	pip install -r requirements/base.txt
@@ -12,7 +12,7 @@ run:
 	uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 test:
-	PYTHONPATH=$(pwd) pytest --cov=app --cov-report=term-missing
+	PYTHONPATH=. pytest --cov=app --cov-report=term-missing
 
 lint:
 	ruff check app tests
@@ -36,4 +36,13 @@ safety:
 
 clean:
 	rm -rf __pycache__ .pytest_cache .coverage htmlcov
-	find . -type d -name '__pycache__' -exec rm -rf {} + 
+	find . -type d -name '__pycache__' -exec rm -rf {} +
+
+celery-worker:
+	celery -A app.celery_app.celery worker --loglevel=info
+
+celery-beat:
+	celery -A app.celery_app.celery beat --loglevel=info
+
+alembic-upgrade:
+	PYTHONPATH=. alembic upgrade head

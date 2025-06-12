@@ -22,3 +22,6 @@ pydantic-settings==2.1.0  # Settings management with Pydantic
 # Crypto APIs
 ccxt==4.1.13  # Cryptocurrency exchange library
 web3==7.12.0  # Web3 library
+
+celery[redis]
+redis 

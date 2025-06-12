@@ -3,9 +3,8 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from app.models import (  # Import Base and all models for Alembic autogenerate
-    Base,
-)
+# Import Base and all models for Alembic autogenerate
+from app.models import *
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -29,7 +28,7 @@ target_metadata = Base.metadata  # Set to Base.metadata for autogenerate
 
 
 def get_url():
-    return "sqlite:///./test.db"
+    return "sqlite:///./app.db"
 
 
 def run_migrations_offline() -> None:
