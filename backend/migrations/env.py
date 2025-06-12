@@ -1,5 +1,6 @@
 # Ensure project root on PYTHONPATH before importing app
-import pathlib, sys
+import pathlib
+import sys
 
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 

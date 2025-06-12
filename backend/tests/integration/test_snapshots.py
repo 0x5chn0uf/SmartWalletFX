@@ -200,3 +200,4 @@ async def test_celery_task_db_write_failure(monkeypatch, db_session):
         collect_portfolio_snapshots()
     finally:
         snapshots_mod.SyncSessionLocal = orig_SyncSessionLocal
+ 
