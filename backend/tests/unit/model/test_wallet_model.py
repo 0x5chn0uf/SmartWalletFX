@@ -1,6 +1,5 @@
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import delete, select
 
 from app.models.wallet import Wallet
 
