@@ -51,19 +51,17 @@ Completed. Architecture, data flow, and integration points documented.
 - **Data Sources Confirmed**: Existing `/defi/timeline/{address}` and `/defi/portfolio/{address}` endpoints
 
 ### Current Progress Summary
-- **Completed (6/10 subtasks):**
+- **Completed (7/10 subtasks):**
     - ✅ Architecture analysis and codebase review (Subtask 2.1)
     - ✅ Component/model requirements identification with gap analysis (Subtask 2.2)
     - ✅ Frontend charting library selection (Recharts) with tech spike (Subtask 2.3)
     - ✅ Backend data preparation logic & API design implemented (Subtask 2.4)
     - ✅ Snapshot Aggregation Service & TimelineResponse DTO implemented (Subtask 2.9)
     - ✅ TimelineChart component, filters, validation & wallet selector implemented (Subtask 2.10)
+    - ✅ **Subtask 2.15** – Cypress E2E CI job integrated and passing in CI
 
 - **In Progress:**
-    - 🚧 **Subtask 2.15** – Cypress E2E CI job (CI scaffold, docker-compose & basic spec added)
-
-- **Pending (to be started):**
-    - 🔄 **Subtask 2.11** – Increase test coverage for Store layer & Radiant adapter (>90 %)
+    - 🚧 **Subtask 2.11** – Increase test coverage for Store layer & Radiant adapter (>90 %)
     - 🔄 **Subtask 2.12** – Replace `Any` response_model with `Union` after FastAPI/Pydantic v2 release
     - 🔄 **Subtask 2.13** – Adopt `AsyncExitStack` for engine teardown in tests
     - 🔄 **Subtask 2.14** – Document Dev vs Test DB setup in CONTRIBUTING.md
