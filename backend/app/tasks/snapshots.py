@@ -3,7 +3,7 @@ import os
 import time
 
 from app.celery_app import celery
-from app.core.database import SyncSessionLocal
+from app.di import get_session_sync
 from app.models.wallet import Wallet
 from app.services.snapshot_aggregation import SnapshotAggregationService
 
@@ -14,7 +14,7 @@ def collect_portfolio_snapshots():
     Periodically collect DeFi portfolio snapshots for all
     tracked wallet addresses.
     """
-    session = SyncSessionLocal()
+    session = get_session_sync()
     try:
         # Log the DB engine URL and resolved file path
         engine_url = str(session.bind.url)
