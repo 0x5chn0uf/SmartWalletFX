@@ -4,9 +4,13 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - 'README.md'
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - 'README.md'
 
 env:
   PYTHON_VERSION: '3.12'
@@ -14,6 +18,8 @@ env:
 
 jobs:
   setup:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -42,7 +48,8 @@ jobs:
             ${{ runner.os }}-venv-
 
   isort:
-    needs: setup
+    needs: [setup, changes]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -69,7 +76,8 @@ jobs:
           isort --check-only --diff .
 
   black:
-    needs: setup
+    needs: [setup, changes]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -96,7 +104,8 @@ jobs:
           black --check --diff .
 
   flake8:
-    needs: setup
+    needs: [setup, changes]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -123,7 +132,8 @@ jobs:
           flake8 . --exclude=.venv,tests,migrations
 
   test-backend:
-    needs: [isort, black, flake8]
+    needs: [isort, black, flake8, changes]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     env:
       ARBITRUM_RPC_URL: "http://localhost:8545"
@@ -159,7 +169,8 @@ jobs:
           name: backend-coverage
 
   build-backend:
-    needs: test-backend
+    needs: [test-backend, changes]
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -186,9 +197,9 @@ jobs:
           python -m build
 
   deploy-backend:
-    needs: build-backend
+    needs: [build-backend, changes]
+    if: needs.changes.outputs.backend == 'true' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -198,8 +209,62 @@ jobs:
           echo "Deploying backend to production..."
           # Add deployment commands here
 
+  build-frontend:
+    needs: [isort, black, flake8, changes]
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20.x]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci --no-audit --fund=false
+
+      - name: Lint frontend
+        working-directory: ./frontend
+        run: |
+          if [ -f package.json ]; then npm run lint --if-present ; fi
+
+      - name: Run frontend tests
+        working-directory: ./frontend
+        run: npm test -- --watchAll=false --no-watchman --ci
+
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/build
+
+  deploy-frontend:
+    needs: [build-frontend, changes]
+    if: needs.changes.outputs.frontend == 'true' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy frontend
+        run: |
+          echo "Deploying frontend to production..."
+          # Add deployment commands here
+
   notify:
-    needs: [deploy-backend, build-backend]
+    needs: [deploy-backend, build-backend, deploy-frontend]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -252,4 +317,40 @@ jobs:
           echo "❌ CI/CD Pipeline failed!"
           echo "Branch: ${{ github.ref }}"
           echo "Commit: ${{ github.sha }}"
-          echo "View run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" 
+          echo "View run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Detect path changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+            backend:
+              - 'backend/**'
+
+  filter:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Detect path changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+            backend:
+              - 'backend/**' 
