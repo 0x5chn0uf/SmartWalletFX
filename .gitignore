@@ -120,3 +120,4 @@ backend/venv/
 **/.pytest_cache/
 **/.coverage
 **/htmlcov/
+memory-bank/tasks.md
