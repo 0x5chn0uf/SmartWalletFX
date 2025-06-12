@@ -193,4 +193,4 @@ class PortfolioSnapshotStore:
         else:
             raise ValueError("Invalid interval")
         # Pagination
-        return filtered[offset : offset + limit] # noqa: E203
+        return filtered[offset : offset + limit]  # noqa: E203
