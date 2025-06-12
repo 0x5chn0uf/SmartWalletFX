@@ -335,22 +335,4 @@ jobs:
             frontend:
               - 'frontend/**'
             backend:
-              - 'backend/**'
-
-  filter:
-    runs-on: ubuntu-latest
-    outputs:
-      frontend: ${{ steps.filter.outputs.frontend }}
-      backend: ${{ steps.filter.outputs.backend }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Detect path changes
-        id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            frontend:
-              - 'frontend/**'
-            backend:
               - 'backend/**' 
