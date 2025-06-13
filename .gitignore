@@ -59,9 +59,6 @@ dev-debug.log
 *.sln
 *.sw?
 
-# Task files
-tasks.json
-tasks/ 
 
 # Cursor Files
 .cursor/
@@ -69,6 +66,7 @@ tasks/
 .roo/
 custom_modes/
 memory-bank/
+memory-bank/tasks.md
 .roomodes
 .windsurfrules
 
@@ -120,4 +118,3 @@ backend/venv/
 **/.pytest_cache/
 **/.coverage
 **/htmlcov/
-memory-bank/tasks.md

@@ -35,5 +35,5 @@ pre-commit==3.5.0
 debugpy==1.8.0  # Debugging support
 respx==0.22.0
 
-celery[redis]
-redis 
+celery[redis]==5.5.3
+redis==5.2.1
