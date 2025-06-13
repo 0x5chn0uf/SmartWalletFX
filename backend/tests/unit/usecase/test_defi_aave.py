@@ -2,10 +2,7 @@ import pytest
 import respx
 from httpx import Response
 
-from app.usecase.defi_aave_usecase import (
-    SUBGRAPH_URL,
-    get_aave_user_snapshot_usecase,
-)
+from app.usecase.defi_aave_usecase import AaveUsecase
 
 
 @pytest.mark.asyncio
@@ -32,10 +29,11 @@ async def test_aave_usecase_mapping():
             },
         }
     }
-    respx.post(SUBGRAPH_URL).mock(
+    respx.post(AaveUsecase.SUBGRAPH_URL).mock(
         return_value=Response(200, json=mock_response)
     )
-    snapshot = await get_aave_user_snapshot_usecase("0x123")
+    usecase = AaveUsecase()
+    snapshot = await usecase.get_user_snapshot("0x123")
     assert snapshot is not None
     assert snapshot.user_address == "0x123"
     assert len(snapshot.collaterals) == 1
@@ -54,10 +52,11 @@ async def test_aave_usecase_mapping():
 @pytest.mark.asyncio
 @respx.mock
 async def test_aave_usecase_not_found():
-    respx.post(SUBGRAPH_URL).mock(
+    respx.post(AaveUsecase.SUBGRAPH_URL).mock(
         return_value=Response(
             200, json={"data": {"userReserves": [], "userAccountData": None}}
         )
     )
-    snapshot = await get_aave_user_snapshot_usecase("0xdead")
+    usecase = AaveUsecase()
+    snapshot = await usecase.get_user_snapshot("0xdead")
     assert snapshot is None

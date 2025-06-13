@@ -39,7 +39,8 @@ async def create_wallet(
     Returns:
         WalletResponse: The created wallet response object.
     """
-    return await WalletUsecase.create_wallet(db, wallet)
+    usecase = WalletUsecase(db)
+    return await usecase.create_wallet(wallet)
 
 
 @router.get("/wallets", response_model=List[WalletResponse])
@@ -51,7 +52,8 @@ async def list_wallets(db: AsyncSession = db_dependency):
     Returns:
         List[WalletResponse]: List of wallet response objects.
     """
-    return await WalletUsecase.list_wallets(db)
+    usecase = WalletUsecase(db)
+    return await usecase.list_wallets()
 
 
 @router.delete("/wallets/{address}", status_code=status.HTTP_204_NO_CONTENT)
@@ -64,7 +66,8 @@ async def delete_wallet(address: str, db: AsyncSession = db_dependency):
     Returns:
         None
     """
-    await WalletUsecase.delete_wallet(db, address)
+    usecase = WalletUsecase(db)
+    await usecase.delete_wallet(address)
     return None
 
 

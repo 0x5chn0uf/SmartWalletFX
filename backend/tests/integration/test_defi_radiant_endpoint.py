@@ -12,7 +12,7 @@ TEST_ADDRESS_NOT_FOUND = "0x0000000000000000000000000000000000000000"
 
 @pytest.mark.asyncio
 @patch(
-    "app.usecase.defi_radiant_usecase._adapter.async_get_user_data",
+    "app.adapters.protocols.radiant.RadiantContractAdapter.async_get_user_data",
     new_callable=AsyncMock,
 )
 async def test_get_radiant_user_data_success(mock_async_get):
@@ -72,7 +72,7 @@ async def test_get_radiant_user_data_success(mock_async_get):
 
 @pytest.mark.asyncio
 @patch(
-    "app.usecase.defi_radiant_usecase._adapter.async_get_user_data",
+    "app.adapters.protocols.radiant.RadiantContractAdapter.async_get_user_data",
     new_callable=AsyncMock,
 )
 async def test_get_radiant_user_data_not_found(mock_async_get):
@@ -96,6 +96,7 @@ async def test_get_radiant_user_data_not_found(mock_async_get):
 async def test_radiant_user_endpoint(monkeypatch, test_app):
     """Radiant endpoint returns mocked snapshot and propagates JSON."""
     from app.schemas.defi import DeFiAccountSnapshot
+    from app.api.endpoints.defi import get_radiant_usecase
 
     async def _mock_snapshot(address: str):  # noqa: D401
         return DeFiAccountSnapshot(
@@ -108,10 +109,11 @@ async def test_radiant_user_endpoint(monkeypatch, test_app):
             total_apy=0.0,
         )
 
-    monkeypatch.setattr(
-        "app.api.endpoints.defi.get_radiant_user_snapshot_usecase",
-        _mock_snapshot,
-    )
+    class MockRadiantUsecase:
+        async def get_user_snapshot(self, address: str):
+            return await _mock_snapshot(address)
+
+    app.dependency_overrides[get_radiant_usecase] = MockRadiantUsecase
 
     transport = httpx.ASGITransport(app=test_app, raise_app_exceptions=True)
     async with httpx.AsyncClient(
@@ -121,3 +123,5 @@ async def test_radiant_user_endpoint(monkeypatch, test_app):
         resp = await ac.get(f"/defi/radiant/{TEST_ADDRESS}")
     assert resp.status_code == 200
     assert resp.json()["user_address"].lower() == TEST_ADDRESS.lower()
+
+    del app.dependency_overrides[get_radiant_usecase]

@@ -1,10 +1,8 @@
 import pytest
 
-from app.usecase.defi_aave_usecase import get_aave_user_snapshot_usecase
-from app.usecase.defi_compound_usecase import (
-    get_compound_user_snapshot_usecase,
-)
-from app.usecase.defi_radiant_usecase import get_radiant_user_snapshot_usecase
+from app.usecase.defi_aave_usecase import AaveUsecase
+from app.usecase.defi_compound_usecase import CompoundUsecase
+from app.usecase.defi_radiant_usecase import RadiantUsecase
 
 
 class _Resp:
@@ -58,7 +56,8 @@ async def test_aave_usecase(monkeypatch):
     monkeypatch.setattr(
         "httpx.AsyncClient", lambda *a, **k: _StubClient(payload)
     )
-    snap = await get_aave_user_snapshot_usecase("0xabc")
+    usecase = AaveUsecase()
+    snap = await usecase.get_user_snapshot("0xabc")
     assert snap and snap.collaterals[0].asset == "USDC"
 
 
@@ -82,7 +81,8 @@ async def test_compound_usecase(monkeypatch):
     monkeypatch.setattr(
         "httpx.AsyncClient", lambda *a, **k: _StubClient(payload)
     )
-    snap = await get_compound_user_snapshot_usecase("0xabc")
+    usecase = CompoundUsecase()
+    snap = await usecase.get_user_snapshot("0xabc")
     assert snap and snap.collaterals[0].amount == 100
 
 
@@ -95,7 +95,9 @@ async def test_radiant_usecase(monkeypatch):
         }
     }
     monkeypatch.setattr(
-        "httpx.AsyncClient", lambda *a, **k: _StubClient(payload)
+        "app.usecase.defi_radiant_usecase.RadiantContractAdapter.async_get_user_data",
+        lambda *a, **k: None,
     )
-    snap = await get_radiant_user_snapshot_usecase("0xabc")
+    usecase = RadiantUsecase()
+    snap = await usecase.get_user_snapshot("0xabc")
     assert snap is None

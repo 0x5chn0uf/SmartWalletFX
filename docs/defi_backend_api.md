@@ -264,3 +264,27 @@ This project uses Alembic to manage database schema changes.
   ```
 
 All schema changes, such as adding the `PortfolioSnapshot` table, must be handled through Alembic migrations. 
+
+## Dynamic Protocol Adapters & Aggregation (2025-02-18)
+
+The `/defi/timeline` endpoint (and portfolio metrics endpoints) no longer rely on a hard-coded list of on-chain protocols.  A new pluggable architecture allows adding or removing protocols by simply registering a subclass of `ProtocolAdapter`:
+
+```python
+from app.adapters.protocols.base import ProtocolAdapter
+
+class MyProtocolAdapter(ProtocolAdapter):
+    name = "myprotocol"
+
+    async def fetch_snapshot(self, address: str):
+        # return DeFiAccountSnapshot | None
+```
+
+All registered adapters are injected into the **dynamic aggregator** (`aggregate_portfolio_metrics_from_adapters`) which merges snapshots into a single `PortfolioMetrics` object consumed by `SnapshotAggregationService`.
+
+Key points:
+1. **Adapters live in** `app.adapters.protocols.*`  
+   Current adapters: `AaveContractAdapter`, `CompoundContractAdapter`, `RadiantContractAdapter`.
+2. **Dependency Injection** – `app.di.get_snapshot_service_sync` & FastAPI dependency override build the adapter list and aggregator at runtime.
+3. **Testing** – `tests/integration/test_timeline_dynamic_aggregator.py` overrides the FastAPI dependency to inject a dummy aggregator, proving `/defi/timeline/{address}` works end-to-end with the new architecture.
+
+No API contract changes: existing consumers can continue to hit `/defi/timeline` with the same query parameters.  New protocols appear automatically in the `protocol_breakdown` field of responses once their adapters are implemented. 

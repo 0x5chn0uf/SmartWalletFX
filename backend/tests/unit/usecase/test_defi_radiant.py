@@ -3,32 +3,33 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.schemas.defi import DeFiAccountSnapshot
-from app.usecase.defi_radiant_usecase import get_radiant_user_snapshot_usecase
+from app.usecase.defi_radiant_usecase import RadiantUsecase
 
 
 @pytest.mark.asyncio
 @patch(
-    "app.usecase.defi_radiant_usecase._adapter.async_get_user_data",
+    "app.usecase.defi_radiant_usecase.RadiantContractAdapter.async_get_user_data",
     new_callable=AsyncMock,
 )
 async def test_radiant_usecase_none(mock_async_get):
     """
-    get_radiant_user_snapshot_usecase should return None
+    get_user_snapshot should return None
     if adapter returns None.
     """
     mock_async_get.return_value = None
-    result = await get_radiant_user_snapshot_usecase("0x123")
+    usecase = RadiantUsecase()
+    result = await usecase.get_user_snapshot("0x123")
     assert result is None
 
 
 @pytest.mark.asyncio
 @patch(
-    "app.usecase.defi_radiant_usecase._adapter.async_get_user_data",
+    "app.usecase.defi_radiant_usecase.RadiantContractAdapter.async_get_user_data",
     new_callable=AsyncMock,
 )
 async def test_radiant_usecase_mapping(mock_async_get):
     """
-    get_radiant_user_snapshot_usecase should map contract result
+    get_user_snapshot should map contract result
     to DeFiAccountSnapshot.
     """
     mock_async_get.return_value = {
@@ -56,7 +57,8 @@ async def test_radiant_usecase_mapping(mock_async_get):
         ],
         "health_factor": 2.5,
     }
-    snapshot = await get_radiant_user_snapshot_usecase(
+    usecase = RadiantUsecase()
+    snapshot = await usecase.get_user_snapshot(
         "0x48840F6D69c979Af278Bb8259e15408118709F3F"
     )
     assert isinstance(snapshot, DeFiAccountSnapshot)

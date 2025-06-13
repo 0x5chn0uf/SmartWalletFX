@@ -24,36 +24,41 @@ async def test_celery_task_stores_snapshots(db_session, monkeypatch):
     # Patch the Celery task to call the aggregation function directly (not via asyncio.run)
     import app.tasks.snapshots as snapshots_mod
 
-    def sync_agg(address):
-        class DummyMetrics:
-            def __init__(self, address):
-                self.user_address = address
-                self.timestamp = 1234567890
-                self.total_collateral = 1.0
-                self.total_borrowings = 0.5
-                self.total_collateral_usd = 100.0
-                self.total_borrowings_usd = 50.0
-                self.aggregate_health_score = 1.5
-                self.aggregate_apy = 0.1
-                self.collaterals = []
-                self.borrowings = []
-                self.staked_positions = []
-                self.health_scores = []
-                self.protocol_breakdown = {}
+    class DummyMetrics:
+        def __init__(self, address):
+            self.user_address = address
+            self.timestamp = 1234567890
+            self.total_collateral = 1.0
+            self.total_borrowings = 0.5
+            self.total_collateral_usd = 100.0
+            self.total_borrowings_usd = 50.0
+            self.aggregate_health_score = 1.5
+            self.aggregate_apy = 0.1
+            self.collaterals = []
+            self.borrowings = []
+            self.staked_positions = []
+            self.health_scores = []
+            self.protocol_breakdown = {}
 
+    def sync_agg(self, address):
         return DummyMetrics(address)
 
     monkeypatch.setattr(
-        "app.usecase.portfolio_aggregation_usecase.aggregate_portfolio_metrics",
+        "app.usecase.portfolio_aggregation_usecase.PortfolioAggregationUsecase.aggregate_portfolio_metrics",
         sync_agg,
     )
 
     def patched_task(*args, **kwargs):
+        from app.usecase.portfolio_aggregation_usecase import (
+            PortfolioAggregationUsecase,
+        )
+
         session = snapshots_mod.SyncSessionLocal()
         try:
             wallets = session.query(Wallet).all()
+            usecase = PortfolioAggregationUsecase()
             for wallet in wallets:
-                metrics = sync_agg(wallet.address)
+                metrics = usecase.aggregate_portfolio_metrics(wallet.address)
                 snapshot = PortfolioSnapshot(
                     user_address=metrics.user_address,
                     timestamp=metrics.timestamp,
@@ -227,34 +232,37 @@ async def test_snapshot_task_e2e_flow(test_app, monkeypatch):
 @pytest.mark.asyncio
 async def test_celery_task_no_wallets(db_session):
     """Test that the Celery task handles the case where there are no wallets in the DB."""
-    wallets = await WalletStore.list_all(db_session)
+    wallet_store = WalletStore(db_session)
+    wallets = await wallet_store.list_all()
     for w in wallets:
-        await WalletStore.delete(db_session, w.address)
+        await wallet_store.delete(w.address)
     collect_portfolio_snapshots()
 
 
 @pytest.mark.asyncio
 async def test_celery_task_aggregation_failure(monkeypatch, db_session):
     """Test that the Celery task handles aggregation failure for a wallet."""
-    await WalletStore.create(
-        db_session, address=f"0x{uuid.uuid4().hex[:40]}", name="Fail Wallet"
+    wallet_store = WalletStore(db_session)
+    await wallet_store.create(
+        address=f"0x{uuid.uuid4().hex[:40]}", name="Fail Wallet"
     )
 
-    def fail_agg(address):
+    async def fail_agg(self, address):
         raise Exception("Aggregation failed!")
 
     monkeypatch.setattr(
-        "app.usecase.portfolio_aggregation_usecase.aggregate_portfolio_metrics",
-        lambda address: fail_agg(address),
+        "app.usecase.portfolio_aggregation_usecase.PortfolioAggregationUsecase.aggregate_portfolio_metrics",
+        fail_agg,
     )
     collect_portfolio_snapshots()
 
 
 @pytest.mark.asyncio
 async def test_celery_task_db_write_failure(monkeypatch, db_session):
-    """Test that the Celery task handles DB write failure gracefully."""
-    wallet = await WalletStore.create(
-        db_session, address=f"0x{uuid.uuid4().hex[:40]}", name="DBFail Wallet"
+    """Test that the Celery task survives a DB write failure."""
+    wallet_store = WalletStore(db_session)
+    wallet = await wallet_store.create(
+        address=f"0x{uuid.uuid4().hex[:40]}", name="DB Fail Wallet"
     )
 
     class DummyMetrics:
@@ -273,28 +281,25 @@ async def test_celery_task_db_write_failure(monkeypatch, db_session):
         protocol_breakdown = {}
 
     monkeypatch.setattr(
-        "app.usecase.portfolio_aggregation_usecase.aggregate_portfolio_metrics",
-        lambda address: DummyMetrics(),
+        "app.usecase.portfolio_aggregation_usecase.PortfolioAggregationUsecase.aggregate_portfolio_metrics",
+        lambda self, address: DummyMetrics,
     )
-    import app.tasks.snapshots as snapshots_mod
-
-    orig_SyncSessionLocal = snapshots_mod.SyncSessionLocal
 
     class FailingSession:
         def __init__(self):
-            self._real = orig_SyncSessionLocal()
+            pass
 
         def __getattr__(self, name):
-            return getattr(self._real, name)
+            # Allow all other calls, like query()
+            return MagicMock()
 
         def commit(self):
             raise Exception("DB write failed!")
 
         def close(self):
-            return self._real.close()
+            pass
 
-    snapshots_mod.SyncSessionLocal = FailingSession
-    try:
-        collect_portfolio_snapshots()
-    finally:
-        snapshots_mod.SyncSessionLocal = orig_SyncSessionLocal
+    monkeypatch.setattr(
+        "app.tasks.snapshots.SyncSessionLocal", FailingSession
+    )
+    collect_portfolio_snapshots()

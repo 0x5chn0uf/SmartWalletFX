@@ -18,8 +18,9 @@ class Settings(BaseSettings):
     ALCHEMY_API_KEY: Optional[str] = None
     COINGECKO_API_KEY: Optional[str] = None
 
-    # Arbitrum
-    ARBITRUM_RPC_URL: Optional[str] = None
+    # Web3
+    ARBITRUM_RPC_URL: Optional[str] = os.getenv("ARBITRUM_RPC_URL") or None
+    WEB3_PROVIDER_URI: Optional[str] = os.getenv("WEB3_PROVIDER_URI") or None
 
     # Pydantic v2 config – ignore extra environment variables to prevent
     # validation errors when the host machine defines unrelated keys

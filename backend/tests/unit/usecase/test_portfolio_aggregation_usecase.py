@@ -5,13 +5,14 @@ import pytest
 from app.schemas.defi import (
     Borrowing,
     Collateral,
+    DeFiAccountSnapshot,
     HealthScore,
     ProtocolName,
     StakedPosition,
 )
 from app.usecase.portfolio_aggregation_usecase import (
+    PortfolioAggregationUsecase,
     PortfolioMetrics,
-    aggregate_portfolio_metrics,
 )
 
 
@@ -20,14 +21,8 @@ async def test_portfolio_aggregation_metrics():
     """Verify totals & averages across mocked protocol snapshots."""
 
     def make_snapshot(mult: float):
-        return PortfolioMetrics.model_construct(
+        return DeFiAccountSnapshot.model_construct(
             user_address="0xabc",
-            total_collateral=10 * mult,
-            total_borrowings=5 * mult,
-            total_collateral_usd=10 * mult,
-            total_borrowings_usd=5 * mult,
-            aggregate_health_score=mult,
-            aggregate_apy=0.1 * mult,
             collaterals=[
                 Collateral(
                     protocol=ProtocolName.aave,
@@ -57,27 +52,25 @@ async def test_portfolio_aggregation_metrics():
             health_scores=[
                 HealthScore(protocol=ProtocolName.aave, score=mult)
             ],
-            protocol_breakdown={},
-            historical_snapshots=None,
-            timestamp=0,
         )
 
     snapshots = [make_snapshot(1), make_snapshot(2), make_snapshot(3)]
 
     with patch(
-        "app.usecase.portfolio_aggregation_usecase.get_aave_user_snapshot_usecase",  # noqa: E501
+        "app.usecase.defi_aave_usecase.AaveUsecase.get_user_snapshot",
         return_value=snapshots[0],
     ), patch(
-        "app.usecase.portfolio_aggregation_usecase.get_compound_user_snapshot_usecase",  # noqa: E501
+        "app.usecase.defi_compound_usecase.CompoundUsecase.get_user_snapshot",
         return_value=snapshots[1],
     ), patch(
-        "app.usecase.portfolio_aggregation_usecase.get_radiant_user_snapshot_usecase",  # noqa: E501
+        "app.usecase.defi_radiant_usecase.RadiantUsecase.get_user_snapshot",
         return_value=snapshots[2],
     ):
-        result = await aggregate_portfolio_metrics("0xabc")
+        usecase = PortfolioAggregationUsecase()
+        result = await usecase.aggregate_portfolio_metrics("0xabc")
 
-    assert result.total_collateral == pytest.approx(60)
-    assert result.total_borrowings == pytest.approx(30)
+    assert result.total_collateral_usd == pytest.approx(60)
+    assert result.total_borrowings_usd == pytest.approx(30)
     assert set(result.protocol_breakdown.keys()) == {
         "aave",
         "compound",

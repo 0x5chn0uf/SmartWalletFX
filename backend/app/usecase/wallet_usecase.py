@@ -1,3 +1,4 @@
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.wallet import WalletCreate, WalletResponse
 from app.stores.wallet_store import WalletStore
 
@@ -7,39 +8,35 @@ class WalletUsecase:
     Use case layer for wallet operations. Handles business logic for creating,
     listing, and deleting wallets.
     """
+    def __init__(self, db: AsyncSession):
+        self.db = db
+        self.wallet_store = WalletStore(db)
 
-    @staticmethod
-    async def create_wallet(db, wallet: WalletCreate) -> WalletResponse:
+    async def create_wallet(self, wallet: WalletCreate) -> WalletResponse:
         """
         Create a new wallet using the provided database session and wallet
         data.
         Args:
-            db: Async database session.
             wallet: WalletCreate schema with wallet details.
         Returns:
             WalletResponse: The created wallet response object.
         """
-        return await WalletStore.create(
-            db, address=wallet.address, name=wallet.name
+        return await self.wallet_store.create(
+            address=wallet.address, name=wallet.name
         )
 
-    @staticmethod
-    async def list_wallets(db) -> list[WalletResponse]:
+    async def list_wallets(self) -> list[WalletResponse]:
         """
         List all wallets from the database.
-        Args:
-            db: Async database session.
         Returns:
             List[WalletResponse]: List of wallet response objects.
         """
-        return await WalletStore.list_all(db)
+        return await self.wallet_store.list_all()
 
-    @staticmethod
-    async def delete_wallet(db, address: str):
+    async def delete_wallet(self, address: str):
         """
         Delete a wallet by its address.
         Args:
-            db: Async database session.
             address: Wallet address to delete.
         """
-        await WalletStore.delete(db, address)
+        await self.wallet_store.delete(address)
