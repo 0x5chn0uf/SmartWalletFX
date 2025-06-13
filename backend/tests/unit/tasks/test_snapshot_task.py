@@ -59,7 +59,7 @@ async def test_collect_portfolio_snapshots_success(monkeypatch):
 
     # Patch the SnapshotAggregationService to a lightweight stub
     class _FakeService:
-        def __init__(self, _session):  # noqa: D401, ANN001
+        def __init__(self, *args, **kwargs):  # noqa: D401, ANN001
             pass
 
         def save_snapshot_sync(self, address):  # noqa: D401, ANN001
@@ -123,7 +123,7 @@ async def test_collect_portfolio_snapshots_mixed_success_error(monkeypatch):
 
     # Service stub that raises on second call
     class _FakeServiceWithError:
-        def __init__(self, _session):  # noqa: D401, ANN001
+        def __init__(self, *args, **kwargs):  # noqa: D401, ANN001
             self.calls: List[str] = []
 
         def save_snapshot_sync(self, address):  # noqa: D401, ANN001

@@ -13,10 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from app.models.portfolio_snapshot import PortfolioSnapshot
-from app.usecase.portfolio_aggregation_usecase import (
-    PortfolioMetrics,
-    aggregate_portfolio_metrics,
-)
+from app.schemas.portfolio_metrics import PortfolioMetrics
 
 # Type alias for injected aggregator function
 Aggregator = Callable[[str], PortfolioMetrics]
@@ -30,7 +27,7 @@ class SnapshotAggregationService:
     def __init__(
         self,
         db_session: Session | AsyncSession,
-        aggregator: Aggregator = aggregate_portfolio_metrics,
+        aggregator: Aggregator,
     ) -> None:
         self.db_session = db_session
         self.aggregator = aggregator

@@ -1,12 +1,22 @@
 import logging
 import os
 import time
+import asyncio
 
 from app.celery_app import celery
 from app.di import get_session_sync
 from app.models.wallet import Wallet
 from app.services.snapshot_aggregation import SnapshotAggregationService
+from app.usecase.portfolio_aggregation_usecase import PortfolioAggregationUsecase
 
+def _build_aggregator():
+    """Create an aggregation callable bound to default adapters list."""
+    usecase = PortfolioAggregationUsecase()
+
+    def _aggregator(address: str):
+        return asyncio.run(usecase.aggregate_portfolio_metrics(address))
+
+    return _aggregator
 
 @celery.task
 def collect_portfolio_snapshots():
@@ -31,7 +41,8 @@ def collect_portfolio_snapshots():
         wallets = session.query(Wallet).all()
         success = 0
         errors = 0
-        service = SnapshotAggregationService(session)
+        aggregator = _build_aggregator()
+        service = SnapshotAggregationService(session, aggregator)
         for wallet in wallets:
             try:
                 service.save_snapshot_sync(wallet.address)
