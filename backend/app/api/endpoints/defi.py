@@ -3,14 +3,14 @@
 from enum import Enum
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.celery_app import celery
 from app.core.database import get_db
 from app.schemas.defi import DeFiAccountSnapshot
 from app.schemas.portfolio_timeline import TimelineResponse
 from app.stores.portfolio_snapshot_store import PortfolioSnapshotStore
-from app.tasks.snapshots import collect_portfolio_snapshots
 from app.usecase.defi_aave_usecase import get_aave_user_snapshot_usecase
 from app.usecase.defi_compound_usecase import (
     get_compound_user_snapshot_usecase,
@@ -182,7 +182,12 @@ async def get_portfolio_timeline(
     )
 
 
-@router.post("/defi/admin/trigger-snapshot", tags=["Admin"])
-def trigger_snapshot():
-    result = collect_portfolio_snapshots.delay()
-    return {"status": "triggered", "task_id": str(result.id)}
+@router.post(
+    "/defi/admin/trigger-snapshot",
+    tags=["Admin"],
+    status_code=status.HTTP_200_OK,
+)
+def trigger_snapshot_collection():
+    """Manually trigger the portfolio snapshot collection task."""
+    task = celery.send_task("app.tasks.snapshots.collect_portfolio_snapshots")
+    return {"status": "triggered", "task_id": task.id}

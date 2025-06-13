@@ -23,9 +23,10 @@ def collect_portfolio_snapshots():
         print(f"[Celery] SQLAlchemy engine URL: {engine_url}")
         print(f"[Celery] DB file (resolved): {abs_db_file}")
         print(
-            f"[Celery] DB file exists: \
-                {os.path.exists(abs_db_file) if abs_db_file else 'N/A'}"
+            f"[Celery] DB file exists: "
+            f"{os.path.exists(abs_db_file) if abs_db_file else 'N/A'}"
         )
+
         start = time.time()
         wallets = session.query(Wallet).all()
         success = 0
@@ -45,11 +46,12 @@ def collect_portfolio_snapshots():
                     f"[Celery] Error processing wallet {wallet.address}: {e}"
                 )
                 errors += 1
+
         elapsed = time.time() - start
         print(
-            f"[Celery] Snapshot job complete. \
-                Success: {success}, Errors: {errors}, \
-                Time: {elapsed:.2f}s"
+            f"[Celery] Snapshot job complete. "
+            f"Success: {success}, Errors: {errors}, "
+            f"Time: {elapsed:.2f}s"
         )
     finally:
         session.close()

@@ -21,9 +21,13 @@ class Settings(BaseSettings):
     # Arbitrum
     ARBITRUM_RPC_URL: Optional[str] = None
 
-    class Config:
-        case_sensitive = True
-        env_file = ".env"
+    # Pydantic v2 config – ignore extra environment variables to prevent
+    # validation errors when the host machine defines unrelated keys
+    model_config = {
+        "case_sensitive": True,
+        "env_file": ".env",
+        "extra": "ignore",
+    }
 
 
 settings = Settings()
