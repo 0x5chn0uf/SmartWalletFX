@@ -2,14 +2,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.adapters.radiant_contract_adapter import (
+from app.adapters.protocols.radiant import (
     RadiantAdapterError,
     RadiantContractAdapter,
 )
 
 
 @pytest.mark.asyncio
-@patch("app.adapters.radiant_contract_adapter.Web3")
+@patch("app.adapters.protocols.radiant.Web3")
 async def test_init_missing_rpc_url(mock_web3, monkeypatch):
     monkeypatch.setattr("app.core.config.settings.ARBITRUM_RPC_URL", None)
     with pytest.raises(RadiantAdapterError):
@@ -17,13 +17,13 @@ async def test_init_missing_rpc_url(mock_web3, monkeypatch):
 
 
 @pytest.mark.asyncio
-@patch("app.adapters.radiant_contract_adapter.Web3")
+@patch("app.adapters.protocols.radiant.Web3")
 async def test_get_user_data_success(mock_web3, mock_settings, tmp_path):
     # Patch ABI loading
     abi_path = tmp_path / "UIDataProvider.json"
     abi_path.write_text("[]")
     with patch(
-        "app.adapters.radiant_contract_adapter.ABI_PATH", str(abi_path)
+        "app.adapters.protocols.radiant.ABI_PATH", str(abi_path)
     ):
         # Mock contract call
         mock_contract = MagicMock()
@@ -46,7 +46,7 @@ async def test_get_user_data_success(mock_web3, mock_settings, tmp_path):
 
 
 @pytest.mark.asyncio
-@patch("app.adapters.radiant_contract_adapter.Web3")
+@patch("app.adapters.protocols.radiant.Web3")
 async def test_get_token_metadata_success(mock_web3, mock_settings):
     mock_token = MagicMock()
     mock_token.functions.symbol().call.return_value = "MOCK"
@@ -59,7 +59,7 @@ async def test_get_token_metadata_success(mock_web3, mock_settings):
 
 
 @pytest.mark.asyncio
-@patch("app.adapters.radiant_contract_adapter.Web3")
+@patch("app.adapters.protocols.radiant.Web3")
 async def test_to_usd(mock_web3, mock_settings):
     adapter = RadiantContractAdapter(rpc_url="http://mock-rpc")
     assert adapter.to_usd(12345, "MOCK") == 12345.0
@@ -75,15 +75,15 @@ def adapter(monkeypatch, tmp_path):
     abi_path.write_text("[]")
 
     with patch(
-        "app.adapters.radiant_contract_adapter.ABI_PATH", str(abi_path)
-    ), patch("app.adapters.radiant_contract_adapter.Web3") as mock_web3:
+        "app.adapters.protocols.radiant.ABI_PATH", str(abi_path)
+    ), patch("app.adapters.protocols.radiant.Web3") as mock_web3:
         mock_contract = MagicMock()
         mock_contract.functions.getReservesData().call.return_value = (
             [("0xToken",)],
         )
         mock_contract.functions.getUserReservesData().call.return_value = (
             [],
-            1234,
+            int(1234 * 1e18),
         )
         mock_web3.return_value.eth.contract.return_value = mock_contract
         mock_web3.return_value.to_checksum_address.side_effect = lambda x: x
@@ -93,7 +93,7 @@ def adapter(monkeypatch, tmp_path):
         return adapter_instance
 
 
-@patch("app.adapters.radiant_contract_adapter.requests.get")
+@patch("app.adapters.protocols.radiant.requests.get")
 def test_get_token_price_cache(mock_get, adapter):
     mock_get.return_value.json.return_value = {"usd-coin": {"usd": 1.0}}
     mock_get.return_value.raise_for_status = lambda: None
@@ -115,7 +115,7 @@ def test_reserves_health_summary(adapter):
     assert health == 1234.0
 
     summary = adapter.get_user_summary("0xUser")
-    assert summary["health_factor"] == 1234
+    assert summary["health_factor"] == int(1234 * 1e18)
 
 
 @pytest.mark.asyncio
@@ -132,7 +132,7 @@ async def test_async_get_user_data_wrapper(adapter, monkeypatch):
     assert result == mock_sync_data
 
 
-@patch("app.adapters.radiant_contract_adapter.Web3")
+@patch("app.adapters.protocols.radiant.Web3")
 def test_error_handling_paths(mock_web3, monkeypatch, tmp_path):
     """Test various error conditions."""
     # Setup for other error tests
@@ -143,7 +143,7 @@ def test_error_handling_paths(mock_web3, monkeypatch, tmp_path):
     )
 
     with patch(
-        "app.adapters.radiant_contract_adapter.ABI_PATH", str(abi_path)
+        "app.adapters.protocols.radiant.ABI_PATH", str(abi_path)
     ):
         # 2. get_user_data failure
         mock_contract_fail = MagicMock()
