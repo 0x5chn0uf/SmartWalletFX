@@ -1,13 +1,11 @@
 # flake8: noqa
 
-import pathlib
-import sys
-
-sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
-
 import asyncio
+import datetime
 import os
+import pathlib
 import subprocess
+import sys
 import time
 
 import pytest
@@ -19,9 +17,19 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.orm import sessionmaker
+
+# Ensure repository root (backend/) is on PYTHONPATH so that 'import app' works
+BACKEND_ROOT = pathlib.Path(__file__).resolve().parents[1]
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
+
 
 import app.core.database as db_mod
+from app.core.database import get_db
 from app.main import create_app
+from app.models import Base
+from app.usecase.portfolio_aggregation_usecase import PortfolioMetrics
 
 # Use a file-based SQLite DB for all tests
 TEST_DB_PATH = "./test.db"
@@ -101,3 +109,81 @@ def clean_db():
 
     conn.close()
     engine.dispose()
+
+
+# --------------------------------------------------------------------
+# Refactored Fixtures
+# --------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def sync_session():
+    """Create a synchronous, in-memory SQLite database session."""
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    db_session = Session()
+    yield db_session
+    db_session.close()
+
+
+@pytest.fixture(autouse=True, scope="module")
+def patch_sync_db():
+    """Patches the sync db engine and session for Celery tasks."""
+    import app.core.database as db_mod
+    import app.tasks.snapshots as snapshots_mod
+
+    sync_url = "sqlite:///./test.db"
+    sync_engine = create_engine(
+        sync_url, connect_args={"check_same_thread": False}
+    )
+    SyncSessionLocal = sessionmaker(
+        autocommit=False, autoflush=False, bind=sync_engine
+    )
+    db_mod.sync_engine = sync_engine
+    db_mod.SyncSessionLocal = SyncSessionLocal
+    snapshots_mod.SyncSessionLocal = SyncSessionLocal
+    yield
+
+
+@pytest.fixture
+def mock_settings(monkeypatch):
+    """Mocks the ARBITRUM_RPC_URL setting."""
+    monkeypatch.setattr(
+        "app.core.config.settings.ARBITRUM_RPC_URL", "http://mock-rpc"
+    )
+
+
+@pytest.fixture()
+def dummy_metrics():
+    """Returns a dummy PortfolioMetrics object."""
+    return PortfolioMetrics.model_construct(
+        user_address="0xabc",
+        total_collateral=1.0,
+        total_borrowings=0.5,
+        total_collateral_usd=1.0,
+        total_borrowings_usd=0.5,
+        aggregate_health_score=None,
+        aggregate_apy=None,
+        collaterals=[],
+        borrowings=[],
+        staked_positions=[],
+        health_scores=[],
+        protocol_breakdown={},
+        historical_snapshots=None,
+        timestamp=datetime.datetime.utcnow(),
+    )
+
+
+@pytest.fixture(autouse=True)
+def override_get_db(db_session):
+    """Fixture to override the 'get_db' dependency in the FastAPI app."""
+
+    async def _override():
+        yield db_session
+
+    from app.main import app
+
+    app.dependency_overrides[get_db] = _override
+    yield
+    app.dependency_overrides.pop(get_db, None)

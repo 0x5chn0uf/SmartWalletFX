@@ -1,9 +1,13 @@
 from unittest.mock import AsyncMock, patch
 
+import httpx
 import pytest
 from httpx import AsyncClient
 
 from app.main import app
+
+TEST_ADDRESS = "0x1111111111111111111111111111111111111111"
+TEST_ADDRESS_NOT_FOUND = "0x0000000000000000000000000000000000000000"
 
 
 @pytest.mark.asyncio
@@ -41,13 +45,14 @@ async def test_get_radiant_user_data_success(mock_async_get):
         ],
         "health_factor": 2.5,
     }
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    transport = httpx.ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.get(
-            "/defi/radiant/0x48840F6D69c979Af278Bb8259e15408118709F3F"
+            "/defi/radiant/0x000000000000000000000000000000000000dEaD"
         )
     assert resp.status_code == 200
     data = resp.json()
-    assert data["user_address"] == "0x48840F6D69c979Af278Bb8259e15408118709F3F"
+    assert data["user_address"] == "0x000000000000000000000000000000000000dEaD"
     assert len(data["collaterals"]) == 1
     assert (
         data["collaterals"][0]["asset"]
@@ -75,7 +80,8 @@ async def test_get_radiant_user_data_not_found(mock_async_get):
     Test the /defi/radiant/{address} endpoint returns 404 if user not found.
     """
     mock_async_get.return_value = None
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    transport = httpx.ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.get(
             "/defi/radiant/0x000000000000000000000000000000000000dead"
         )
@@ -84,3 +90,34 @@ async def test_get_radiant_user_data_not_found(mock_async_get):
         resp.json()["detail"]
         == "User data not found on Radiant smart contract."
     )
+
+
+@pytest.mark.asyncio
+async def test_radiant_user_endpoint(monkeypatch, test_app):
+    """Radiant endpoint returns mocked snapshot and propagates JSON."""
+    from app.schemas.defi import DeFiAccountSnapshot
+
+    async def _mock_snapshot(address: str):  # noqa: D401
+        return DeFiAccountSnapshot(
+            user_address=address,
+            timestamp=1234567890,
+            collaterals=[],
+            borrowings=[],
+            staked_positions=[],
+            health_scores=[],
+            total_apy=0.0,
+        )
+
+    monkeypatch.setattr(
+        "app.api.endpoints.defi.get_radiant_user_snapshot_usecase",
+        _mock_snapshot,
+    )
+
+    transport = httpx.ASGITransport(app=test_app, raise_app_exceptions=True)
+    async with httpx.AsyncClient(
+        transport=transport,
+        base_url="http://test",
+    ) as ac:
+        resp = await ac.get(f"/defi/radiant/{TEST_ADDRESS}")
+    assert resp.status_code == 200
+    assert resp.json()["user_address"].lower() == TEST_ADDRESS.lower()

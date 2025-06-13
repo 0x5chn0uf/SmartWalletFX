@@ -1,9 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlalchemy.orm import sessionmaker
 
 from app.models import Base  # imported lazily to avoid heavy import earlier
 from app.services.snapshot_aggregation import SnapshotAggregationService
@@ -29,14 +27,6 @@ def fake_metrics(user_address: str):  # sync fake aggregator
         health_scores=[],
         protocol_breakdown={},
     )
-
-
-@pytest.fixture(scope="module")
-def sync_session():
-    engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine)
-    return Session()
 
 
 def test_save_snapshot_sync_requires_sync_session(sync_session):
@@ -67,7 +57,6 @@ def test_save_snapshot_sync_with_async_aggregator(sync_session):
 @pytest.mark.asyncio
 async def test_build_snapshot_async():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
-    from app.models import Base
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

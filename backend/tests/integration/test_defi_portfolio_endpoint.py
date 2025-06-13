@@ -1,10 +1,13 @@
 from unittest.mock import AsyncMock, patch
 
+import httpx
 import pytest
 from httpx import AsyncClient
 
 from app.main import app
 from app.schemas.defi import Borrowing, Collateral, HealthScore, StakedPosition
+
+TEST_ADDRESS = "0x1111111111111111111111111111111111111111"
 
 
 @pytest.mark.asyncio
@@ -72,7 +75,8 @@ async def test_get_portfolio_metrics_success(
     mock_aave.return_value = aave_snap
     mock_compound.return_value = compound_snap
     mock_radiant.return_value = None
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    transport = httpx.ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.get("/defi/portfolio/0x123")
     assert resp.status_code == 200
     data = resp.json()
@@ -117,7 +121,8 @@ async def test_get_portfolio_metrics_all_none(
     mock_aave.return_value = None
     mock_compound.return_value = None
     mock_radiant.return_value = None
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    transport = httpx.ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         resp = await ac.get("/defi/portfolio/0xdead")
     assert resp.status_code == 200
     data = resp.json()
@@ -144,3 +149,43 @@ async def test_get_portfolio_metrics_all_none(
         assert v["health_scores"] == []
     assert "timestamp" in data
     assert data["historical_snapshots"] is None
+
+
+@pytest.mark.asyncio
+async def test_portfolio_metrics_endpoint(monkeypatch, test_app):
+    """Portfolio metrics endpoint returns our stubbed aggregation."""
+    from datetime import datetime
+
+    from app.usecase.portfolio_aggregation_usecase import PortfolioMetrics
+
+    async def _mock_agg(address: str):  # noqa: D401
+        return PortfolioMetrics(
+            user_address=address,
+            total_collateral=0.0,
+            total_borrowings=0.0,
+            total_collateral_usd=0.0,
+            total_borrowings_usd=0.0,
+            aggregate_health_score=None,
+            aggregate_apy=None,
+            collaterals=[],
+            borrowings=[],
+            staked_positions=[],
+            health_scores=[],
+            protocol_breakdown={},
+            historical_snapshots=None,
+            timestamp=datetime.utcnow(),
+        )
+
+    monkeypatch.setattr(
+        "app.api.endpoints.defi.aggregate_portfolio_metrics", _mock_agg
+    )
+
+    transport = httpx.ASGITransport(app=test_app, raise_app_exceptions=True)
+    async with httpx.AsyncClient(
+        transport=transport,
+        base_url="http://test",
+    ) as ac:
+        resp = await ac.get(f"/defi/portfolio/{TEST_ADDRESS}")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["user_address"].lower() == TEST_ADDRESS.lower()

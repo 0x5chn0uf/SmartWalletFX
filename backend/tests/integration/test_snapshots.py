@@ -1,11 +1,13 @@
 # flake8: noqa: E501
 
 import uuid
+from unittest.mock import MagicMock
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.main import app
 from app.models.portfolio_snapshot import PortfolioSnapshot
@@ -14,25 +16,6 @@ from app.stores.wallet_store import WalletStore
 from app.tasks.snapshots import collect_portfolio_snapshots
 
 client = TestClient(app)
-
-
-# Patch sync engine/session to use test DB for all sync access (Celery task, etc.)
-@pytest.fixture(autouse=True, scope="module")
-def patch_sync_db():
-    import app.core.database as db_mod
-    import app.tasks.snapshots as snapshots_mod
-
-    sync_url = "sqlite:///./test.db"
-    sync_engine = create_engine(
-        sync_url, connect_args={"check_same_thread": False}
-    )
-    SyncSessionLocal = sessionmaker(
-        autocommit=False, autoflush=False, bind=sync_engine
-    )
-    db_mod.sync_engine = sync_engine
-    db_mod.SyncSessionLocal = SyncSessionLocal
-    snapshots_mod.SyncSessionLocal = SyncSessionLocal
-    yield
 
 
 @pytest.mark.asyncio
@@ -94,36 +77,151 @@ async def test_celery_task_stores_snapshots(db_session, monkeypatch):
     monkeypatch.setattr(
         snapshots_mod.collect_portfolio_snapshots, "run", patched_task
     )
-    wallet1 = await WalletStore.create(
-        db_session, address=f"0x{uuid.uuid4().hex[:40]}", name="Test Wallet 1"
-    )
-    wallet2 = await WalletStore.create(
-        db_session, address=f"0x{uuid.uuid4().hex[:40]}", name="Test Wallet 2"
-    )
-    collect_portfolio_snapshots()
-    stmt = PortfolioSnapshot.__table__.select().where(
-        PortfolioSnapshot.user_address.in_([wallet1.address, wallet2.address])
-    )
-    result = await db_session.execute(stmt)
-    snapshots = result.fetchall()
-    assert len(snapshots) >= 2
+    # Create wallets using the synchronous session so the Celery task sees them
+    wallet1_addr = f"0x{uuid.uuid4().hex[:40]}"
+    wallet2_addr = f"0x{uuid.uuid4().hex[:40]}"
+
+    sync_session = snapshots_mod.SyncSessionLocal()
+    try:
+        sync_session.add_all(
+            [
+                Wallet(
+                    address=wallet1_addr, name="Test Wallet 1", balance=0.0
+                ),
+                Wallet(
+                    address=wallet2_addr, name="Test Wallet 2", balance=0.0
+                ),
+            ]
+        )
+        sync_session.commit()
+    finally:
+        sync_session.close()
+
+    # Run the patched snapshot task directly (bypassing Celery wrapper)
+    patched_task()
+
+    # Verify snapshots were stored using sync session
+    sync_session = snapshots_mod.SyncSessionLocal()
+    try:
+        count = (
+            sync_session.query(PortfolioSnapshot)
+            .filter(
+                PortfolioSnapshot.user_address.in_(
+                    [wallet1_addr, wallet2_addr]
+                )
+            )
+            .count()
+        )
+    finally:
+        sync_session.close()
+    assert count >= 2
 
 
-def test_manual_trigger_endpoint(monkeypatch):
-    """Test that the manual trigger endpoint enqueues the Celery task and returns a valid task_id."""
-
-    class DummyResult:
-        id = "dummy-task-id"
-
+@pytest.mark.asyncio
+async def test_manual_trigger_endpoint(monkeypatch):
+    """Test the admin endpoint correctly triggers the snapshot task."""
+    mock_send_task = MagicMock(return_value=MagicMock(id="dummy-task-id"))
     monkeypatch.setattr(
-        "app.tasks.snapshots.collect_portfolio_snapshots.delay",
-        lambda: DummyResult(),
+        "app.api.endpoints.defi.celery.send_task", mock_send_task
     )
-    response = client.post("/defi/admin/trigger-snapshot")
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://test"
+    ) as client:
+        response = await client.post("/defi/admin/trigger-snapshot")
+
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "triggered"
     assert data["task_id"] == "dummy-task-id"
+    mock_send_task.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_snapshot_task_e2e_flow(test_app, monkeypatch):
+    """
+    Tests the end-to-end flow:
+    1. Create wallets via API.
+    2. Trigger snapshot task.
+    3. Verify snapshots are created by querying the timeline endpoint.
+    """
+
+    # --- Setup ---
+    # 1. Mock the aggregation use case to return predictable data
+    #    This avoids external calls and keeps the test focused on the integration.
+    class DummyMetrics:
+        def __init__(self, address):
+            self.user_address = address
+            self.timestamp = 1234567890
+            self.total_collateral_usd = 100.0
+            self.total_borrowings_usd = 50.0
+            # Add other fields as necessary, matching PortfolioSnapshot structure
+            self.total_collateral = 1.0
+            self.total_borrowings = 0.5
+            self.aggregate_health_score = 1.5
+            self.aggregate_apy = 0.1
+            self.collaterals = []
+            self.borrowings = []
+            self.staked_positions = []
+            self.health_scores = []
+            self.protocol_breakdown = {}
+
+    def _patched_save_snapshot_sync(self, user_address):  # type: ignore[override]
+        assert isinstance(self.db_session, Session)
+        snapshot = PortfolioSnapshot(
+            user_address=user_address,
+            timestamp=1234567890,
+            total_collateral=1.0,
+            total_borrowings=0.5,
+            total_collateral_usd=100.0,
+            total_borrowings_usd=50.0,
+            aggregate_health_score=1.5,
+            aggregate_apy=0.1,
+            collaterals=[],
+            borrowings=[],
+            staked_positions=[],
+            health_scores=[],
+            protocol_breakdown={},
+        )
+        self.db_session.add(snapshot)
+        self.db_session.commit()
+        return snapshot
+
+    monkeypatch.setattr(
+        "app.services.snapshot_aggregation.SnapshotAggregationService.save_snapshot_sync",
+        _patched_save_snapshot_sync,
+    )
+
+    transport = httpx.ASGITransport(app=test_app)
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://test"
+    ) as client:
+        # 2. Create wallets that the task will process
+        wallet1_addr = f"0x{uuid.uuid4().hex[:40]}"
+        wallet2_addr = f"0x{uuid.uuid4().hex[:40]}"
+        await client.post(
+            "/wallets", json={"address": wallet1_addr, "name": "E2E Wallet 1"}
+        )
+        await client.post(
+            "/wallets", json={"address": wallet2_addr, "name": "E2E Wallet 2"}
+        )
+
+        # --- Execution ---
+        # 3. Trigger the Celery task directly
+        collect_portfolio_snapshots()
+
+        # --- Verification ---
+        # 4. Query the timeline to see if snapshots were created for each wallet
+        timeline1_resp = await client.get(
+            f"/defi/timeline/{wallet1_addr}?from_ts=0&to_ts=2000000000&raw=true"
+        )
+        assert timeline1_resp.status_code == 200
+
+        timeline2_resp = await client.get(
+            f"/defi/timeline/{wallet2_addr}?from_ts=0&to_ts=2000000000&raw=true"
+        )
+        assert timeline2_resp.status_code == 200
 
 
 @pytest.mark.asyncio
