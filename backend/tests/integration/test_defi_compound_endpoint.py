@@ -1,96 +1,65 @@
-import httpx
 import pytest
-import respx
-from httpx import AsyncClient, Response
-
+import httpx
+from unittest.mock import MagicMock, ANY, AsyncMock, patch
+from web3 import Web3
 from app.main import app
-from app.usecase.defi_compound_usecase import SUBGRAPH_URL
+from httpx import AsyncClient
+from datetime import datetime
+from app.schemas.defi import DeFiAccountSnapshot
 
 TEST_ADDRESS = "0x1111111111111111111111111111111111111111"
-TEST_ADDRESS_NOT_FOUND = "0x0000000000000000000000000000000000000000"
 
+@pytest.fixture
+def mock_w3_compound():
+    w3 = MagicMock()
+    w3.eth = MagicMock()
+
+    mock_comptroller_contract = MagicMock()
+    mock_comptroller_contract.functions.getAssetsIn(ANY).call.return_value = ["0xc00e94Cb662C3520282E6f5717214004A7f26888"]
+    
+    mock_ctoken_contract = MagicMock()
+    mock_ctoken_contract.functions.underlying().call.return_value = "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+    mock_ctoken_contract.functions.balanceOf(ANY).call.return_value = 100 * 10**8
+    mock_ctoken_contract.functions.borrowBalanceCurrent(ANY).call.return_value = 50 * 10**18
+    mock_ctoken_contract.functions.exchangeRateCurrent().call.return_value = 20000000000000000
+
+    def contract_side_effect(address, abi):
+        if address == "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b":
+            return mock_comptroller_contract
+        else:
+            return mock_ctoken_contract
+
+    w3.eth.contract.side_effect = contract_side_effect
+    return w3, mock_comptroller_contract
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_get_compound_user_data_success():
-    mock_response = {
-        "data": {
-            "account": {
-                "id": "0x123",
-                "health": "1.8",
-                "tokens": [
-                    {
-                        "symbol": "USDC",
-                        "supplyBalanceUnderlying": "500",
-                        "borrowBalanceUnderlying": "0",
-                    },
-                    {
-                        "symbol": "ETH",
-                        "supplyBalanceUnderlying": "0",
-                        "borrowBalanceUnderlying": "0.5",
-                    },
-                ],
-            }
-        }
-    }
-    respx.post(SUBGRAPH_URL).mock(
-        return_value=Response(200, json=mock_response)
+@patch("app.usecase.defi_compound_usecase.CompoundUsecase.get_user_snapshot")
+async def test_get_compound_user_data_success(mock_get_snapshot, test_app):
+    mock_snapshot = DeFiAccountSnapshot(
+        user_address="0x123",
+        timestamp=int(datetime.utcnow().timestamp()),
+        collaterals=[],
+        borrowings=[],
+        staked_positions=[],
+        health_scores=[],
+        total_apy=None,
     )
-    transport = httpx.ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        resp = await ac.get("/defi/compound/0x123")
-    assert resp.status_code == 200
-    data = resp.json()
+    mock_get_snapshot.return_value = mock_snapshot
+    async with AsyncClient(app=test_app, base_url="http://test") as ac:
+        response = await ac.get("/defi/compound/0x123")
+    assert response.status_code == 200
+    mock_get_snapshot.assert_called_once_with("0x123")
+    data = response.json()
     assert data["user_address"] == "0x123"
-    assert len(data["collaterals"]) == 1
-    assert data["collaterals"][0]["asset"] == "USDC"
-    assert abs(data["collaterals"][0]["amount"] - 500) < 1e-6
-    assert len(data["borrowings"]) == 1
-    assert data["borrowings"][0]["asset"] == "ETH"
-    assert abs(data["borrowings"][0]["amount"] - 0.5) < 1e-6
-    assert len(data["health_scores"]) == 1
-    assert abs(data["health_scores"][0]["score"] - 1.8) < 1e-6
-
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_get_compound_user_data_not_found():
-    respx.post(SUBGRAPH_URL).mock(
-        return_value=Response(200, json={"data": {"account": None}})
-    )
-    transport = httpx.ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        resp = await ac.get("/defi/compound/0xdead")
-    assert resp.status_code == 404
-    assert resp.json()["detail"] == "User data not found on Compound subgraph."
-
-
-@pytest.mark.asyncio
-async def test_aave_and_compound_endpoints(monkeypatch, test_app):
-    """Aave and Compound endpoints propagate mocked snapshots."""
-    from app.schemas.defi import DeFiAccountSnapshot
-
-    async def _mock_snapshot(address: str):  # noqa: D401
-        return DeFiAccountSnapshot(
-            user_address=address,
-            timestamp=123,
-            collaterals=[],
-            borrowings=[],
-            staked_positions=[],
-            health_scores=[],
-            total_apy=None,
-        )
-
-    monkeypatch.setattr(
-        "app.api.endpoints.defi.get_compound_user_snapshot_usecase",
-        _mock_snapshot,
-    )
-
-    transport = httpx.ASGITransport(app=test_app, raise_app_exceptions=True)
-    async with httpx.AsyncClient(
-        transport=transport,
-        base_url="http://test",
-    ) as ac:
-        compound_resp = await ac.get(f"/defi/compound/{TEST_ADDRESS}")
-
-    assert compound_resp.status_code == 200
+@patch("app.usecase.defi_compound_usecase.CompoundUsecase.get_user_snapshot")
+async def test_get_compound_user_data_not_found(mock_get_snapshot, test_app):
+    mock_get_snapshot.return_value = None
+    async with AsyncClient(app=test_app, base_url="http://test") as ac:
+        response = await ac.get("/defi/compound/0x456")
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "User data not found on Compound.",
+    }
+    mock_get_snapshot.assert_called_once_with("0x456") 

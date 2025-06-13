@@ -5,10 +5,14 @@ This module provides the use case for fetching and mapping Aave user data
 from the subgraph (Ethereum mainnet). It exposes a function to retrieve
 a DeFiAccountSnapshot for a given address, using the agnostic backend models.
 """
+import logging
+from datetime import datetime
 from typing import Optional
-
-import httpx
-
+from web3 import Web3
+from app.abi.aave_v2_abi import (
+    AAVE_LENDING_POOL_V2_ABI,
+    AAVE_POOL_ADDRESS_PROVIDER_ABI,
+)
 from app.schemas.defi import (
     Borrowing,
     Collateral,
@@ -18,120 +22,75 @@ from app.schemas.defi import (
     StakedPosition,
 )
 
-SUBGRAPH_URL = "https://api.thegraph.com/subgraphs/name/aave/protocol-v2"
+AAVE_POOL_ADDRESS_PROVIDER_ADDRESS = "0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5"
+AAVE_DECIMALS = 10**18
 
 
-async def get_aave_user_snapshot_usecase(
-    user_address: str,
-) -> Optional[DeFiAccountSnapshot]:
-    """
-    Fetch and aggregate all Aave data for a given user address using the
-    subgraph.
-    Maps the subgraph response to the agnostic DeFiAccountSnapshot model.
-    Args:
-        user_address (str): The user's wallet address.
-    Returns:
-        Optional[DeFiAccountSnapshot]: Aggregated Aave data for the user,
-        or None if not found.
-    """
-    query = """
-    query getUserData($user: String!) {
-      userReserves(where: {user: $user}) {
-        reserve {
-          symbol
-          decimals
-          liquidityRate
-          variableBorrowRate
-        }
-        scaledATokenBalance
-        currentTotalDebt
-      }
-      userAccountData(id: $user) {
-        healthFactor
-        totalCollateralETH
-        totalDebtETH
-      }
-    }
-    """
-    variables = {"user": user_address.lower()}
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            SUBGRAPH_URL, json={"query": query, "variables": variables}
-        )
-        response.raise_for_status()
-        data = response.json()
-    reserves = data.get("data", {}).get("userReserves", [])
-    account_data = data.get("data", {}).get("userAccountData")
-    if not reserves and not account_data:
-        return None
-    collaterals = []
-    borrowings = []
-    staked_positions = []
-    for reserve in reserves:
-        symbol = reserve["reserve"]["symbol"]
-        decimals = int(reserve["reserve"].get("decimals", 18))
-        liquidity_rate = (
-            float(reserve["reserve"].get("liquidityRate", 0)) / 1e27
-            if reserve["reserve"].get("liquidityRate")
-            else None
-        )
-        variable_borrow_rate = (
-            float(reserve["reserve"].get("variableBorrowRate", 0)) / 1e27
-            if reserve["reserve"].get("variableBorrowRate")
-            else None
-        )
-        scaled_balance = float(reserve.get("scaledATokenBalance", 0)) / (
-            10**decimals
-        )
-        total_debt = float(reserve.get("currentTotalDebt", 0)) / (
-            10**decimals
-        )
-        if scaled_balance > 0:
-            collaterals.append(
-                Collateral(
-                    protocol=ProtocolName.aave,
-                    asset=symbol,
-                    amount=scaled_balance,
-                    usd_value=0,
-                )
-            )
-            if liquidity_rate:
-                staked_positions.append(
-                    StakedPosition(
-                        protocol=ProtocolName.aave,
-                        asset=symbol,
-                        amount=scaled_balance,
-                        usd_value=0,
-                        apy=liquidity_rate,
-                    )
-                )
-        if total_debt > 0:
-            borrowings.append(
-                Borrowing(
-                    protocol=ProtocolName.aave,
-                    asset=symbol,
-                    amount=total_debt,
-                    usd_value=0,
-                    interest_rate=variable_borrow_rate,
-                )
-            )
-    health_scores = []
-    if account_data and account_data.get("healthFactor") is not None:
+class AaveUsecase:
+    def __init__(self, w3: Web3):
+        self.w3 = w3
+
+    async def get_user_snapshot(
+        self, user_address: str
+    ) -> DeFiAccountSnapshot | None:
         try:
-            score = float(account_data["healthFactor"]) / 1e18
-            health_scores.append(
-                HealthScore(protocol=ProtocolName.aave, score=score)
+            checksum_address = self.w3.to_checksum_address(user_address)
+            pool_addresses_provider = self.w3.eth.contract(
+                address=self.w3.to_checksum_address(
+                    AAVE_POOL_ADDRESS_PROVIDER_ADDRESS
+                ),
+                abi=AAVE_POOL_ADDRESS_PROVIDER_ABI,
+            )
+            lending_pool_address = pool_addresses_provider.functions.getPool().call()
+            lending_pool = self.w3.eth.contract(
+                address=lending_pool_address, abi=AAVE_LENDING_POOL_V2_ABI
+            )
+            (
+                total_collateral,
+                total_debt,
+                _,
+                _,
+                _,
+                health_factor,
+            ) = lending_pool.functions.getUserAccountData(
+                checksum_address
+            ).call()
+
+            total_collateral_usd = total_collateral / AAVE_DECIMALS
+            total_debt_usd = total_debt / AAVE_DECIMALS
+
+            return DeFiAccountSnapshot(
+                user_address=user_address,
+                timestamp=datetime.utcnow().timestamp(),
+                collaterals=[
+                    Collateral(
+                        protocol=ProtocolName.aave,
+                        asset="various",
+                        amount=total_collateral_usd,
+                        usd_value=total_collateral_usd,
+                    )
+                ],
+                borrowings=[
+                    Borrowing(
+                        protocol=ProtocolName.aave,
+                        asset="various",
+                        amount=total_debt_usd,
+                        usd_value=total_debt_usd,
+                        interest_rate=None,
+                    )
+                ],
+                staked_positions=[],
+                health_scores=[
+                    HealthScore(
+                        protocol=ProtocolName.aave,
+                        score=health_factor / AAVE_DECIMALS,
+                    )
+                ],
             )
         except Exception:
-            pass
-    snapshot = DeFiAccountSnapshot(
-        user_address=user_address,
-        timestamp=0,  # Should be set to current or block timestamp
-        # if available
-        collaterals=collaterals,
-        borrowings=borrowings,
-        staked_positions=staked_positions,
-        health_scores=health_scores,
-        total_apy=None,
-    )
-    return snapshot
+            logging.warning(
+                "Could not fetch Aave snapshot for %s",
+                user_address,
+                exc_info=True,
+            )
+            return None

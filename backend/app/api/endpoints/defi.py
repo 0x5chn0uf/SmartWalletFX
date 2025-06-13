@@ -5,21 +5,24 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from web3 import Web3
 
 from app.celery_app import celery
 from app.core.database import get_db
+from app.api.dependencies import (
+    get_aave_usecase,
+    get_compound_usecase,
+    get_radiant_usecase,
+    get_portfolio_aggregation_usecase,
+)
 from app.schemas.defi import DeFiAccountSnapshot
 from app.schemas.portfolio_timeline import TimelineResponse
 from app.stores.portfolio_snapshot_store import PortfolioSnapshotStore
-from app.usecase.defi_aave_usecase import get_aave_user_snapshot_usecase
-from app.usecase.defi_compound_usecase import (
-    get_compound_user_snapshot_usecase,
-)
-from app.usecase.defi_radiant_usecase import get_radiant_user_snapshot_usecase
-from app.usecase.portfolio_aggregation_usecase import (
-    PortfolioMetrics,
-    aggregate_portfolio_metrics,
-)
+from app.usecase.defi_radiant_usecase import RadiantUsecase
+from app.usecase.defi_aave_usecase import AaveUsecase
+from app.usecase.defi_compound_usecase import CompoundUsecase
+from app.usecase.portfolio_aggregation_usecase import PortfolioMetrics
+from app.usecase.portfolio_aggregation_usecase import PortfolioAggregationUsecase
 from app.usecase.portfolio_snapshot_usecase import PortfolioSnapshotUsecase
 
 router = APIRouter()
@@ -38,13 +41,15 @@ class IntervalEnum(str, Enum):
     response_model=DeFiAccountSnapshot,
     tags=["DeFi"],
 )
-async def get_radiant_user_data(address: str):
+async def get_radiant_user_data(
+    address: str, usecase: RadiantUsecase = Depends(get_radiant_usecase)
+):
     """
     Get Radiant user data for a given wallet address (Arbitrum network).
     Returns the user's DeFi account snapshot (collateral, borrowings,
     health score, etc.) by querying the Radiant smart contract directly.
     """
-    snapshot = await get_radiant_user_snapshot_usecase(address)
+    snapshot = await usecase.get_user_snapshot(address)
     if snapshot is None:
         raise HTTPException(
             status_code=404,
@@ -58,16 +63,18 @@ async def get_radiant_user_data(address: str):
     response_model=DeFiAccountSnapshot,
     tags=["DeFi"],
 )
-async def get_aave_user_data(address: str):
+async def get_aave_user_data(
+    address: str, usecase: AaveUsecase = Depends(get_aave_usecase)
+):
     """
     Get Aave user data for a given wallet address (Ethereum mainnet).
     Returns the user's DeFi account snapshot (collateral, borrowings,
     health score, etc.).
     """
-    snapshot = await get_aave_user_snapshot_usecase(address)
+    snapshot = await usecase.get_user_snapshot(address)
     if snapshot is None:
         raise HTTPException(
-            status_code=404, detail="User data not found on Aave subgraph."
+            status_code=404, detail="User data not found on Aave."
         )
     return snapshot
 
@@ -77,16 +84,17 @@ async def get_aave_user_data(address: str):
     response_model=DeFiAccountSnapshot,
     tags=["DeFi"],
 )
-async def get_compound_user_data(address: str):
+async def get_compound_user_data(
+    address: str, usecase: CompoundUsecase = Depends(get_compound_usecase)
+):
     """
     Get Compound user data for a given wallet address (Ethereum mainnet).
-    Returns the user's DeFi account snapshot (collateral,
-    borrowings, health score, etc.).
+    Returns the user's DeFi account snapshot (collateral, borrowings).
     """
-    snapshot = await get_compound_user_snapshot_usecase(address)
+    snapshot = await usecase.get_user_snapshot(address)
     if snapshot is None:
         raise HTTPException(
-            status_code=404, detail="User data not found on Compound subgraph."
+            status_code=404, detail="User data not found on Compound."
         )
     return snapshot
 
@@ -96,17 +104,24 @@ async def get_compound_user_data(address: str):
     response_model=PortfolioMetrics,
     tags=["DeFi"],
 )
-async def get_portfolio_metrics(address: str):
+async def get_portfolio_metrics(
+    address: str,
+    usecase: PortfolioAggregationUsecase = Depends(
+        get_portfolio_aggregation_usecase
+    ),
+):
     """
     Get aggregated portfolio metrics for a given wallet address across
     all supported DeFi protocols.
     Returns total collateral, total borrowings, aggregate health score,
     aggregate APY, and all positions.
     """
-    return await aggregate_portfolio_metrics(address)
+    return await usecase.aggregate_portfolio_metrics(address)
 
 
-async def get_portfolio_snapshot_usecase(db: AsyncSession):
+async def get_portfolio_snapshot_usecase(
+    db: AsyncSession = db_dependency,
+) -> PortfolioSnapshotUsecase:
     store = PortfolioSnapshotStore(db)
     return PortfolioSnapshotUsecase(store)
 
@@ -142,7 +157,7 @@ async def get_portfolio_timeline(
     raw: bool = Query(  # noqa: B008
         False, description="If true, return raw list without metadata."
     ),
-    db: AsyncSession = db_dependency,
+    usecase: PortfolioSnapshotUsecase = Depends(get_portfolio_snapshot_usecase),
 ):
     """
     Get historical portfolio snapshots (timeline) for a given wallet
@@ -151,7 +166,6 @@ async def get_portfolio_timeline(
     Supports pagination with 'limit' and 'offset' query parameters.
     Supports interval aggregation with 'interval' (none, daily, weekly).
     """
-    usecase = await get_portfolio_snapshot_usecase(db)
     snapshots = await usecase.get_timeline(
         address,
         from_ts,

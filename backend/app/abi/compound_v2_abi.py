@@ -1,0 +1,118 @@
+COMPOUND_COMPTROLLER_ABI = [
+    {
+        "constant": True,
+        "inputs": [{"internalType": "address", "name": "", "type": "address"}],
+        "name": "markets",
+        "outputs": [
+            {"internalType": "bool", "name": "isListed", "type": "bool"},
+            {
+                "internalType": "uint256",
+                "name": "collateralFactorMantissa",
+                "type": "uint256",
+            },
+            {"internalType": "bool", "name": "isComped", "type": "bool"},
+        ],
+        "payable": False,
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "constant": True,
+        "inputs": [
+            {"internalType": "address", "name": "account", "type": "address"}
+        ],
+        "name": "getAssetsIn",
+        "outputs": [
+            {"internalType": "contract CToken[]", "name": "", "type": "address[]"}
+        ],
+        "payable": False,
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "constant": True,
+        "inputs": [
+            {"internalType": "address", "name": "account", "type": "address"}
+        ],
+        "name": "getAccountLiquidity",
+        "outputs": [
+            {"internalType": "uint256", "name": "error", "type": "uint256"},
+            {"internalType": "uint256", "name": "liquidity", "type": "uint256"},
+            {"internalType": "uint256", "name": "shortfall", "type": "uint256"},
+        ],
+        "payable": False,
+        "stateMutability": "view",
+        "type": "function",
+    },
+]
+
+
+COMPOUND_CTOKEN_ABI = [
+    {
+        "constant": True,
+        "inputs": [],
+        "name": "name",
+        "outputs": [{"name": "", "type": "string"}],
+        "payable": False,
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "constant": True,
+        "inputs": [],
+        "name": "symbol",
+        "outputs": [{"name": "", "type": "string"}],
+        "payable": False,
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "constant": True,
+        "inputs": [],
+        "name": "decimals",
+        "outputs": [{"name": "", "type": "uint8"}],
+        "payable": False,
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "constant": True,
+        "inputs": [],
+        "name": "underlying",
+        "outputs": [{"name": "", "type": "address"}],
+        "payable": False,
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "constant": True,
+        "inputs": [
+            {"internalType": "address", "name": "owner", "type": "address"}
+        ],
+        "name": "balanceOf",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "payable": False,
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "constant": True,
+        "inputs": [
+            {"internalType": "address", "name": "account", "type": "address"}
+        ],
+        "name": "borrowBalanceCurrent",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "payable": False,
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "constant": True,
+        "inputs": [],
+        "name": "exchangeRateCurrent",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "payable": False,
+        "stateMutability": "view",
+        "type": "function",
+    },
+] 

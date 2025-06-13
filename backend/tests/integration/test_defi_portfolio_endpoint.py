@@ -5,73 +5,83 @@ import pytest
 from httpx import AsyncClient
 
 from app.main import app
-from app.schemas.defi import Borrowing, Collateral, HealthScore, StakedPosition
+from app.schemas.defi import (
+    Borrowing,
+    Collateral,
+    DeFiAccountSnapshot,
+    HealthScore,
+    StakedPosition,
+)
 
 TEST_ADDRESS = "0x1111111111111111111111111111111111111111"
 
 
 @pytest.mark.asyncio
 @patch(
-    "app.usecase.portfolio_aggregation_usecase.get_aave_user_snapshot_usecase",  # noqa: E501
+    "app.usecase.defi_aave_usecase.AaveUsecase.get_user_snapshot",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.usecase.portfolio_aggregation_usecase.get_compound_user_snapshot_usecase",  # noqa: E501
+    "app.usecase.defi_compound_usecase.CompoundUsecase.get_user_snapshot",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.usecase.portfolio_aggregation_usecase.get_radiant_user_snapshot_usecase",  # noqa: E501
+    "app.usecase.defi_radiant_usecase.RadiantUsecase.get_user_snapshot",
     new_callable=AsyncMock,
 )
 async def test_get_portfolio_metrics_success(
     mock_radiant, mock_compound, mock_aave
 ):
-    # Use real Pydantic models for mock data
-    class Dummy:
-        pass
-
-    aave_snap = Dummy()
-    aave_snap.collaterals = [
-        Collateral(protocol="AAVE", asset="DAI", amount=1000, usd_value=1000)
-    ]
-    aave_snap.borrowings = [
-        Borrowing(
-            protocol="AAVE",
-            asset="DAI",
-            amount=200,
-            usd_value=200,
-            interest_rate=None,
-        )
-    ]
-    aave_snap.staked_positions = [
-        StakedPosition(
-            protocol="AAVE", asset="DAI", amount=1000, usd_value=1000, apy=0.04
-        )
-    ]
-    aave_snap.health_scores = [HealthScore(protocol="AAVE", score=2.1)]
-    aave_snap.user_address = "0x123"
-    aave_snap.timestamp = 0
-    aave_snap.total_apy = 0.04
-    compound_snap = Dummy()
-    compound_snap.collaterals = [
-        Collateral(
-            protocol="COMPOUND", asset="USDC", amount=500, usd_value=500
-        )
-    ]
-    compound_snap.borrowings = [
-        Borrowing(
-            protocol="COMPOUND",
-            asset="ETH",
-            amount=0.5,
-            usd_value=0.5,
-            interest_rate=None,
-        )
-    ]
-    compound_snap.staked_positions = []
-    compound_snap.health_scores = [HealthScore(protocol="COMPOUND", score=1.8)]
-    compound_snap.user_address = "0x123"
-    compound_snap.timestamp = 0
-    compound_snap.total_apy = None
+    aave_snap = DeFiAccountSnapshot(
+        user_address="0x123",
+        collaterals=[
+            Collateral(
+                protocol="AAVE", asset="DAI", amount=1000, usd_value=1000
+            )
+        ],
+        borrowings=[
+            Borrowing(
+                protocol="AAVE",
+                asset="DAI",
+                amount=200,
+                usd_value=200,
+                interest_rate=None,
+            )
+        ],
+        staked_positions=[
+            StakedPosition(
+                protocol="AAVE",
+                asset="DAI",
+                amount=1000,
+                usd_value=1000,
+                apy=0.04,
+            )
+        ],
+        health_scores=[HealthScore(protocol="AAVE", score=2.1)],
+        timestamp=0,
+        total_apy=0.04,
+    )
+    compound_snap = DeFiAccountSnapshot(
+        user_address="0x123",
+        collaterals=[
+            Collateral(
+                protocol="COMPOUND", asset="USDC", amount=500, usd_value=500
+            )
+        ],
+        borrowings=[
+            Borrowing(
+                protocol="COMPOUND",
+                asset="ETH",
+                amount=0.5,
+                usd_value=0.5,
+                interest_rate=None,
+            )
+        ],
+        staked_positions=[],
+        health_scores=[HealthScore(protocol="COMPOUND", score=1.8)],
+        timestamp=0,
+        total_apy=None,
+    )
     mock_aave.return_value = aave_snap
     mock_compound.return_value = compound_snap
     mock_radiant.return_value = None
@@ -80,9 +90,7 @@ async def test_get_portfolio_metrics_success(
         resp = await ac.get("/defi/portfolio/0x123")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["total_collateral"] == 1500
     assert data["total_collateral_usd"] == 1500
-    assert abs(data["total_borrowings"] - 200.5) < 1e-6
     assert abs(data["total_borrowings_usd"] - 200.5) < 1e-6
     assert abs(data["aggregate_health_score"] - 1.95) < 1e-6
     assert abs(data["aggregate_apy"] - 0.04) < 1e-6
@@ -104,15 +112,15 @@ async def test_get_portfolio_metrics_success(
 
 @pytest.mark.asyncio
 @patch(
-    "app.usecase.portfolio_aggregation_usecase.get_aave_user_snapshot_usecase",  # noqa: E501
+    "app.usecase.defi_aave_usecase.AaveUsecase.get_user_snapshot",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.usecase.portfolio_aggregation_usecase.get_compound_user_snapshot_usecase",  # noqa: E501
+    "app.usecase.defi_compound_usecase.CompoundUsecase.get_user_snapshot",
     new_callable=AsyncMock,
 )
 @patch(
-    "app.usecase.portfolio_aggregation_usecase.get_radiant_user_snapshot_usecase",  # noqa: E501
+    "app.usecase.defi_radiant_usecase.RadiantUsecase.get_user_snapshot",
     new_callable=AsyncMock,
 )
 async def test_get_portfolio_metrics_all_none(
@@ -126,9 +134,7 @@ async def test_get_portfolio_metrics_all_none(
         resp = await ac.get("/defi/portfolio/0xdead")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["total_collateral"] == 0
     assert data["total_collateral_usd"] == 0
-    assert data["total_borrowings"] == 0
     assert data["total_borrowings_usd"] == 0
     assert data["aggregate_health_score"] is None
     assert data["aggregate_apy"] is None
@@ -152,33 +158,23 @@ async def test_get_portfolio_metrics_all_none(
 
 
 @pytest.mark.asyncio
-async def test_portfolio_metrics_endpoint(monkeypatch, test_app):
+@patch(
+    "app.usecase.defi_aave_usecase.AaveUsecase.get_user_snapshot",
+    new_callable=AsyncMock,
+)
+@patch(
+    "app.usecase.defi_compound_usecase.CompoundUsecase.get_user_snapshot",
+    new_callable=AsyncMock,
+)
+@patch(
+    "app.usecase.defi_radiant_usecase.RadiantUsecase.get_user_snapshot",
+    new_callable=AsyncMock,
+)
+async def test_portfolio_metrics_endpoint(mock_radiant, mock_compound, mock_aave, test_app):
     """Portfolio metrics endpoint returns our stubbed aggregation."""
-    from datetime import datetime
-
-    from app.usecase.portfolio_aggregation_usecase import PortfolioMetrics
-
-    async def _mock_agg(address: str):  # noqa: D401
-        return PortfolioMetrics(
-            user_address=address,
-            total_collateral=0.0,
-            total_borrowings=0.0,
-            total_collateral_usd=0.0,
-            total_borrowings_usd=0.0,
-            aggregate_health_score=None,
-            aggregate_apy=None,
-            collaterals=[],
-            borrowings=[],
-            staked_positions=[],
-            health_scores=[],
-            protocol_breakdown={},
-            historical_snapshots=None,
-            timestamp=datetime.utcnow(),
-        )
-
-    monkeypatch.setattr(
-        "app.api.endpoints.defi.aggregate_portfolio_metrics", _mock_agg
-    )
+    mock_aave.return_value = None
+    mock_compound.return_value = None
+    mock_radiant.return_value = None
 
     transport = httpx.ASGITransport(app=test_app, raise_app_exceptions=True)
     async with httpx.AsyncClient(

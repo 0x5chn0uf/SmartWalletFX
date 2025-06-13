@@ -6,10 +6,14 @@ user data from the subgraph (Ethereum mainnet). It exposes a function
 to retrieve a DeFiAccountSnapshot for a given address, using the agnostic
 backend models.
 """
+import logging
+from datetime import datetime
 from typing import Optional
-
-import httpx
-
+from web3 import Web3
+from app.abi.compound_v2_abi import (
+    COMPOUND_COMPTROLLER_ABI,
+    COMPOUND_CTOKEN_ABI,
+)
 from app.schemas.defi import (
     Borrowing,
     Collateral,
@@ -18,90 +22,95 @@ from app.schemas.defi import (
     ProtocolName,
 )
 
-SUBGRAPH_URL = (
-    "https://api.thegraph.com/subgraphs/name/graphprotocol/compound-v2"
-)
+COMPOUND_COMPTROLLER_ADDRESS = "0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B"
+COMPOUND_DECIMALS = 10**18
 
 
-async def get_compound_user_snapshot_usecase(
-    user_address: str,
-) -> Optional[DeFiAccountSnapshot]:
-    """
-    Fetch and aggregate all Compound data for a given user address using the
-    subgraph. Maps the subgraph response to the agnostic DeFiAccountSnapshot
-    model.
-    Args:
-        user_address (str): The user's wallet address.
-    Returns:
-        Optional[DeFiAccountSnapshot]: Aggregated Compound data for the user,
-        or None if not found.
-    """
-    query = """
-    query getAccount($id: ID!) {
-      account(id: $id) {
-        id
-        health
-        tokens {
-          symbol
-          supplyBalanceUnderlying
-          borrowBalanceUnderlying
-        }
-      }
-    }
-    """
-    variables = {"id": user_address.lower()}
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            SUBGRAPH_URL, json={"query": query, "variables": variables}
-        )
-        response.raise_for_status()
-        data = response.json()
-    account = data.get("data", {}).get("account")
-    if not account:
-        return None
-    collaterals = []
-    borrowings = []
-    staked_positions = []
-    for token in account.get("tokens", []):
-        symbol = token["symbol"]
-        supply_balance = float(token.get("supplyBalanceUnderlying", 0))
-        borrow_balance = float(token.get("borrowBalanceUnderlying", 0))
-        if supply_balance > 0:
-            collaterals.append(
-                Collateral(
-                    protocol=ProtocolName.compound,
-                    asset=symbol,
-                    amount=supply_balance,
-                    usd_value=0,
-                )
-            )
-        if borrow_balance > 0:
-            borrowings.append(
-                Borrowing(
-                    protocol=ProtocolName.compound,
-                    asset=symbol,
-                    amount=borrow_balance,
-                    usd_value=0,
-                    interest_rate=None,
-                )
-            )
-    health_scores = []
-    if account.get("health") is not None:
+class CompoundUsecase:
+    def __init__(self, w3: Web3):
+        self.w3 = w3
+
+    async def get_user_snapshot(
+        self, user_address: str
+    ) -> DeFiAccountSnapshot | None:
         try:
-            score = float(account["health"])
-            health_scores.append(
-                HealthScore(protocol=ProtocolName.compound, score=score)
+            checksum_address = self.w3.to_checksum_address(user_address)
+            comptroller = self.w3.eth.contract(
+                address=self.w3.to_checksum_address(
+                    COMPOUND_COMPTROLLER_ADDRESS
+                ),
+                abi=COMPOUND_COMPTROLLER_ABI,
+            )
+
+            assets = comptroller.functions.getAssetsIn(checksum_address).call()
+            total_collateral_usd = 0
+            total_borrowings_usd = 0
+
+            for asset_address in assets:
+                c_token = self.w3.eth.contract(
+                    address=asset_address, abi=COMPOUND_CTOKEN_ABI
+                )
+                balance = c_token.functions.balanceOf(
+                    checksum_address
+                ).call()
+                borrow_balance = c_token.functions.borrowBalanceCurrent(
+                    checksum_address
+                ).call()
+                exchange_rate = c_token.functions.exchangeRateCurrent().call()
+
+                collateral_factor = comptroller.functions.markets(
+                    asset_address
+                ).call()[1]
+
+                underlying_price = 1  # Simplified: assume 1 USD for simplicity
+                token_balance = (
+                    balance * exchange_rate / COMPOUND_DECIMALS
+                ) * underlying_price
+                total_collateral_usd += (
+                    token_balance * collateral_factor / COMPOUND_DECIMALS
+                )
+                total_borrowings_usd += borrow_balance / COMPOUND_DECIMALS
+
+            _, liquidity, shortfall = comptroller.functions.getAccountLiquidity(
+                checksum_address
+            ).call()
+            health_factor = (
+                (liquidity / total_borrowings_usd)
+                if total_borrowings_usd > 0
+                else 0
+            )
+
+            return DeFiAccountSnapshot(
+                user_address=user_address,
+                timestamp=datetime.utcnow().timestamp(),
+                collaterals=[
+                    Collateral(
+                        protocol=ProtocolName.compound,
+                        asset="various",
+                        amount=total_collateral_usd,
+                        usd_value=total_collateral_usd,
+                    )
+                ],
+                borrowings=[
+                    Borrowing(
+                        protocol=ProtocolName.compound,
+                        asset="various",
+                        amount=total_borrowings_usd,
+                        usd_value=total_borrowings_usd,
+                        interest_rate=None,
+                    )
+                ],
+                staked_positions=[],
+                health_scores=[
+                    HealthScore(
+                        protocol=ProtocolName.compound, score=health_factor
+                    )
+                ],
             )
         except Exception:
-            pass
-    snapshot = DeFiAccountSnapshot(
-        user_address=user_address,
-        timestamp=0,  # Should be set to current or block
-        # timestamp if available
-        collaterals=collaterals,
-        borrowings=borrowings,
-        staked_positions=staked_positions,
-        health_scores=health_scores,
-        total_apy=None,
-    )
-    return snapshot
+            logging.warning(
+                "Could not fetch Compound snapshot for %s",
+                user_address,
+                exc_info=True,
+            )
+            return None
