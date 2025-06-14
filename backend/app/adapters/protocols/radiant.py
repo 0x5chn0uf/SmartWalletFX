@@ -8,17 +8,14 @@ dynamic aggregator **and** still offers low-level helper methods used by the
 from __future__ import annotations
 
 import asyncio
-import json
 import time
 from typing import Any, Dict, List, Optional
 
 import requests
 from web3 import Web3
 
-from app.constants.radiant import (
-    ABI_PATH,
-    POOL_ADDRESS_PROVIDER,
-    UI_POOL_DATA_PROVIDER,
+from app.abi.radiant_v2_abi import (
+    UI_POOL_DATA_PROVIDER_ABI,
 )
 from app.core.config import settings
 from app.schemas.defi import DeFiAccountSnapshot
@@ -30,6 +27,19 @@ __all__ = [
     "RadiantContractAdapter",
 ]
 
+# Default Radiant v2 contract addresses on Arbitrum – duplicated here to avoid
+# reliance on the now-deprecated `app.constants.radiant` module.
+DEFAULT_POOL_ADDRESS_PROVIDER: str = (
+    "0x454a8daf74b24037ee2fa073ce1be9277ed6160a"
+)
+DEFAULT_UI_POOL_DATA_PROVIDER: str = (
+    "0x56D4b07292343b149E0c60c7C41B7B1eEefdD733"
+)
+
+# ------------------------------------------------------------------
+# Backwards-compatibility shim (tests still patch this symbol).  Remove once
+# all tests have migrated to the class-based ABI injection approach.
+# ------------------------------------------------------------------
 
 class RadiantAdapterError(Exception):
     """Raised on RPC / data errors inside the Radiant adapter."""
@@ -45,24 +55,53 @@ class RadiantContractAdapter(ProtocolAdapter):
     # Initialisation helpers
     # ------------------------------------------------------------------
 
-    def __init__(self, rpc_url: Optional[str] = None):
+    def __init__(
+        self,
+        rpc_url: Optional[str] = None,
+        *,
+        pool_address_provider: Optional[str] = None,
+        ui_pool_data_provider: Optional[str] = None,
+        abi: Optional[list] = None,
+    ) -> None:
+        """Create a new :class:`RadiantContractAdapter`.
+
+        Parameters
+        ----------
+        rpc_url
+            Ethereum/Arbitrum JSON-RPC endpoint URL. Falls back to
+            ``settings.ARBITRUM_RPC_URL`` when absent.
+        pool_address_provider
+            Address of the ``POOL_ADDRESS_PROVIDER`` contract.
+        ui_pool_data_provider
+            Address of the ``UI_POOL_DATA_PROVIDER`` contract.
+        abi
+            ABI list to use for the UI pool data provider. Defaults to the
+            embedded ``UI_POOL_DATA_PROVIDER_ABI`` but can be overridden in
+            tests to avoid large object patches.
+        """
+
         self.rpc_url = rpc_url or settings.ARBITRUM_RPC_URL
         if not self.rpc_url:
             raise RadiantAdapterError("ARBITRUM_RPC_URL not set in config.")
 
         self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
 
-        try:
-            with open(ABI_PATH) as f:
-                self.abi = json.load(f)
-        except Exception as exc:  # pragma: no cover – config issue
-            raise RadiantAdapterError(f"Failed to load ABI: {exc}")
+        self.abi = abi or UI_POOL_DATA_PROVIDER_ABI
+
+        # Allow callers/tests to override addresses easily
+        ui_pool_data_provider = (
+            ui_pool_data_provider or DEFAULT_UI_POOL_DATA_PROVIDER
+        )
+        pool_address_provider = (
+            pool_address_provider or DEFAULT_POOL_ADDRESS_PROVIDER
+        )
 
         self.contract = self.w3.eth.contract(
-            address=self.w3.to_checksum_address(UI_POOL_DATA_PROVIDER),
+            address=self.w3.to_checksum_address(ui_pool_data_provider),
             abi=self.abi,
         )
-        self.provider = self.w3.to_checksum_address(POOL_ADDRESS_PROVIDER)
+
+        self.provider = self.w3.to_checksum_address(pool_address_provider)
 
         self._price_cache: dict[str, float] = {}
         self._price_cache_time: dict[str, float] = {}

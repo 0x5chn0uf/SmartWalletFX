@@ -8,7 +8,7 @@ A powerful crypto portfolio tracker providing a centralized overview of all your
 
 ### 📊 Portfolio Overview
 - **Wallet Tracking:** Monitor EVM wallet balances and transactions.
-- **DeFi Integration:** Track positions across Aave, Compound, and Radiant using both direct smart contract calls and subgraph queries.
+- **DeFi Integration:** Track positions across Aave, Compound, and Radiant using both direct smart contract calls.
 - **Performance Timeline:** View historical portfolio performance (collateral, borrows, health score) with data collected by scheduled background jobs.
 - **Visual Analytics:** TradingView-style charts with custom indicators.
 
@@ -31,7 +31,7 @@ A powerful crypto portfolio tracker providing a centralized overview of all your
 
 ### Backend
 - **Python (FastAPI)** — Modular, hexagonal architecture
-- **web3.py** — Direct smart contract calls and subgraph interaction
+- **web3.py** — Direct smart contract calls
 - **CoinGecko API** — Live price oracle for USD values
 - **Pydantic** — Data validation and serialization
 - **PostgreSQL (via SQLAlchemy)** — Primary database for robust data storage.
@@ -113,7 +113,7 @@ A powerful crypto portfolio tracker providing a centralized overview of all your
 
 ### Current Version
 - **Modular Backend:** Production-ready FastAPI backend with a hexagonal architecture.
-- **DeFi Integration:** Supports Aave, Compound, and Radiant using both smart contract calls and subgraph queries.
+- **DeFi Integration:** Supports Aave, Compound, and Radiant using both smart contract calls.
 - **Performance Timeline:** Includes a Celery-based background scheduler to periodically capture and store portfolio snapshots in a PostgreSQL database.
 - **Price Oracles:** Live USD values fetched from CoinGecko with caching.
 - **Testing:** High test coverage (>95%) across unit, integration, and E2E tests.

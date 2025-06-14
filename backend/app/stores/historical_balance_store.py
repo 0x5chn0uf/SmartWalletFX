@@ -5,10 +5,10 @@ from app.schemas.historical_balance import HistoricalBalanceCreate
 
 
 class HistoricalBalanceStore:
-    @staticmethod
-    async def create(
-        db: AsyncSession, data: HistoricalBalanceCreate
-    ) -> HistoricalBalance:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def create(self, data: HistoricalBalanceCreate) -> HistoricalBalance:
         hist_balance = HistoricalBalance(
             wallet_id=data.wallet_id,
             token_id=data.token_id,
@@ -16,7 +16,7 @@ class HistoricalBalanceStore:
             balance_usd=data.balance_usd,
             timestamp=data.timestamp,
         )
-        db.add(hist_balance)
-        await db.commit()
-        await db.refresh(hist_balance)
+        self.db.add(hist_balance)
+        await self.db.commit()
+        await self.db.refresh(hist_balance)
         return hist_balance

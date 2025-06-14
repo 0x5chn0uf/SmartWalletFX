@@ -5,7 +5,7 @@ from app.adapters.protocols import (
 )
 from app.aggregators.protocol_aggregator import (
     aggregate_portfolio_metrics_from_adapters,
-)
+    )
 from app.schemas.portfolio_metrics import PortfolioMetrics
 
 
@@ -22,4 +22,4 @@ class PortfolioAggregationUsecase:
     ) -> PortfolioMetrics:
         return await aggregate_portfolio_metrics_from_adapters(
             address, self.adapters
-        )
+    )

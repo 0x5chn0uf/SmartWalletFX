@@ -77,7 +77,7 @@ async def delete_wallet(address: str, db: AsyncSession = db_dependency):
     status_code=status.HTTP_201_CREATED,
 )
 async def create_token(token: TokenCreate, db: AsyncSession = db_dependency):
-    return await TokenStore.create(db, token)
+    return await TokenStore(db).create(token)
 
 
 @router.post(
@@ -88,7 +88,7 @@ async def create_token(token: TokenCreate, db: AsyncSession = db_dependency):
 async def create_historical_balance(
     hb: HistoricalBalanceCreate, db: AsyncSession = db_dependency
 ):
-    return await HistoricalBalanceStore.create(db, hb)
+    return await HistoricalBalanceStore(db).create(hb)
 
 
 @router.post(
@@ -99,7 +99,7 @@ async def create_historical_balance(
 async def create_token_price(
     tp: TokenPriceCreate, db: AsyncSession = db_dependency
 ):
-    return await TokenPriceStore.create(db, tp)
+    return await TokenPriceStore(db).create(tp)
 
 
 @router.post(
@@ -110,4 +110,4 @@ async def create_token_price(
 async def create_token_balance(
     tb: TokenBalanceCreate, db: AsyncSession = db_dependency
 ):
-    return await TokenBalanceStore.create(db, tb)
+    return await TokenBalanceStore(db).create(tb)

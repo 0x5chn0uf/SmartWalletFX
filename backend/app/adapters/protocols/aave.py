@@ -1,4 +1,4 @@
-"""Aave protocol adapter implementation using The Graph subgraph."""
+"""Aave protocol adapter implementation."""
 from typing import Optional
 
 from app.schemas.defi import DeFiAccountSnapshot

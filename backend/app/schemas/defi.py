@@ -23,7 +23,7 @@ protocols. They are used for:
 ## Protocol Mapping
 - See `docs/defi_api_mapping.md` for the mapping between protocol-specific
   fields and these models.
-- Data is typically fetched via smart contract calls or subgraph queries, then
+- Data is typically fetched via smart contract calls, then
   mapped to these models for storage and API use.
 
 ## Usage Example

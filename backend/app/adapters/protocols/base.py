@@ -3,7 +3,7 @@ from __future__ import annotations
 """Abstract base classes and types for DeFi protocol adapters.
 
 Each concrete adapter should implement :class:`ProtocolAdapter` and wrap
-whatever data-source (on-chain RPC, The Graph subgraph, REST API, etc.) is
+whatever data-source (on-chain RPC, REST API, etc.) is
 required to materialise a :class:`DeFiAccountSnapshot` for a user address.
 
 Adapters **MUST NOT** perform any heavy post-processing – they should focus

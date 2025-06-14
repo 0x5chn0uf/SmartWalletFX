@@ -46,6 +46,7 @@ class RadiantUsecase:
             return None
         if not data:
             return None
+
         reserves = data["reserves"]
         health_factor = data.get("health_factor")
         collaterals = []

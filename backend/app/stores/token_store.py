@@ -5,15 +5,19 @@ from app.schemas.token import TokenCreate
 
 
 class TokenStore:
-    @staticmethod
-    async def create(db: AsyncSession, data: TokenCreate) -> Token:
+    """Persistence helper for :class:`Token`."""
+
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def create(self, data: TokenCreate) -> Token:
         token = Token(
             address=data.address,
             symbol=data.symbol,
             name=data.name,
             decimals=data.decimals,
         )
-        db.add(token)
-        await db.commit()
-        await db.refresh(token)
+        self.db.add(token)
+        await self.db.commit()
+        await self.db.refresh(token)
         return token

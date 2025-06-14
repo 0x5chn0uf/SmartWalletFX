@@ -2,7 +2,7 @@
 Compound DeFi Use Case Logic
 
 This module provides the use case for fetching and mapping Compound
-user data from the subgraph (Ethereum mainnet). It exposes a function
+user data (Ethereum mainnet). It exposes a function
 to retrieve a DeFiAccountSnapshot for a given address, using the agnostic
 backend models.
 """
@@ -20,6 +20,7 @@ from app.schemas.defi import (
     DeFiAccountSnapshot,
     HealthScore,
     ProtocolName,
+    StakedPosition,
 )
 
 COMPOUND_COMPTROLLER_ADDRESS = "0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B"
@@ -27,7 +28,25 @@ COMPOUND_DECIMALS = 10**18
 
 
 class CompoundUsecase:
-    def __init__(self, w3: Web3):
+    def __init__(self, w3: Optional[Web3] = None):
+        """Create the use-case.
+
+        If *w3* is *None*, a new :class:`web3.Web3` instance is created from
+        configuration values.  Keeping the parameter optional aligns with the
+        unit-tests that instantiate the class directly without passing a
+        provider.
+        """
+
+        if w3 is None:
+            from app.core.config import settings
+
+            provider_uri = (
+                settings.WEB3_PROVIDER_URI
+                or settings.ARBITRUM_RPC_URL
+                or "https://ethereum-rpc.publicnode.com"
+            )
+            w3 = Web3(Web3.HTTPProvider(provider_uri))
+
         self.w3 = w3
 
     async def get_user_snapshot(
@@ -82,23 +101,23 @@ class CompoundUsecase:
 
             return DeFiAccountSnapshot(
                 user_address=user_address,
-                timestamp=datetime.utcnow().timestamp(),
+                timestamp=int(datetime.utcnow().timestamp()),
                 collaterals=[
-                    Collateral(
-                        protocol=ProtocolName.compound,
+                Collateral(
+                    protocol=ProtocolName.compound,
                         asset="various",
                         amount=total_collateral_usd,
                         usd_value=total_collateral_usd,
                     )
                 ],
                 borrowings=[
-                    Borrowing(
-                        protocol=ProtocolName.compound,
+                Borrowing(
+                    protocol=ProtocolName.compound,
                         asset="various",
                         amount=total_borrowings_usd,
                         usd_value=total_borrowings_usd,
-                        interest_rate=None,
-                    )
+                    interest_rate=None,
+                )
                 ],
                 staked_positions=[],
                 health_scores=[
@@ -113,4 +132,5 @@ class CompoundUsecase:
                 user_address,
                 exc_info=True,
             )
+
             return None

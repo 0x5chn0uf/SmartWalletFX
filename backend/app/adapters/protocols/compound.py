@@ -1,4 +1,4 @@
-"""Compound protocol adapter leveraging The Graph subgraph."""
+"""Compound protocol adapter leveraging."""
 from typing import Optional
 
 from app.schemas.defi import DeFiAccountSnapshot
