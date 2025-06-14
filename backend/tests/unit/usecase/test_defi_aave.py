@@ -1,4 +1,5 @@
 import pytest
+
 from app.schemas.defi import (
     Borrowing,
     Collateral,
@@ -7,7 +8,6 @@ from app.schemas.defi import (
     ProtocolName,
     StakedPosition,
 )
-
 from app.usecase.defi_aave_usecase import AaveUsecase
 
 
@@ -45,9 +45,7 @@ async def test_aave_usecase_mapping(monkeypatch):
                     apy=0.04,
                 )
             ],
-            health_scores=[
-                HealthScore(protocol=ProtocolName.aave, score=2.1)
-            ],
+            health_scores=[HealthScore(protocol=ProtocolName.aave, score=2.1)],
             total_apy=None,
         )
 

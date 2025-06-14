@@ -28,9 +28,7 @@ db_dependency = Depends(get_db)
     response_model=WalletResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_wallet(
-    wallet: WalletCreate, db: AsyncSession = db_dependency
-):
+async def create_wallet(wallet: WalletCreate, db: AsyncSession = db_dependency):
     """
     Create a new wallet.
     Args:
@@ -96,9 +94,7 @@ async def create_historical_balance(
     response_model=TokenPriceResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_token_price(
-    tp: TokenPriceCreate, db: AsyncSession = db_dependency
-):
+async def create_token_price(tp: TokenPriceCreate, db: AsyncSession = db_dependency):
     return await TokenPriceStore(db).create(tp)
 
 

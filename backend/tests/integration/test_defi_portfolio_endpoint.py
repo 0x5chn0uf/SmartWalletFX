@@ -29,15 +29,11 @@ TEST_ADDRESS = "0x1111111111111111111111111111111111111111"
     "app.usecase.defi_radiant_usecase.RadiantUsecase.get_user_snapshot",
     new_callable=AsyncMock,
 )
-async def test_get_portfolio_metrics_success(
-    mock_radiant, mock_compound, mock_aave
-):
+async def test_get_portfolio_metrics_success(mock_radiant, mock_compound, mock_aave):
     aave_snap = DeFiAccountSnapshot(
         user_address="0x123",
         collaterals=[
-            Collateral(
-                protocol="AAVE", asset="DAI", amount=1000, usd_value=1000
-            )
+            Collateral(protocol="AAVE", asset="DAI", amount=1000, usd_value=1000)
         ],
         borrowings=[
             Borrowing(
@@ -64,9 +60,7 @@ async def test_get_portfolio_metrics_success(
     compound_snap = DeFiAccountSnapshot(
         user_address="0x123",
         collaterals=[
-            Collateral(
-                protocol="COMPOUND", asset="USDC", amount=500, usd_value=500
-            )
+            Collateral(protocol="COMPOUND", asset="USDC", amount=500, usd_value=500)
         ],
         borrowings=[
             Borrowing(
@@ -123,9 +117,7 @@ async def test_get_portfolio_metrics_success(
     "app.usecase.defi_radiant_usecase.RadiantUsecase.get_user_snapshot",
     new_callable=AsyncMock,
 )
-async def test_get_portfolio_metrics_all_none(
-    mock_radiant, mock_compound, mock_aave
-):
+async def test_get_portfolio_metrics_all_none(mock_radiant, mock_compound, mock_aave):
     mock_aave.return_value = None
     mock_compound.return_value = None
     mock_radiant.return_value = None
@@ -170,7 +162,9 @@ async def test_get_portfolio_metrics_all_none(
     "app.usecase.defi_radiant_usecase.RadiantUsecase.get_user_snapshot",
     new_callable=AsyncMock,
 )
-async def test_portfolio_metrics_endpoint(mock_radiant, mock_compound, mock_aave, test_app):
+async def test_portfolio_metrics_endpoint(
+    mock_radiant, mock_compound, mock_aave, test_app
+):
     """Portfolio metrics endpoint returns our stubbed aggregation."""
     mock_aave.return_value = None
     mock_compound.return_value = None

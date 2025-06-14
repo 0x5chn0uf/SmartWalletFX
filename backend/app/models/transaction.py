@@ -25,9 +25,7 @@ class Transaction(Base):
     id = Column(Integer, primary_key=True, index=True)
     wallet_id = Column(Integer, ForeignKey("wallets.id"), index=True)
     hash = Column(String, unique=True, index=True)
-    token_id = Column(
-        Integer, ForeignKey("tokens.id"), nullable=True, index=True
-    )
+    token_id = Column(Integer, ForeignKey("tokens.id"), nullable=True, index=True)
     type = Column(String, index=True)  # IN, OUT, SWAP, etc.
     amount = Column(Numeric(precision=18, scale=8), nullable=False)
     usd_value = Column(Numeric(precision=18, scale=2), nullable=True)

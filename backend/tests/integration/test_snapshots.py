@@ -79,9 +79,7 @@ async def test_celery_task_stores_snapshots(db_session, monkeypatch):
         finally:
             session.close()
 
-    monkeypatch.setattr(
-        snapshots_mod.collect_portfolio_snapshots, "run", patched_task
-    )
+    monkeypatch.setattr(snapshots_mod.collect_portfolio_snapshots, "run", patched_task)
     # Create wallets using the synchronous session so the Celery task sees them
     wallet1_addr = f"0x{uuid.uuid4().hex[:40]}"
     wallet2_addr = f"0x{uuid.uuid4().hex[:40]}"
@@ -90,12 +88,8 @@ async def test_celery_task_stores_snapshots(db_session, monkeypatch):
     try:
         sync_session.add_all(
             [
-                Wallet(
-                    address=wallet1_addr, name="Test Wallet 1", balance=0.0
-                ),
-                Wallet(
-                    address=wallet2_addr, name="Test Wallet 2", balance=0.0
-                ),
+                Wallet(address=wallet1_addr, name="Test Wallet 1", balance=0.0),
+                Wallet(address=wallet2_addr, name="Test Wallet 2", balance=0.0),
             ]
         )
         sync_session.commit()
@@ -110,11 +104,7 @@ async def test_celery_task_stores_snapshots(db_session, monkeypatch):
     try:
         count = (
             sync_session.query(PortfolioSnapshot)
-            .filter(
-                PortfolioSnapshot.user_address.in_(
-                    [wallet1_addr, wallet2_addr]
-                )
-            )
+            .filter(PortfolioSnapshot.user_address.in_([wallet1_addr, wallet2_addr]))
             .count()
         )
     finally:
@@ -126,14 +116,10 @@ async def test_celery_task_stores_snapshots(db_session, monkeypatch):
 async def test_manual_trigger_endpoint(monkeypatch):
     """Test the admin endpoint correctly triggers the snapshot task."""
     mock_send_task = MagicMock(return_value=MagicMock(id="dummy-task-id"))
-    monkeypatch.setattr(
-        "app.api.endpoints.defi.celery.send_task", mock_send_task
-    )
+    monkeypatch.setattr("app.api.endpoints.defi.celery.send_task", mock_send_task)
 
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(
-        transport=transport, base_url="http://test"
-    ) as client:
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post("/defi/admin/trigger-snapshot")
 
     assert response.status_code == 200
@@ -201,9 +187,7 @@ async def test_snapshot_task_e2e_flow(test_app, monkeypatch):
     )
 
     transport = httpx.ASGITransport(app=test_app)
-    async with httpx.AsyncClient(
-        transport=transport, base_url="http://test"
-    ) as client:
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         # 2. Create wallets that the task will process
         wallet1_addr = f"0x{uuid.uuid4().hex[:40]}"
         wallet2_addr = f"0x{uuid.uuid4().hex[:40]}"
@@ -245,9 +229,7 @@ async def test_celery_task_no_wallets(db_session):
 async def test_celery_task_aggregation_failure(monkeypatch, db_session):
     """Test that the Celery task handles aggregation failure for a wallet."""
     wallet_store = WalletStore(db_session)
-    await wallet_store.create(
-        address=f"0x{uuid.uuid4().hex[:40]}", name="Fail Wallet"
-    )
+    await wallet_store.create(address=f"0x{uuid.uuid4().hex[:40]}", name="Fail Wallet")
 
     async def fail_agg(self, address):
         raise Exception("Aggregation failed!")
@@ -301,7 +283,5 @@ async def test_celery_task_db_write_failure(monkeypatch, db_session):
         def close(self):
             pass
 
-    monkeypatch.setattr(
-        "app.tasks.snapshots.SyncSessionLocal", FailingSession
-    )
+    monkeypatch.setattr("app.tasks.snapshots.SyncSessionLocal", FailingSession)
     collect_portfolio_snapshots()

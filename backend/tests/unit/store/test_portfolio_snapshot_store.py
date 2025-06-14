@@ -27,9 +27,7 @@ async def test_create_and_get_snapshot(db_session):
     created = await store.create_snapshot(snapshot)
     assert created.id is not None
     # Retrieve by address and range
-    results = await store.get_snapshots_by_address_and_range(
-        "0xabc", 900, 1100
-    )
+    results = await store.get_snapshots_by_address_and_range("0xabc", 900, 1100)
     assert len(results) == 1
     assert results[0].user_address == "0xabc"
     # Retrieve latest
@@ -58,9 +56,7 @@ async def test_get_snapshots_by_address_and_range_multiple(db_session):
             protocol_breakdown={},
         )
         await store.create_snapshot(snap)
-    results = await store.get_snapshots_by_address_and_range(
-        "0xdef", 1500, 3500
-    )
+    results = await store.get_snapshots_by_address_and_range("0xdef", 1500, 3500)
     assert len(results) == 2
     assert results[0].timestamp == 2000
     assert results[1].timestamp == 3000
@@ -94,9 +90,7 @@ async def test_snapshot_store_crud_and_helpers(db_session):
     )
     created = await store.create_snapshot(snap)
     assert created.id is not None
-    assert (
-        await store.get_latest_snapshot_by_address("0xabc")
-    ).id == created.id
+    assert (await store.get_latest_snapshot_by_address("0xabc")).id == created.id
 
     in_range = await store.get_snapshots_by_address_and_range("0xabc", 0, 200)
     assert len(in_range) == 1
@@ -109,9 +103,7 @@ async def test_snapshot_store_crud_and_helpers(db_session):
 async def test_snapshot_store_timeline_intervals(db_session):
     store = PortfolioSnapshotStore(db_session)
 
-    base_ts = int(
-        _dt.datetime(2023, 1, 2, 12, 0, tzinfo=_dt.timezone.utc).timestamp()
-    )
+    base_ts = int(_dt.datetime(2023, 1, 2, 12, 0, tzinfo=_dt.timezone.utc).timestamp())
     for i in range(14):
         await store.create_snapshot(
             PortfolioSnapshot(
@@ -132,26 +124,13 @@ async def test_snapshot_store_timeline_intervals(db_session):
         )
     end_ts = base_ts + 13 * 86_400
     assert (
-        len(
-            await store.get_timeline("0xabc", base_ts, end_ts, interval="none")
-        )
-        == 14
+        len(await store.get_timeline("0xabc", base_ts, end_ts, interval="none")) == 14
     )
     assert (
-        len(
-            await store.get_timeline(
-                "0xabc", base_ts, end_ts, interval="daily"
-            )
-        )
-        == 14
+        len(await store.get_timeline("0xabc", base_ts, end_ts, interval="daily")) == 14
     )
     assert (
-        len(
-            await store.get_timeline(
-                "0xabc", base_ts, end_ts, interval="weekly"
-            )
-        )
-        == 2
+        len(await store.get_timeline("0xabc", base_ts, end_ts, interval="weekly")) == 2
     )
     with pytest.raises(ValueError):
         await store.get_timeline("0xabc", base_ts, end_ts, interval="hourly")

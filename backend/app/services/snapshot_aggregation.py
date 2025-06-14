@@ -87,12 +87,9 @@ class SnapshotAggregationService:
             aggregate_apy=metrics.aggregate_apy,
             collaterals=[c.model_dump() for c in metrics.collaterals],
             borrowings=[b.model_dump() for b in metrics.borrowings],
-            staked_positions=[
-                s.model_dump() for s in metrics.staked_positions
-            ],
+            staked_positions=[s.model_dump() for s in metrics.staked_positions],
             health_scores=[h.model_dump() for h in metrics.health_scores],
             protocol_breakdown={
-                k: v.model_dump()
-                for k, v in metrics.protocol_breakdown.items()
+                k: v.model_dump() for k, v in metrics.protocol_breakdown.items()
             },
         )

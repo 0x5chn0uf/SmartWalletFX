@@ -1,4 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.schemas.wallet import WalletCreate, WalletResponse
 from app.stores.wallet_store import WalletStore
 
@@ -8,6 +9,7 @@ class WalletUsecase:
     Use case layer for wallet operations. Handles business logic for creating,
     listing, and deleting wallets.
     """
+
     def __init__(self, db: AsyncSession):
         self.db = db
         self.wallet_store = WalletStore(db)
@@ -21,9 +23,7 @@ class WalletUsecase:
         Returns:
             WalletResponse: The created wallet response object.
         """
-        return await self.wallet_store.create(
-            address=wallet.address, name=wallet.name
-        )
+        return await self.wallet_store.create(address=wallet.address, name=wallet.name)
 
     async def list_wallets(self) -> list[WalletResponse]:
         """

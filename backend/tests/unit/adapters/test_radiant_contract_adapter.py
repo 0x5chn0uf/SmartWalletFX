@@ -29,9 +29,7 @@ async def test_get_user_data_success(mock_web3, mock_settings, tmp_path):
     )
     mock_web3.return_value.eth.contract.return_value = mock_contract
     adapter = RadiantContractAdapter(rpc_url="http://mock-rpc", abi=[])
-    with patch.object(
-        adapter, "get_token_metadata", return_value=("MOCK", 18)
-    ):
+    with patch.object(adapter, "get_token_metadata", return_value=("MOCK", 18)):
         result = adapter.get_user_data("0xUser")
         assert result["reserves"][0]["token_address"] == "0xToken"
         assert result["reserves"][0]["symbol"] == "MOCK"
@@ -62,15 +60,11 @@ async def test_to_usd(mock_web3, mock_settings):
 @pytest.fixture()
 def adapter(monkeypatch, tmp_path):
     """Return a RadiantContractAdapter instance with on-chain calls mocked."""
-    monkeypatch.setattr(
-        "app.core.config.settings.ARBITRUM_RPC_URL", "http://mock-rpc"
-    )
+    monkeypatch.setattr("app.core.config.settings.ARBITRUM_RPC_URL", "http://mock-rpc")
 
     with patch("app.adapters.protocols.radiant.Web3") as mock_web3:
         mock_contract = MagicMock()
-        mock_contract.functions.getReservesData().call.return_value = (
-            [("0xToken",)],
-        )
+        mock_contract.functions.getReservesData().call.return_value = ([("0xToken",)],)
         mock_contract.functions.getUserReservesData().call.return_value = (
             [],
             int(1234 * 1e18),
@@ -125,15 +119,13 @@ async def test_async_get_user_data_wrapper(adapter, monkeypatch):
 @patch("app.adapters.protocols.radiant.Web3")
 def test_error_handling_paths(mock_web3, monkeypatch, tmp_path):
     """Test various error conditions."""
-    monkeypatch.setattr(
-        "app.core.config.settings.ARBITRUM_RPC_URL", "http://mock-rpc"
-    )
+    monkeypatch.setattr("app.core.config.settings.ARBITRUM_RPC_URL", "http://mock-rpc")
 
     with patch("app.adapters.protocols.radiant.Web3") as mock_web3:
         # 2. get_user_data failure
         mock_contract_fail = MagicMock()
-        mock_contract_fail.functions.getUserReservesData().call.side_effect = (
-            Exception("RPC Error")
+        mock_contract_fail.functions.getUserReservesData().call.side_effect = Exception(
+            "RPC Error"
         )  # noqa: E501
         mock_web3.return_value.eth.contract.return_value = mock_contract_fail
         adapter_fail = RadiantContractAdapter(abi=[])
@@ -156,8 +148,8 @@ def test_error_handling_paths(mock_web3, monkeypatch, tmp_path):
         assert decimals == 18
 
         # 4. get_reserves_data failure
-        mock_contract_fail.functions.getReservesData().call.side_effect = (
-            Exception("Reserves Error")
+        mock_contract_fail.functions.getReservesData().call.side_effect = Exception(
+            "Reserves Error"
         )  # noqa: E501
         with pytest.raises(
             RadiantAdapterError,

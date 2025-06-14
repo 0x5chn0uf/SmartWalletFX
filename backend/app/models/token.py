@@ -25,16 +25,12 @@ class Token(Base):
     current_price_usd = Column(Numeric(precision=18, scale=8), nullable=True)
     last_price_update = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     balances = relationship("TokenBalance", back_populates="token")
     historical_prices = relationship("TokenPrice", back_populates="token")
-    historical_balances = relationship(
-        "HistoricalBalance", back_populates="token"
-    )
+    historical_balances = relationship("HistoricalBalance", back_populates="token")
     # transactions = relationship("Transaction", back_populates="token")
 
     def __repr__(self):

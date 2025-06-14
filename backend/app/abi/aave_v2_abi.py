@@ -1,8 +1,6 @@
 AAVE_LENDING_POOL_V2_ABI = [
     {
-        "inputs": [
-            {"internalType": "address", "name": "user", "type": "address"}
-        ],
+        "inputs": [{"internalType": "address", "name": "user", "type": "address"}],
         "name": "getUserAccountData",
         "outputs": [
             {
@@ -46,10 +44,8 @@ AAVE_POOL_ADDRESS_PROVIDER_ABI = [
     {
         "inputs": [],
         "name": "getPool",
-        "outputs": [
-            {"internalType": "address", "name": "", "type": "address"}
-        ],
+        "outputs": [{"internalType": "address", "name": "", "type": "address"}],
         "stateMutability": "view",
         "type": "function",
     }
-] 
+]

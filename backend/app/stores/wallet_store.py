@@ -14,12 +14,11 @@ class WalletStore:
     Handles database access for creating, retrieving, listing, and
     deleting wallets.
     """
+
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_by_address(
-        self, address: str
-    ) -> Optional[Wallet]:
+    async def get_by_address(self, address: str) -> Optional[Wallet]:
         """
         Retrieve a wallet by its address.
         Args:
@@ -27,14 +26,10 @@ class WalletStore:
         Returns:
             Optional[Wallet]: The wallet instance if found, else None.
         """
-        result = await self.db.execute(
-            select(Wallet).where(Wallet.address == address)
-        )
+        result = await self.db.execute(select(Wallet).where(Wallet.address == address))
         return result.scalars().first()
 
-    async def create(
-        self, address: str, name: Optional[str] = None
-    ) -> Wallet:
+    async def create(self, address: str, name: Optional[str] = None) -> Wallet:
         """
         Create a new wallet in the database.
         Args:
@@ -50,9 +45,7 @@ class WalletStore:
             await self.db.refresh(db_wallet)
         except IntegrityError:
             await self.db.rollback()
-            raise HTTPException(
-                status_code=400, detail="Wallet address already exists"
-            )
+            raise HTTPException(status_code=400, detail="Wallet address already exists")
         return db_wallet
 
     async def list_all(self) -> List[Wallet]:

@@ -17,13 +17,9 @@ class TokenBalance(Base):
     id = Column(Integer, primary_key=True, index=True)
     wallet_id = Column(Integer, ForeignKey("wallets.id"), index=True)
     token_id = Column(Integer, ForeignKey("tokens.id"), index=True)
-    balance = Column(
-        Numeric(precision=36, scale=18)  # Large precision for wei values
-    )
+    balance = Column(Numeric(precision=36, scale=18))  # Large precision for wei values
     balance_usd = Column(Numeric(precision=18, scale=2), nullable=True)
-    updated_at = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     wallet = relationship("Wallet", back_populates="token_balances")

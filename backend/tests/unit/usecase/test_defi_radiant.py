@@ -62,21 +62,13 @@ async def test_radiant_usecase_mapping(mock_async_get):
         "0x48840F6D69c979Af278Bb8259e15408118709F3F"
     )
     assert isinstance(snapshot, DeFiAccountSnapshot)
-    assert (
-        snapshot.user_address == "0x48840F6D69c979Af278Bb8259e15408118709F3F"
-    )
+    assert snapshot.user_address == "0x48840F6D69c979Af278Bb8259e15408118709F3F"
     assert len(snapshot.collaterals) == 1
-    assert (
-        snapshot.collaterals[0].asset
-        == "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
-    )
+    assert snapshot.collaterals[0].asset == "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
     assert snapshot.collaterals[0].amount == 500.0
     assert snapshot.collaterals[0].usd_value == 500.0
     assert len(snapshot.borrowings) == 1
-    assert (
-        snapshot.borrowings[0].asset
-        == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
-    )
+    assert snapshot.borrowings[0].asset == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
     assert snapshot.borrowings[0].amount == 0.1
     assert snapshot.borrowings[0].usd_value == 0
     assert snapshot.health_scores[0].score == 2.5

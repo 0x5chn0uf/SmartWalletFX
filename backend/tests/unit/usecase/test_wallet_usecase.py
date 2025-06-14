@@ -8,9 +8,7 @@ from app.usecase.wallet_usecase import WalletUsecase
 
 @pytest.mark.asyncio
 async def test_create_wallet_success(db_session):
-    data = WalletCreate(
-        address="0xabcdefabcdefabcdefabcdefabcdefabcdefabcd", name="UC"
-    )
+    data = WalletCreate(address="0xabcdefabcdefabcdefabcdefabcdefabcdefabcd", name="UC")
     usecase = WalletUsecase(db_session)
     wallet = await usecase.create_wallet(data)
     assert wallet.address == data.address

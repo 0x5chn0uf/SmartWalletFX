@@ -18,9 +18,7 @@ class PortfolioSnapshotStore:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def create_snapshot(
-        self, snapshot: PortfolioSnapshot
-    ) -> PortfolioSnapshot:
+    async def create_snapshot(self, snapshot: PortfolioSnapshot) -> PortfolioSnapshot:
         """
         Persist a new PortfolioSnapshot to the database.
         """
@@ -171,10 +169,7 @@ class PortfolioSnapshotStore:
             grouped = {}
             for snap in snapshots:
                 day = datetime.utcfromtimestamp(snap.timestamp).date()
-                if (
-                    day not in grouped
-                    or snap.timestamp > grouped[day].timestamp
-                ):
+                if day not in grouped or snap.timestamp > grouped[day].timestamp:
                     grouped[day] = snap
             filtered = list(  # noqa: C413
                 sorted(grouped.values(), key=lambda s: s.timestamp)
@@ -184,10 +179,7 @@ class PortfolioSnapshotStore:
             for snap in snapshots:
                 dt = datetime.utcfromtimestamp(snap.timestamp)
                 week = dt.isocalendar()[:2]  # (year, week)
-                if (
-                    week not in grouped
-                    or snap.timestamp > grouped[week].timestamp
-                ):
+                if week not in grouped or snap.timestamp > grouped[week].timestamp:
                     grouped[week] = snap
             filtered = list(  # noqa: C413
                 sorted(grouped.values(), key=lambda s: s.timestamp)

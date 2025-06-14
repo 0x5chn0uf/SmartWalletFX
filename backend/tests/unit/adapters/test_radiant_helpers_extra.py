@@ -16,10 +16,8 @@ def test_get_user_summary(mock_web3, tmp_path, monkeypatch):
     # ``mock_contract`` so that the inner patch returns the desired data shape.
     with patch("app.adapters.protocols.radiant.Web3") as mock_web3_inner:
         mock_web3_inner.return_value.eth.contract.return_value = mock_contract
-        mock_web3_inner.return_value.to_checksum_address.side_effect = (
-            lambda x: x
-        )
+        mock_web3_inner.return_value.to_checksum_address.side_effect = lambda x: x
 
         adapter = RadiantContractAdapter()
         summary = adapter.get_user_summary("0xabc")
-        assert summary["health_factor"] == 123 
+        assert summary["health_factor"] == 123

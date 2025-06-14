@@ -144,12 +144,8 @@ def patch_sync_db():
     import app.tasks.snapshots as snapshots_mod
 
     sync_url = "sqlite:///./test.db"
-    sync_engine = create_engine(
-        sync_url, connect_args={"check_same_thread": False}
-    )
-    SyncSessionLocal = sessionmaker(
-        autocommit=False, autoflush=False, bind=sync_engine
-    )
+    sync_engine = create_engine(sync_url, connect_args={"check_same_thread": False})
+    SyncSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_engine)
     db_mod.sync_engine = sync_engine
     db_mod.SyncSessionLocal = SyncSessionLocal
     snapshots_mod.SyncSessionLocal = SyncSessionLocal
@@ -159,9 +155,7 @@ def patch_sync_db():
 @pytest.fixture
 def mock_settings(monkeypatch):
     """Mocks the ARBITRUM_RPC_URL setting."""
-    monkeypatch.setattr(
-        "app.core.config.settings.ARBITRUM_RPC_URL", "http://mock-rpc"
-    )
+    monkeypatch.setattr("app.core.config.settings.ARBITRUM_RPC_URL", "http://mock-rpc")
 
 
 @pytest.fixture()

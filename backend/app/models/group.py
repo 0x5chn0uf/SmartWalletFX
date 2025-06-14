@@ -15,9 +15,7 @@ class Group(Base):
     __tablename__ = "groups"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(
-        Integer, ForeignKey("users.id"), nullable=True, index=True
-    )
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     name = Column(String(255), nullable=False, unique=True)
     description = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

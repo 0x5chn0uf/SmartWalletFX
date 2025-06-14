@@ -32,15 +32,11 @@ Base = declarative_base()
 sync_db_url = settings.DATABASE_URL.replace("+aiosqlite", "")
 sync_engine = create_engine(
     sync_db_url,
-    connect_args={"check_same_thread": False}
-    if "sqlite" in sync_db_url
-    else {},
+    connect_args={"check_same_thread": False} if "sqlite" in sync_db_url else {},
 )
 
 # Regular session factory
-SyncSessionLocal = sessionmaker(
-    autocommit=False, autoflush=False, bind=sync_engine
-)
+SyncSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_engine)
 
 
 # Dependency

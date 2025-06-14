@@ -69,13 +69,9 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_tokens_address"), "tokens", ["address"], unique=True
-    )
+    op.create_index(op.f("ix_tokens_address"), "tokens", ["address"], unique=True)
     op.create_index(op.f("ix_tokens_id"), "tokens", ["id"], unique=False)
-    op.create_index(
-        op.f("ix_tokens_symbol"), "tokens", ["symbol"], unique=False
-    )
+    op.create_index(op.f("ix_tokens_symbol"), "tokens", ["symbol"], unique=False)
     op.create_table(
         "users",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -88,9 +84,7 @@ def upgrade() -> None:
     )
     op.create_index(op.f("ix_users_email"), "users", ["email"], unique=True)
     op.create_index(op.f("ix_users_id"), "users", ["id"], unique=False)
-    op.create_index(
-        op.f("ix_users_username"), "users", ["username"], unique=True
-    )
+    op.create_index(op.f("ix_users_username"), "users", ["username"], unique=True)
     op.create_table(
         "groups",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -106,16 +100,12 @@ def upgrade() -> None:
         sa.UniqueConstraint("name"),
     )
     op.create_index(op.f("ix_groups_id"), "groups", ["id"], unique=False)
-    op.create_index(
-        op.f("ix_groups_user_id"), "groups", ["user_id"], unique=False
-    )
+    op.create_index(op.f("ix_groups_user_id"), "groups", ["user_id"], unique=False)
     op.create_table(
         "token_prices",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("token_id", sa.Integer(), nullable=True),
-        sa.Column(
-            "price_usd", sa.Numeric(precision=18, scale=8), nullable=True
-        ),
+        sa.Column("price_usd", sa.Numeric(precision=18, scale=8), nullable=True),
         sa.Column("timestamp", sa.DateTime(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=True),
         sa.ForeignKeyConstraint(
@@ -124,9 +114,7 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_token_prices_id"), "token_prices", ["id"], unique=False
-    )
+    op.create_index(op.f("ix_token_prices_id"), "token_prices", ["id"], unique=False)
     op.create_index(
         op.f("ix_token_prices_timestamp"),
         "token_prices",
@@ -150,36 +138,24 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(), nullable=True),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
         sa.Column("is_active", sa.Boolean(), nullable=True),
-        sa.Column(
-            "balance_usd", sa.Numeric(precision=18, scale=2), nullable=True
-        ),
-        sa.Column(
-            "balance", sa.Numeric(precision=18, scale=8), nullable=False
-        ),
+        sa.Column("balance_usd", sa.Numeric(precision=18, scale=2), nullable=True),
+        sa.Column("balance", sa.Numeric(precision=18, scale=8), nullable=False),
         sa.ForeignKeyConstraint(
             ["user_id"],
             ["users.id"],
         ),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(
-        op.f("ix_wallets_address"), "wallets", ["address"], unique=True
-    )
+    op.create_index(op.f("ix_wallets_address"), "wallets", ["address"], unique=True)
     op.create_index(op.f("ix_wallets_id"), "wallets", ["id"], unique=False)
-    op.create_index(
-        op.f("ix_wallets_user_id"), "wallets", ["user_id"], unique=False
-    )
+    op.create_index(op.f("ix_wallets_user_id"), "wallets", ["user_id"], unique=False)
     op.create_table(
         "historical_balances",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("wallet_id", sa.Integer(), nullable=True),
         sa.Column("token_id", sa.Integer(), nullable=True),
-        sa.Column(
-            "balance", sa.Numeric(precision=36, scale=18), nullable=True
-        ),
-        sa.Column(
-            "balance_usd", sa.Numeric(precision=18, scale=2), nullable=True
-        ),
+        sa.Column("balance", sa.Numeric(precision=36, scale=18), nullable=True),
+        sa.Column("balance_usd", sa.Numeric(precision=18, scale=2), nullable=True),
         sa.Column("timestamp", sa.DateTime(), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=True),
         sa.ForeignKeyConstraint(
@@ -221,12 +197,8 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("wallet_id", sa.Integer(), nullable=True),
         sa.Column("token_id", sa.Integer(), nullable=True),
-        sa.Column(
-            "balance", sa.Numeric(precision=36, scale=18), nullable=True
-        ),
-        sa.Column(
-            "balance_usd", sa.Numeric(precision=18, scale=2), nullable=True
-        ),
+        sa.Column("balance", sa.Numeric(precision=36, scale=18), nullable=True),
+        sa.Column("balance_usd", sa.Numeric(precision=18, scale=2), nullable=True),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
         sa.ForeignKeyConstraint(
             ["token_id"],
@@ -261,9 +233,7 @@ def upgrade() -> None:
         sa.Column("token_id", sa.Integer(), nullable=True),
         sa.Column("type", sa.String(), nullable=True),
         sa.Column("amount", sa.Numeric(precision=18, scale=8), nullable=False),
-        sa.Column(
-            "usd_value", sa.Numeric(precision=18, scale=2), nullable=True
-        ),
+        sa.Column("usd_value", sa.Numeric(precision=18, scale=2), nullable=True),
         sa.Column("timestamp", sa.DateTime(), nullable=True),
         sa.Column("from_address", sa.String(), nullable=True),
         sa.Column("to_address", sa.String(), nullable=True),
@@ -285,12 +255,8 @@ def upgrade() -> None:
         ["from_address"],
         unique=False,
     )
-    op.create_index(
-        op.f("ix_transactions_hash"), "transactions", ["hash"], unique=True
-    )
-    op.create_index(
-        op.f("ix_transactions_id"), "transactions", ["id"], unique=False
-    )
+    op.create_index(op.f("ix_transactions_hash"), "transactions", ["hash"], unique=True)
+    op.create_index(op.f("ix_transactions_id"), "transactions", ["id"], unique=False)
     op.create_index(
         op.f("ix_transactions_timestamp"),
         "transactions",
@@ -339,9 +305,7 @@ def upgrade() -> None:
         ["group_id"],
         unique=False,
     )
-    op.create_index(
-        op.f("ix_wallet_groups_id"), "wallet_groups", ["id"], unique=False
-    )
+    op.create_index(op.f("ix_wallet_groups_id"), "wallet_groups", ["id"], unique=False)
     op.create_index(
         op.f("ix_wallet_groups_wallet_id"),
         "wallet_groups",
@@ -354,33 +318,21 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
-    op.drop_index(
-        op.f("ix_wallet_groups_wallet_id"), table_name="wallet_groups"
-    )
+    op.drop_index(op.f("ix_wallet_groups_wallet_id"), table_name="wallet_groups")
     op.drop_index(op.f("ix_wallet_groups_id"), table_name="wallet_groups")
-    op.drop_index(
-        op.f("ix_wallet_groups_group_id"), table_name="wallet_groups"
-    )
+    op.drop_index(op.f("ix_wallet_groups_group_id"), table_name="wallet_groups")
     op.drop_table("wallet_groups")
     op.drop_index(op.f("ix_transactions_wallet_id"), table_name="transactions")
     op.drop_index(op.f("ix_transactions_type"), table_name="transactions")
     op.drop_index(op.f("ix_transactions_token_id"), table_name="transactions")
-    op.drop_index(
-        op.f("ix_transactions_to_address"), table_name="transactions"
-    )
+    op.drop_index(op.f("ix_transactions_to_address"), table_name="transactions")
     op.drop_index(op.f("ix_transactions_timestamp"), table_name="transactions")
     op.drop_index(op.f("ix_transactions_id"), table_name="transactions")
     op.drop_index(op.f("ix_transactions_hash"), table_name="transactions")
-    op.drop_index(
-        op.f("ix_transactions_from_address"), table_name="transactions"
-    )
+    op.drop_index(op.f("ix_transactions_from_address"), table_name="transactions")
     op.drop_table("transactions")
-    op.drop_index(
-        op.f("ix_token_balances_wallet_id"), table_name="token_balances"
-    )
-    op.drop_index(
-        op.f("ix_token_balances_token_id"), table_name="token_balances"
-    )
+    op.drop_index(op.f("ix_token_balances_wallet_id"), table_name="token_balances")
+    op.drop_index(op.f("ix_token_balances_token_id"), table_name="token_balances")
     op.drop_index(op.f("ix_token_balances_id"), table_name="token_balances")
     op.drop_table("token_balances")
     op.drop_index(
@@ -395,9 +347,7 @@ def downgrade() -> None:
         op.f("ix_historical_balances_timestamp"),
         table_name="historical_balances",
     )
-    op.drop_index(
-        op.f("ix_historical_balances_id"), table_name="historical_balances"
-    )
+    op.drop_index(op.f("ix_historical_balances_id"), table_name="historical_balances")
     op.drop_table("historical_balances")
     op.drop_index(op.f("ix_wallets_user_id"), table_name="wallets")
     op.drop_index(op.f("ix_wallets_id"), table_name="wallets")

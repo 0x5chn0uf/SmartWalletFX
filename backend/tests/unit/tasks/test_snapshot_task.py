@@ -26,9 +26,7 @@ async def test_collect_portfolio_snapshots_success(monkeypatch):
             self.rollback_calls: int = 0
             self.closed: bool = False
             # Minimal stub to satisfy `str(session.bind.url)` access in task
-            self.bind = types.SimpleNamespace(
-                url=types.SimpleNamespace(database=None)
-            )
+            self.bind = types.SimpleNamespace(url=types.SimpleNamespace(database=None))
 
         # SQLAlchemy query stub returning our wallet list
         def query(self, model):  # noqa: D401, ANN001
@@ -53,9 +51,7 @@ async def test_collect_portfolio_snapshots_success(monkeypatch):
     assert len(fake_session.query(Wallet).all()) == 2
 
     # Patch get_session_sync to return our fake session
-    monkeypatch.setattr(
-        "app.tasks.snapshots.get_session_sync", lambda: fake_session
-    )
+    monkeypatch.setattr("app.tasks.snapshots.get_session_sync", lambda: fake_session)
 
     # Patch the SnapshotAggregationService to a lightweight stub
     class _FakeService:
@@ -66,9 +62,7 @@ async def test_collect_portfolio_snapshots_success(monkeypatch):
             # Pretend to process successfully
             return None
 
-    monkeypatch.setattr(
-        "app.tasks.snapshots.SnapshotAggregationService", _FakeService
-    )
+    monkeypatch.setattr("app.tasks.snapshots.SnapshotAggregationService", _FakeService)
 
     # --------------------------------------
     # Execute task synchronously via .run()
@@ -94,9 +88,7 @@ async def test_collect_portfolio_snapshots_mixed_success_error(monkeypatch):
             self.commit_calls: int = 0
             self.rollback_calls: int = 0
             self.closed: bool = False
-            self.bind = types.SimpleNamespace(
-                url=types.SimpleNamespace(database=None)
-            )
+            self.bind = types.SimpleNamespace(url=types.SimpleNamespace(database=None))
 
         def query(self, model):  # noqa: D401, ANN001
             assert model is Wallet
@@ -117,9 +109,7 @@ async def test_collect_portfolio_snapshots_mixed_success_error(monkeypatch):
             self.closed = True
 
     fake_session = _FakeSession()
-    monkeypatch.setattr(
-        "app.tasks.snapshots.get_session_sync", lambda: fake_session
-    )
+    monkeypatch.setattr("app.tasks.snapshots.get_session_sync", lambda: fake_session)
 
     # Service stub that raises on second call
     class _FakeServiceWithError:

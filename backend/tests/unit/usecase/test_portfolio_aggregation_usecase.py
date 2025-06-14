@@ -49,9 +49,7 @@ async def test_portfolio_aggregation_metrics():
                     apy=0.1 * mult,
                 )
             ],
-            health_scores=[
-                HealthScore(protocol=ProtocolName.aave, score=mult)
-            ],
+            health_scores=[HealthScore(protocol=ProtocolName.aave, score=mult)],
         )
 
     snapshots = [make_snapshot(1), make_snapshot(2), make_snapshot(3)]

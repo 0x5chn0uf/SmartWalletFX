@@ -1,4 +1,5 @@
 import pytest
+
 from app.schemas.defi import (
     Borrowing,
     Collateral,
@@ -6,7 +7,6 @@ from app.schemas.defi import (
     HealthScore,
     ProtocolName,
 )
-
 from app.usecase.defi_compound_usecase import CompoundUsecase
 
 
@@ -34,15 +34,11 @@ async def test_compound_usecase_mapping(monkeypatch):
                 )
             ],
             staked_positions=[],
-            health_scores=[
-                HealthScore(protocol=ProtocolName.compound, score=1.8)
-            ],
+            health_scores=[HealthScore(protocol=ProtocolName.compound, score=1.8)],
             total_apy=None,
         )
 
-    monkeypatch.setattr(
-        CompoundUsecase, "get_user_snapshot", _fake_fetch, raising=True
-    )
+    monkeypatch.setattr(CompoundUsecase, "get_user_snapshot", _fake_fetch, raising=True)
 
     usecase = CompoundUsecase()
     snapshot = await usecase.get_user_snapshot("0x123")

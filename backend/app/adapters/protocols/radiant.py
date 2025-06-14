@@ -14,9 +14,7 @@ from typing import Any, Dict, List, Optional
 import requests
 from web3 import Web3
 
-from app.abi.radiant_v2_abi import (
-    UI_POOL_DATA_PROVIDER_ABI,
-)
+from app.abi.radiant_v2_abi import UI_POOL_DATA_PROVIDER_ABI
 from app.core.config import settings
 from app.schemas.defi import DeFiAccountSnapshot
 
@@ -29,17 +27,14 @@ __all__ = [
 
 # Default Radiant v2 contract addresses on Arbitrum – duplicated here to avoid
 # reliance on the now-deprecated `app.constants.radiant` module.
-DEFAULT_POOL_ADDRESS_PROVIDER: str = (
-    "0x454a8daf74b24037ee2fa073ce1be9277ed6160a"
-)
-DEFAULT_UI_POOL_DATA_PROVIDER: str = (
-    "0x56D4b07292343b149E0c60c7C41B7B1eEefdD733"
-)
+DEFAULT_POOL_ADDRESS_PROVIDER: str = "0x454a8daf74b24037ee2fa073ce1be9277ed6160a"
+DEFAULT_UI_POOL_DATA_PROVIDER: str = "0x56D4b07292343b149E0c60c7C41B7B1eEefdD733"
 
 # ------------------------------------------------------------------
 # Backwards-compatibility shim (tests still patch this symbol).  Remove once
 # all tests have migrated to the class-based ABI injection approach.
 # ------------------------------------------------------------------
+
 
 class RadiantAdapterError(Exception):
     """Raised on RPC / data errors inside the Radiant adapter."""
@@ -89,12 +84,8 @@ class RadiantContractAdapter(ProtocolAdapter):
         self.abi = abi or UI_POOL_DATA_PROVIDER_ABI
 
         # Allow callers/tests to override addresses easily
-        ui_pool_data_provider = (
-            ui_pool_data_provider or DEFAULT_UI_POOL_DATA_PROVIDER
-        )
-        pool_address_provider = (
-            pool_address_provider or DEFAULT_POOL_ADDRESS_PROVIDER
-        )
+        ui_pool_data_provider = ui_pool_data_provider or DEFAULT_UI_POOL_DATA_PROVIDER
+        pool_address_provider = pool_address_provider or DEFAULT_POOL_ADDRESS_PROVIDER
 
         self.contract = self.w3.eth.contract(
             address=self.w3.to_checksum_address(ui_pool_data_provider),
@@ -221,8 +212,7 @@ class RadiantContractAdapter(ProtocolAdapter):
         token_address = token_address.lower()
         if (
             token_address in self._price_cache
-            and now - self._price_cache_time[token_address]
-            < self._price_cache_ttl
+            and now - self._price_cache_time[token_address] < self._price_cache_ttl
         ):
             return self._price_cache[token_address]
 

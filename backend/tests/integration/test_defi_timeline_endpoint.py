@@ -65,25 +65,19 @@ async def test_timeline_insert_and_retrieve(db_session):
     transport = httpx.ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         # Query full range
-        resp = await ac.get(
-            "/defi/timeline/0xtest?from_ts=900&to_ts=2100&raw=true"
-        )
+        resp = await ac.get("/defi/timeline/0xtest?from_ts=900&to_ts=2100&raw=true")
         assert resp.status_code == status.HTTP_200_OK
         data = resp.json()
         assert len(data) == 2
         assert data[0]["timestamp"] == 1000
         assert data[1]["timestamp"] == 2000
         # Query partial range
-        resp = await ac.get(
-            "/defi/timeline/0xtest?from_ts=1500&to_ts=2100&raw=true"
-        )
+        resp = await ac.get("/defi/timeline/0xtest?from_ts=1500&to_ts=2100&raw=true")
         data = resp.json()
         assert len(data) == 1
         assert data[0]["timestamp"] == 2000
         # Query out of range
-        resp = await ac.get(
-            "/defi/timeline/0xtest?from_ts=2101&to_ts=3000&raw=true"
-        )
+        resp = await ac.get("/defi/timeline/0xtest?from_ts=2101&to_ts=3000&raw=true")
         assert resp.json() == []
 
 
@@ -258,14 +252,10 @@ async def test_portfolio_timeline_and_admin_trigger(monkeypatch, test_app):
         assert name == "app.tasks.snapshots.collect_portfolio_snapshots"
         return mock_result
 
-    monkeypatch.setattr(
-        "app.api.endpoints.defi.celery.send_task", _mock_send_task
-    )
+    monkeypatch.setattr("app.api.endpoints.defi.celery.send_task", _mock_send_task)
 
     transport = httpx.ASGITransport(app=test_app, raise_app_exceptions=True)
-    async with httpx.AsyncClient(
-        transport=transport, base_url="http://test"
-    ) as ac:
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
         # Timeline request
         timeline_resp = await ac.get(
             "/defi/timeline/0x1111111111111111111111111111111111111111",

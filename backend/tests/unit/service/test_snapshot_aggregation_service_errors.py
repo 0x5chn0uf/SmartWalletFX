@@ -76,9 +76,7 @@ async def test_build_snapshot_async():
 
 def test_metrics_to_snapshot_mapping():
     metrics = fake_metrics("0xZZ")
-    snapshot = SnapshotAggregationService._metrics_to_snapshot(
-        metrics
-    )  # type: ignore
+    snapshot = SnapshotAggregationService._metrics_to_snapshot(metrics)  # type: ignore
     assert snapshot.user_address == "0xZZ"
     assert snapshot.total_collateral == 1.0
     assert snapshot.total_borrowings == 0.5

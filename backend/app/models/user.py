@@ -18,9 +18,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def __repr__(self):
         """

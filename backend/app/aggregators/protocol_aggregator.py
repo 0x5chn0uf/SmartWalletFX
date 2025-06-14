@@ -13,12 +13,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from app.adapters.protocols.base import ProtocolAdapter
-from app.schemas.defi import (
-    Borrowing,
-    Collateral,
-    HealthScore,
-    StakedPosition,
-)
+from app.schemas.defi import Borrowing, Collateral, HealthScore, StakedPosition
 from app.schemas.portfolio_metrics import (
     PortfolioMetrics,
     ProtocolBreakdown,
@@ -71,8 +66,7 @@ async def aggregate_portfolio_metrics_from_adapters(
         )
         proto_staked = sum(s.amount for s in snap.staked_positions)
         proto_apy: Optional[float] = (
-            sum((s.apy or 0) * s.amount for s in snap.staked_positions)
-            / proto_staked
+            sum((s.apy or 0) * s.amount for s in snap.staked_positions) / proto_staked
             if proto_staked > 0
             else None
         )
@@ -96,12 +90,10 @@ async def aggregate_portfolio_metrics_from_adapters(
 
         # USD conversion (placeholder logic)
         total_collateral_usd += sum(
-            to_usd(c.amount, getattr(c, "symbol", "USD"))
-            for c in snap.collaterals
+            to_usd(c.amount, getattr(c, "symbol", "USD")) for c in snap.collaterals
         )
         total_borrowings_usd += sum(
-            to_usd(b.amount, getattr(b, "symbol", "USD"))
-            for b in snap.borrowings
+            to_usd(b.amount, getattr(b, "symbol", "USD")) for b in snap.borrowings
         )
 
     total_collateral = sum(c.amount for c in collaterals)
@@ -113,8 +105,7 @@ async def aggregate_portfolio_metrics_from_adapters(
     )
     total_staked = sum(s.amount for s in staked_positions)
     aggregate_apy: Optional[float] = (
-        sum((s.apy or 0) * s.amount for s in staked_positions)
-        / total_staked
+        sum((s.apy or 0) * s.amount for s in staked_positions) / total_staked
         if total_staked > 0
         else None
     )

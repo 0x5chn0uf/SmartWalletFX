@@ -32,16 +32,17 @@ class PortfolioSnapshotUsecase:
             user_address, from_ts, to_ts, interval, limit, offset
         )
         if cached:
-            return [
-                PortfolioSnapshotSchema(**obj) for obj in json.loads(cached)
-            ]
+            return [PortfolioSnapshotSchema(**obj) for obj in json.loads(cached)]
         # Compute result
         result = await self.store.get_timeline(
             user_address, from_ts, to_ts, limit, offset, interval
         )
         # Convert to Pydantic models
-        pydantic_result = [PortfolioSnapshotSchema.model_validate(r, from_attributes=True) for r in result]
-        
+        pydantic_result = [
+            PortfolioSnapshotSchema.model_validate(r, from_attributes=True)
+            for r in result
+        ]
+
         # Cache the result as list of dicts
         await self.store.set_cache(
             user_address=user_address,
@@ -50,8 +51,6 @@ class PortfolioSnapshotUsecase:
             interval=interval,
             limit=limit,
             offset=offset,
-            response_json=json.dumps(
-                [p.model_dump() for p in pydantic_result]
-            ),
+            response_json=json.dumps([p.model_dump() for p in pydantic_result]),
         )
         return pydantic_result

@@ -57,9 +57,7 @@ class RadiantUsecase:
             supplied = float(r["supplied"]) / (10**decimals)
             supplied_usd = float(r.get("supplied_usd", 0))
             used_as_collateral = bool(r["used_as_collateral"])
-            variable_borrowed = float(r.get("variable_borrowed", 0)) / (
-                10**decimals
-            )
+            variable_borrowed = float(r.get("variable_borrowed", 0)) / (10**decimals)
             stable_borrowed = float(r.get("stable_borrowed", 0)) / (10**decimals)
             if supplied > 0 and used_as_collateral:
                 collaterals.append(

@@ -7,12 +7,12 @@ from app.aggregators.protocol_aggregator import (
     aggregate_portfolio_metrics_from_adapters,
 )
 from app.schemas.defi import (
-    Collateral,
     Borrowing,
-    StakedPosition,
-    HealthScore,
+    Collateral,
     DeFiAccountSnapshot,
+    HealthScore,
     ProtocolName,
+    StakedPosition,
 )
 
 
@@ -145,4 +145,4 @@ async def test_aggregate_multiple_adapters_metrics():
     assert metrics.total_collateral == pytest.approx(100)
     assert metrics.total_borrowings == pytest.approx(40)
     assert metrics.aggregate_health_score == pytest.approx((2.0 + 1.5) / 2)
-    assert metrics.protocol_breakdown["radiant"].total_collateral == 0 
+    assert metrics.protocol_breakdown["radiant"].total_collateral == 0

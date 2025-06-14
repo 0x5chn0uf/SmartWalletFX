@@ -3,12 +3,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
-from app.schemas.defi import (
-    Borrowing,
-    Collateral,
-    HealthScore,
-    StakedPosition,
-)
+from app.schemas.defi import Borrowing, Collateral, HealthScore, StakedPosition
 
 
 # Placeholder for USD conversion (to be replaced with real price oracle)
@@ -43,4 +38,4 @@ class PortfolioMetrics(BaseModel):
     health_scores: List[HealthScore]
     protocol_breakdown: Dict[str, ProtocolBreakdown]
     historical_snapshots: Optional[List[Dict[str, Any]]] = None
-    timestamp: datetime 
+    timestamp: datetime

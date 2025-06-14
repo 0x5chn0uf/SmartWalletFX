@@ -3,7 +3,7 @@ import pytest
 from app.adapters.protocols.aave import AaveContractAdapter
 from app.adapters.protocols.compound import CompoundContractAdapter
 from app.adapters.protocols.radiant import RadiantContractAdapter
-from app.schemas.defi import DeFiAccountSnapshot, Collateral, ProtocolName
+from app.schemas.defi import Collateral, DeFiAccountSnapshot, ProtocolName
 
 
 @pytest.mark.asyncio
@@ -14,7 +14,9 @@ async def test_adapter_returns_snapshot(monkeypatch):
         user_address="0xabc",
         timestamp=0,
         collaterals=[
-            Collateral(protocol=ProtocolName.aave, asset="ETH", amount=1, usd_value=2000)
+            Collateral(
+                protocol=ProtocolName.aave, asset="ETH", amount=1, usd_value=2000
+            )
         ],
         borrowings=[],
         staked_positions=[],
@@ -64,4 +66,4 @@ async def test_radiant_adapter(monkeypatch):
     )
 
     snapshot = await adapter.fetch_snapshot("0xabc")
-    assert snapshot is None 
+    assert snapshot is None

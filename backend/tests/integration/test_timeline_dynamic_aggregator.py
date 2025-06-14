@@ -1,21 +1,21 @@
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.main import app
 from app.adapters.protocols.base import ProtocolAdapter
-from app.services.snapshot_aggregation import SnapshotAggregationService
-from app.schemas.defi import (
-    DeFiAccountSnapshot,
-    Collateral,
-    Borrowing,
-    StakedPosition,
-    HealthScore,
-    ProtocolName,
-)
 from app.aggregators.protocol_aggregator import (
     aggregate_portfolio_metrics_from_adapters,
 )
+from app.main import app
+from app.schemas.defi import (
+    Borrowing,
+    Collateral,
+    DeFiAccountSnapshot,
+    HealthScore,
+    ProtocolName,
+    StakedPosition,
+)
+from app.services.snapshot_aggregation import SnapshotAggregationService
 
 # ---------------------------------------------------------------------------
 # Dummy adapter & aggregator for predictable data
@@ -80,7 +80,9 @@ def _dependency_override(db_session: Session):
     # Override the newer dependency used by the timeline endpoint
     from app.api.endpoints.defi import get_portfolio_snapshot_usecase
 
-    app.dependency_overrides[get_portfolio_snapshot_usecase] = lambda: _DummySnapshotUsecase()
+    app.dependency_overrides[
+        get_portfolio_snapshot_usecase
+    ] = lambda: _DummySnapshotUsecase()
     yield
     app.dependency_overrides.clear()
 
@@ -93,7 +95,7 @@ def test_timeline_endpoint_with_dummy_aggregator(_dependency_override):
     assert resp.status_code == 200
     data = resp.json()
     assert len(data) == 1
-    assert data[0]["total_collateral_usd"] == 10 
+    assert data[0]["total_collateral_usd"] == 10
 
 
 class _DummySnapshotUsecase:
@@ -123,4 +125,4 @@ class _DummySnapshotUsecase:
                 "health_scores": [],
                 "protocol_breakdown": {},
             }
-        ] 
+        ]

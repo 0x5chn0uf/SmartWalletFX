@@ -47,23 +47,19 @@ async def test_get_radiant_user_data_success(mock_async_get):
     }
     transport = httpx.ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        resp = await ac.get(
-            "/defi/radiant/0x000000000000000000000000000000000000dEaD"
-        )
+        resp = await ac.get("/defi/radiant/0x000000000000000000000000000000000000dEaD")
     assert resp.status_code == 200
     data = resp.json()
     assert data["user_address"] == "0x000000000000000000000000000000000000dEaD"
     assert len(data["collaterals"]) == 1
     assert (
-        data["collaterals"][0]["asset"]
-        == "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        data["collaterals"][0]["asset"] == "0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
     )
     assert data["collaterals"][0]["amount"] == 500.0
     assert data["collaterals"][0]["usd_value"] == 500.0
     assert len(data["borrowings"]) == 1
     assert (
-        data["borrowings"][0]["asset"]
-        == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+        data["borrowings"][0]["asset"] == "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
     )
     assert data["borrowings"][0]["amount"] == 0.1
     assert data["borrowings"][0]["usd_value"] == 0
@@ -82,21 +78,16 @@ async def test_get_radiant_user_data_not_found(mock_async_get):
     mock_async_get.return_value = None
     transport = httpx.ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        resp = await ac.get(
-            "/defi/radiant/0x000000000000000000000000000000000000dead"
-        )
+        resp = await ac.get("/defi/radiant/0x000000000000000000000000000000000000dead")
     assert resp.status_code == 404
-    assert (
-        resp.json()["detail"]
-        == "User data not found on Radiant smart contract."
-    )
+    assert resp.json()["detail"] == "User data not found on Radiant smart contract."
 
 
 @pytest.mark.asyncio
 async def test_radiant_user_endpoint(monkeypatch, test_app):
     """Radiant endpoint returns mocked snapshot and propagates JSON."""
-    from app.schemas.defi import DeFiAccountSnapshot
     from app.api.endpoints.defi import get_radiant_usecase
+    from app.schemas.defi import DeFiAccountSnapshot
 
     async def _mock_snapshot(address: str):  # noqa: D401
         return DeFiAccountSnapshot(

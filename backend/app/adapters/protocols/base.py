@@ -38,9 +38,7 @@ class ProtocolAdapter(ABC):
     # Primary API surface
     # ------------------------------------------------------------------
     @abstractmethod
-    async def fetch_snapshot(
-        self, address: str
-    ) -> Optional[DeFiAccountSnapshot]:
+    async def fetch_snapshot(self, address: str) -> Optional[DeFiAccountSnapshot]:
         """Return an aggregated snapshot for *address*.
 
         Concrete implementations are free to query multiple endpoints and do
@@ -60,4 +58,4 @@ class ProtocolAdapter(ABC):
     # Repr / str helpers for debugging
     # ------------------------------------------------------------------
     def __repr__(self) -> str:  # pragma: no cover
-        return f"<{self.__class__.__name__} name={self.name!r}>" 
+        return f"<{self.__class__.__name__} name={self.name!r}>"

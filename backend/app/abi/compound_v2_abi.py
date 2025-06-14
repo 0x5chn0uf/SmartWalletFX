@@ -18,9 +18,7 @@ COMPOUND_COMPTROLLER_ABI = [
     },
     {
         "constant": True,
-        "inputs": [
-            {"internalType": "address", "name": "account", "type": "address"}
-        ],
+        "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
         "name": "getAssetsIn",
         "outputs": [
             {"internalType": "contract CToken[]", "name": "", "type": "address[]"}
@@ -31,9 +29,7 @@ COMPOUND_COMPTROLLER_ABI = [
     },
     {
         "constant": True,
-        "inputs": [
-            {"internalType": "address", "name": "account", "type": "address"}
-        ],
+        "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
         "name": "getAccountLiquidity",
         "outputs": [
             {"internalType": "uint256", "name": "error", "type": "uint256"},
@@ -86,9 +82,7 @@ COMPOUND_CTOKEN_ABI = [
     },
     {
         "constant": True,
-        "inputs": [
-            {"internalType": "address", "name": "owner", "type": "address"}
-        ],
+        "inputs": [{"internalType": "address", "name": "owner", "type": "address"}],
         "name": "balanceOf",
         "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
         "payable": False,
@@ -97,9 +91,7 @@ COMPOUND_CTOKEN_ABI = [
     },
     {
         "constant": True,
-        "inputs": [
-            {"internalType": "address", "name": "account", "type": "address"}
-        ],
+        "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
         "name": "borrowBalanceCurrent",
         "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
         "payable": False,
@@ -115,4 +107,4 @@ COMPOUND_CTOKEN_ABI = [
         "stateMutability": "view",
         "type": "function",
     },
-] 
+]

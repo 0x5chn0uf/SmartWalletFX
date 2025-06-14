@@ -14,4 +14,4 @@ _UI_POOL_DATA_PROVIDER_ABI_JSON = r"""
 # Parse the JSON into native Python structures
 UI_POOL_DATA_PROVIDER_ABI = _json.loads(_UI_POOL_DATA_PROVIDER_ABI_JSON)
 
-__all__ = ["UI_POOL_DATA_PROVIDER_ABI"] 
+__all__ = ["UI_POOL_DATA_PROVIDER_ABI"]

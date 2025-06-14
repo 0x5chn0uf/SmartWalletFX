@@ -6,4 +6,4 @@ __all__ = [
     "AaveContractAdapter",
     "CompoundContractAdapter",
     "RadiantContractAdapter",
-] 
+]

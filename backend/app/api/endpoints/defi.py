@@ -7,22 +7,24 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from web3 import Web3
 
-from app.celery_app import celery
-from app.core.database import get_db
 from app.api.dependencies import (
     get_aave_usecase,
     get_compound_usecase,
-    get_radiant_usecase,
     get_portfolio_aggregation_usecase,
+    get_radiant_usecase,
 )
+from app.celery_app import celery
+from app.core.database import get_db
 from app.schemas.defi import DeFiAccountSnapshot
 from app.schemas.portfolio_timeline import TimelineResponse
 from app.stores.portfolio_snapshot_store import PortfolioSnapshotStore
-from app.usecase.defi_radiant_usecase import RadiantUsecase
 from app.usecase.defi_aave_usecase import AaveUsecase
 from app.usecase.defi_compound_usecase import CompoundUsecase
-from app.usecase.portfolio_aggregation_usecase import PortfolioMetrics
-from app.usecase.portfolio_aggregation_usecase import PortfolioAggregationUsecase
+from app.usecase.defi_radiant_usecase import RadiantUsecase
+from app.usecase.portfolio_aggregation_usecase import (
+    PortfolioAggregationUsecase,
+    PortfolioMetrics,
+)
 from app.usecase.portfolio_snapshot_usecase import PortfolioSnapshotUsecase
 
 router = APIRouter()
@@ -73,9 +75,7 @@ async def get_aave_user_data(
     """
     snapshot = await usecase.get_user_snapshot(address)
     if snapshot is None:
-        raise HTTPException(
-            status_code=404, detail="User data not found on Aave."
-        )
+        raise HTTPException(status_code=404, detail="User data not found on Aave.")
     return snapshot
 
 
@@ -93,9 +93,7 @@ async def get_compound_user_data(
     """
     snapshot = await usecase.get_user_snapshot(address)
     if snapshot is None:
-        raise HTTPException(
-            status_code=404, detail="User data not found on Compound."
-        )
+        raise HTTPException(status_code=404, detail="User data not found on Compound.")
     return snapshot
 
 
@@ -106,9 +104,7 @@ async def get_compound_user_data(
 )
 async def get_portfolio_metrics(
     address: str,
-    usecase: PortfolioAggregationUsecase = Depends(
-        get_portfolio_aggregation_usecase
-    ),
+    usecase: PortfolioAggregationUsecase = Depends(get_portfolio_aggregation_usecase),
 ):
     """
     Get aggregated portfolio metrics for a given wallet address across
