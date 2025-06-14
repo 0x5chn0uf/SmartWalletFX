@@ -1,0 +1,24 @@
+repos:
+  - repo: https://github.com/psf/black
+    rev: 23.11.0
+    hooks:
+      - id: black
+        language_version: python3.12
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+        language_version: python3.12
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.2.0
+    hooks:
+      - id: flake8
+        language_version: python3.12
+        args: [
+          "--max-line-length=88",
+          "--extend-ignore=E203",
+          "--per-file-ignores=backend/app/abi/*.py:E501,backend/migrations/env.py:E402,F403,F405,backend/tests/**/*.py:F401,F811,E501"
+        ] 
