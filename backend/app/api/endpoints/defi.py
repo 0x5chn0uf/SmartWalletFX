@@ -1,7 +1,7 @@
 # flake8: noqa
 
 from enum import Enum
-from typing import Any
+from typing import Any, List, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +15,7 @@ from app.api.dependencies import (
 )
 from app.celery_app import celery
 from app.core.database import get_db
-from app.schemas.defi import DeFiAccountSnapshot
+from app.schemas.defi import DeFiAccountSnapshot, PortfolioSnapshot
 from app.schemas.portfolio_timeline import TimelineResponse
 from app.stores.portfolio_snapshot_store import PortfolioSnapshotStore
 from app.usecase.defi_aave_usecase import AaveUsecase
@@ -124,7 +124,7 @@ async def get_portfolio_snapshot_usecase(
 
 @router.get(
     "/defi/timeline/{address}",
-    response_model=Any,
+    response_model=Union[TimelineResponse, List[PortfolioSnapshot]],
     tags=["DeFi"],
 )
 async def get_portfolio_timeline(
