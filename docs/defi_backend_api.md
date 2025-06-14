@@ -8,9 +8,9 @@ This backend provides a unified API for fetching DeFi account data across multip
   - Data Source: Direct smart contract calls using web3.py.
   - See [radiant_arbitrum_contracts.md](./radiant_arbitrum_contracts.md) for contract addresses, ABI, and config instructions.
 - **Aave** (Ethereum Mainnet)
-  - Data Source: TheGraph Subgraph (`https://thegraph.com/hosted-service/subgraph/aave/protocol-v2`)
+  - Data Source: On-chain smart contract calls via web3.py. Key contracts: `UiPoolDataProvider` `0x3F78BBD206e4D3c504Eb854232EdA7e47E9Fd8FC`, `AaveProtocolDataProvider` `0x497a1994c46d4f6C864904A9f1fac6328Cb7C8a6`.
 - **Compound** (Ethereum Mainnet)
-  - Data Source: TheGraph Subgraph (`https://thegraph.com/hosted-service/subgraph/graphprotocol/compound-v2`)
+  - Data Source: On-chain smart contract calls via web3.py. Key contracts: `CompoundLens` `0xd513d22422a3062bd342ae374b4b9c20e3a666c1`, `Comptroller` `0x3d9819210A31B4961b30EF54bE2aeD79B9c9Cd3B`.
 
 ## API Endpoints
 All endpoints return a `DeFiAccountSnapshot` for a given wallet address.
@@ -28,14 +28,14 @@ GET /defi/radiant/{address}
 GET /defi/aave/{address}
 ```
 - **Success:** 200 OK, returns DeFiAccountSnapshot
-- **Not Found:** 404 if user not found on subgraph
+- **Not Found:** 404 if user not found on-chain
 
 ### Compound
 ```
 GET /defi/compound/{address}
 ```
 - **Success:** 200 OK, returns DeFiAccountSnapshot
-- **Not Found:** 404 if user not found on subgraph
+- **Not Found:** 404 if user not found on-chain
 
 ### Portfolio Aggregation (Live)
 ```

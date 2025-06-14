@@ -7,7 +7,6 @@ It exposes a function to retrieve a DeFiAccountSnapshot for a given address, usi
 import logging
 from datetime import datetime
 from typing import Optional
-import httpx
 
 # Pydantic models used for the returned snapshot
 from app.schemas.defi import (
@@ -31,11 +30,9 @@ AAVE_DECIMALS = 10**18
 
 
 class AaveUsecase:
-    """Service responsible for building a :class:`~app.schemas.defi.DeFiAccountSnapshot` for a user on Aave.
-
-    In production it queries the Aave sub-graph (GraphQL) asynchronously using
-    *httpx*. During unit-tests the HTTP client is monkey-patched so no real
-    network call is issued.
+    """Build a :class:`~app.schemas.defi.DeFiAccountSnapshot` for an Aave user by
+    interacting **directly with on-chain contracts** (Pool, Data Providers).
+    All legacy sub-graph paths have been removed.
     """
 
     def __init__(self, w3: Optional[Web3] = None):
@@ -67,14 +64,11 @@ class AaveUsecase:
     async def get_user_snapshot(
         self, user_address: str
     ) -> DeFiAccountSnapshot | None:
-        """Return a snapshot of the user account on Aave.
+        """Return a snapshot of an Aave account using on-chain contract calls.
 
-        The implementation follows the *minimum viable* mapping required by the
-        unit-tests.  It performs a GraphQL query to the configured sub-graph and
-        then converts the response to our internal Pydantic models.  If an
-        error occurs (network failure, unexpected payload, etc.) the function
-        **never** raises — it logs and returns *None* so that callers can
-        decide how to proceed.
+        If any error occurs (network failure, unexpected payload, etc.) the
+        function **never** raises — it logs and returns *None* so that callers
+        can decide how to proceed.
         """
 
         try:
@@ -146,86 +140,5 @@ class AaveUsecase:
             logging.warning(
                 "Could not fetch Aave snapshot for %s", user_address, exc_info=True
             )
-            # Fallback: attempt to query the (deprecated) sub-graph.  This path
-            # exists primarily to keep legacy unit-tests passing.  It can be
-            # removed once those tests are updated.
-
-            try:
-                # Minimal GraphQL query (same structure used in tests)
-                query = """
-                query ($user: String!) {
-                  userReserves(where: { user: $user }) {
-                    reserve { symbol decimals liquidityRate variableBorrowRate }
-                    scaledATokenBalance
-                    currentTotalDebt
-                  }
-                  userAccountData(id: $user) {
-                    healthFactor
-                  }
-                }
-                """
-
-                async with httpx.AsyncClient(timeout=5) as client:
-                    resp = await client.post(
-                        "https://api.thegraph.com/subgraphs/name/n/a",  # dummy
-                        json={"query": query, "variables": {"user": user_address.lower()}},
-                    )
-                    data = resp.json().get("data", {})
-
-                # Map mocked payload (tests provide meaningful values)
-                collaterals, borrowings, staked = [], [], []
-                for entry in data.get("userReserves", []):
-                    reserve = entry["reserve"]
-                    symbol = reserve["symbol"]
-                    decimals = int(reserve.get("decimals", 18))
-                    supplied = int(entry["scaledATokenBalance"]) / (10 ** decimals)
-                    debt = int(entry["currentTotalDebt"]) / (10 ** decimals)
-                    liq_rate = int(reserve.get("liquidityRate", 0)) / 1e27
-                    var_rate = int(reserve.get("variableBorrowRate", 0)) / 1e27
-
-                    if supplied:
-                        collaterals.append(
-                            Collateral(
-                                protocol=ProtocolName.aave,
-                                asset=symbol,
-                                amount=supplied,
-                                usd_value=supplied,
-                            )
-                        )
-                        staked.append(
-                            StakedPosition(
-                                protocol=ProtocolName.aave,
-                                asset=symbol,
-                                amount=supplied,
-                                usd_value=supplied,
-                                apy=liq_rate,
-                            )
-                        )
-                    if debt:
-                        borrowings.append(
-                            Borrowing(
-                                protocol=ProtocolName.aave,
-                                asset=symbol,
-                                amount=debt,
-                                usd_value=debt,
-                                interest_rate=var_rate,
-                            )
-                        )
-
-                health_factor = int(data.get("userAccountData", {}).get("healthFactor", 0)) / 1e18
-
-                return DeFiAccountSnapshot(
-                    user_address=user_address,
-                    timestamp=int(datetime.utcnow().timestamp()),
-                    collaterals=collaterals,
-                    borrowings=borrowings,
-                    staked_positions=staked,
-                    health_scores=[
-                        HealthScore(protocol=ProtocolName.aave, score=health_factor)
-                    ],
-                )
-            except Exception:
-                # Any unexpected error results in *None* so the caller can
-                # decide how to handle missing data.
-                return None
+            return None
 
