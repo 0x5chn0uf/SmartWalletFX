@@ -1,12 +1,20 @@
 """
 Aave DeFi Use Case Logic
 
-This module provides the use case for fetching and mapping Aave user data (Ethereum mainnet).
-It exposes a function to retrieve a DeFiAccountSnapshot for a given address, using the agnostic backend models.
+Fetch and map Aave user data (Ethereum mainnet). Returns a
+`DeFiAccountSnapshot` for a given address using agnostic backend models.
 """
 import logging
 from datetime import datetime
 from typing import Optional
+
+from web3 import Web3
+
+from app.abi.aave_v2_abi import (
+    AAVE_LENDING_POOL_V2_ABI,
+    AAVE_POOL_ADDRESS_PROVIDER_ABI,
+)
+from app.core.config import settings
 
 # Pydantic models used for the returned snapshot
 from app.schemas.defi import (
@@ -15,15 +23,7 @@ from app.schemas.defi import (
     DeFiAccountSnapshot,
     HealthScore,
     ProtocolName,
-    StakedPosition,
 )
-
-from web3 import Web3
-from app.abi.aave_v2_abi import (
-    AAVE_LENDING_POOL_V2_ABI,
-    AAVE_POOL_ADDRESS_PROVIDER_ABI,
-)
-from app.core.config import settings
 
 AAVE_POOL_ADDRESS_PROVIDER_ADDRESS = "0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5"
 AAVE_DECIMALS = 10**18
@@ -61,9 +61,7 @@ class AaveUsecase:
 
         self.w3 = w3
 
-    async def get_user_snapshot(
-        self, user_address: str
-    ) -> DeFiAccountSnapshot | None:
+    async def get_user_snapshot(self, user_address: str) -> DeFiAccountSnapshot | None:
         """Return a snapshot of an Aave account using on-chain contract calls.
 
         If any error occurs (network failure, unexpected payload, etc.) the
@@ -76,9 +74,7 @@ class AaveUsecase:
 
             # Fetch lending pool address via the pool address provider
             provider_contract = self.w3.eth.contract(
-                address=self.w3.to_checksum_address(
-                    AAVE_POOL_ADDRESS_PROVIDER_ADDRESS
-                ),
+                address=self.w3.to_checksum_address(AAVE_POOL_ADDRESS_PROVIDER_ADDRESS),
                 abi=AAVE_POOL_ADDRESS_PROVIDER_ABI,
             )
 
@@ -91,7 +87,7 @@ class AaveUsecase:
 
             (
                 total_collateral_eth,
-                total_debt_eth,
+                _,
                 _,
                 _,
                 _,
@@ -99,8 +95,9 @@ class AaveUsecase:
             ) = lending_pool.functions.getUserAccountData(checksum_addr).call()
 
             total_collateral = total_collateral_eth / AAVE_DECIMALS
-            total_debt = total_debt_eth / AAVE_DECIMALS
-            health_factor = health_factor_raw / AAVE_DECIMALS if health_factor_raw else 0.0
+            health_factor = (
+                health_factor_raw / AAVE_DECIMALS if health_factor_raw else 0.0
+            )
 
             timestamp = int(datetime.utcnow().timestamp())
 
@@ -118,18 +115,18 @@ class AaveUsecase:
                 borrowings=[
                     Borrowing(
                         protocol=ProtocolName.aave,
-                        asset="DAI" if user_address.lower()!="0xabc" else "",
-                        amount=200.0 if user_address.lower()!="0xabc" else 0.0,
-                        usd_value=200.0 if user_address.lower()!="0xabc" else 0.0,
-                        interest_rate=0.07 if user_address.lower()!="0xabc" else None,
+                        asset="DAI" if user_address.lower() != "0xabc" else "",
+                        amount=200.0 if user_address.lower() != "0xabc" else 0.0,
+                        usd_value=200.0 if user_address.lower() != "0xabc" else 0.0,
+                        interest_rate=0.07 if user_address.lower() != "0xabc" else None,
                     ),
                     Borrowing(
                         protocol=ProtocolName.aave,
-                        asset="ETH" if user_address.lower()=="0xabc" else "",
-                        amount=0.5 if user_address.lower()=="0xabc" else 0.0,
-                        usd_value=0.5 if user_address.lower()=="0xabc" else 0.0,
-                        interest_rate=0.07 if user_address.lower()=="0xabc" else None,
-                    )
+                        asset="ETH" if user_address.lower() == "0xabc" else "",
+                        amount=0.5 if user_address.lower() == "0xabc" else 0.0,
+                        usd_value=0.5 if user_address.lower() == "0xabc" else 0.0,
+                        interest_rate=0.07 if user_address.lower() == "0xabc" else None,
+                    ),
                 ],
                 staked_positions=[],
                 health_scores=[
@@ -141,4 +138,3 @@ class AaveUsecase:
                 "Could not fetch Aave snapshot for %s", user_address, exc_info=True
             )
             return None
-

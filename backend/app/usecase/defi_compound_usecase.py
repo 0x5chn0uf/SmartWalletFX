@@ -9,7 +9,9 @@ backend models.
 import logging
 from datetime import datetime
 from typing import Optional
+
 from web3 import Web3
+
 from app.abi.compound_v2_abi import (
     COMPOUND_COMPTROLLER_ABI,
     COMPOUND_CTOKEN_ABI,
@@ -20,7 +22,6 @@ from app.schemas.defi import (
     DeFiAccountSnapshot,
     HealthScore,
     ProtocolName,
-    StakedPosition,
 )
 
 COMPOUND_COMPTROLLER_ADDRESS = "0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B"
@@ -49,15 +50,11 @@ class CompoundUsecase:
 
         self.w3 = w3
 
-    async def get_user_snapshot(
-        self, user_address: str
-    ) -> DeFiAccountSnapshot | None:
+    async def get_user_snapshot(self, user_address: str) -> DeFiAccountSnapshot | None:
         try:
             checksum_address = self.w3.to_checksum_address(user_address)
             comptroller = self.w3.eth.contract(
-                address=self.w3.to_checksum_address(
-                    COMPOUND_COMPTROLLER_ADDRESS
-                ),
+                address=self.w3.to_checksum_address(COMPOUND_COMPTROLLER_ADDRESS),
                 abi=COMPOUND_COMPTROLLER_ABI,
             )
 
@@ -69,17 +66,15 @@ class CompoundUsecase:
                 c_token = self.w3.eth.contract(
                     address=asset_address, abi=COMPOUND_CTOKEN_ABI
                 )
-                balance = c_token.functions.balanceOf(
-                    checksum_address
-                ).call()
+                balance = c_token.functions.balanceOf(checksum_address).call()
                 borrow_balance = c_token.functions.borrowBalanceCurrent(
                     checksum_address
                 ).call()
                 exchange_rate = c_token.functions.exchangeRateCurrent().call()
 
-                collateral_factor = comptroller.functions.markets(
-                    asset_address
-                ).call()[1]
+                collateral_factor = comptroller.functions.markets(asset_address).call()[
+                    1
+                ]
 
                 underlying_price = 1  # Simplified: assume 1 USD for simplicity
                 token_balance = (
@@ -94,36 +89,32 @@ class CompoundUsecase:
                 checksum_address
             ).call()
             health_factor = (
-                (liquidity / total_borrowings_usd)
-                if total_borrowings_usd > 0
-                else 0
+                (liquidity / total_borrowings_usd) if total_borrowings_usd > 0 else 0
             )
 
             return DeFiAccountSnapshot(
                 user_address=user_address,
                 timestamp=int(datetime.utcnow().timestamp()),
                 collaterals=[
-                Collateral(
-                    protocol=ProtocolName.compound,
+                    Collateral(
+                        protocol=ProtocolName.compound,
                         asset="various",
                         amount=total_collateral_usd,
                         usd_value=total_collateral_usd,
                     )
                 ],
                 borrowings=[
-                Borrowing(
-                    protocol=ProtocolName.compound,
+                    Borrowing(
+                        protocol=ProtocolName.compound,
                         asset="various",
                         amount=total_borrowings_usd,
                         usd_value=total_borrowings_usd,
-                    interest_rate=None,
-                )
+                        interest_rate=None,
+                    )
                 ],
                 staked_positions=[],
                 health_scores=[
-                    HealthScore(
-                        protocol=ProtocolName.compound, score=health_factor
-                    )
+                    HealthScore(protocol=ProtocolName.compound, score=health_factor)
                 ],
             )
         except Exception:
