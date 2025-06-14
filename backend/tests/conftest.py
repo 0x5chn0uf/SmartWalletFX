@@ -82,14 +82,24 @@ def client() -> TestClient:
 
 @pytest_asyncio.fixture
 async def test_app(async_engine):
-    # Patch engine and SessionLocal globally for the app
+    """Return the *singleton* FastAPI application for tests.
+
+    We reuse the instance created at import time in *app.main* to avoid the
+    costly FastAPI *startup* sequence (and its SQL ``CREATE TABLE`` calls)
+    multiple times. Only the database engine/session bindings are patched to
+    use the per-session *async_engine* fixture.
+    """
+
+    # Patch engine and SessionLocal globally for the application
     db_mod.engine = async_engine
     db_mod.SessionLocal = async_sessionmaker(
         bind=db_mod.engine, class_=AsyncSession, expire_on_commit=False
     )
 
-    app = create_app()
-    yield app
+    # Reuse existing app instance instead of creating a new one each time
+    from app.main import app as _app
+
+    yield _app
 
 
 @pytest.fixture(autouse=True)

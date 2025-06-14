@@ -34,11 +34,11 @@ async def test_celery_task_stores_snapshots(db_session, monkeypatch):
             self.total_borrowings_usd = 50.0
             self.aggregate_health_score = 1.5
             self.aggregate_apy = 0.1
-            self.collaterals = []
-            self.borrowings = []
-            self.staked_positions = []
-            self.health_scores = []
-            self.protocol_breakdown = {}
+            self.collaterals: list = []
+            self.borrowings: list = []
+            self.staked_positions: list = []
+            self.health_scores: list = []
+            self.protocol_breakdown: dict = {}
 
     def sync_agg(self, address):
         return DummyMetrics(address)
@@ -155,6 +155,8 @@ async def test_snapshot_task_e2e_flow(test_app, monkeypatch):
     # --- Setup ---
     # 1. Mock the aggregation use case to return predictable data
     #    This avoids external calls and keeps the test focused on the integration.
+    import app.tasks.snapshots as snapshots_mod
+
     class DummyMetrics:
         def __init__(self, address):
             self.user_address = address

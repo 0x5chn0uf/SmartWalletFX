@@ -1,6 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, ANY, AsyncMock, patch
-from web3 import Web3
+from unittest.mock import MagicMock, ANY, patch
 from app.main import app
 from httpx import AsyncClient
 from datetime import datetime

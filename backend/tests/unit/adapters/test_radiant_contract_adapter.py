@@ -19,30 +19,24 @@ async def test_init_missing_rpc_url(mock_web3, monkeypatch):
 @pytest.mark.asyncio
 @patch("app.adapters.protocols.radiant.Web3")
 async def test_get_user_data_success(mock_web3, mock_settings, tmp_path):
-    # Patch ABI loading
-    abi_path = tmp_path / "UIDataProvider.json"
-    abi_path.write_text("[]")
-    with patch(
-        "app.adapters.protocols.radiant.ABI_PATH", str(abi_path)
+    # Mock contract call
+    mock_contract = MagicMock()
+    mock_contract.functions.getUserReservesData().call.return_value = (
+        [
+            ("0xToken", 1000, True, 0, 0, 0),
+        ],
+        2.5,
+    )
+    mock_web3.return_value.eth.contract.return_value = mock_contract
+    adapter = RadiantContractAdapter(rpc_url="http://mock-rpc", abi=[])
+    with patch.object(
+        adapter, "get_token_metadata", return_value=("MOCK", 18)
     ):
-        # Mock contract call
-        mock_contract = MagicMock()
-        mock_contract.functions.getUserReservesData().call.return_value = (
-            [
-                ("0xToken", 1000, True, 0, 0, 0),
-            ],
-            2.5,
-        )
-        mock_web3.return_value.eth.contract.return_value = mock_contract
-        adapter = RadiantContractAdapter(rpc_url="http://mock-rpc")
-        with patch.object(
-            adapter, "get_token_metadata", return_value=("MOCK", 18)
-        ):
-            result = adapter.get_user_data("0xUser")
-            assert result["reserves"][0]["token_address"] == "0xToken"
-            assert result["reserves"][0]["symbol"] == "MOCK"
-            assert result["reserves"][0]["supplied"] == 1000
-            assert result["health_factor"] == 2.5
+        result = adapter.get_user_data("0xUser")
+        assert result["reserves"][0]["token_address"] == "0xToken"
+        assert result["reserves"][0]["symbol"] == "MOCK"
+        assert result["reserves"][0]["supplied"] == 1000
+        assert result["health_factor"] == 2.5
 
 
 @pytest.mark.asyncio
@@ -71,12 +65,8 @@ def adapter(monkeypatch, tmp_path):
     monkeypatch.setattr(
         "app.core.config.settings.ARBITRUM_RPC_URL", "http://mock-rpc"
     )
-    abi_path = tmp_path / "UIDataProvider.json"
-    abi_path.write_text("[]")
 
-    with patch(
-        "app.adapters.protocols.radiant.ABI_PATH", str(abi_path)
-    ), patch("app.adapters.protocols.radiant.Web3") as mock_web3:
+    with patch("app.adapters.protocols.radiant.Web3") as mock_web3:
         mock_contract = MagicMock()
         mock_contract.functions.getReservesData().call.return_value = (
             [("0xToken",)],
@@ -88,7 +78,7 @@ def adapter(monkeypatch, tmp_path):
         mock_web3.return_value.eth.contract.return_value = mock_contract
         mock_web3.return_value.to_checksum_address.side_effect = lambda x: x
 
-        adapter_instance = RadiantContractAdapter(rpc_url="http://mock-rpc")
+        adapter_instance = RadiantContractAdapter(rpc_url="http://mock-rpc", abi=[])
         adapter_instance.get_token_metadata = lambda _addr: ("MOCK", 18)
         return adapter_instance
 
@@ -135,23 +125,18 @@ async def test_async_get_user_data_wrapper(adapter, monkeypatch):
 @patch("app.adapters.protocols.radiant.Web3")
 def test_error_handling_paths(mock_web3, monkeypatch, tmp_path):
     """Test various error conditions."""
-    # Setup for other error tests
-    abi_path = tmp_path / "UIDataProvider.json"
-    abi_path.write_text("[]")
     monkeypatch.setattr(
         "app.core.config.settings.ARBITRUM_RPC_URL", "http://mock-rpc"
     )
 
-    with patch(
-        "app.adapters.protocols.radiant.ABI_PATH", str(abi_path)
-    ):
+    with patch("app.adapters.protocols.radiant.Web3") as mock_web3:
         # 2. get_user_data failure
         mock_contract_fail = MagicMock()
         mock_contract_fail.functions.getUserReservesData().call.side_effect = (
             Exception("RPC Error")
         )  # noqa: E501
         mock_web3.return_value.eth.contract.return_value = mock_contract_fail
-        adapter_fail = RadiantContractAdapter()
+        adapter_fail = RadiantContractAdapter(abi=[])
         with pytest.raises(
             RadiantAdapterError,
             match="RadiantContractAdapter error",

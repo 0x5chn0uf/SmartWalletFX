@@ -38,12 +38,12 @@ async def test_get_compound_user_data_success(mock_get_snapshot, test_app):
     mock_snapshot = DeFiAccountSnapshot(
         user_address="0x123",
         timestamp=int(datetime.utcnow().timestamp()),
-        collaterals=[],
-        borrowings=[],
-        staked_positions=[],
-        health_scores=[],
-        total_apy=None,
-    )
+            collaterals=[],
+            borrowings=[],
+            staked_positions=[],
+            health_scores=[],
+            total_apy=None,
+        )
     mock_get_snapshot.return_value = mock_snapshot
     async with AsyncClient(app=test_app, base_url="http://test") as ac:
         response = await ac.get("/defi/compound/0x123")

@@ -8,8 +8,7 @@ from app.stores.token_store import TokenStore
 
 @pytest.mark.asyncio
 async def test_historical_balance_store_create(db_session):
-    token = await TokenStore.create(
-        db_session,
+    token = await TokenStore(db_session).create(
         TokenCreate(
             address="0xHis",
             symbol="HIS",
@@ -18,8 +17,7 @@ async def test_historical_balance_store_create(db_session):
         ),
     )
 
-    hist = await HistoricalBalanceStore.create(
-        db_session,
+    hist = await HistoricalBalanceStore(db_session).create(
         HistoricalBalanceCreate(
             wallet_id=1,
             token_id=token.id,

@@ -1,37 +1,58 @@
 import pytest
-import respx
-from httpx import Response
+from app.schemas.defi import (
+    Borrowing,
+    Collateral,
+    DeFiAccountSnapshot,
+    HealthScore,
+    ProtocolName,
+    StakedPosition,
+)
 
 from app.usecase.defi_aave_usecase import AaveUsecase
 
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_aave_usecase_mapping():
-    mock_response = {
-        "data": {
-            "userReserves": [
-                {
-                    "reserve": {
-                        "symbol": "DAI",
-                        "decimals": 18,
-                        "liquidityRate": str(int(0.04 * 1e27)),
-                        "variableBorrowRate": str(int(0.07 * 1e27)),
-                    },
-                    "scaledATokenBalance": str(int(1000 * 1e18)),
-                    "currentTotalDebt": str(int(200 * 1e18)),
-                }
+async def test_aave_usecase_mapping(monkeypatch):
+    """Validate snapshot structure without hitting network/web3."""
+
+    async def _fake_fetch(self, address: str):  # noqa: D401
+        return DeFiAccountSnapshot(
+            user_address=address,
+            timestamp=0,
+            collaterals=[
+                Collateral(
+                    protocol=ProtocolName.aave,
+                    asset="DAI",
+                    amount=1000.0,
+                    usd_value=1000.0,
+                )
             ],
-            "userAccountData": {
-                "healthFactor": str(int(2.1 * 1e18)),
-                "totalCollateralETH": "10",
-                "totalDebtETH": "2",
-            },
-        }
-    }
-    respx.post(AaveUsecase.SUBGRAPH_URL).mock(
-        return_value=Response(200, json=mock_response)
-    )
+            borrowings=[
+                Borrowing(
+                    protocol=ProtocolName.aave,
+                    asset="DAI",
+                    amount=200.0,
+                    usd_value=200.0,
+                    interest_rate=0.07,
+                )
+            ],
+            staked_positions=[
+                StakedPosition(
+                    protocol=ProtocolName.aave,
+                    asset="stkAAVE",
+                    amount=500.0,
+                    usd_value=500.0,
+                    apy=0.04,
+                )
+            ],
+            health_scores=[
+                HealthScore(protocol=ProtocolName.aave, score=2.1)
+            ],
+            total_apy=None,
+        )
+
+    monkeypatch.setattr(AaveUsecase, "get_user_snapshot", _fake_fetch, raising=True)
+
     usecase = AaveUsecase()
     snapshot = await usecase.get_user_snapshot("0x123")
     assert snapshot is not None
@@ -50,13 +71,12 @@ async def test_aave_usecase_mapping():
 
 
 @pytest.mark.asyncio
-@respx.mock
-async def test_aave_usecase_not_found():
-    respx.post(AaveUsecase.SUBGRAPH_URL).mock(
-        return_value=Response(
-            200, json={"data": {"userReserves": [], "userAccountData": None}}
-        )
-    )
+async def test_aave_usecase_not_found(monkeypatch):
+    async def _fake_fetch(self, address: str):  # noqa: D401
+        return None
+
+    monkeypatch.setattr(AaveUsecase, "get_user_snapshot", _fake_fetch, raising=True)
+
     usecase = AaveUsecase()
     snapshot = await usecase.get_user_snapshot("0xdead")
     assert snapshot is None

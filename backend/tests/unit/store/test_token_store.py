@@ -6,8 +6,8 @@ from app.stores.token_store import TokenStore
 
 @pytest.mark.asyncio
 async def test_token_store_create(db_session):
-    token = await TokenStore.create(
-        db_session,
+    store = TokenStore(db_session)
+    token = await store.create(
         TokenCreate(
             address="0xToken",
             symbol="TKN",

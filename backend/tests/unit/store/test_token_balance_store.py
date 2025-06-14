@@ -8,8 +8,7 @@ from app.stores.token_store import TokenStore
 
 @pytest.mark.asyncio
 async def test_token_balance_store_create(db_session):
-    token = await TokenStore.create(
-        db_session,
+    token = await TokenStore(db_session).create(
         TokenCreate(
             address="0xTok",
             symbol="TOK",
@@ -17,8 +16,7 @@ async def test_token_balance_store_create(db_session):
             decimals=18,
         ),
     )
-    balance = await TokenBalanceStore.create(
-        db_session,
+    balance = await TokenBalanceStore(db_session).create(
         TokenBalanceCreate(
             token_id=token.id,
             wallet_id=1,
