@@ -1,6 +1,6 @@
 # Makefile pour backend FastAPI
 
-.PHONY: install run test lint format coverage bandit safety clean celery-worker celery-beat alembic-upgrade
+.PHONY: install run test lint format coverage bandit safety clean celery-worker celery-beat alembic-upgrade db-start db-test db-down db-migrate
 
 install:
 	pip install -r requirements/base.txt
@@ -45,4 +45,24 @@ celery-beat:
 	celery -A app.celery_app.celery beat --loglevel=info
 
 alembic-upgrade:
+	PYTHONPATH=. alembic upgrade head
+
+# --- Database helper targets ---
+
+db-start:
+	docker compose -f ../docker-compose.db.yml up -d postgres-dev redis
+
+# Start only the test database (useful in CI or when running tests locally)
+db-test:
+	docker compose -f ../docker-compose.db.yml up -d postgres-test
+
+# Stop and remove dev/test DB containers & volumes
+db-down:
+	docker compose -f ../docker-compose.db.yml down -v
+
+# Apply latest Alembic migrations to dev DB
+# Uses DATABASE_URL from your .env or defaults to local dev connection
+# Example: make db-migrate DATABASE_URL=postgresql://devuser:devpass@localhost:5432/smartwallet_dev
+
+db-migrate:
 	PYTHONPATH=. alembic upgrade head

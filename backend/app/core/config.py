@@ -12,7 +12,9 @@ class Settings(BaseSettings):
     ]  # React default port
 
     # Database
-    DATABASE_URL: str = os.environ.get("DATABASE_URL") or "sqlite:///app.db"
+    DATABASE_URL: str = (
+        os.environ.get("DATABASE_URL") or "sqlite:///./smartwallet_dev.db"
+    )
 
     # External APIs
     ALCHEMY_API_KEY: Optional[str] = None

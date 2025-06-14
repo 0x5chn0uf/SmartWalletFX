@@ -33,8 +33,8 @@ from app.models import Base
 from app.usecase.portfolio_aggregation_usecase import PortfolioMetrics
 
 # Use a file-based SQLite DB for all tests
-TEST_DB_PATH = "./test.db"
-TEST_DB_URL = "sqlite+aiosqlite:///./test.db"
+TEST_DB_PATH = "./smartwallet_test.db"
+TEST_DB_URL = "sqlite+aiosqlite:///./smartwallet_test.db"
 ALEMBIC_CONFIG_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "../alembic.ini")
 )
@@ -64,7 +64,7 @@ def pytest_sessionstart(session):
     if os.path.exists(TEST_DB_PATH):
         os.remove(TEST_DB_PATH)
     env = os.environ.copy()
-    env["TEST_DB_URL"] = "sqlite:///./test.db"
+    env["TEST_DB_URL"] = "sqlite:///./smartwallet_test.db"
     subprocess.run(
         ["alembic", "-c", ALEMBIC_CONFIG_PATH, "upgrade", "head"],
         check=True,
@@ -135,7 +135,7 @@ async def test_app(async_engine):
 def clean_db():
     yield  # Run test first
 
-    sync_url = "sqlite:///./test.db"
+    sync_url = "sqlite:///./smartwallet_test.db"
     engine = create_engine(sync_url)
     conn = engine.connect()
     trans = conn.begin()
@@ -172,7 +172,7 @@ def patch_sync_db():
     import app.core.database as db_mod
     import app.tasks.snapshots as snapshots_mod
 
-    sync_url = "sqlite:///./test.db"
+    sync_url = "sqlite:///./smartwallet_test.db"
     sync_engine = create_engine(sync_url, connect_args={"check_same_thread": False})
     SyncSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_engine)
     db_mod.sync_engine = sync_engine

@@ -34,7 +34,7 @@ A powerful crypto portfolio tracker providing a centralized overview of all your
 - **web3.py** — Direct smart contract calls
 - **CoinGecko API** — Live price oracle for USD values
 - **Pydantic** — Data validation and serialization
-- **PostgreSQL (via SQLAlchemy)** — Primary database for robust data storage.
+- **SQLite (via SQLAlchemy)** — Default embedded database for local development (PostgreSQL planned).
 - **Celery & Redis** — Asynchronous task queue for background jobs (e.g., periodic portfolio snapshots).
 - **Task Master** — AI-powered task and roadmap management
 - **Testing:** Pytest, coverage, extensive unit/integration tests, mocking for web3 and price oracles
@@ -60,13 +60,14 @@ A powerful crypto portfolio tracker providing a centralized overview of all your
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/smartwalletfx.git
+   git clone https://github.com/0x5chn0uf/smartwalletfx.git
    cd smartwalletfx
    ```
 
 2. **Configure environment variables**
    ```bash
-   cp .env.example .env
+   cd backend
+   cp env.example .env
    # Edit .env with your API keys (Alchemy, CoinGecko, etc.)
    ```
 
@@ -77,9 +78,8 @@ A powerful crypto portfolio tracker providing a centralized overview of all your
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    pip install -e .           # Uses pyproject.toml (editable mode)
 
-   # Before running the app, start services and apply migrations
-   # docker-compose up -d
-   # alembic upgrade head
+   # SQLite requires no services; simply run migrations if needed (optional)
+   alembic upgrade head
    ```
 
 4. **Set up frontend**
@@ -90,7 +90,7 @@ A powerful crypto portfolio tracker providing a centralized overview of all your
 
 5. **Run the application**
 
-   > **Note:** The application requires a running PostgreSQL and Redis instance. Using the provided `docker-compose.yml` is recommended (`docker-compose up -d`).
+   > **Note:** By default the backend uses SQLite files (`smartwallet_dev.db`, `smartwallet_test.db`) and therefore **no database container is required**. Redis remains optional for background tasks. A Postgres compose file is included for future migration.
 
    ```bash
    # Terminal 1 (Backend)

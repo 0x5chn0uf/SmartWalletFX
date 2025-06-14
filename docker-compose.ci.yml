@@ -1,5 +1,15 @@
 version: '3.9'
 
+# -----------------------------------------------------------------------------
+# CI Compose File
+# ----------------
+# This lightweight compose file builds the backend and frontend images for the
+# GitHub Actions pipeline. It intentionally omits Postgres and Redis because CI
+# tests use SQLite by default and Redis isn't needed for unit/integration
+# suites. If the pipeline later requires external services they can be added as
+# separate jobs or test containers.
+# -----------------------------------------------------------------------------
+
 services:
   backend:
     build:

@@ -137,6 +137,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ARBITRUM_RPC_URL: "http://localhost:8545"
+      TEST_DATABASE_URL: "sqlite:///./smartwallet_test.db"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
