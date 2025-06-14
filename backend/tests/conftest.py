@@ -7,6 +7,7 @@ import pathlib
 import subprocess
 import sys
 import time
+from contextlib import AsyncExitStack, asynccontextmanager
 
 import pytest
 import pytest_asyncio
@@ -41,6 +42,24 @@ ALEMBIC_CONFIG_PATH = os.path.abspath(
 # Run Alembic migrations in a subprocess before any tests start
 
 
+@asynccontextmanager
+async def async_test_engine(db_url: str):
+    """
+    Reusable async context manager for test engines.
+    Provides proper engine lifecycle management with AsyncExitStack.
+
+    Usage:
+        async with async_test_engine("sqlite+aiosqlite:///:memory:") as engine:
+            # Use engine for tests
+            pass
+        # Engine is automatically disposed
+    """
+    async with AsyncExitStack() as stack:
+        engine = create_async_engine(db_url, future=True)
+        stack.push_async_callback(engine.dispose)
+        yield engine
+
+
 def pytest_sessionstart(session):
     if os.path.exists(TEST_DB_PATH):
         os.remove(TEST_DB_PATH)
@@ -54,14 +73,24 @@ def pytest_sessionstart(session):
     time.sleep(0.1)  # Ensure file is flushed
 
 
-@pytest.fixture(scope="session")
-def async_engine():
-    engine = create_async_engine(TEST_DB_URL, future=True)
-    yield engine
-    # Dispose the engine in its own event loop to avoid "no current event loop"
-    asyncio.run(engine.dispose())
+def pytest_sessionfinish(session, exitstatus):
+    """Clean up test database file after all tests complete."""
     if os.path.exists(TEST_DB_PATH):
         os.remove(TEST_DB_PATH)
+
+
+@pytest_asyncio.fixture(scope="function")
+async def async_engine():
+    """
+    Function-scoped async engine fixture using AsyncExitStack for proper teardown.
+    Ensures engine disposal happens in the correct async context.
+    """
+    async with AsyncExitStack() as stack:
+        engine = create_async_engine(TEST_DB_URL, future=True)
+        # Register engine for automatic disposal
+        stack.push_async_callback(engine.dispose)
+        yield engine
+        # AsyncExitStack handles disposal automatically in correct order
 
 
 @pytest_asyncio.fixture

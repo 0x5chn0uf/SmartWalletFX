@@ -6,6 +6,9 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from app.models import Base  # imported lazily to avoid heavy import earlier
 from app.services.snapshot_aggregation import SnapshotAggregationService
 
+# Import the reusable async context manager from conftest
+from tests.conftest import async_test_engine
+
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
@@ -56,22 +59,23 @@ def test_save_snapshot_sync_with_async_aggregator(sync_session):
 
 @pytest.mark.asyncio
 async def test_build_snapshot_async():
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    """Test async snapshot building with proper engine lifecycle management."""
+    async with async_test_engine("sqlite+aiosqlite:///:memory:") as engine:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    async_session = async_sessionmaker(engine, expire_on_commit=False)
-    async with async_session() as session:
+        async_session = async_sessionmaker(engine, expire_on_commit=False)
+        async with async_session() as session:
 
-        async def async_aggr(addr: str):
-            return fake_metrics(addr)
+            async def async_aggr(addr: str):
+                return fake_metrics(addr)
 
-        service = SnapshotAggregationService(
-            session, aggregator=async_aggr
-        )  # type: ignore
-        snapshot = await service.build_snapshot("0xAAA")
-        assert snapshot.user_address == "0xAAA"
-    await engine.dispose()
+            service = SnapshotAggregationService(
+                session, aggregator=async_aggr
+            )  # type: ignore
+            snapshot = await service.build_snapshot("0xAAA")
+            assert snapshot.user_address == "0xAAA"
+    # Engine disposal handled automatically by async_test_engine context manager
 
 
 def test_metrics_to_snapshot_mapping():
