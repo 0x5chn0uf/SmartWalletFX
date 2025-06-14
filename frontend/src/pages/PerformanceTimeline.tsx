@@ -3,7 +3,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { useTimelineData } from '../hooks/useTimelineData';
 import { TimelineChart } from '../components/Charts/TimelineChart';
-import { PortfolioSnapshot } from '../types/timeline';
+import { MetricSelect } from '../components/TimelineFilters/MetricSelect';
+import { IntervalToggle } from '../components/TimelineFilters/IntervalToggle';
+import { RangePicker } from '../components/TimelineFilters/RangePicker';
+import { mapSnapshotsToChartData } from '../utils/timelineAdapter';
 
 const queryClient = new QueryClient();
 
@@ -21,7 +24,11 @@ const PerformanceTimeline: React.FC = () => {
     raw: true,
   });
 
-  const snapshots = (data ?? []) as PortfolioSnapshot[];
+  const [metric, setMetric] = React.useState<'collateral' | 'borrowings' | 'health_score'>('collateral');
+  const [intervalState, setIntervalState] = React.useState<'daily' | 'weekly'>('daily');
+
+  const snapshots = Array.isArray(data) ? data : [];
+  const chartData = mapSnapshotsToChartData(snapshots);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -30,7 +37,15 @@ const PerformanceTimeline: React.FC = () => {
         {isLoading && <p>Loading timeline...</p>}
         {error && <p style={{ color: 'red' }}>Error: {error.message}</p>}
         {!isLoading && !error && snapshots.length === 0 && <p>No timeline data available.</p>}
-        {!isLoading && snapshots.length > 0 && <TimelineChart snapshots={snapshots} />}
+        {!isLoading && snapshots.length > 0 && (
+          <>
+            <div style={{ marginBottom: '1rem' }}>
+              <MetricSelect value={metric} onChange={setMetric} />
+              <IntervalToggle value={intervalState} onChange={setIntervalState} />
+            </div>
+            <TimelineChart data={chartData} metric={metric} />
+          </>
+        )}
       </div>
     </QueryClientProvider>
   );
