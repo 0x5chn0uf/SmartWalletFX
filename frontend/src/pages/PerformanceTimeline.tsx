@@ -7,6 +7,7 @@ import { MetricSelect } from '../components/TimelineFilters/MetricSelect';
 import { IntervalToggle } from '../components/TimelineFilters/IntervalToggle';
 import { RangePicker } from '../components/TimelineFilters/RangePicker';
 import { mapSnapshotsToChartData } from '../utils/timelineAdapter';
+import { Skeleton } from '@mui/material';
 
 const queryClient = new QueryClient();
 
@@ -34,7 +35,7 @@ const PerformanceTimeline: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <div style={{ padding: '1rem' }}>
         <h2>Performance Timeline</h2>
-        {isLoading && <p>Loading timeline...</p>}
+        {isLoading && <Skeleton variant="rectangular" height={400} animation="wave" />}
         {error && <p style={{ color: 'red' }}>Error: {error.message}</p>}
         {!isLoading && !error && snapshots.length === 0 && <p>No timeline data available.</p>}
         {!isLoading && snapshots.length > 0 && (
