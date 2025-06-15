@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import PerformanceTimeline from '../../pages/PerformanceTimeline';
 
 // Mock the hook to return sample data instantly
-jest.mock('../../../hooks/useTimelineData', () => {
+jest.mock('../../hooks/useTimelineData', () => {
   const snapshots = [
     {
       user_address: '0xdead',
