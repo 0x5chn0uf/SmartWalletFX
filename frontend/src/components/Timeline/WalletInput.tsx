@@ -9,11 +9,7 @@ export interface WalletSelectorProps {
 
 const ETH_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;
 
-export const WalletSelector: React.FC<WalletSelectorProps> = ({
-  address,
-  options,
-  onChange,
-}) => {
+export const WalletSelector: React.FC<WalletSelectorProps> = ({ address, options, onChange }) => {
   const [input, setInput] = React.useState(address);
 
   const isValid = ETH_ADDRESS_REGEX.test(input);
@@ -38,7 +34,7 @@ export const WalletSelector: React.FC<WalletSelectorProps> = ({
       inputValue={input}
       onInputChange={(_, value) => handleSelect(value)}
       onChange={(_, value) => handleSelect(value as string | null)}
-      renderInput={(params) => (
+      renderInput={params => (
         <TextField
           {...params}
           label="Wallet Address"
@@ -50,4 +46,4 @@ export const WalletSelector: React.FC<WalletSelectorProps> = ({
       sx={{ mb: 2 }}
     />
   );
-}; 
+};

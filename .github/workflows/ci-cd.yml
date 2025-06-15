@@ -129,7 +129,7 @@ jobs:
         working-directory: ./backend
         run: |
           source .venv/bin/activate
-          flake8 . --exclude=.venv,tests,migrations
+          flake8 . --exclude=.venv,tests,migrations --max-line-length 88
 
   test-backend:
     needs: [isort, black, flake8, changes]
@@ -367,7 +367,7 @@ jobs:
       - name: Wait for backend health
         run: |
           for i in {1..30}; do
-            if curl -s http://localhost:8000/api/v1/health > /dev/null; then
+            if curl -s http://localhost:8000/health > /dev/null; then
               echo "Backend is up" && break;
             fi
             echo "Waiting for backend..." && sleep 2;

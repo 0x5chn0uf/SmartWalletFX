@@ -25,6 +25,16 @@ A powerful crypto portfolio tracker providing a centralized overview of all your
 - Dark mode with emerald green accents
 - Customizable dashboard, responsive design, intuitive navigation
 
+### Performance Timeline
+
+The new **Performance Timeline** gives historical insight into collateral, borrowings and health score for a wallet.
+
+1. Start backend & frontend (`docker compose up -d backend frontend`).
+2. Navigate to `http://localhost:3000/timeline` or click *Timeline* in the navbar.
+3. Use the metric selector, interval toggle and date-range picker to explore data.
+
+![Timeline Screenshot](docs/assets/timeline_demo.png)
+
 ---
 
 ## 🛠 Tech Stack

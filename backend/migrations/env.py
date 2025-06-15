@@ -36,7 +36,7 @@ target_metadata = Base.metadata  # Set to Base.metadata for autogenerate
 def get_url():
     import os
 
-    return os.environ.get("TEST_DB_URL", "sqlite:///./app.db")
+    return os.environ.get("TEST_DB_URL", "sqlite:///./smartwallet_dev.db")
 
 
 def run_migrations_offline() -> None:

@@ -12,8 +12,8 @@ export const api = axios.create({
 
 // Add response interceptor for consistent error handling
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  response => response,
+  error => {
     const message = error.response?.data?.message || 'An error occurred';
     console.error('API Error:', message);
     return Promise.reject(error);
@@ -24,4 +24,4 @@ api.interceptors.response.use(
 export const checkHealth = async (): Promise<ApiResponse<{ status: string }>> => {
   const response = await api.get<ApiResponse<{ status: string }>>('/health');
   return response.data;
-}; 
+};

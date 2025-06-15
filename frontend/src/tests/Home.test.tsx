@@ -7,8 +7,8 @@ describe('Home Component', () => {
     render(<Home />);
     const titleElement = screen.getByText(/SmartWalletFX/i);
     const subtitleElement = screen.getByText(/Your Smart Crypto Portfolio Tracker/i);
-    
+
     expect(titleElement).toBeInTheDocument();
     expect(subtitleElement).toBeInTheDocument();
   });
-}); 
+});

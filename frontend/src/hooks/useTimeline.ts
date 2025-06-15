@@ -44,4 +44,4 @@ export function useTimeline({ address, from, to, interval, enabled = true }: Use
   }, [address, from, to, interval, enabled]);
 
   return { data, loading, error };
-} 
+}

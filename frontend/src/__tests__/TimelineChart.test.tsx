@@ -5,6 +5,7 @@ import { TimelineChart } from '../components/Charts/TimelineChart';
 import { PortfolioSnapshot } from '../types/timeline';
 import { describe, it, expect } from '@jest/globals';
 import '@testing-library/jest-dom';
+import { mapSnapshotsToChartData } from '../utils/timelineAdapter';
 
 const mockSnapshots: PortfolioSnapshot[] = [
   {
@@ -25,9 +26,10 @@ const mockSnapshots: PortfolioSnapshot[] = [
 
 describe('TimelineChart', () => {
   it('renders lines and tooltip', () => {
-    render(<TimelineChart snapshots={mockSnapshots} />);
+    const chartData = mapSnapshotsToChartData(mockSnapshots);
+    render(<TimelineChart data={chartData} metric="collateral" />);
 
     const container = document.querySelector('.recharts-responsive-container');
     expect(container).toBeTruthy();
   });
-}); 
+});
