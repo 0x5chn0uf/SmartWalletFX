@@ -90,6 +90,11 @@ __pycache__/
 .coverage
 coverage/
 htmlcov/
+.hypothesis/
+
+# coverage artefacts
+frontend/coverage/
+reports/
 
 # Testing
 .pytest_cache/

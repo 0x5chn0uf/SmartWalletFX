@@ -1,5 +1,8 @@
 # 🧠 SmartWalletFX
 
+![Backend Coverage](https://img.shields.io/badge/Coverage_Backend-94%25-brightgreen)
+![Frontend Coverage](https://img.shields.io/badge/Coverage_Frontend-58%25-yellow)
+
 A powerful crypto portfolio tracker providing a centralized overview of all your crypto and DeFi positions, with integrated Smart Money Concepts (SMC) analysis tools.
 
 ---
