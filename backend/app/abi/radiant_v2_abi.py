@@ -1,3 +1,4 @@
+# flake8: noqa
 import json as _json
 
 # Radiant UI Pool Data Provider ABI embedded directly in Python.
