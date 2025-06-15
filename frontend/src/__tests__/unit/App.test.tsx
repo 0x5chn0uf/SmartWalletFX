@@ -13,4 +13,4 @@ describe('App Component', () => {
     render(<App />);
     expect(screen.getByRole('banner')).toBeInTheDocument();
   });
-}); 
+});

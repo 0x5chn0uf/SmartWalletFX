@@ -49,4 +49,4 @@ describe('PerformanceTimeline page', () => {
     fireEvent.change(select, { target: { value: 'borrowings' } });
     await waitFor(() => expect(select.value).toBe('borrowings'));
   });
-}); 
+});

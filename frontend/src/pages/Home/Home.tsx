@@ -3,12 +3,10 @@ import { Typography, Box, CircularProgress } from '@mui/material';
 import { Layout } from '../../components/Layout/Layout';
 import { useTimeline } from '../../hooks/useTimeline';
 import { TimelineChart } from '../../components/Charts/TimelineChart';
-import {
-  TimelineFilters,
-  TimelineFilterValues,
-} from '../../components/Timeline/TimelineFilters';
+import { TimelineFilters, TimelineFilterValues } from '../../components/Timeline/TimelineFilters';
 import { WalletSelector } from '../../components/Timeline/WalletInput';
 import { getWallets } from '../../services/wallets';
+import { mapSnapshotsToChartData } from '../../utils/timelineAdapter';
 
 export const Home: React.FC = () => {
   const nowDate = new Date();
@@ -69,11 +67,7 @@ export const Home: React.FC = () => {
           Your Smart Crypto Portfolio Tracker
         </Typography>
 
-        <WalletSelector
-          address={address}
-          onChange={setAddress}
-          options={walletOptions}
-        />
+        <WalletSelector address={address} onChange={setAddress} options={walletOptions} />
 
         {!isAddressValid && (
           <Typography color="error" variant="body2" sx={{ mb: 2 }}>
@@ -81,21 +75,20 @@ export const Home: React.FC = () => {
           </Typography>
         )}
 
-        <TimelineFilters
-          {...filters}
-          onChange={(newFilters) => setFilters(newFilters)}
-        />
+        <TimelineFilters {...filters} onChange={newFilters => setFilters(newFilters)} />
 
         {!isDateRangeValid && (
           <Typography color="error" variant="body2" sx={{ mb: 2 }}>
-            "From" date must be before "To" date.
+            &quot;From&quot; date must be before &quot;To&quot; date.
           </Typography>
         )}
 
         {loading && <CircularProgress />}
         {error && <Typography color="error">{error}</Typography>}
-        {data && data.length > 0 && <TimelineChart snapshots={data} />}
+        {data && data.length > 0 && (
+          <TimelineChart data={mapSnapshotsToChartData(data)} metric="collateral" />
+        )}
       </Box>
     </Layout>
   );
-}; 
+};

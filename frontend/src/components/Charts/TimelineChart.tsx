@@ -8,8 +8,6 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts';
-import dayjs from 'dayjs';
-import { PortfolioSnapshot } from '../../types/timeline';
 import { ChartDatum } from '../../utils/timelineAdapter';
 
 interface Props {
@@ -41,4 +39,4 @@ export const TimelineChart: React.FC<Props> = ({ data, metric }) => {
       </LineChart>
     </ResponsiveContainer>
   );
-}; 
+};

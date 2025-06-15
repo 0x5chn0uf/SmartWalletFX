@@ -12,7 +12,7 @@ export const MetricSelect: React.FC<Props> = ({ value, onChange }) => (
     Metric:
     <select
       value={value}
-      onChange={(e) => onChange(e.target.value as Metric)}
+      onChange={e => onChange(e.target.value as Metric)}
       style={{ marginLeft: '0.5rem' }}
     >
       <option value="collateral">Collateral</option>
@@ -20,4 +20,4 @@ export const MetricSelect: React.FC<Props> = ({ value, onChange }) => (
       <option value="health_score">Health Score</option>
     </select>
   </label>
-); 
+);

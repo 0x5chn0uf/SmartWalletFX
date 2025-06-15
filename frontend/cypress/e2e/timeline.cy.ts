@@ -28,7 +28,7 @@ describe('Timeline Chart', () => {
     // Check that at least one line path is drawn
     cy.get('svg path').its('length').should('be.gte', 1);
   });
-});
+}); 
 
 describe('Performance Timeline E2E', () => {
   it('loads timeline page and switches metric filter', () => {

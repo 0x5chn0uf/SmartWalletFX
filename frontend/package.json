@@ -6,17 +6,17 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@mui/material": "^7.1.1",
+    "@tanstack/react-query": "^5.19.2",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.4.0",
+    "dayjs": "^1.11.11",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-router-dom": "^6.23.0",
     "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4",
     "recharts": "^2.7.2",
-    "dayjs": "^1.11.11",
-    "@tanstack/react-query": "^5.19.2",
-    "react-router-dom": "^6.23.0"
+    "web-vitals": "^2.1.4"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -25,7 +25,8 @@
     "eject": "react-scripts eject",
     "lint": "eslint .",
     "cypress:open": "cypress open",
-    "cypress:run": "cypress run"
+    "cypress:run": "cypress run",
+    "screenshot:timeline": "node scripts/capture-timeline.js"
   },
   "eslintConfig": {
     "extends": [
@@ -48,12 +49,19 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",
-    "@types/jest": "^29.5.14",
-    "@types/node": "^22.15.30",
-    "@types/testing-library__jest-dom": "^6.0.0",
-    "@types/recharts": "^1.8.23",
-    "cypress": "^13.6.4",
     "@types/cypress": "^1.1.3",
-    "@types/react-router-dom": "^5.3.3"
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.15.31",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@types/react-router-dom": "^5.3.3",
+    "@types/recharts": "^1.8.23",
+    "@types/testing-library__jest-dom": "^6.0.0",
+    "cypress": "^13.6.4",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "playwright": "^1.53.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.8.3"
   }
 }

@@ -27,10 +27,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           backgroundColor: 'background.default',
         }}
       >
-        <Container maxWidth="lg">
-          {children}
-        </Container>
+        <Container maxWidth="lg">{children}</Container>
       </Box>
     </ThemeProvider>
   );
-}; 
+};

@@ -12,11 +12,11 @@ export const IntervalToggle: React.FC<Props> = ({ value, onChange }) => (
     Interval:
     <select
       value={value}
-      onChange={(e) => onChange(e.target.value as Interval)}
+      onChange={e => onChange(e.target.value as Interval)}
       style={{ marginLeft: '0.5rem' }}
     >
       <option value="daily">Daily</option>
       <option value="weekly">Weekly</option>
     </select>
   </label>
-); 
+);

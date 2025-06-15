@@ -19,20 +19,11 @@ export function useTimelineData(
 ) {
   const { address, from, to, interval = 'none', raw = true } = params;
 
-  return useQuery<PortfolioSnapshot[] | TimelineResponse, Error>(
-    ['timeline', address, from, to, interval, raw],
-    () =>
-      getTimeline(address, {
-        from_ts: from,
-        to_ts: to,
-        interval,
-        raw,
-      }),
-    {
-      staleTime: 1000 * 60, // 1 min
-      keepPreviousData: true,
-      enabled: Boolean(address),
-      ...options,
-    }
-  );
-} 
+  return useQuery<PortfolioSnapshot[] | TimelineResponse, Error>({
+    queryKey: ['timeline', address, from, to, interval, raw],
+    queryFn: () => getTimeline(address, { from_ts: from, to_ts: to, interval, raw }),
+    staleTime: 1000 * 60, // 1 min
+    enabled: Boolean(address),
+    ...options,
+  });
+}

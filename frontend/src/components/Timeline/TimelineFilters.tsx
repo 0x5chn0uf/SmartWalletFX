@@ -18,7 +18,7 @@ export const TimelineFilters: React.FC<Props> = ({ from, to, interval, onChange 
         label="From"
         type="date"
         value={from}
-        onChange={(e) => onChange({ from: e.target.value, to, interval })}
+        onChange={e => onChange({ from: e.target.value, to, interval })}
         InputLabelProps={{ shrink: true }}
         size="small"
       />
@@ -26,7 +26,7 @@ export const TimelineFilters: React.FC<Props> = ({ from, to, interval, onChange 
         label="To"
         type="date"
         value={to}
-        onChange={(e) => onChange({ from, to: e.target.value, interval })}
+        onChange={e => onChange({ from, to: e.target.value, interval })}
         InputLabelProps={{ shrink: true }}
         size="small"
       />
@@ -34,12 +34,12 @@ export const TimelineFilters: React.FC<Props> = ({ from, to, interval, onChange 
         select
         label="Interval"
         value={interval}
-        onChange={(e) =>
+        onChange={e =>
           onChange({ from, to, interval: e.target.value as TimelineFilterValues['interval'] })
         }
         size="small"
       >
-        {['none', 'daily', 'weekly'].map((opt) => (
+        {['none', 'daily', 'weekly'].map(opt => (
           <MenuItem key={opt} value={opt}>
             {opt}
           </MenuItem>
@@ -47,4 +47,4 @@ export const TimelineFilters: React.FC<Props> = ({ from, to, interval, onChange 
       </TextField>
     </Box>
   );
-}; 
+};

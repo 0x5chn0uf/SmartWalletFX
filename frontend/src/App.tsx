@@ -5,8 +5,12 @@ import PerformanceTimeline from './pages/PerformanceTimeline';
 
 const Nav: React.FC = () => (
   <nav style={{ padding: '1rem', background: '#222' }}>
-    <Link to="/" style={{ color: '#fff', marginRight: '1rem' }}>Home</Link>
-    <Link to="/timeline" style={{ color: '#fff' }}>Timeline</Link>
+    <Link to="/" style={{ color: '#fff', marginRight: '1rem' }}>
+      Home
+    </Link>
+    <Link to="/timeline" style={{ color: '#fff' }}>
+      Timeline
+    </Link>
   </nav>
 );
 
@@ -22,4 +26,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;

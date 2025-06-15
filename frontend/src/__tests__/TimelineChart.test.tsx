@@ -32,4 +32,4 @@ describe('TimelineChart', () => {
     const container = document.querySelector('.recharts-responsive-container');
     expect(container).toBeTruthy();
   });
-}); 
+});
