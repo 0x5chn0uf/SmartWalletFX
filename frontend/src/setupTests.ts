@@ -3,7 +3,6 @@
 // expect(element).toHaveTextContent(/react/i)
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
-import { jest } from '@jest/globals';
 
 // Polyfill ResizeObserver used by Recharts in tests
 class ResizeObserver {
@@ -25,3 +24,13 @@ jest.mock('axios', () => ({
     delete: jest.fn(),
   },
 }));
+
+// MSW – mock API requests at network level
+import { server } from './mocks/server';
+
+// Establish API mocking before all tests.
+beforeAll(() => server.listen());
+// Reset any runtime request handlers we may add during the tests.
+afterEach(() => server.resetHandlers());
+// Clean up after the tests are finished.
+afterAll(() => server.close()); 

@@ -162,6 +162,19 @@ jobs:
           source .venv/bin/activate
           PYTHONPATH=$(pwd) pytest -v --cov=app --cov-report=xml
 
+      - name: Enforce backend coverage threshold (90%)
+        working-directory: ./backend
+        run: |
+          COVER=$(python - << 'PY'
+import xml.etree.ElementTree as ET, sys
+tree=ET.parse('coverage.xml');
+root=tree.getroot();
+coverage=float(root.get('line-rate'))*100
+print(f"Backend coverage: {coverage:.2f}%")
+sys.exit(0 if coverage>=90 else 1)
+PY
+)
+
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
         with:
@@ -239,7 +252,17 @@ jobs:
 
       - name: Run frontend tests
         working-directory: ./frontend
-        run: npm test -- --watchAll=false --no-watchman --ci
+        run: npm test -- --watchAll=false --no-watchman --ci --coverage
+
+      - name: Enforce frontend coverage threshold (75%)
+        working-directory: ./frontend
+        run: |
+          node - << 'JS'
+const fs=require('fs');
+const summary=JSON.parse(fs.readFileSync('coverage/coverage-summary.json','utf8'));
+const pct=summary.total.lines.pct;
+console.log(`Frontend coverage: ${pct}%`);
+if(pct<75){process.exit(1);} JS
 
       - name: Build frontend
         working-directory: ./frontend
@@ -345,6 +368,7 @@ jobs:
     strategy:
       matrix:
         node-version: [20.x]
+        viewport: [desktop, mobile]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -373,9 +397,14 @@ jobs:
             echo "Waiting for backend..." && sleep 2;
           done
 
-      - name: Run Cypress tests
+      - name: Run Cypress tests (${{ matrix.viewport }})
         working-directory: ./frontend
-        run: npx cypress run --browser chrome --headless
+        run: |
+          if [ "${{ matrix.viewport }}" = "mobile" ]; then
+            npx cypress run --browser chrome --headless --config viewportWidth=375,viewportHeight=667
+          else
+            npx cypress run --browser chrome --headless
+          fi
 
       - name: Upload Cypress artifacts
         if: failure()
