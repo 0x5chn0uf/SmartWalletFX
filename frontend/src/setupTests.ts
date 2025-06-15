@@ -24,4 +24,4 @@ jest.mock('axios', () => ({
     put: jest.fn(),
     delete: jest.fn(),
   },
-})); 
+}));

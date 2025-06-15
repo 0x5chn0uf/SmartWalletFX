@@ -13,4 +13,4 @@ export interface TimelineResponse {
   limit: number;
   offset: number;
   total: number;
-} 
+}

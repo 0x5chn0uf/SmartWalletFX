@@ -23,4 +23,4 @@ export interface UserSettings {
   theme: 'light' | 'dark';
   currency: string;
   timeframe: string;
-} 
+}

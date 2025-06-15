@@ -29,3 +29,20 @@ describe('Timeline Chart', () => {
     cy.get('svg path').its('length').should('be.gte', 1);
   });
 }); 
+
+describe('Performance Timeline E2E', () => {
+  it('loads timeline page and switches metric filter', () => {
+    cy.visit('/timeline');
+
+    // Skeleton should appear
+    cy.get('div').contains('Performance Timeline').should('exist');
+
+    // Wait for chart to render (svg path elements)
+    cy.get('svg').should('exist');
+
+    // Change metric
+    cy.get('select').first().select('Borrowings');
+
+    // Chart should update (no assertion on path change for brevity)
+  });
+}); 

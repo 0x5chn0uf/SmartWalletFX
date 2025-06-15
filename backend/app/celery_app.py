@@ -9,7 +9,7 @@ celery = Celery(
 celery.conf.timezone = "UTC"
 
 celery.conf.beat_schedule = {
-    "collect-snapshots-every-minute": {
+    "collect-snapshots-every-hours": {
         "task": "app.tasks.snapshots.collect_portfolio_snapshots",
         "schedule": crontab(hour="*", minute="0"),
     },
