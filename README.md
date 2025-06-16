@@ -64,7 +64,7 @@ The new **Performance Timeline** gives historical insight into collateral, borro
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Python 3.11+
+- Python 3.12+
 - Node.js & npm
 - Git
 - Docker & Docker Compose
@@ -145,7 +145,7 @@ The new **Performance Timeline** gives historical insight into collateral, borro
 
 - Please open issues for feature requests or bug reports.
 - All code must pass Black, isort, flake8, and tests before PRs are accepted.
-- See `.github/CONTRIBUTING.md` (if available) for guidelines.
+- See `.github/CONTRIBUTING.md` for guidelines.
 
 ---
 
@@ -168,6 +168,15 @@ This project is private and not open for public use or distribution at this time
 ## 📞 Support
 
 For questions or support, please open an issue in the repository.
+
+---
+
+## 📚 Documentation
+
+- [System Architecture](docs/defi_architecture.md)
+- [API Contracts](docs/defi_api_contracts.md)
+- [Testing & QA Guide](docs/defi_testing_guide.md)
+- [Knowledge Transfer Slide Deck](docs/defi_knowledge_transfer.md)
 
 ---
 
