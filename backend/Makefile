@@ -1,6 +1,6 @@
 # Makefile pour backend FastAPI
 
-.PHONY: install run test lint format coverage bandit safety clean celery-worker celery-beat alembic-upgrade db-start db-test db-down db-migrate
+.PHONY: install run test lint format coverage bandit safety clean celery-worker celery-beat alembic-upgrade db-start db-test db-down db-migrate serve
 
 install:
 	pip install -r requirements/base.txt
@@ -66,3 +66,10 @@ db-down:
 
 db-migrate:
 	PYTHONPATH=. alembic upgrade head
+
+serve:
+	pkill -f uvicorn || true
+	uvicorn app.main:app > uvicorn.log 2>&1 &
+	sleep 2
+	curl -s http://localhost:8000/health || (cat uvicorn.log && exit 1)
+	@echo "FastAPI server is up and running on http://localhost:8000"
