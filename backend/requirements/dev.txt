@@ -1,7 +1,7 @@
 -r base.txt
 
 # Testing
-aiosqlite==0.20.0 
+aiosqlite==0.21.0 
 pytest==8.0.0
 pytest-cov==4.1.0
 pytest-asyncio==0.21.1
@@ -10,6 +10,7 @@ pytest-env==1.1.1
 pytest-mock==3.12.0
 coverage==7.3.2
 hypothesis==6.135.10
+trio==0.25.0  # Needed by anyio plugin during pytest collection
 
 # Linting & Formatting
 ruff==0.1.5
