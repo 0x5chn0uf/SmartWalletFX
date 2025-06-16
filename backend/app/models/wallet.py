@@ -12,6 +12,7 @@ from sqlalchemy import (
     String,
 )
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import UUID
 
 from app.core.database import Base
 
@@ -25,7 +26,7 @@ class Wallet(Base):
     __tablename__ = "wallets"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    user_id = Column(UUID, ForeignKey("users.id"), nullable=True, index=True)
     address = Column(String, unique=True, index=True)
     name = Column(String, nullable=True, default="Unnamed Wallet")
     type = Column(String, nullable=True)  # EVM, BTC, etc.
