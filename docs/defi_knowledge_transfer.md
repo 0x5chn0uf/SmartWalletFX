@@ -45,7 +45,6 @@ GET /defi/portfolio/{address}
 GET /defi/timeline/{address}?interval=daily
 POST /defi/admin/trigger-snapshot
 ```
-- Versioned under `/api/v1`
 - OpenAPI & auto-generated TS SDK
 
 ---
