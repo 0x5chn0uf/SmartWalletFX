@@ -220,3 +220,14 @@ def override_get_db(db_session):
     app.dependency_overrides[get_db] = _override
     yield
     app.dependency_overrides.pop(get_db, None)
+
+
+# --------------------------------------------------------------------
+# AnyIO backend override – restrict to asyncio only to avoid trio issues
+# --------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session")
+def anyio_backend():
+    """Force AnyIO to use only the asyncio backend during tests."""
+    return "asyncio"
