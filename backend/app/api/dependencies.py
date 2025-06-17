@@ -2,12 +2,14 @@
 
 from functools import lru_cache
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from web3 import Web3
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.models.user import User
 from app.services.snapshot_aggregation import SnapshotAggregationService
 from app.usecase.defi_aave_usecase import AaveUsecase
 from app.usecase.defi_compound_usecase import CompoundUsecase
@@ -15,6 +17,7 @@ from app.usecase.defi_radiant_usecase import RadiantUsecase
 from app.usecase.portfolio_aggregation_usecase import (
     PortfolioAggregationUsecase,
 )
+from app.utils.jwt import JWTUtils
 
 
 def _build_aggregator_async():
@@ -59,3 +62,48 @@ def get_radiant_usecase() -> RadiantUsecase:
 
 def get_portfolio_aggregation_usecase() -> PortfolioAggregationUsecase:
     return PortfolioAggregationUsecase()
+
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Validate JWT *token* and return the associated :class:`~app.models.user.User`."""
+    try:
+        payload = JWTUtils.decode_token(token)
+    except Exception:  # noqa: BLE001 – propagate as HTTP error
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    sub = payload.get("sub")
+    if sub is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token missing subject claim",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Fetch user
+    try:
+        user_id = int(sub)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid subject in token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user

@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.dependencies import get_current_user, oauth2_scheme
 from app.core.database import get_db
 from app.schemas.user import UserCreate, UserRead
 from app.services.auth_service import (
@@ -46,3 +47,7 @@ async def register_user(
         )
 
     return user
+
+
+# Re-export for convenience in other modules
+__all__ = ["router", "oauth2_scheme", "get_current_user"]
