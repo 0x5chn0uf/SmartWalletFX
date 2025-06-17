@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.main import app
 from app.models.portfolio_snapshot import PortfolioSnapshot
 from app.models.wallet import Wallet
-from app.stores.wallet_store import WalletStore
+from app.repositories.wallet_repository import WalletRepository
 from app.tasks.snapshots import collect_portfolio_snapshots
 
 client = TestClient(app)
@@ -218,7 +218,7 @@ async def test_snapshot_task_e2e_flow(test_app, monkeypatch):
 @pytest.mark.asyncio
 async def test_celery_task_no_wallets(db_session):
     """Test that the Celery task handles the case where there are no wallets in the DB."""
-    wallet_store = WalletStore(db_session)
+    wallet_store = WalletRepository(db_session)
     wallets = await wallet_store.list_all()
     for w in wallets:
         await wallet_store.delete(w.address)
@@ -228,7 +228,7 @@ async def test_celery_task_no_wallets(db_session):
 @pytest.mark.asyncio
 async def test_celery_task_aggregation_failure(monkeypatch, db_session):
     """Test that the Celery task handles aggregation failure for a wallet."""
-    wallet_store = WalletStore(db_session)
+    wallet_store = WalletRepository(db_session)
     await wallet_store.create(address=f"0x{uuid.uuid4().hex[:40]}", name="Fail Wallet")
 
     async def fail_agg(self, address):
@@ -244,7 +244,7 @@ async def test_celery_task_aggregation_failure(monkeypatch, db_session):
 @pytest.mark.asyncio
 async def test_celery_task_db_write_failure(monkeypatch, db_session):
     """Test that the Celery task survives a DB write failure."""
-    wallet_store = WalletStore(db_session)
+    wallet_store = WalletRepository(db_session)
     wallet = await wallet_store.create(
         address=f"0x{uuid.uuid4().hex[:40]}", name="DB Fail Wallet"
     )

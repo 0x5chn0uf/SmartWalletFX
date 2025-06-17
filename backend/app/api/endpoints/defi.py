@@ -15,9 +15,11 @@ from app.api.dependencies import (
 )
 from app.celery_app import celery
 from app.core.database import get_db
+from app.repositories.portfolio_snapshot_repository import (
+    PortfolioSnapshotRepository,
+)
 from app.schemas.defi import DeFiAccountSnapshot, PortfolioSnapshot
 from app.schemas.portfolio_timeline import TimelineResponse
-from app.stores.portfolio_snapshot_store import PortfolioSnapshotStore
 from app.usecase.defi_aave_usecase import AaveUsecase
 from app.usecase.defi_compound_usecase import CompoundUsecase
 from app.usecase.defi_radiant_usecase import RadiantUsecase
@@ -118,8 +120,8 @@ async def get_portfolio_metrics(
 async def get_portfolio_snapshot_usecase(
     db: AsyncSession = db_dependency,
 ) -> PortfolioSnapshotUsecase:
-    store = PortfolioSnapshotStore(db)
-    return PortfolioSnapshotUsecase(store)
+    repository = PortfolioSnapshotRepository(db)
+    return PortfolioSnapshotUsecase(repository)
 
 
 @router.get(

@@ -1,14 +1,14 @@
 import pytest
 
+from app.repositories.token_balance_repository import TokenBalanceRepository
+from app.repositories.token_repository import TokenRepository
 from app.schemas.token import TokenCreate
 from app.schemas.token_balance import TokenBalanceCreate
-from app.stores.token_balance_store import TokenBalanceStore
-from app.stores.token_store import TokenStore
 
 
 @pytest.mark.asyncio
 async def test_token_balance_store_create(db_session):
-    token = await TokenStore(db_session).create(
+    token = await TokenRepository(db_session).create(
         TokenCreate(
             address="0xTok",
             symbol="TOK",
@@ -16,7 +16,7 @@ async def test_token_balance_store_create(db_session):
             decimals=18,
         ),
     )
-    balance = await TokenBalanceStore(db_session).create(
+    balance = await TokenBalanceRepository(db_session).create(
         TokenBalanceCreate(
             token_id=token.id,
             wallet_id=1,
