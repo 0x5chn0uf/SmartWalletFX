@@ -2,14 +2,16 @@ import pytest
 from sqlalchemy import text
 
 from app.models.portfolio_snapshot import PortfolioSnapshot
-from app.stores.portfolio_snapshot_store import PortfolioSnapshotStore
+from app.repositories.portfolio_snapshot_repository import (
+    PortfolioSnapshotRepository,
+)
 from app.usecase.portfolio_snapshot_usecase import PortfolioSnapshotUsecase
 
 
 @pytest.mark.asyncio
 async def test_portfolio_snapshot_usecase_cache(db_session):
-    store = PortfolioSnapshotStore(db_session)
-    usecase = PortfolioSnapshotUsecase(store)
+    repository = PortfolioSnapshotRepository(db_session)
+    usecase = PortfolioSnapshotUsecase(repository)
 
     # insert snapshot records (two days)
     for ts in [1000, 2000]:

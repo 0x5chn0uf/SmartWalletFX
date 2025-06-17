@@ -4,6 +4,12 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.repositories.historical_balance_repository import (
+    HistoricalBalanceRepository,
+)
+from app.repositories.token_balance_repository import TokenBalanceRepository
+from app.repositories.token_price_repository import TokenPriceRepository
+from app.repositories.token_repository import TokenRepository
 from app.schemas.historical_balance import (
     HistoricalBalanceCreate,
     HistoricalBalanceResponse,
@@ -12,10 +18,6 @@ from app.schemas.token import TokenCreate, TokenResponse
 from app.schemas.token_balance import TokenBalanceCreate, TokenBalanceResponse
 from app.schemas.token_price import TokenPriceCreate, TokenPriceResponse
 from app.schemas.wallet import WalletCreate, WalletResponse
-from app.stores.historical_balance_store import HistoricalBalanceStore
-from app.stores.token_balance_store import TokenBalanceStore
-from app.stores.token_price_store import TokenPriceStore
-from app.stores.token_store import TokenStore
 from app.usecase.wallet_usecase import WalletUsecase
 
 router = APIRouter()
@@ -75,7 +77,7 @@ async def delete_wallet(address: str, db: AsyncSession = db_dependency):
     status_code=status.HTTP_201_CREATED,
 )
 async def create_token(token: TokenCreate, db: AsyncSession = db_dependency):
-    return await TokenStore(db).create(token)
+    return await TokenRepository(db).create(token)
 
 
 @router.post(
@@ -86,7 +88,7 @@ async def create_token(token: TokenCreate, db: AsyncSession = db_dependency):
 async def create_historical_balance(
     hb: HistoricalBalanceCreate, db: AsyncSession = db_dependency
 ):
-    return await HistoricalBalanceStore(db).create(hb)
+    return await HistoricalBalanceRepository(db).create(hb)
 
 
 @router.post(
@@ -95,7 +97,7 @@ async def create_historical_balance(
     status_code=status.HTTP_201_CREATED,
 )
 async def create_token_price(tp: TokenPriceCreate, db: AsyncSession = db_dependency):
-    return await TokenPriceStore(db).create(tp)
+    return await TokenPriceRepository(db).create(tp)
 
 
 @router.post(
@@ -106,4 +108,4 @@ async def create_token_price(tp: TokenPriceCreate, db: AsyncSession = db_depende
 async def create_token_balance(
     tb: TokenBalanceCreate, db: AsyncSession = db_dependency
 ):
-    return await TokenBalanceStore(db).create(tb)
+    return await TokenBalanceRepository(db).create(tb)

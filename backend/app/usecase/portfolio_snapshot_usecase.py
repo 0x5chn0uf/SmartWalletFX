@@ -1,7 +1,9 @@
 import json
 
+from app.repositories.portfolio_snapshot_repository import (
+    PortfolioSnapshotRepository,
+)
 from app.schemas.defi import PortfolioSnapshot as PortfolioSnapshotSchema
-from app.stores.portfolio_snapshot_store import PortfolioSnapshotStore
 
 
 class PortfolioSnapshotUsecase:
@@ -10,8 +12,8 @@ class PortfolioSnapshotUsecase:
     a user.
     """
 
-    def __init__(self, store: PortfolioSnapshotStore):
-        self.store = store
+    def __init__(self, repository: PortfolioSnapshotRepository):
+        self.repository = repository
 
     async def get_timeline(
         self,
@@ -28,13 +30,13 @@ class PortfolioSnapshotUsecase:
         Uses database cache for performance.
         """
         # Try cache
-        cached = await self.store.get_cache(
+        cached = await self.repository.get_cache(
             user_address, from_ts, to_ts, interval, limit, offset
         )
         if cached:
             return [PortfolioSnapshotSchema(**obj) for obj in json.loads(cached)]
         # Compute result
-        result = await self.store.get_timeline(
+        result = await self.repository.get_timeline(
             user_address, from_ts, to_ts, limit, offset, interval
         )
         # Convert to Pydantic models
@@ -44,7 +46,7 @@ class PortfolioSnapshotUsecase:
         ]
 
         # Cache the result as list of dicts
-        await self.store.set_cache(
+        await self.repository.set_cache(
             user_address=user_address,
             from_ts=from_ts,
             to_ts=to_ts,

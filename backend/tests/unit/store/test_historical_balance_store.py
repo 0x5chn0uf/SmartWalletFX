@@ -1,14 +1,16 @@
 import pytest
 
+from app.repositories.historical_balance_repository import (
+    HistoricalBalanceRepository,
+)
+from app.repositories.token_repository import TokenRepository
 from app.schemas.historical_balance import HistoricalBalanceCreate
 from app.schemas.token import TokenCreate
-from app.stores.historical_balance_store import HistoricalBalanceStore
-from app.stores.token_store import TokenStore
 
 
 @pytest.mark.asyncio
 async def test_historical_balance_store_create(db_session):
-    token = await TokenStore(db_session).create(
+    token = await TokenRepository(db_session).create(
         TokenCreate(
             address="0xHis",
             symbol="HIS",
@@ -17,7 +19,7 @@ async def test_historical_balance_store_create(db_session):
         ),
     )
 
-    hist = await HistoricalBalanceStore(db_session).create(
+    hist = await HistoricalBalanceRepository(db_session).create(
         HistoricalBalanceCreate(
             wallet_id=1,
             token_id=token.id,

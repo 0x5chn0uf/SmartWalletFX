@@ -1,12 +1,12 @@
 import pytest
 from fastapi import HTTPException
 
-from app.stores.wallet_store import WalletStore
+from app.repositories.wallet_repository import WalletRepository
 
 
 @pytest.mark.asyncio
 async def test_create_and_get_wallet(db_session):
-    store = WalletStore(db_session)
+    store = WalletRepository(db_session)
     addr = "0x1111111111111111111111111111111111111111"
     created = await store.create(address=addr, name="Test")
     assert created.id is not None
@@ -18,7 +18,7 @@ async def test_create_and_get_wallet(db_session):
 
 @pytest.mark.asyncio
 async def test_list_all_wallets(db_session):
-    store = WalletStore(db_session)
+    store = WalletRepository(db_session)
     await store.create(address="0x2222222222222222222222222222222222222222")
     await store.create(address="0x3333333333333333333333333333333333333333")
     wallets = await store.list_all()
@@ -27,7 +27,7 @@ async def test_list_all_wallets(db_session):
 
 @pytest.mark.asyncio
 async def test_delete_wallet(db_session):
-    store = WalletStore(db_session)
+    store = WalletRepository(db_session)
     addr = "0x4444444444444444444444444444444444444444"
     await store.create(address=addr)
     assert await store.delete(addr) is True

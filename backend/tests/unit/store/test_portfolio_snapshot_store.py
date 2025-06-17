@@ -3,12 +3,14 @@ import datetime as _dt
 import pytest
 
 from app.models.portfolio_snapshot import PortfolioSnapshot
-from app.stores.portfolio_snapshot_store import PortfolioSnapshotStore
+from app.repositories.portfolio_snapshot_repository import (
+    PortfolioSnapshotRepository,
+)
 
 
 @pytest.mark.asyncio
 async def test_create_and_get_snapshot(db_session):
-    store = PortfolioSnapshotStore(db_session)
+    store = PortfolioSnapshotRepository(db_session)
     snapshot = PortfolioSnapshot(
         user_address="0xabc",
         timestamp=1000,
@@ -37,7 +39,7 @@ async def test_create_and_get_snapshot(db_session):
 
 @pytest.mark.asyncio
 async def test_get_snapshots_by_address_and_range_multiple(db_session):
-    store = PortfolioSnapshotStore(db_session)
+    store = PortfolioSnapshotRepository(db_session)
     # Insert multiple snapshots
     for ts in [1000, 2000, 3000]:
         snap = PortfolioSnapshot(
@@ -71,7 +73,7 @@ async def test_get_snapshots_by_address_and_range_multiple(db_session):
 
 @pytest.mark.asyncio
 async def test_snapshot_store_crud_and_helpers(db_session):
-    store = PortfolioSnapshotStore(db_session)
+    store = PortfolioSnapshotRepository(db_session)
 
     snap = PortfolioSnapshot(
         user_address="0xabc",
@@ -101,7 +103,7 @@ async def test_snapshot_store_crud_and_helpers(db_session):
 
 @pytest.mark.asyncio
 async def test_snapshot_store_timeline_intervals(db_session):
-    store = PortfolioSnapshotStore(db_session)
+    store = PortfolioSnapshotRepository(db_session)
 
     base_ts = int(_dt.datetime(2023, 1, 2, 12, 0, tzinfo=_dt.timezone.utc).timestamp())
     for i in range(14):
@@ -138,7 +140,7 @@ async def test_snapshot_store_timeline_intervals(db_session):
 
 @pytest.mark.asyncio
 async def test_snapshot_store_cache(db_session):
-    store = PortfolioSnapshotStore(db_session)
+    store = PortfolioSnapshotRepository(db_session)
 
     params = {
         "user_address": "0xabc",
