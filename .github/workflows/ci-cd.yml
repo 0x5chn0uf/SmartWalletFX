@@ -43,9 +43,6 @@ jobs:
         with:
           path: backend/.venv
           key: ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-${{ hashFiles('backend/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-
-            ${{ runner.os }}-venv-
 
   isort:
     needs: [setup, changes]
@@ -65,9 +62,6 @@ jobs:
         with:
           path: backend/.venv
           key: ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-${{ hashFiles('backend/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-
-            ${{ runner.os }}-venv-
 
       - name: Run isort
         working-directory: ./backend
@@ -93,9 +87,6 @@ jobs:
         with:
           path: backend/.venv
           key: ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-${{ hashFiles('backend/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-
-            ${{ runner.os }}-venv-
 
       - name: Run black
         working-directory: ./backend
@@ -121,9 +112,6 @@ jobs:
         with:
           path: backend/.venv
           key: ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-${{ hashFiles('backend/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-
-            ${{ runner.os }}-venv-
 
       - name: Run flake8
         working-directory: ./backend
@@ -153,9 +141,6 @@ jobs:
         with:
           path: backend/.venv
           key: ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-${{ hashFiles('backend/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-
-            ${{ runner.os }}-venv-
 
       - name: Run tests with coverage
         working-directory: ./backend
@@ -199,9 +184,6 @@ jobs:
         with:
           path: backend/.venv
           key: ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-${{ hashFiles('backend/pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-
-            ${{ runner.os }}-venv-
 
       - name: Build package
         working-directory: ./backend
