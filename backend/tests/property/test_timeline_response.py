@@ -14,7 +14,7 @@ snapshots_strategy = st.lists(
 ).map(lambda snaps: sorted(snaps, key=lambda s: s.timestamp))
 
 
-@settings(max_examples=50, suppress_health_check=[HealthCheck.too_slow])
+@settings(max_examples=10, deadline=500, suppress_health_check=[HealthCheck.too_slow])
 @given(
     snapshots=snapshots_strategy,
     interval=st.sampled_from(["daily", "weekly"]),

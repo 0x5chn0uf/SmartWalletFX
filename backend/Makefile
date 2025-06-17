@@ -12,7 +12,7 @@ run:
 	uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 test:
-	PYTHONPATH=. pytest --cov=app --cov-report=term-missing
+	BCRYPT_ROUNDS=4 pytest --cov=app --cov-report=term-missing
 
 lint:
 	ruff check app tests

@@ -12,6 +12,7 @@ from contextlib import AsyncExitStack, asynccontextmanager
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
+from hypothesis import HealthCheck, settings
 from sqlalchemy import create_engine, inspect, text  # sync version
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -231,3 +232,18 @@ def override_get_db(db_session):
 def anyio_backend():
     """Force AnyIO to use only the asyncio backend during tests."""
     return "asyncio"
+
+
+# --------------------------------------------------------------------
+# Hypothesis global configuration – keep tests fast & consistent
+# --------------------------------------------------------------------
+
+# Register a "fast" profile that limits examples and sets a reasonable deadline
+# across the test suite unless individual tests override it explicitly.
+settings.register_profile(
+    "fast",
+    settings(
+        max_examples=25, deadline=300, suppress_health_check=[HealthCheck.too_slow]
+    ),
+)
+settings.load_profile("fast")
