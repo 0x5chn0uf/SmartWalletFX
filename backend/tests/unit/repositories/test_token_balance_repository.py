@@ -7,14 +7,14 @@ from app.schemas.token_balance import TokenBalanceCreate
 
 
 @pytest.mark.asyncio
-async def test_token_balance_store_create(db_session):
+async def test_token_balance_repository_create(db_session):
     token = await TokenRepository(db_session).create(
         TokenCreate(
             address="0xTok",
             symbol="TOK",
             name="Token",
             decimals=18,
-        ),
+        )
     )
     balance = await TokenBalanceRepository(db_session).create(
         TokenBalanceCreate(
@@ -22,6 +22,6 @@ async def test_token_balance_store_create(db_session):
             wallet_id=1,
             balance=100.0,
             balance_usd=100.0,
-        ),
+        )
     )
     assert balance.balance_usd == 100.0
