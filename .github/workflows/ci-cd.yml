@@ -42,7 +42,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: backend/.venv
-          key: ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-${{ hashFiles('backend/pyproject.toml') }}
+          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml') }}
 
   isort:
     needs: [setup, changes]
@@ -61,7 +61,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: backend/.venv
-          key: ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-${{ hashFiles('backend/pyproject.toml') }}
+          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml') }}
 
       - name: Run isort
         working-directory: ./backend
@@ -86,7 +86,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: backend/.venv
-          key: ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-${{ hashFiles('backend/pyproject.toml') }}
+          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml') }}
 
       - name: Run black
         working-directory: ./backend
@@ -111,7 +111,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: backend/.venv
-          key: ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-${{ hashFiles('backend/pyproject.toml') }}
+          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml') }}
 
       - name: Run flake8
         working-directory: ./backend
@@ -140,7 +140,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: backend/.venv
-          key: ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-${{ hashFiles('backend/pyproject.toml') }}
+          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml') }}
 
       - name: Run tests with coverage
         working-directory: ./backend
@@ -183,7 +183,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: backend/.venv
-          key: ${{ runner.os }}-venv-${{ env.CACHE_VERSION }}-${{ hashFiles('backend/pyproject.toml') }}
+          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml') }}
 
       - name: Build package
         working-directory: ./backend
