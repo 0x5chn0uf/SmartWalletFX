@@ -14,7 +14,7 @@ on:
 
 env:
   PYTHON_VERSION: '3.12'
-  CACHE_VERSION: 2  # Increment to invalidate cache
+  CACHE_VERSION: 3  # Increment to invalidate cache
 
 jobs:
   setup:
