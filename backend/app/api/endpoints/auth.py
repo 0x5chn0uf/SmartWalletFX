@@ -9,6 +9,7 @@ from starlette.status import HTTP_401_UNAUTHORIZED
 
 from app.api.dependencies import auth_deps
 from app.core.database import get_db
+from app.domain.errors import InactiveUserError, InvalidCredentialsError
 from app.schemas.auth_token import TokenResponse
 from app.schemas.user import UserCreate, UserRead
 from app.services.auth_service import (
@@ -70,10 +71,15 @@ async def login_for_access_token(
     try:
         tokens = await service.authenticate(form_data.username, form_data.password)
         return tokens
-    except ValueError:
+    except InvalidCredentialsError:
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password",
+        )
+    except InactiveUserError:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Inactive or disabled user account",
         )
 
 
