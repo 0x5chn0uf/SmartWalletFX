@@ -6,6 +6,7 @@ from httpx import AsyncClient
 
 from app.api.endpoints import auth as auth_ep
 from app.core.config import settings
+from app.domain.errors import InvalidCredentialsError
 from app.schemas.user import UserCreate
 from app.services.auth_service import AuthService, WeakPasswordError
 from app.utils.jwt import JWTUtils
@@ -125,7 +126,7 @@ class DummyAuthService:  # noqa: D101 – lightweight stub
         raise WeakPasswordError()
 
     async def authenticate(self, username: str, password: str):  # noqa: D401 – stub
-        raise ValueError("invalid credentials")
+        raise InvalidCredentialsError()
 
 
 @pytest.fixture
