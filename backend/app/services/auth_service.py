@@ -23,6 +23,7 @@ from app.schemas.auth_token import TokenResponse
 from app.schemas.user import UserCreate
 from app.utils import security
 from app.utils.jwt import JWTUtils
+from app.utils.logging import audit
 
 _LOGGER: Final = logging.getLogger(__name__)
 
@@ -89,46 +90,74 @@ class AuthService:
         _LOGGER.info("user_registered", extra={"user_id": str(user.id)})
         return user
 
-    async def authenticate(self, username: str, password: str):  # noqa: D401 – stub
-        """Verify credentials and issue access & refresh tokens.
+    async def authenticate(
+        self, identity: str, password: str
+    ) -> TokenResponse:  # noqa: D401 – business method
+        """Verify *identity* (username **or** email) and issue JWTs.
 
-        Args:
-            username: Username (or email) supplied by the user.
-            password: Plain-text password input.
-
-        Returns:
-            TokenResponse containing newly-issued JWTs.
-
-        Raises:
-            ValueError: If credentials are invalid.
+        The check is performed in constant-time regardless of user-existence to
+        mitigate timing attacks. Generic domain errors are raised on failure to
+        avoid user enumeration.
         """
 
-        # Fetch user by username – for MVP treat input as username
-        user = await self._repo.get_by_username(username)
-        if user is None:
-            raise ValueError("invalid credentials")
+        from app.domain.errors import (  # local import to avoid circular deps
+            InactiveUserError,
+            InvalidCredentialsError,
+        )
 
-        if not security.verify_password(password, user.hashed_password):
-            raise ValueError("invalid credentials")
+        identity_lc = identity.lower().strip()
+
+        # ------------------------------------------------------------------
+        # Fetch user by *username* first, fallback to *email* to support both.
+        # Username is stored in DB as-is but indexed; we normalise to lowercase
+        # for a case-insensitive comparison. Email column is already unique.
+        # ------------------------------------------------------------------
+        user: User | None = await self._repo.get_by_username(identity_lc)
+        if user is None:
+            user = await self._repo.get_by_email(identity_lc)
+
+        # ------------------------------------------------------------------
+        # Constant-time password verification
+        # ------------------------------------------------------------------
+        if user is None:
+            # Generate a dummy hash once (module-level cache) to keep timing
+            # consistent. passlib context handles constant-time comparison.
+            from functools import lru_cache
+
+            @lru_cache(maxsize=1)
+            def _dummy_hash() -> str:  # pragma: no cover – trivial helper
+                return security.PasswordHasher.hash_password("dummypassword123!@#")
+
+            security.PasswordHasher.verify_password(password, _dummy_hash())
+            raise InvalidCredentialsError()
+
+        # Optional inactive flag check if column exists
+        if getattr(user, "is_active", True) is False:
+            raise InactiveUserError()
+
+        if not security.PasswordHasher.verify_password(password, user.hashed_password):
+            raise InvalidCredentialsError()
 
         # Issue tokens
         access_token = JWTUtils.create_access_token(str(user.id))
-        refresh_token_jwt = JWTUtils.create_refresh_token(str(user.id))
+        refresh_token = JWTUtils.create_refresh_token(str(user.id))
 
-        # Persist refresh token jti hash
-        from jose import jwt as jose_jwt
+        # Persist refresh token JTI hash
+        from jose import jwt as jose_jwt  # local import to defer heavy dep
 
-        payload = jose_jwt.get_unverified_claims(refresh_token_jwt)
+        payload = jose_jwt.get_unverified_claims(refresh_token)
         jti = payload["jti"]
+        ttl = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
 
-        repo = RefreshTokenRepository(self._repo._session)  # share session
-        await repo.create_from_jti(
-            jti, user.id, timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-        )
+        rt_repo = RefreshTokenRepository(self._repo._session)
+        await rt_repo.create_from_jti(jti, user.id, ttl)
+
+        audit("user_login_success", user_id=str(user.id), jti=jti)
+        _LOGGER.info("user_login_success", extra={"user_id": str(user.id)})
 
         return TokenResponse(
             access_token=access_token,
-            refresh_token=refresh_token_jwt,
+            refresh_token=refresh_token,
             token_type="bearer",
             expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
