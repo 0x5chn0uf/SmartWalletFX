@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 
 import pytest
@@ -19,7 +20,7 @@ def test_user_create_invalid_password():
 def test_user_read_roundtrip():
     now = datetime.utcnow()
     read = UserRead(
-        id=1,
+        id=uuid.uuid4(),
         username="carol",
         email="carol@example.com",
         created_at=now,
@@ -32,7 +33,7 @@ def test_user_read_roundtrip():
 def test_user_in_db_includes_hash():
     now = datetime.utcnow()
     user_in_db = UserInDB(
-        id=2,
+        id=uuid.uuid4(),
         username="dave",
         email="dave@example.com",
         created_at=now,

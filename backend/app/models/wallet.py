@@ -1,5 +1,6 @@
 import re
 from datetime import datetime
+from uuid import uuid4
 
 from sqlalchemy import (
     JSON,
@@ -7,7 +8,6 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
-    Integer,
     Numeric,
     String,
 )
@@ -25,8 +25,10 @@ class Wallet(Base):
 
     __tablename__ = "wallets"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(UUID, ForeignKey("users.id"), nullable=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid4)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True
+    )
     address = Column(String, unique=True, index=True)
     name = Column(String, nullable=True, default="Unnamed Wallet")
     type = Column(String, nullable=True)  # EVM, BTC, etc.

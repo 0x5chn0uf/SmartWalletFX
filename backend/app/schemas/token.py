@@ -1,3 +1,4 @@
+import uuid
 from typing import Optional
 
 from pydantic import BaseModel
@@ -11,7 +12,11 @@ class TokenCreate(BaseModel):
 
 
 class TokenResponse(BaseModel):
-    id: int
+    """
+    Standard API response representation of an on-chain token.
+    """
+
+    id: uuid.UUID
     address: str
     symbol: str
     name: str

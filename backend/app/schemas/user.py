@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
@@ -10,7 +11,7 @@ from app.utils.security import validate_password_strength
 class UserBase(BaseModel):
     """Common fields shared by all user-facing schemas."""
 
-    id: int
+    id: uuid.UUID
     username: str
     email: EmailStr
     created_at: datetime

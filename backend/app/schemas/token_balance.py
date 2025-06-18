@@ -1,16 +1,18 @@
+import uuid
+
 from pydantic import BaseModel
 
 
 class TokenBalanceCreate(BaseModel):
-    token_id: int
-    wallet_id: int
+    token_id: uuid.UUID
+    wallet_id: uuid.UUID
     balance: float
     balance_usd: float
 
 
 class TokenBalanceResponse(BaseModel):
-    id: int
-    token_id: int
-    wallet_id: int
+    id: uuid.UUID
+    token_id: uuid.UUID
+    wallet_id: uuid.UUID
     balance: float
     balance_usd: float

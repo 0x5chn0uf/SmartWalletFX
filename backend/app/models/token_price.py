@@ -1,6 +1,8 @@
 from datetime import datetime
+from uuid import uuid4
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric
+from sqlalchemy import Column, DateTime, ForeignKey, Numeric
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -14,8 +16,8 @@ class TokenPrice(Base):
 
     __tablename__ = "token_prices"
 
-    id = Column(Integer, primary_key=True, index=True)
-    token_id = Column(Integer, ForeignKey("tokens.id"), index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid4)
+    token_id = Column(UUID(as_uuid=True), ForeignKey("tokens.id"), index=True)
     price_usd = Column(Numeric(precision=18, scale=8))
     timestamp = Column(DateTime, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)

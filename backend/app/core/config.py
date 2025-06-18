@@ -24,12 +24,16 @@ class Settings(BaseSettings):
     BCRYPT_ROUNDS: int = 12  # Default cost factor for bcrypt
 
     # JWT configuration
-    JWT_ALGORITHM: str = "RS256"
+    JWT_ALGORITHM: str = "HS256"
     JWT_PRIVATE_KEY_PATH: Optional[str] = None
     JWT_PUBLIC_KEY_PATH: Optional[str] = None
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-    JWT_SECRET_KEY: Optional[str] = None
+    JWT_SECRET_KEY: Optional[str] = "insecure-test-key"
+
+    # Authentication rate-limiting (login attempts)
+    AUTH_RATE_LIMIT_ATTEMPTS: int = 5  # max attempts per window
+    AUTH_RATE_LIMIT_WINDOW_SECONDS: int = 60  # rolling window size
 
     # Web3
     ARBITRUM_RPC_URL: Optional[str] = None

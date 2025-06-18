@@ -71,9 +71,32 @@ class JWTUtils:
             "iat": int(now.timestamp()),
             "exp": int(expire.timestamp()),
             "jti": uuid.uuid4().hex,
+            "type": "access",
         }
         if additional_claims:
             payload.update(additional_claims)
+        token = jwt.encode(
+            payload,
+            JWTUtils._get_sign_key(),
+            algorithm=settings.JWT_ALGORITHM,
+        )
+        return token
+
+    @staticmethod
+    def create_refresh_token(subject: str | int) -> str:
+        """Create a refresh JWT using the default *REFRESH_TOKEN_EXPIRE_DAYS*."""
+
+        expires_delta = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        now = datetime.now(timezone.utc)
+        expire = now + expires_delta
+        jti = uuid.uuid4().hex
+        payload: Dict[str, Any] = {
+            "sub": str(subject),
+            "iat": int(now.timestamp()),
+            "exp": int(expire.timestamp()),
+            "jti": jti,
+            "type": "refresh",
+        }
         token = jwt.encode(
             payload,
             JWTUtils._get_sign_key(),

@@ -88,4 +88,38 @@ curl http://localhost:8000/users/me \
   -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
+#### Rate Limiting
+
+`POST /auth/token` is protected by a **sliding-window rate-limiter** to mitigate credential-stuffing and brute-force attacks.
+
+* **Window**: 60 seconds (configurable via `AUTH_RATE_LIMIT_WINDOW_SECONDS`).
+* **Attempts**: 5 failed logins allowed per client IP in the window (`AUTH_RATE_LIMIT_ATTEMPTS`).
+* **Response**: Once the threshold is exceeded the endpoint responds with **429 Too Many Requests**.
+
+Example error payload:
+```json
+{
+  "detail": "Too many login attempts, please try again later."
+}
+```
+
+ℹ️ Production deployments should back the rate-limiter with a shared cache (e.g. Redis) so limits apply across all worker instances. The default in-memory implementation is sufficient for local development and CI.
+
+### Curl Example (access & refresh)
+```bash
+curl -X POST http://localhost:8000/auth/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=alice&password=Str0ng!pwd" | jq
+```
+
+Sample successful response:
+```json
+{
+  "access_token": "<jwt>",
+  "token_type": "bearer",
+  "expires_in": 900,
+  "refresh_token": "<jwt_refresh>"
+}
+```
+
 --- 

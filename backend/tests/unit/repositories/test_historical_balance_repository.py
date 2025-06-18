@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 
 from app.repositories.historical_balance_repository import (
@@ -21,7 +23,7 @@ async def test_historical_balance_repository_create(db_session):
 
     hist = await HistoricalBalanceRepository(db_session).create(
         HistoricalBalanceCreate(
-            wallet_id=1,
+            wallet_id=uuid.uuid4(),
             token_id=token.id,
             balance=50.0,
             balance_usd=50.0,
