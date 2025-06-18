@@ -3,10 +3,13 @@ from __future__ import annotations
 """Authentication endpoints (registration only – Subtask 4.5)."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.status import HTTP_401_UNAUTHORIZED
 
-from app.api.dependencies import get_current_user, oauth2_scheme
+from app.api.dependencies import auth_deps
 from app.core.database import get_db
+from app.schemas.auth_token import TokenResponse
 from app.schemas.user import UserCreate, UserRead
 from app.services.auth_service import (
     AuthService,
@@ -15,6 +18,8 @@ from app.services.auth_service import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+oauth2_scheme = auth_deps.oauth2_scheme
 
 
 @router.post(
@@ -49,5 +54,28 @@ async def register_user(
     return user
 
 
+@router.post(
+    "/token",
+    summary="Obtain JWT bearer tokens",
+    response_model=TokenResponse,
+)
+async def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: AsyncSession = Depends(get_db),
+    _rate_limit: None = Depends(auth_deps.rate_limit_auth_token),
+) -> TokenResponse:  # type: ignore[valid-type]
+    """OAuth2 Password grant – return access & refresh tokens."""
+
+    service = AuthService(db)
+    try:
+        tokens = await service.authenticate(form_data.username, form_data.password)
+        return tokens
+    except ValueError:
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="Invalid username or password",
+        )
+
+
 # Re-export for convenience in other modules
-__all__ = ["router", "oauth2_scheme", "get_current_user"]
+__all__ = ["router", "oauth2_scheme", "auth_deps"]

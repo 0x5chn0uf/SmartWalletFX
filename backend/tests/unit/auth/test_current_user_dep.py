@@ -1,11 +1,8 @@
-import asyncio
-from types import SimpleNamespace
-
 import pytest
 from jose.exceptions import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import auth_deps
 from app.models.user import User
 from app.utils.jwt import JWTUtils
 
@@ -30,7 +27,7 @@ async def test_get_current_user_success(monkeypatch):
     monkeypatch.setattr(JWTUtils, "decode_token", staticmethod(_dummy_decode))
     dummy_db = DummySession(user)
 
-    result = await get_current_user(token="dummy", db=dummy_db)  # type: ignore[arg-type]
+    result = await auth_deps.get_current_user(token="dummy", db=dummy_db)  # type: ignore[arg-type]
     assert result is user
 
 
@@ -43,4 +40,4 @@ async def test_get_current_user_invalid_token(monkeypatch):
     dummy_db = DummySession(None)
 
     with pytest.raises(Exception):
-        await get_current_user(token="bad", db=dummy_db)  # type: ignore[arg-type]
+        await auth_deps.get_current_user(token="bad", db=dummy_db)  # type: ignore[arg-type]
