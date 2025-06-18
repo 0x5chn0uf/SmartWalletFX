@@ -1,8 +1,7 @@
-"""FastAPI dependency providers for reusable services."""
-
+import uuid
 from functools import lru_cache
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from web3 import Web3
@@ -18,6 +17,7 @@ from app.usecase.portfolio_aggregation_usecase import (
     PortfolioAggregationUsecase,
 )
 from app.utils.jwt import JWTUtils
+from app.utils.rate_limiter import login_rate_limiter
 
 
 def _build_aggregator_async():
@@ -29,81 +29,133 @@ def _build_aggregator_async():
     return _aggregator
 
 
-def get_snapshot_service(
-    db: AsyncSession = Depends(get_db),
-) -> SnapshotAggregationService:  # pragma: no cover – simple factory
-    """Provide a SnapshotAggregationService with an injected async session."""
-    return SnapshotAggregationService(db, _build_aggregator_async())
+class DBDeps:  # noqa: D101 – small wrapper for DB related deps
+    def __init__(self):
+        # Public callables are exposed below via bound attributes
+        pass
+
+    def get_snapshot_service(
+        self, db: AsyncSession = Depends(get_db)
+    ) -> SnapshotAggregationService:  # pragma: no cover – simple factory
+        """Return SnapshotAggregationService bound to provided DB session."""
+
+        return SnapshotAggregationService(db, _build_aggregator_async())
 
 
-# --- Blockchain Provider ---
+db_deps = DBDeps()
 
 
-@lru_cache()
-def get_w3():
-    uri = getattr(settings, "WEB3_PROVIDER_URI", "https://ethereum-rpc.publicnode.com")
-    return Web3(Web3.HTTPProvider(uri))
+# ---------------------------------------------------------------------------
+# Blockchain-related dependencies
+# ---------------------------------------------------------------------------
 
 
-# --- Usecase Dependencies ---
+class BlockchainDeps:
+    """Group Web3 provider + protocol use-cases."""
+
+    @lru_cache()
+    def get_w3(self):  # noqa: D401 – dep factory
+        default_uri = "https://ethereum-rpc.publicnode.com"
+        uri = getattr(settings, "WEB3_PROVIDER_URI", default_uri)
+        return Web3(Web3.HTTPProvider(uri))
+
+    # Use-case factories -----------------------------------------------------
+
+    def get_aave_usecase(self) -> AaveUsecase:  # noqa: D401 – dep factory
+        return AaveUsecase(self.get_w3())
+
+    def get_compound_usecase(self) -> CompoundUsecase:  # noqa: D401 – dep factory
+        return CompoundUsecase(self.get_w3())
+
+    def get_radiant_usecase(self) -> RadiantUsecase:  # noqa: D401 – dep factory
+        return RadiantUsecase()
+
+    def get_portfolio_aggregation_usecase(
+        self,
+    ) -> PortfolioAggregationUsecase:  # noqa: D401
+        return PortfolioAggregationUsecase()
 
 
-def get_aave_usecase(w3: Web3 = Depends(get_w3)) -> AaveUsecase:
-    return AaveUsecase(w3)
+blockchain_deps = BlockchainDeps()
 
 
-def get_compound_usecase(w3: Web3 = Depends(get_w3)) -> CompoundUsecase:
-    return CompoundUsecase(w3)
+# ---------------------------------------------------------------------------
+# Auth / security dependencies
+# ---------------------------------------------------------------------------
 
 
-def get_radiant_usecase() -> RadiantUsecase:
-    return RadiantUsecase()
+class AuthDeps:
+    """Rate-limit, OAuth2 scheme, and *current-user* helper."""
+
+    oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+
+    async def rate_limit_auth_token(  # type: ignore[valid-type]
+        self, request: Request
+    ) -> None:
+        """Throttle excessive login attempts per client IP (in-memory)."""
+
+        identifier = request.client.host or "unknown"
+        if not login_rate_limiter.allow(identifier):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many login attempts, please try again later.",
+            )
+
+    async def get_current_user(
+        self,
+        token: str = Depends(oauth2_scheme),
+        db: AsyncSession = Depends(get_db),
+    ) -> User:
+        """Validate JWT *token* and return the associated :class:`User`."""
+
+        try:
+            payload = JWTUtils.decode_token(token)
+        except Exception:  # noqa: BLE001 – translate
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        sub = payload.get("sub")
+        if sub is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token missing subject claim",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        try:
+            pk = str(uuid.UUID(str(sub)))
+        except ValueError:
+            if str(sub).isdigit():
+                pk = int(sub)
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid subject in token",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
+        user = await db.get(User, pk)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return user
 
 
-def get_portfolio_aggregation_usecase() -> PortfolioAggregationUsecase:
-    return PortfolioAggregationUsecase()
+# Instantiate auth deps singleton
+auth_deps = AuthDeps()
 
+# Public API – expose only the three singletons and the DB snapshot helper
+get_snapshot_service = db_deps.get_snapshot_service  # convenience bound method
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
-
-
-async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db),
-) -> User:
-    """Validate JWT *token* and return the associated :class:`~app.models.user.User`."""
-    try:
-        payload = JWTUtils.decode_token(token)
-    except Exception:  # noqa: BLE001 – propagate as HTTP error
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    sub = payload.get("sub")
-    if sub is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token missing subject claim",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    # Fetch user
-    try:
-        user_id = int(sub)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid subject in token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    user = await db.get(User, user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return user
+__all__ = [
+    "db_deps",
+    "blockchain_deps",
+    "auth_deps",
+    "get_snapshot_service",
+]

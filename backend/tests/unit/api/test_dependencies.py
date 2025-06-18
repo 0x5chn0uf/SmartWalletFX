@@ -4,15 +4,20 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 
-from app.api import dependencies as deps
+import app.api.dependencies as deps_mod
+from app.api.dependencies import (
+    _build_aggregator_async,
+    auth_deps,
+    blockchain_deps,
+)
 
 
 @pytest.fixture(autouse=True)
 def _clear_w3_cache():
     """Ensure the Web3 provider cache is cleared before & after each test."""
-    deps.get_w3.cache_clear()
+    blockchain_deps.get_w3.cache_clear()
     yield
-    deps.get_w3.cache_clear()
+    blockchain_deps.get_w3.cache_clear()
 
 
 # ---------------------------------------------------------------------------
@@ -33,16 +38,18 @@ def test_get_w3_returns_cached_instance(monkeypatch):
             # *provider* will be an instance of DummyWeb3.HTTPProvider
             self.provider = provider
 
-    monkeypatch.setattr(deps, "Web3", DummyWeb3)
+    monkeypatch.setattr(deps_mod, "Web3", DummyWeb3)
 
-    first = deps.get_w3()
-    second = deps.get_w3()
+    first = blockchain_deps.get_w3()
+    second = blockchain_deps.get_w3()
 
     assert first is second  # cached instance
     assert isinstance(first, DummyWeb3)
     # Ensure the provider URI passed to HTTPProvider matches default setting
+    from app.core.config import settings
+
     assert first.provider.uri == getattr(
-        deps.settings, "WEB3_PROVIDER_URI", "https://ethereum-rpc.publicnode.com"
+        settings, "WEB3_PROVIDER_URI", "https://ethereum-rpc.publicnode.com"
     )
 
 
@@ -62,9 +69,9 @@ async def test_build_aggregator_async_invokes_usecase(monkeypatch):
             captured["address"] = address
             return "METRICS"
 
-    monkeypatch.setattr(deps, "PortfolioAggregationUsecase", DummyUsecase)
+    monkeypatch.setattr(deps_mod, "PortfolioAggregationUsecase", DummyUsecase)
 
-    aggregator = deps._build_aggregator_async()
+    aggregator = _build_aggregator_async()
     assert inspect.iscoroutinefunction(aggregator)
 
     result = await aggregator("0x123")
@@ -94,10 +101,10 @@ async def test_get_current_user_success(monkeypatch):
     """A valid token with an existing user returns the user instance."""
 
     user = DummyUser()
-    monkeypatch.setattr(deps.JWTUtils, "decode_token", lambda token: {"sub": "42"})
+    monkeypatch.setattr(deps_mod.JWTUtils, "decode_token", lambda token: {"sub": "42"})
     session = DummySession(user)
 
-    result = await deps.get_current_user(token="token", db=session)
+    result = await auth_deps.get_current_user(token="token", db=session)
     assert result is user
 
 
@@ -120,15 +127,15 @@ async def test_get_current_user_error_paths(monkeypatch, decoded, expected_detai
         def _raise(_):
             raise decoded
 
-        monkeypatch.setattr(deps.JWTUtils, "decode_token", _raise)
+        monkeypatch.setattr(deps_mod.JWTUtils, "decode_token", _raise)
     else:
-        monkeypatch.setattr(deps.JWTUtils, "decode_token", lambda _: decoded)
+        monkeypatch.setattr(deps_mod.JWTUtils, "decode_token", lambda _: decoded)
 
     # Prepare session that returns *None* to trigger "user not found" branch
     session = DummySession(user=None)
 
     with pytest.raises(HTTPException) as exc:
-        await deps.get_current_user(token="whatever", db=session)
+        await auth_deps.get_current_user(token="whatever", db=session)
 
     assert exc.value.status_code == 401
     assert expected_detail in exc.value.detail

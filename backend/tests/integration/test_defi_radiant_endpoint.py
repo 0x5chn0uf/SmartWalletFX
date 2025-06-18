@@ -4,6 +4,7 @@ import httpx
 import pytest
 from httpx import AsyncClient
 
+from app.api.dependencies import blockchain_deps as deps
 from app.main import app
 
 TEST_ADDRESS = "0x1111111111111111111111111111111111111111"
@@ -86,7 +87,6 @@ async def test_get_radiant_user_data_not_found(mock_async_get):
 @pytest.mark.asyncio
 async def test_radiant_user_endpoint(monkeypatch, test_app):
     """Radiant endpoint returns mocked snapshot and propagates JSON."""
-    from app.api.endpoints.defi import get_radiant_usecase
     from app.schemas.defi import DeFiAccountSnapshot
 
     async def _mock_snapshot(address: str):  # noqa: D401
@@ -104,7 +104,7 @@ async def test_radiant_user_endpoint(monkeypatch, test_app):
         async def get_user_snapshot(self, address: str):
             return await _mock_snapshot(address)
 
-    app.dependency_overrides[get_radiant_usecase] = MockRadiantUsecase
+    app.dependency_overrides[deps.get_radiant_usecase] = MockRadiantUsecase
 
     transport = httpx.ASGITransport(app=test_app, raise_app_exceptions=True)
     async with httpx.AsyncClient(
@@ -115,4 +115,4 @@ async def test_radiant_user_endpoint(monkeypatch, test_app):
     assert resp.status_code == 200
     assert resp.json()["user_address"].lower() == TEST_ADDRESS.lower()
 
-    del app.dependency_overrides[get_radiant_usecase]
+    del app.dependency_overrides[deps.get_radiant_usecase]

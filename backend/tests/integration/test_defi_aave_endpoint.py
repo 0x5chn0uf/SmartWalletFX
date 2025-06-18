@@ -4,6 +4,7 @@ from unittest.mock import ANY, MagicMock, patch
 import pytest
 from httpx import AsyncClient
 
+from app.api.dependencies import blockchain_deps as deps
 from app.main import app
 from app.schemas.defi import DeFiAccountSnapshot
 
@@ -79,10 +80,7 @@ async def test_get_aave_user_data_not_found(mock_get_snapshot, test_app):
 @pytest.mark.asyncio
 async def test_aave_and_compound_endpoints(mock_w3, monkeypatch):
     """Aave and Compound endpoints propagate mocked snapshots."""
-    from app.api.endpoints.defi import get_aave_usecase, get_compound_usecase
-    from app.schemas.defi import DeFiAccountSnapshot
-    from app.usecase.defi_aave_usecase import AaveUsecase
-    from app.usecase.defi_compound_usecase import CompoundUsecase
+    # override directly via blockchain_deps singletons now
 
     async def _mock_snapshot(address: str):
         return DeFiAccountSnapshot(
@@ -103,8 +101,8 @@ async def test_aave_and_compound_endpoints(mock_w3, monkeypatch):
         async def get_user_snapshot(self, address: str):
             return await _mock_snapshot(address)
 
-    app.dependency_overrides[get_aave_usecase] = MockAaveUsecase
-    app.dependency_overrides[get_compound_usecase] = MockCompoundUsecase
+    app.dependency_overrides[deps.get_aave_usecase] = MockAaveUsecase
+    app.dependency_overrides[deps.get_compound_usecase] = MockCompoundUsecase
 
     transport = AsyncClient(app=app, base_url="http://test")
     async with transport as client:
@@ -114,5 +112,5 @@ async def test_aave_and_compound_endpoints(mock_w3, monkeypatch):
     assert aave_resp.status_code == 200
     assert compound_resp.status_code == 200
 
-    del app.dependency_overrides[get_aave_usecase]
-    del app.dependency_overrides[get_compound_usecase]
+    del app.dependency_overrides[deps.get_aave_usecase]
+    del app.dependency_overrides[deps.get_compound_usecase]

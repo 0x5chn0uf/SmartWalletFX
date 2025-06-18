@@ -7,12 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from web3 import Web3
 
-from app.api.dependencies import (
-    get_aave_usecase,
-    get_compound_usecase,
-    get_portfolio_aggregation_usecase,
-    get_radiant_usecase,
-)
+from app.api.dependencies import blockchain_deps as deps
 from app.celery_app import celery
 from app.core.database import get_db
 from app.repositories.portfolio_snapshot_repository import (
@@ -46,7 +41,7 @@ class IntervalEnum(str, Enum):
     tags=["DeFi"],
 )
 async def get_radiant_user_data(
-    address: str, usecase: RadiantUsecase = Depends(get_radiant_usecase)
+    address: str, usecase: RadiantUsecase = Depends(deps.get_radiant_usecase)
 ):
     """
     Get Radiant user data for a given wallet address (Arbitrum network).
@@ -68,7 +63,7 @@ async def get_radiant_user_data(
     tags=["DeFi"],
 )
 async def get_aave_user_data(
-    address: str, usecase: AaveUsecase = Depends(get_aave_usecase)
+    address: str, usecase: AaveUsecase = Depends(deps.get_aave_usecase)
 ):
     """
     Get Aave user data for a given wallet address (Ethereum mainnet).
@@ -87,7 +82,7 @@ async def get_aave_user_data(
     tags=["DeFi"],
 )
 async def get_compound_user_data(
-    address: str, usecase: CompoundUsecase = Depends(get_compound_usecase)
+    address: str, usecase: CompoundUsecase = Depends(deps.get_compound_usecase)
 ):
     """
     Get Compound user data for a given wallet address (Ethereum mainnet).
@@ -106,7 +101,9 @@ async def get_compound_user_data(
 )
 async def get_portfolio_metrics(
     address: str,
-    usecase: PortfolioAggregationUsecase = Depends(get_portfolio_aggregation_usecase),
+    usecase: PortfolioAggregationUsecase = Depends(
+        deps.get_portfolio_aggregation_usecase
+    ),
 ):
     """
     Get aggregated portfolio metrics for a given wallet address across
