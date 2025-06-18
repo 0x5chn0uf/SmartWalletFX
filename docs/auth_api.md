@@ -77,10 +77,11 @@ The platform follows RFC 6749 OAuth2 Password Grant flow for first-party clients
 Access tokens expire after **15 minutes** by default. Refresh tokens expire after **7 days**.
 
 ### Error Responses
-| Status | Reason |
-|--------|--------|
-| 401 Unauthorized | Missing/invalid/expired token |
-| 403 Forbidden | Valid token but insufficient scope/role (future RBAC) |
+| Status | Reason | Example Payload |
+|--------|--------|-----------------|
+| 401 Unauthorized | Invalid username or password | `{ "detail": "Invalid username or password" }` |
+| 403 Forbidden | Account exists but `is_active` is `false` | `{ "detail": "Inactive or disabled user account" }` |
+| 429 Too Many Requests | Rate-limit exceeded (see Rate Limiting) | `{ "detail": "Too many login attempts, please try again later." }` |
 
 ### Example – Fetch current user
 ```bash
@@ -121,5 +122,36 @@ Sample successful response:
   "refresh_token": "<jwt_refresh>"
 }
 ```
+
+### Security Considerations – Timing-Attack Mitigation
+
+To prevent user-enumeration via response-time analysis, the backend performs a **dummy bcrypt verification** even when the supplied username/email does not exist. This keeps the total request latency roughly equal for:
+
+1. *Unknown user* attempts
+2. *Known user / wrong password* attempts
+
+Implementation details:
+• A cached dummy hash (`$2b$...`) is generated once at runtime – this avoids extra cost after the first call.  
+• The password supplied by the client is verified against that hash using `passlib`, ensuring a full bcrypt execution path.  
+• After the comparison, the service still raises a generic `InvalidCredentialsError`.
+
+This small extra cost (≈ 50–100 ms) significantly reduces the signal attackers can use to enumerate valid accounts.
+
+## Audit Logging
+
+Successful and failed login attempts emit structured **audit log** entries that can be shipped to SIEM/observability stacks:
+
+```jsonc
+{
+  "id": "13c2a4d7-5af4-4f5b-8a9e-4de7814a9c2e", // unique event id
+  "ts": "2025-06-18T14:25:43.123Z",             // ISO timestamp
+  "event": "user_login_success",                // or user_login_failure
+  "user_id": "42",                              // absent for unknown-user failures
+  "jti": "105b87e4…",                           // JWT id for correlation
+  "ip": "203.0.113.5"                           // extracted by proxy middleware (future)
+}
+```
+
+Logs are written via `app.utils.logging.audit()` ensuring a single-line JSON payload for easy parsing, and are retained independently of application logs.
 
 --- 
