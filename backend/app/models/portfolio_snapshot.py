@@ -1,4 +1,7 @@
-from sqlalchemy import JSON, BigInteger, Column, Float, Integer, String
+from uuid import uuid4
+
+from sqlalchemy import JSON, BigInteger, Column, Float, String
+from sqlalchemy.dialects.postgresql import UUID
 
 from . import Base
 
@@ -6,7 +9,7 @@ from . import Base
 class PortfolioSnapshot(Base):
     __tablename__ = "portfolio_snapshots"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     user_address = Column(String(64), index=True, nullable=False)
     timestamp = Column(BigInteger, index=True, nullable=False)
     total_collateral = Column(Float, nullable=False)

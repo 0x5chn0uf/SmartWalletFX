@@ -1,4 +1,5 @@
 import re
+import uuid
 from datetime import datetime
 from typing import Optional
 
@@ -37,7 +38,7 @@ class WalletResponse(BaseModel):
     Used for serializing wallet data in API responses.
     """
 
-    id: int
+    id: uuid.UUID
     address: str
     name: Optional[str]
     created_at: datetime

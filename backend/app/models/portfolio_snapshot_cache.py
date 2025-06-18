@@ -1,6 +1,8 @@
 import datetime
+from uuid import uuid4
 
 from sqlalchemy import BigInteger, Column, DateTime, Integer, String, Text
+from sqlalchemy.dialects.postgresql import UUID
 
 from . import Base
 
@@ -8,7 +10,7 @@ from . import Base
 class PortfolioSnapshotCache(Base):
     __tablename__ = "portfolio_snapshot_cache"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     user_address = Column(String(64), index=True, nullable=False)
     from_ts = Column(BigInteger, nullable=False)
     to_ts = Column(BigInteger, nullable=False)

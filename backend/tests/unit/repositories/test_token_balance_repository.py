@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 
 from app.repositories.token_balance_repository import TokenBalanceRepository
@@ -19,7 +21,7 @@ async def test_token_balance_repository_create(db_session):
     balance = await TokenBalanceRepository(db_session).create(
         TokenBalanceCreate(
             token_id=token.id,
-            wallet_id=1,
+            wallet_id=uuid.uuid4(),
             balance=100.0,
             balance_usd=100.0,
         )

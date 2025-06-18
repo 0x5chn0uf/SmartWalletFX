@@ -1,14 +1,8 @@
 from datetime import datetime
+from uuid import uuid4
 
-from sqlalchemy import (
-    JSON,
-    Column,
-    DateTime,
-    ForeignKey,
-    Integer,
-    Numeric,
-    String,
-)
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Numeric, String
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -22,10 +16,12 @@ class Transaction(Base):
 
     __tablename__ = "transactions"
 
-    id = Column(Integer, primary_key=True, index=True)
-    wallet_id = Column(Integer, ForeignKey("wallets.id"), index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid4)
+    wallet_id = Column(UUID(as_uuid=True), ForeignKey("wallets.id"), index=True)
     hash = Column(String, unique=True, index=True)
-    token_id = Column(Integer, ForeignKey("tokens.id"), nullable=True, index=True)
+    token_id = Column(
+        UUID(as_uuid=True), ForeignKey("tokens.id"), nullable=True, index=True
+    )
     type = Column(String, index=True)  # IN, OUT, SWAP, etc.
     amount = Column(Numeric(precision=18, scale=8), nullable=False)
     usd_value = Column(Numeric(precision=18, scale=2), nullable=True)
