@@ -35,3 +35,32 @@ async def test_wallet_crud_flow(test_app):
         list_resp2 = await ac.get("/wallets")
         assert list_resp2.status_code == 200
         assert list_resp2.json() == []
+
+
+# ---------------------------------------------------------------------------
+# Additional scenarios migrated from former *test_wallet.py*
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_wallet_duplicate_rejected(test_app):
+    """Creating the same wallet twice should yield 400."""
+
+    transport = httpx.ASGITransport(app=test_app, raise_app_exceptions=True)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
+        payload = {"address": ADDRESS, "name": "Duplicate"}
+
+        assert (await ac.post("/wallets", json=payload)).status_code == 201
+        dup = await ac.post("/wallets", json=payload)
+        assert dup.status_code == 400
+        assert "already exists" in dup.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_wallet_invalid_address_format(test_app):
+    """API returns 422 for improperly formatted wallet address."""
+
+    transport = httpx.ASGITransport(app=test_app, raise_app_exceptions=True)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
+        bad = await ac.post("/wallets", json={"address": "not-an-address"})
+        assert bad.status_code == 422
