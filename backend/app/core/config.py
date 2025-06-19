@@ -39,6 +39,23 @@ class Settings(BaseSettings):
     ARBITRUM_RPC_URL: Optional[str] = None
     WEB3_PROVIDER_URI: Optional[str] = None
 
+    # --- Key-Rotation Support ---------------------------
+    # Mapping of key-id (kid) → PEM/secret used for verifying signatures.
+    # In HS* algorithms the value is the raw secret; for RS* algorithms the
+    # value should be the *public* key PEM string.  The active signing key is
+    # controlled by *ACTIVE_JWT_KID*.  Additional keys may exist in the map
+    # during a grace-period following rotation so that previously-issued
+    # tokens remain valid.
+    JWT_KEYS: dict[str, str] = {}
+
+    # Identifier of the key currently used to *sign* newly-issued tokens.
+    # MUST be present in *JWT_KEYS*.
+    ACTIVE_JWT_KID: str = "default"
+
+    # Grace-period (seconds) during which tokens signed with the previous key
+    # remain valid after rotation.  When 0, rotation is immediate.
+    JWT_ROTATION_GRACE_PERIOD_SECONDS: int = 300
+
     # Pydantic v2 config – ignore extra environment variables to prevent
     # validation errors when the host machine defines unrelated keys
     model_config = {
