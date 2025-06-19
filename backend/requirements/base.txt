@@ -29,3 +29,5 @@ redis==5.2.1
 
 # Async testing backend
 trio==0.25.0
+
+structlog==24.2.0  # Structured logging
