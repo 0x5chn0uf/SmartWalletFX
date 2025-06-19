@@ -11,7 +11,7 @@ name = "smartwalletfx"
 version = "0.1.0"
 description = "A wallet tracking application for EVM chains"
 authors = [
-    {name = "Your Name", email = "your.email@example.com"},
+    {name = "0x5chn0uf", email = "0x5chn0u@protonmail.com"},
 ]
 dependencies = [
     "fastapi>=0.110.0",
