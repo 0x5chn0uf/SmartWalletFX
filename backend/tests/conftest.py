@@ -254,3 +254,14 @@ settings.register_profile(
     ),
 )
 settings.load_profile("fast")
+
+
+def pytest_configure(config):  # noqa: D401
+    """Register custom markers used across the test-suite.
+
+    Adding markers here (in addition to pytest.ini) ensures IDE linting and
+    ``pytest --strict-markers`` do not raise warnings when the custom marker is
+    used in standalone test files that might execute outside the project root.
+    """
+
+    config.addinivalue_line("markers", "security: security-related timing tests")
