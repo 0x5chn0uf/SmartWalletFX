@@ -89,6 +89,48 @@ curl http://localhost:8000/users/me \
   -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
+### Get Current User – `GET /users/me`
+
+Retrieve the currently authenticated user's public profile. This endpoint is secured by the `Bearer` token issued via `/auth/token`.
+
+**Security Requirements**
+- `Authorization: Bearer <access_token>` header must contain a valid **access token**.
+- On failure, returns `401 Unauthorized` with `WWW-Authenticate: Bearer` header.
+- If the account exists but is inactive/disabled, returns `403 Forbidden`.
+
+#### Success Response – 200 OK
+`application/json`
+```json
+{
+  "id": "f7b1c1f8-19e4-45b3-b383-4f0d3e28f8a0",
+  "username": "alice",
+  "email": "alice@example.com",
+  "created_at": "2025-06-18T12:34:56.789Z",
+  "updated_at": "2025-06-18T12:34:56.789Z"
+}
+```
+
+*Field Notes*
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `uuid` | Unique user ID (UUID v4) |
+| `username` | `string` | Public username, unique |
+| `email` | `string` | Email address (public for now; may become private) |
+| `created_at` | `datetime` | ISO timestamp of account creation |
+| `updated_at` | `datetime` | ISO timestamp of last profile update |
+
+#### Error Responses
+| Status | Condition | Example Payload |
+|--------|-----------|-----------------|
+| 401 Unauthorized | Missing / invalid token | `{ "detail": "Not authenticated" }` |
+| 403 Forbidden | User account inactive/disabled | `{ "detail": "Inactive or disabled user account" }` |
+
+#### Curl Example
+```bash
+curl -X GET http://localhost:8000/users/me \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
 #### Rate Limiting
 
 `POST /auth/token` is protected by a **sliding-window rate-limiter** to mitigate credential-stuffing and brute-force attacks.
