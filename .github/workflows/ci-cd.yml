@@ -41,7 +41,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: backend/.venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml') }}
+          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml', 'backend/requirements/perf.txt') }}
 
   isort:
     needs: [setup, changes]
@@ -60,7 +60,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: backend/.venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml') }}
+          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml', 'backend/requirements/perf.txt') }}
 
       - name: Run isort
         working-directory: ./backend
@@ -85,7 +85,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: backend/.venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml') }}
+          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml', 'backend/requirements/perf.txt') }}
 
       - name: Run black
         working-directory: ./backend
@@ -110,7 +110,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: backend/.venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml') }}
+          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml', 'backend/requirements/perf.txt') }}
 
       - name: Run flake8
         working-directory: ./backend
@@ -141,7 +141,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: backend/.venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml') }}
+          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml', 'backend/requirements/perf.txt') }}
 
       - name: Run tests with coverage
         working-directory: ./backend
@@ -186,13 +186,70 @@ jobs:
         uses: actions/cache@v4
         with:
           path: backend/.venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml') }}
+          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml', 'backend/requirements/perf.txt') }}
 
       - name: Run Security tests only
         working-directory: ./backend
         run: |
           source .venv/bin/activate
           pytest -m security -v
+
+  performance-tests:
+    needs: [test-backend, changes]
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    env:
+      BCRYPT_ROUNDS: 4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Restore virtualenv
+        uses: actions/cache@v4
+        with:
+          path: backend/.venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml', 'backend/requirements/perf.txt') }}
+
+      - name: Install performance dependencies (locust & pytest-benchmark)
+        working-directory: ./backend
+        run: |
+          source .venv/bin/activate
+          pip install -r requirements/perf.txt
+
+      - name: Run pytest benchmarks (no assertions, save results)
+        working-directory: ./backend
+        run: |
+          source .venv/bin/activate
+          pytest --benchmark-only -q | cat
+
+      - name: Upload benchmark artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: backend/.benchmarks
+
+      - name: Start backend server
+        working-directory: ./backend
+        run: |
+          source .venv/bin/activate
+          uvicorn app.main:app --host 0.0.0.0 --port 8000 > uvicorn_perf.log 2>&1 &
+          for i in {1..15}; do
+            if curl -s http://localhost:8000/health > /dev/null; then
+              echo "Backend up" && break;
+            fi
+            echo "Waiting for backend..." && sleep 2;
+          done
+
+      - name: Run Locust smoke load test
+        working-directory: ./backend
+        run: |
+          source .venv/bin/activate
+          make locust-smoke
 
   build-backend:
     needs: [test-backend, changes]
@@ -211,7 +268,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: backend/.venv
-          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml') }}
+          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml', 'backend/requirements/perf.txt') }}
 
       - name: Build package
         working-directory: ./backend
