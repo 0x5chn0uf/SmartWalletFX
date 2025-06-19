@@ -184,6 +184,14 @@ def patch_sync_db():
     db_mod.sync_engine = sync_engine
     db_mod.SyncSessionLocal = SyncSessionLocal
     snapshots_mod.SyncSessionLocal = SyncSessionLocal
+    # Ensure DI helpers use the same session factory
+    import app.di as di_mod
+
+    di_mod.SyncSessionLocal = SyncSessionLocal
+
+    # Debug logging to verify fixture executed in CI
+    print(f"[patch_sync_db] Applied sync_engine override. URL: {sync_engine.url}")
+
     yield
 
 
