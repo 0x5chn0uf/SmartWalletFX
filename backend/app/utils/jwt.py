@@ -154,6 +154,22 @@ class JWTUtils:
             if not payload.get("sub"):
                 raise JWTError("Token payload is missing required 'sub' claim")
 
+            # Extra integrity guard – ensure provided token signature matches
+            try:
+                recomputed = jwt.encode(
+                    payload,
+                    JWTUtils._get_sign_key(),
+                    algorithm=settings.JWT_ALGORITHM,
+                )
+                if recomputed.split(".")[:2] != token.split(".")[:2]:
+                    # In theory the first two segments already match.
+                    # Verify the signature segment differs to detect tampering.
+                    pass  # same header/payload
+                if recomputed.split(".")[2] != token.split(".")[2]:
+                    raise JWTError("Signature verification failed")
+            except JWTError:
+                raise
+
             return payload
         except ExpiredSignatureError as exc:
             # Explicitly propagate expiration errors for caller-specific handling
