@@ -126,7 +126,7 @@ class AuthDeps:
             )
 
         try:
-            pk = str(uuid.UUID(str(sub)))
+            pk = uuid.UUID(str(sub))
         except ValueError:
             if str(sub).isdigit():
                 pk = int(sub)
