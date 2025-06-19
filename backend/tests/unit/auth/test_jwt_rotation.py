@@ -34,7 +34,7 @@ def _clean_state(monkeypatch):
     _RETIRED_KEYS.clear()
 
 
-def test_rotation_grace_period_allows_old_tokens(monkeypatch):
+def test_rotation_grace_period_allows_old_tokens(freezer):
     user_id = "123"
 
     # Issue token with key A
@@ -50,11 +50,8 @@ def test_rotation_grace_period_allows_old_tokens(monkeypatch):
     assert JWTUtils.decode_token(token_old)["sub"] == user_id
     assert JWTUtils.decode_token(token_new)["sub"] == user_id
 
-    # Fast-forward past grace period
-    future = _now_utc() + timedelta(
-        seconds=settings.JWT_ROTATION_GRACE_PERIOD_SECONDS + 1
-    )
-    monkeypatch.setattr(jwt_utils, "_now_utc", lambda: future)
+    # Fast-forward past grace-period using the *freezer* fixture for deterministic time
+    freezer.tick(timedelta(seconds=settings.JWT_ROTATION_GRACE_PERIOD_SECONDS + 1))
 
     # Old token should now be invalid
     with pytest.raises(Exception):
@@ -65,7 +62,7 @@ def test_rotation_grace_period_allows_old_tokens(monkeypatch):
 
 
 @pytest.mark.anyio
-async def test_key_rotation_lifecycle(test_app, db_session, monkeypatch):
+async def test_key_rotation_lifecycle(test_app, db_session, freezer):
     """End-to-end validation: old token accepted during grace, rejected after."""
 
     settings.JWT_KEYS = {"A": "secretA"}
@@ -106,9 +103,7 @@ async def test_key_rotation_lifecycle(test_app, db_session, monkeypatch):
         assert (await ac.get("/users/me", headers=hdr_new)).status_code == 200
 
         # Jump forward beyond grace-period
-        monkeypatch.setattr(
-            "app.utils.jwt._now_utc", lambda: _now_utc() + timedelta(seconds=2)
-        )
+        freezer.tick(timedelta(seconds=2))
 
         assert (await ac.get("/users/me", headers=hdr_old)).status_code == 401
         assert (await ac.get("/users/me", headers=hdr_new)).status_code == 200
@@ -159,7 +154,7 @@ def test_sign_key_misconfiguration():
         JWTUtils._get_sign_key()  # type: ignore[arg-type]
 
 
-def test_retired_key_token_rejected(monkeypatch):
+def test_retired_key_token_rejected(freezer):
     """Decoding a token signed with a retired key after grace should fail."""
 
     user = "abc"
@@ -173,9 +168,7 @@ def test_retired_key_token_rejected(monkeypatch):
     rotate_signing_key("NEW", "newsecret")
 
     # Advance time by 1 second so retirement expires
-    monkeypatch.setattr(
-        jwt_utils, "_now_utc", lambda: _now_utc() + timedelta(seconds=1)
-    )
+    freezer.tick(timedelta(seconds=1))
 
     with pytest.raises(Exception):
         JWTUtils.decode_token(token_old)
