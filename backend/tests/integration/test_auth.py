@@ -149,6 +149,10 @@ class DummyAuthService:  # noqa: D101 – lightweight stub
         raise WeakPasswordError()
 
     async def authenticate(self, username: str, password: str):  # noqa: D401 – stub
+        if username == "inactive":
+            from app.domain.errors import InactiveUserError
+
+            raise InactiveUserError()
         raise InvalidCredentialsError()
 
 
@@ -190,6 +194,21 @@ async def test_token_invalid_credentials(test_app, patched_auth_service):
         resp = await ac.post("/auth/token", data={"username": "u", "password": "p"})
         assert resp.status_code == 401
         assert resp.json()["detail"] == "Invalid username or password"
+
+
+# New test for inactive user -------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_token_inactive_user(test_app, patched_auth_service):
+    """/auth/token should return 403 when account inactive."""
+
+    async with AsyncClient(app=test_app, base_url="http://test") as ac:
+        resp = await ac.post(
+            "/auth/token", data={"username": "inactive", "password": "p"}
+        )
+        assert resp.status_code == 403
+        assert resp.json()["detail"] == "Inactive or disabled user account"
 
 
 # ---------------------------------------------------------------------------
