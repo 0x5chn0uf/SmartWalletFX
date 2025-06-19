@@ -63,6 +63,8 @@ dev = [
     "debugpy==1.8.0",
     "respx==0.22.0",
     "hypothesis==6.135.10",
+    "pytest-benchmark==4.0.0",
+    "locust==2.27.0",
 ]
 
 [tool.pytest.ini_options]
