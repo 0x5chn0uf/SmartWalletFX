@@ -73,7 +73,10 @@ async def test_get_aave_user_data_not_found(mock_get_snapshot, test_app):
     async with AsyncClient(app=test_app, base_url="http://test") as ac:
         response = await ac.get("/defi/aave/0x456")
     assert response.status_code == 404
-    assert response.json() == {"detail": "User data not found on Aave."}
+    body = response.json()
+    assert body["detail"].startswith("User data not found")
+    assert body["code"] in {"ERROR", "NOT_FOUND"}
+    assert body["trace_id"]
     mock_get_snapshot.assert_called_once_with("0x456")
 
 

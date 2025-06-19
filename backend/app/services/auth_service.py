@@ -128,14 +128,17 @@ class AuthService:
             def _dummy_hash() -> str:  # pragma: no cover – trivial helper
                 return security.PasswordHasher.hash_password("dummypassword123!@#")
 
+            # Constant-time verification against dummy hash to equalise timing
             security.PasswordHasher.verify_password(password, _dummy_hash())
+            audit("AUTH_FAILURE", reason="invalid_credentials", identity=identity_lc)
             raise InvalidCredentialsError()
 
-        # Optional inactive flag check if column exists
         if getattr(user, "is_active", True) is False:
+            audit("AUTH_FAILURE", reason="inactive_account", user_id=str(user.id))
             raise InactiveUserError()
 
         if not security.PasswordHasher.verify_password(password, user.hashed_password):
+            audit("AUTH_FAILURE", reason="invalid_credentials", user_id=str(user.id))
             raise InvalidCredentialsError()
 
         # Issue tokens

@@ -1,9 +1,15 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.exc import IntegrityError  # local import
 
 from app.api.api import api_router
+from app.core import error_handling
 from app.core.config import settings
 from app.core.init_db import init_db
+
+# --- New imports for structured logging & error handling ---
+from app.core.logging import setup_logging  # noqa: F401 – side-effect import
+from app.core.middleware import CorrelationIdMiddleware
 
 
 def create_app() -> FastAPI:
@@ -26,6 +32,27 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+    )
+
+    # Correlation-ID middleware (must run early)
+    app.add_middleware(CorrelationIdMiddleware)
+
+    # Register global exception handlers
+    app.add_exception_handler(
+        Exception, error_handling.generic_exception_handler  # type: ignore[arg-type]
+    )
+    app.add_exception_handler(
+        HTTPException, error_handling.http_exception_handler  # type: ignore[arg-type]
+    )
+    from fastapi.exceptions import RequestValidationError  # local import
+
+    app.add_exception_handler(
+        RequestValidationError,  # type: ignore[arg-type]
+        error_handling.validation_exception_handler,
+    )
+
+    app.add_exception_handler(
+        IntegrityError, error_handling.integrity_error_handler  # type: ignore[arg-type]
     )
 
     # Initialize database tables on startup

@@ -36,4 +36,12 @@ def audit(event: str, **extra: Any) -> None:
         "event": event,
         **extra,
     }
+    try:
+        from structlog.contextvars import get_context
+
+        ctx = get_context()
+        if ctx and "trace_id" in ctx:
+            payload["trace_id"] = ctx["trace_id"]
+    except Exception:  # pragma: no cover – structlog may not be configured
+        pass
     _AUDIT_LOGGER.info(json.dumps(payload, separators=(",", ":")))
