@@ -196,4 +196,53 @@ Successful and failed login attempts emit structured **audit log** entries that 
 
 Logs are written via `app.utils.logging.audit()` ensuring a single-line JSON payload for easy parsing, and are retained independently of application logs.
 
+## Standard Error Response Format (Subtask 4.11)
+All error responses now follow a consistent envelope defined by the `ErrorResponse` schema:
+
+```jsonc
+{
+  "detail": "Invalid username or password",  // human-readable summary
+  "code": "AUTH_FAILURE",                   // machine-readable code (see table)
+  "trace_id": "7f580fb3-4d94-4b95-9d0b-87850c2c7399" // request correlation id
+}
+```
+
+| Field     | Type   | Description                                                            |
+|-----------|--------|------------------------------------------------------------------------|
+| `detail`  | string | Short message safe to expose to clients (no internal details)          |
+| `code`    | string | Error category (e.g. `AUTH_FAILURE`, `VALIDATION_ERROR`, `SERVER_ERROR`)|
+| `trace_id`| string (uuid) | Unique ID attached to every request, mirrored in `X-Trace-Id` header |
+
+### Current Error Codes
+| Code               | Scenario                                   | Typical HTTP Status |
+|--------------------|--------------------------------------------|---------------------|
+| `AUTH_FAILURE`     | Bad credentials, expired/invalid JWT, inactive user | 401 / 403 |
+| `VALIDATION_ERROR` | Body/query/path validation failed          | 422 |
+| `BAD_REQUEST`      | Semantically invalid request               | 400 |
+| `NOT_FOUND`        | Resource not found                         | 404 |
+| `ERROR`            | Other handled exception                    | 4xx / 5xx |
+| `SERVER_ERROR`     | Unhandled exception                        | 500 |
+
+### Tracing & Debugging
+Clients can log the `trace_id` (or read it from the `X-Trace-Id` response header) and pass it to the support team; the backend logs include the same ID, enabling rapid correlation of client-side errors with server-side logs.
+
+Example failed login curl:
+```bash
+curl -X POST http://localhost:8000/auth/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=alice&password=wrong" | jq
+```
+Response:
+```json
+{
+  "detail": "Invalid username or password",
+  "code": "AUTH_FAILURE",
+  "trace_id": "1b4b4c33-0a1c-4e68-86b6-091b1b0d9a55"
+}
+```
+Remember to include the `X-Trace-Id` header in bug reports:
+```http
+X-Trace-Id: 1b4b4c33-0a1c-4e68-86b6-091b1b0d9a55
+```
+
 --- 
