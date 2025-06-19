@@ -12,6 +12,7 @@ from contextlib import AsyncExitStack, asynccontextmanager
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
+from freezegun import freeze_time
 from hypothesis import HealthCheck, settings
 from sqlalchemy import create_engine, inspect, text  # sync version
 from sqlalchemy.ext.asyncio import (
@@ -265,3 +266,29 @@ def pytest_configure(config):  # noqa: D401
     """
 
     config.addinivalue_line("markers", "security: security-related timing tests")
+
+
+# --------------------------------------------------------------------
+# Time-freezing helper fixture for deterministic wall-clock tests
+# --------------------------------------------------------------------
+
+
+@pytest.fixture
+def freezer():  # noqa: D401
+    """Provide a ``freezegun`` freezer for deterministic time control.
+
+    Usage::
+
+        def test_expiry(freezer):
+            freezer.move_to("2025-01-01 00:00:00")
+            ...  # run code that records now()
+            freezer.tick("+61s")
+            ...  # code sees 61 seconds later
+
+    This fixture freezes *wall-clock* time (`datetime`, ``time.time``) but **does
+    not** affect ``time.perf_counter`` / ``perf_counter_ns`` — our high-resolution
+    STF measurements remain accurate.
+    """
+
+    with freeze_time() as frozen:
+        yield frozen
