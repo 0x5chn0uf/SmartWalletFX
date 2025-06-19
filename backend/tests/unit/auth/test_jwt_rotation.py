@@ -123,7 +123,7 @@ async def test_key_rotation_lifecycle(test_app, db_session, freezer):
 def test_round_trip_random_secret(secret: str, user_id, ttl: int):
     """Tokens must round-trip encode → decode for arbitrary secrets & TTLs."""
 
-    settings.JWT_KEYS = {"prop": secret}
+    settings.JWT_KEYS = {"prop": secret.encode()}
     settings.ACTIVE_JWT_KID = "prop"
 
     token = JWTUtils.create_access_token(
