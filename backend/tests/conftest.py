@@ -175,22 +175,16 @@ def patch_sync_db():
 
     sync_url = "sqlite:///./smartwallet_test.db"
     sync_engine = create_engine(sync_url, connect_args={"check_same_thread": False})
-    # Ensure all tables exist for sync operations (especially Celery task tests)
-    # This supplements the Alembic migrations executed at session start and
-    # safeguards against rare cases where migrations are skipped or the file DB
-    # is freshly created in a different working directory (e.g., CI runners).
-    Base.metadata.create_all(sync_engine)
+
     SyncSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_engine)
     db_mod.sync_engine = sync_engine
     db_mod.SyncSessionLocal = SyncSessionLocal
     snapshots_mod.SyncSessionLocal = SyncSessionLocal
+
     # Ensure DI helpers use the same session factory
     import app.di as di_mod
 
     di_mod.SyncSessionLocal = SyncSessionLocal
-
-    # Debug logging to verify fixture executed in CI
-    print(f"[patch_sync_db] Applied sync_engine override. URL: {sync_engine.url}")
 
     yield
 

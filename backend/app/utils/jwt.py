@@ -62,6 +62,13 @@ class JWTUtils:
         expires_delta: timedelta | None = None,
         additional_claims: Dict[str, Any] | None = None,
     ) -> str:
+        # Ensure we always use the latest runtime configuration (tests often
+        # patch `settings.JWT_SECRET_KEY`/`JWT_ALGORITHM`).
+        # Clearing the cache on every call is inexpensive and
+        # prevents stale keys from being reused across test cases.
+        JWTUtils._get_sign_key.cache_clear()
+        JWTUtils._get_verify_key.cache_clear()
+
         if expires_delta is None:
             expires_delta = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         now = datetime.now(timezone.utc)
@@ -84,6 +91,12 @@ class JWTUtils:
 
     @staticmethod
     def create_refresh_token(subject: str | int) -> str:
+        # Ensure we always use the latest runtime configuration (tests often
+        # patch `settings.JWT_SECRET_KEY`/`JWT_ALGORITHM`).  Clearing the cache
+        # on every call is inexpensive and prevents stale keys from being
+        # reused across test cases.
+        JWTUtils._get_sign_key.cache_clear()
+        JWTUtils._get_verify_key.cache_clear()
         """Create a refresh JWT using the default *REFRESH_TOKEN_EXPIRE_DAYS*."""
 
         expires_delta = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
@@ -106,14 +119,45 @@ class JWTUtils:
 
     @staticmethod
     def decode_token(token: str) -> Dict[str, Any]:
+        # Ensure we always use the latest runtime configuration (tests often
+        # patch `settings.JWT_SECRET_KEY`/`JWT_ALGORITHM`).  Clearing the cache
+        # on every call is inexpensive and prevents stale keys from being
+        # reused across test cases.
+        JWTUtils._get_sign_key.cache_clear()
+        JWTUtils._get_verify_key.cache_clear()
+        """Decode a JWT and validate its integrity.
+
+        In a few situations (e.g. when an incorrect *options* dict is
+        accidentally supplied) python-jose can skip signature validation and
+        simply return the payload.  We explicitly set *verify_signature=True*
+        to guarantee tamper-detection.  We also perform a minimal sanity check
+        on required claims so that a token missing *sub* will never be treated
+        as valid.  Any failure propagates as *JWTError* subclasses which the
+        caller may handle.
+        """
+
         try:
             payload = jwt.decode(
                 token,
                 JWTUtils._get_verify_key(),
                 algorithms=[settings.JWT_ALGORITHM],
+                options={
+                    "verify_signature": True,
+                    "verify_exp": True,
+                    "verify_iat": True,
+                    "verify_nbf": True,
+                    "require": ["sub", "jti", "exp"],
+                },
             )
+
+            # Basic payload sanity – make sure subject still present and non-empty.
+            if not payload.get("sub"):
+                raise JWTError("Token payload is missing required 'sub' claim")
+
             return payload
         except ExpiredSignatureError as exc:
+            # Explicitly propagate expiration errors for caller-specific handling
             raise exc
         except JWTError as exc:
+            # Re-raise any JWT-related issue so tests can assert a generic Exception
             raise exc
