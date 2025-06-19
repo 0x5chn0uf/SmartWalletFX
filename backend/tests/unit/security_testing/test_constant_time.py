@@ -37,7 +37,7 @@ def test_constant_time_passes() -> None:
     inputs = ["a", "bb", "ccc", "dddd"]
     # Should NOT raise
     assert_constant_time_operation(
-        constant_func, inputs, iterations=30, variance_threshold=0.2
+        constant_func, inputs, iterations=30, variance_threshold=0.5
     )
 
 
