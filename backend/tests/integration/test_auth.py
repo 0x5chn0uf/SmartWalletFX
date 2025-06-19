@@ -109,11 +109,34 @@ async def test_login_rate_limit(db_session, test_app):
 
 
 @pytest.mark.anyio
-@pytest.mark.xfail(reason="/users/me endpoint not yet implemented (Subtask 4.10)")
-async def test_users_me_requires_auth(test_app):
+async def test_users_me_endpoint(test_app, db_session):
+    """/users/me should require auth and return current profile when token provided."""
+
     async with AsyncClient(app=test_app, base_url="http://test") as ac:
-        resp = await ac.get("/users/me")
-    assert resp.status_code == 401
+        # Register user & obtain token
+        service = AuthService(db_session)
+        await service.register(
+            UserCreate(username="meuser", email="me@ex.com", password="Str0ng!pwd")
+        )
+
+        token_resp = await ac.post(
+            "/auth/token", data={"username": "meuser", "password": "Str0ng!pwd"}
+        )
+        assert token_resp.status_code == 200
+        access_token = token_resp.json()["access_token"]
+
+        # 1. Missing token → 401
+        unauth = await ac.get("/users/me")
+        assert unauth.status_code == 401
+
+        # 2. Valid token → 200 with expected fields
+        headers = {"Authorization": f"Bearer {access_token}"}
+        auth_resp = await ac.get("/users/me", headers=headers)
+        assert auth_resp.status_code == 200
+        body = auth_resp.json()
+        assert body["username"] == "meuser"
+        assert body["email"] == "me@ex.com"
+        assert "hashed_password" not in body
 
 
 class DummyAuthService:  # noqa: D101 – lightweight stub
