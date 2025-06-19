@@ -245,4 +245,10 @@ Remember to include the `X-Trace-Id` header in bug reports:
 X-Trace-Id: 1b4b4c33-0a1c-4e68-86b6-091b1b0d9a55
 ```
 
+## Key Rotation Note (added 2025-06-19)
+
+Tokens issued by the authentication service now include a `kid` header
+identifying the signing key.  No client changes are required—verification is
+handled server-side.  Operational details: see `docs/auth_key_rotation.md`.
+
 --- 
