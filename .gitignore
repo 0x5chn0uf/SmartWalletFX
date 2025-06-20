@@ -59,6 +59,9 @@ dev-debug.log
 *.sln
 *.sw?
 
+# Git Worktrees
+gitworktrees/
+create_worktree.sh
 
 # Cursor Files
 .cursor/
@@ -66,7 +69,6 @@ dev-debug.log
 .roo/
 custom_modes/
 memory-bank/
-memory-bank/tasks.md
 .roomodes
 .windsurfrules
 
@@ -96,11 +98,11 @@ htmlcov/
 frontend/coverage/
 reports/
 
+# Benchmarking
+.benchmarks/
+
 # Testing
 .pytest_cache/
-
-# Backend venv directory
-backend/venv/
 
 # Python virtual environments
 **/venv/
