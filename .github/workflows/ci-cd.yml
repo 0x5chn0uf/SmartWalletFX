@@ -147,7 +147,7 @@ jobs:
         working-directory: ./backend
         run: |
           source .venv/bin/activate
-          PYTHONPATH=$(pwd) pytest -v --cov=app --cov-report=xml
+          make test
 
       - name: Enforce backend coverage threshold (90%)
         working-directory: ./backend
@@ -246,7 +246,7 @@ jobs:
         working-directory: ./backend
         run: |
           source .venv/bin/activate
-          pip install -r requirements/perf.txt
+          make install-perf
 
       - name: Run performance test suite
         working-directory: ./backend
