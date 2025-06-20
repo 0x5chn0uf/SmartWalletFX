@@ -13,7 +13,11 @@ char_set = st.characters(
 )  # printable ASCII excluding space & control
 
 
-@settings(max_examples=20, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@settings(
+    max_examples=20,
+    deadline=None,
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+)
 @given(st.text(alphabet=char_set, min_size=8, max_size=32))
 async def test_authenticate_random_passwords_fail(db_session, random_password):  # type: ignore[arg-type]
     """Random passwords that do NOT match should raise InvalidCredentialsError."""

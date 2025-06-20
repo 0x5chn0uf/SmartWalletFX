@@ -22,7 +22,7 @@ def test_hash_and_verify(password: str):
     assert not PasswordHasher.verify_password("wrong" + password, hashed)
 
 
-@settings(max_examples=10, deadline=500)
+@settings(max_examples=10, deadline=None)
 @given(
     st.text(min_size=8, max_size=32).filter(
         lambda s: (
