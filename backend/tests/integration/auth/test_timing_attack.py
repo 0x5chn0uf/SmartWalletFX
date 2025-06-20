@@ -40,6 +40,11 @@ def test_auth_token_endpoint_no_user_enumeration(client: TestClient) -> None:  #
     )
     assert res.status_code == 201
 
+    # Raise rate-limit threshold for this high-frequency test
+    from app.utils.rate_limiter import login_rate_limiter
+
+    login_rate_limiter.max_attempts = 1000  # Fixture will restore afterward
+
     # 2️⃣  Helper that calls /auth/token synchronously (TestClient is sync) and returns the Response
     def _auth_call(user: str, pwd: str):
         return client.post(

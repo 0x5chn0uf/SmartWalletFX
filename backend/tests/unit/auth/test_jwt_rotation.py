@@ -22,6 +22,8 @@ from app.services.auth_service import AuthService
 from app.utils import jwt as jwt_utils
 from app.utils.jwt import _RETIRED_KEYS, JWTUtils, _now_utc, rotate_signing_key
 
+pytestmark = pytest.mark.nightly
+
 
 @pytest.fixture(autouse=True)
 def _clean_state(monkeypatch):
