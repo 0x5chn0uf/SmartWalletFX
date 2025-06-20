@@ -292,3 +292,26 @@ def freezer():  # noqa: D401
 
     with freeze_time() as frozen:
         yield frozen
+
+
+# --------------------------------------------------------------------
+# Rate-limiter reset fixture – ensures clean slate across tests
+# --------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """Reset the in-memory login rate-limiter before & after each test.
+
+    Prevents cross-test interference and eliminates the need for ad-hoc
+    manual resets inside individual test modules.
+    """
+
+    from app.utils.rate_limiter import login_rate_limiter
+
+    original_max = login_rate_limiter.max_attempts
+    login_rate_limiter.clear()
+    yield
+    # Post-test cleanup
+    login_rate_limiter.clear()
+    login_rate_limiter.max_attempts = original_max
