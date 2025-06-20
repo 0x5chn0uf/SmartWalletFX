@@ -28,6 +28,6 @@ def test_audit_logging_includes_trace_id(monkeypatch):
     handler.flush()
 
     log_json = json.loads(stream.getvalue())
-    assert log_json["event"] == "unit_test"
+    assert log_json["action"] == "unit_test"
     assert log_json["trace_id"] == "abc"
     assert log_json["foo"] == 1

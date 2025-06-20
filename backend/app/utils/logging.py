@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 from uuid import uuid4
 
+from app.utils.audit import validate_audit_event
+
 _AUDIT_LOGGER = logging.getLogger("audit")
 if not _AUDIT_LOGGER.handlers:
     _handler = logging.StreamHandler(sys.stdout)
@@ -32,8 +34,8 @@ def audit(event: str, **extra: Any) -> None:
 
     payload: Dict[str, Any] = {
         "id": uuid4().hex,
-        "ts": datetime.now(timezone.utc).isoformat(),
-        "event": event,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "action": event,
         **extra,
     }
     try:
@@ -45,3 +47,16 @@ def audit(event: str, **extra: Any) -> None:
     except Exception:  # pragma: no cover – structlog may not be configured
         pass
     _AUDIT_LOGGER.info(json.dumps(payload, separators=(",", ":")))
+
+    # ------------------------------------------------------------------
+    # Validate payload (optional hard/warn/off behaviour is configured via
+    # AUDIT_VALIDATION environment variable).  This runs *after* the log is
+    # emitted to avoid blocking critical-path execution in production – but
+    # still fails the test-suite early when running in *hard* mode.
+    # ------------------------------------------------------------------
+    try:
+        validate_audit_event(payload)
+    except Exception:
+        # Re-raise to surface errors in *hard* mode; in *warn/off* the helper
+        # already handled warning emission or silent discard.
+        raise

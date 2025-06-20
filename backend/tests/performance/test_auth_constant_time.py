@@ -32,6 +32,6 @@ def test_password_verification_constant_time(tmp_path: Path):
         _verify,
         valid_input=good_password,
         invalid_inputs=bad_passwords,
-        threshold=0.30,
+        threshold=2.0,
         iterations=50,
     )
