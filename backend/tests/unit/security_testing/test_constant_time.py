@@ -20,6 +20,8 @@ from tests.utils.security_testing import (
     assert_constant_time_operation,
 )
 
+pytestmark = pytest.mark.nightly
+
 
 def constant_func(value: str) -> None:
     # Sleep for fixed 1 ms to simulate constant-time operation

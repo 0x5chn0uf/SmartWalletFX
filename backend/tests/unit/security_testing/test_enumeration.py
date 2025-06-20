@@ -13,6 +13,8 @@ from tests.utils.security_testing import (
     assert_no_user_enumeration,
 )
 
+pytestmark = pytest.mark.nightly
+
 
 class FakeResponse:
     def __init__(self, status_code: int, detail: str):
