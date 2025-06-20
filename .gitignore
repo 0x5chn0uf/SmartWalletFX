@@ -24,7 +24,7 @@ MANIFEST
 venv/
 .venv/
 
-# Ignore symlink versions of Cursor files (no trailing slash)
+# Ignore symlink versions of .venv folder (no trailing slash)
 .venv
 
 # Node/React

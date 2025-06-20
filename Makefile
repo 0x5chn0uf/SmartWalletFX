@@ -1,0 +1,100 @@
+.DEFAULT_GOAL := help
+
+# -----------------------------------------------------------------------------
+# Root Makefile – project-wide helper targets
+# -----------------------------------------------------------------------------
+# Run `make help` (or simply `make`) at the repository root to see a list of the
+# most common developer commands. Each target delegates to the corresponding
+# backend or frontend command so that contributors can work from a single entry
+# point.
+# -----------------------------------------------------------------------------
+
+# Directories
+BACKEND_DIR := backend
+FRONTEND_DIR := frontend
+
+# -----------------------------------------------------------------------------
+# Utility – list all targets with descriptions
+# -----------------------------------------------------------------------------
+help: ## Show this help message
+	@grep -E '^[a-zA-Z0-9_\-]+:.*##' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*##"}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}' | sort
+
+# -----------------------------------------------------------------------------
+# Installation & setup
+# -----------------------------------------------------------------------------
+setup: setup-backend setup-frontend ## Install Python & Node dependencies
+
+setup-backend: ## Install backend dependencies via backend/Makefile
+	$(MAKE) -C $(BACKEND_DIR) install-dev
+
+setup-frontend: ## Install frontend npm dependencies
+	cd $(FRONTEND_DIR) && npm ci
+
+# -----------------------------------------------------------------------------
+# Linting & formatting
+# -----------------------------------------------------------------------------
+lint: lint-backend lint-frontend ## Run all linters
+
+lint-backend: ## Lint backend code (ruff, black, flake8, mypy)
+	$(MAKE) -C $(BACKEND_DIR) lint
+
+lint-frontend: ## Lint frontend code (eslint & prettier)
+	cd $(FRONTEND_DIR) && npm run lint --silent
+
+format: format-backend ## Auto-format backend (black + isort)
+
+format-backend: ## Format backend code
+	$(MAKE) -C $(BACKEND_DIR) format
+
+# -----------------------------------------------------------------------------
+# Tests
+# -----------------------------------------------------------------------------
+
+test: test-backend test-frontend ## Run all tests
+
+# Backend tests (pytest + coverage)
+
+test-backend: ## Run backend pytest suite
+	$(MAKE) -C $(BACKEND_DIR) test
+
+# Frontend tests (Jest)
+
+test-frontend: ## Run frontend Jest suite
+	cd $(FRONTEND_DIR) && npm test -- --watchAll=false --no-watchman --ci
+
+coverage-backend: ## Generate backend coverage HTML
+	$(MAKE) -C $(BACKEND_DIR) coverage
+
+# -----------------------------------------------------------------------------
+# Development servers
+# -----------------------------------------------------------------------------
+run-backend: ## Start FastAPI locally with health-check helper
+	$(MAKE) -C $(BACKEND_DIR) serve
+
+run-frontend: ## Start React dev server
+	cd $(FRONTEND_DIR) && npm start
+
+# -----------------------------------------------------------------------------
+# Database helpers (delegated to backend Makefile)
+# -----------------------------------------------------------------------------
+
+db-start: ## Start local Postgres & Redis containers
+	$(MAKE) -C $(BACKEND_DIR) db-start
+
+db-test: ## Start test database containers
+	$(MAKE) -C $(BACKEND_DIR) db-test
+
+db-down: ## Stop & remove DB containers
+	$(MAKE) -C $(BACKEND_DIR) db-down
+
+# -----------------------------------------------------------------------------
+# Clean & misc
+# -----------------------------------------------------------------------------
+clean: clean-backend ## Remove temporary files & caches
+
+clean-backend:
+	$(MAKE) -C $(BACKEND_DIR) clean
+
+.PHONY: help setup setup-backend setup-frontend lint lint-backend lint-frontend \
+	format format-backend test test-backend test-frontend coverage-backend \
+	run-backend run-frontend db-start db-test db-down clean clean-backend 
