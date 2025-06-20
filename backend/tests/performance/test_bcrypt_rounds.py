@@ -6,6 +6,8 @@ Run with: pytest --benchmark-only
 import pytest
 from passlib.hash import bcrypt
 
+pytestmark = pytest.mark.performance
+
 PASSWORD = "CorrectHorseBatteryStaple!"
 
 

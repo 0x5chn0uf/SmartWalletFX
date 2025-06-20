@@ -72,8 +72,11 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-v --cov=app --cov-report=term-missing"
+addopts = '-v --cov=app --cov-report=term-missing -m "not performance"'
 filterwarnings = ["ignore::DeprecationWarning"]
+markers = [
+    "performance: slow performance / load tests"
+]
 
 [tool.flake8]
 exclude = [

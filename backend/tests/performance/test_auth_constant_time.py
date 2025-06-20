@@ -12,6 +12,8 @@ import pytest
 from app.utils.security import PasswordHasher
 from tests.utils.security_testing import assert_timing_attack_resistant
 
+pytestmark = pytest.mark.performance
+
 
 @pytest.mark.benchmark(group="auth-constant-time")
 def test_password_verification_constant_time(tmp_path: Path):

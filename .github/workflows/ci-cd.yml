@@ -248,6 +248,12 @@ jobs:
           source .venv/bin/activate
           pip install -r requirements/perf.txt
 
+      - name: Run performance test suite
+        working-directory: ./backend
+        run: |
+          source .venv/bin/activate
+          pytest -m performance -v -o addopts=""
+
       - name: Run pytest benchmarks (no assertions, save results)
         working-directory: ./backend
         run: |

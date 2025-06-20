@@ -11,11 +11,16 @@ install-dev:
 install-perf:
 	pip install -r requirements/perf.txt
 
+# ------------------------------------------------------------
+
 run:
 	uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 test:
-	BCRYPT_ROUNDS=4 pytest --cov=app --cov-report=term-missing
+	BCRYPT_ROUNDS=4 pytest
+
+test-perf:
+	BCRYPT_ROUNDS=4 pytest -m performance
 
 lint:
 	ruff check app tests

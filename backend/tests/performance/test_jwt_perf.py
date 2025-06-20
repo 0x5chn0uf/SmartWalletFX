@@ -13,6 +13,8 @@ from typing import Any
 import pytest
 from jose import jwt
 
+pytestmark = pytest.mark.performance
+
 ALGORITHM = "HS256"
 SECRET = "x" * 32  # deterministic secret for benchmarks
 PAYLOAD: dict[str, Any] = {"sub": "benchmark-user", "iat": int(time.time())}
