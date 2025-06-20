@@ -73,6 +73,11 @@ class Settings(BaseSettings):
 
         return SecurityValidator.bcrypt_rounds(v)
 
+    # --- Backup settings ----------------------------------------------------
+    BACKUP_DIR: str = "backups"  # default relative directory for CLI backups
+    BACKUP_PGDUMP_PATH: str = "pg_dump"  # override if binary in custom path
+    BACKUP_PGRESTORE_PATH: str = "pg_restore"  # override if binary in custom path
+
 
 settings = Settings()
 
