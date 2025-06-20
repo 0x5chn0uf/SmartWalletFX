@@ -120,6 +120,17 @@ The new **Performance Timeline** gives historical insight into collateral, borro
    npm start
    ```
 
+### Running Property Tests
+
+The reusable property-based templates live under `backend/tests/templates/`.
+Run them locally with:
+
+```bash
+pytest -m property  # executes only property templates
+```
+
+CI executes the same suite in the *property-tests* job.
+
 ---
 
 ## 📝 Development Status
@@ -176,6 +187,7 @@ For questions or support, please open an issue in the repository.
 - [System Architecture](docs/defi_architecture.md)
 - [API Contracts](docs/defi_api_contracts.md)
 - [Testing & QA Guide](docs/defi_testing_guide.md)
+- [Property Testing Templates](docs/property_testing_templates.md)
 - [Knowledge Transfer Slide Deck](docs/defi_knowledge_transfer.md)
 
 ---
