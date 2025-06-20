@@ -147,7 +147,8 @@ jobs:
         working-directory: ./backend
         run: |
           source .venv/bin/activate
-          make test
+          pip install -e .[dev] --quiet --upgrade
+          pytest -m "not nightly and not security" --cov-report=xml
 
       - name: Enforce backend coverage threshold (90%)
         working-directory: ./backend
@@ -192,6 +193,7 @@ jobs:
         working-directory: ./backend
         run: |
           source .venv/bin/activate
+          pip install -e .[dev] --quiet --upgrade
           pytest -m security -v
 
   property-tests:
@@ -219,7 +221,8 @@ jobs:
         working-directory: ./backend
         run: |
           source .venv/bin/activate
-          pytest -m property -v --hypothesis-show-statistics
+          pip install -e .[dev] --quiet --upgrade
+          pytest -m "not nightly and not security" -v --hypothesis-show-statistics
 
   performance-tests:
     needs: [test-backend, changes]

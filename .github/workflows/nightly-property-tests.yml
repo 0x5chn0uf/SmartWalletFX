@@ -1,0 +1,46 @@
+name: Nightly Property Tests
+
+on:
+  schedule:
+    # Runs at 02:00 UTC every day
+    - cron: '0 2 * * *'
+
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  nightly-property-tests:
+    runs-on: ubuntu-latest
+    env:
+      BCRYPT_ROUNDS: 4
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Create virtual environment & install deps
+        working-directory: ./backend
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Run nightly property tests
+        working-directory: ./backend
+        run: |
+          source .venv/bin/activate
+          pytest -m nightly -v --hypothesis-show-statistics
+
+      - name: Upload coverage (optional)
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./backend/coverage.xml
+          flags: nightly
+          name: nightly-property-coverage 
