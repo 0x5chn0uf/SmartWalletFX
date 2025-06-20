@@ -26,10 +26,3 @@ web3==7.12.0  # Web3 library
 
 celery[redis]==5.5.3
 redis==5.2.1
-
-# Async testing backend
-trio==0.25.0
-
-structlog==24.2.0  # Structured logging
-
-freezegun==1.4.0
