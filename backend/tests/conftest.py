@@ -190,7 +190,7 @@ def patch_sync_db():
     yield
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mock_settings(monkeypatch):
     """Mocks the ARBITRUM_RPC_URL setting."""
     monkeypatch.setattr("app.core.config.settings.ARBITRUM_RPC_URL", "http://mock-rpc")
