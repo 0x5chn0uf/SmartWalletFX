@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 import hypothesis.strategies as st
-from hypothesis import given
+from hypothesis import HealthCheck, given
 from hypothesis import settings as hyp_settings
 
 from app.utils.db_backup import build_pg_dump_cmd
@@ -19,9 +19,11 @@ hyp_settings.load_profile("fast")
         max_size=20,
     )
 )
-def test_build_pg_dump_cmd_injection_safe(tmp_path, monkeypatch, label: str):
+@hyp_settings(suppress_health_check=(HealthCheck.function_scoped_fixture,))
+def test_build_pg_dump_cmd_injection_safe(tmp_path_factory, monkeypatch, label: str):
     monkeypatch.setenv("DATABASE_URL", "postgresql://localhost/testdb")
-    output_dir = tmp_path
+
+    output_dir = tmp_path_factory.mktemp("props")
 
     cmd = build_pg_dump_cmd(output_dir, label=label)
 
