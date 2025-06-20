@@ -24,6 +24,9 @@ MANIFEST
 venv/
 .venv/
 
+# Ignore symlink versions of Cursor files (no trailing slash)
+.venv
+
 # Node/React
 node_modules/
 /frontend/build
