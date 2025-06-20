@@ -219,7 +219,7 @@ jobs:
         working-directory: ./backend
         run: |
           source .venv/bin/activate
-          pytest -m "property and not nightly" -v --hypothesis-show-statistics
+          pytest -m "not nightly and not security" -v --hypothesis-show-statistics
 
   performance-tests:
     needs: [test-backend, changes]
