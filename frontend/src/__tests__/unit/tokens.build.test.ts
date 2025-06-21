@@ -5,4 +5,4 @@ describe('Design token build', () => {
     // We expect ColorBrandPrimary to be defined and match the JSON source
     expect(tokens.ColorBrandPrimary).toBe('#4fd1c7');
   });
-}); 
+});
