@@ -88,6 +88,16 @@ db-down: ## Stop & remove DB containers
 	$(MAKE) -C $(BACKEND_DIR) db-down
 
 # -----------------------------------------------------------------------------
+# Backup helpers – delegate to backend Makefile
+# -----------------------------------------------------------------------------
+
+db-backup: ## Delegate to backend/db-backup target
+	$(MAKE) -C $(BACKEND_DIR) db-backup $(MAKEFLAGS)
+
+db-restore: ## Delegate to backend/db-restore target
+	$(MAKE) -C $(BACKEND_DIR) db-restore $(MAKEFLAGS)
+
+# -----------------------------------------------------------------------------
 # Clean & misc
 # -----------------------------------------------------------------------------
 clean: clean-backend ## Remove temporary files & caches
@@ -97,4 +107,5 @@ clean-backend:
 
 .PHONY: help setup setup-backend setup-frontend lint lint-backend lint-frontend \
 	format format-backend test test-backend test-frontend coverage-backend \
-	run-backend run-frontend db-start db-test db-down clean clean-backend 
+	run-backend run-frontend db-start db-test db-down clean clean-backend \
+	db-backup db-restore 

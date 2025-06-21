@@ -49,6 +49,9 @@ format: ## Auto-format with black & isort
 	black app tests
 	isort app tests
 
+flake8:
+	flake8 --max-line-length=88 --extend-ignore=E203 --per-file-ignores="app/abi/*.py:E501,migrations/env.py:E402,F403,F405,tests/**/*.py:F401,F811,E501"
+
 bandit: ## Static security scan
 	bandit -r app -ll -ii -f txt
 
@@ -121,6 +124,16 @@ db-migrate: ## Apply latest migrations (alias to alembic-upgrade)
 	$(MAKE) alembic-upgrade
 
 # -----------------------------------------------------------------------------
+# Backup & restore helpers (Subtask 8.2 stub)
+# -----------------------------------------------------------------------------
+
+db-backup: ## Create a database dump (stub)
+	$(PYTHON) -m app.cli.db_backup_cli backup $(OUTPUT_DIR) $(LABEL)
+
+db-restore: ## Restore a database dump (stub)
+	$(PYTHON) -m app.cli.db_backup_cli restore $(FILE) --env $(ENV) $(FORCE)
+
+# -----------------------------------------------------------------------------
 # House-keeping
 # -----------------------------------------------------------------------------
 clean: ## Remove caches & artefacts
@@ -129,4 +142,5 @@ clean: ## Remove caches & artefacts
 
 .PHONY: help install install-dev install-perf lint format bandit safety \
 	test test-perf coverage run serve serve-stop celery-worker celery-beat \
-	db-start db-test db-down alembic-upgrade db-migrate locust-smoke clean
+	db-start db-test db-down alembic-upgrade db-migrate locust-smoke clean \
+	db-backup db-restore
