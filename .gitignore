@@ -100,6 +100,7 @@ __pycache__/
 coverage/
 htmlcov/
 .hypothesis/
+backend/backups/
 
 # coverage artefacts
 frontend/coverage/

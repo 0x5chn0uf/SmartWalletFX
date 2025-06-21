@@ -80,12 +80,29 @@ class AuthEvent(AuditEventBase):
 class DBEvent(AuditEventBase):
     """Audit event emitted by database backup/restore operations."""
 
-    dump_path: Optional[str] = None
-    sha256: Optional[str] = None
-    size_bytes: Optional[int] = None
-    result: str = Field(..., description="`success` | `failure`")
+    trigger: str = Field(
+        ..., description="How the event was triggered: `api` | `cli` | `scheduled`"
+    )
+    outcome: Optional[str] = Field(
+        None, description="Final result: `success` | `failure`"
+    )
+    dump_path: Optional[str] = Field(None, description="Path to the created dump file")
+    dump_hash: Optional[str] = Field(
+        None, alias="sha256", description="SHA256 hash of the dump file"
+    )
+    size_bytes: Optional[int] = Field(
+        None, description="Size of the dump file in bytes"
+    )
 
-    model_config = {"extra": "allow"}
+    # Optional context when triggered from API
+    user_id: Optional[str] = Field(
+        None, description="Authenticated user id of initiator"
+    )
+    ip_address: Optional[str] = Field(
+        None, description="Source IPv4/6 address of initiator"
+    )
+
+    model_config = {"extra": "allow", "populate_by_name": True}
 
 
 # ---------------------------------------------------------------------------
