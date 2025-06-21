@@ -13,6 +13,17 @@ celery.conf.beat_schedule = {
         "task": "app.tasks.snapshots.collect_portfolio_snapshots",
         "schedule": crontab(hour="*", minute="0"),
     },
+    "jwt-rotation-beat": {
+        "task": "app.tasks.jwt_rotation.promote_and_retire_keys_task",
+        "schedule": crontab(minute="*/5"),  # Placeholder, will be replaced
+    },
 }
 
+import app.tasks.jwt_rotation  # noqa: F401, E402
 import app.tasks.snapshots  # noqa: F401, E402
+from app.core.config import settings
+
+# Update schedule from settings
+celery.conf.beat_schedule["jwt-rotation-beat"]["schedule"] = crontab(
+    *settings.JWT_ROTATION_SCHEDULE_CRON.split()
+)

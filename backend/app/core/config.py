@@ -56,6 +56,13 @@ class Settings(BaseSettings):
     # remain valid after rotation.  When 0, rotation is immediate.
     JWT_ROTATION_GRACE_PERIOD_SECONDS: int = 300
 
+    # --- Celery Beat Schedules & Locks ---------------------------------
+    # Cron expression for the automated JWT key rotation task.
+    JWT_ROTATION_SCHEDULE_CRON: str = "*/5 * * * *"  # default: every 5 minutes
+
+    # TTL (seconds) for the Redis lock ensuring single-worker execution.
+    JWT_ROTATION_LOCK_TTL_SEC: int = 600  # default: 10 minutes
+
     # Pydantic v2 config – ignore extra environment variables to prevent
     # validation errors when the host machine defines unrelated keys
     model_config = {
