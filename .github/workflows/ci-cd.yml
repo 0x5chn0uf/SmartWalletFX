@@ -347,6 +347,10 @@ jobs:
         working-directory: ./frontend
         run: npm ci --no-audit --fund=false
 
+      - name: Generate design tokens
+        working-directory: ./frontend
+        run: npm run build:tokens --if-present
+
       - name: Lint frontend
         working-directory: ./frontend
         run: |
