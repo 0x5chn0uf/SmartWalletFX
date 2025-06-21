@@ -1,7 +1,7 @@
 """Tests for the pure JWT rotation state-machine helper.
 
 These tests intentionally begin with *failing* assertions to drive the TDD
-cycle for Subtask 112.2.  The very first test checks the *no-op* scenario: when
+cycle.  The very first test checks the *no-op* scenario: when
 no keys are scheduled for retirement and the active key remains valid, the
 helper should report that there is nothing to change.
 """
