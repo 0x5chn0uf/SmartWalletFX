@@ -28,7 +28,7 @@ celery.conf.beat_schedule = {
 import app.tasks.backups  # noqa: F401, E402
 import app.tasks.jwt_rotation  # noqa: F401, E402
 import app.tasks.snapshots  # noqa: F401, E402
-from app.core.config import settings
+from app.core.config import settings  # noqa: F401, E402
 
 # Update schedule from settings
 celery.conf.beat_schedule["jwt-rotation-beat"]["schedule"] = crontab(
