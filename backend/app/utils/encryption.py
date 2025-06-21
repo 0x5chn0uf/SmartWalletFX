@@ -62,6 +62,12 @@ def encrypt_file(
     try:
         subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except subprocess.CalledProcessError as exc:
-        raise EncryptionError(exc.stderr.decode().strip()) from exc
+        if exc.stderr is None:
+            error_msg = "GPG command failed"
+        elif isinstance(exc.stderr, bytes):
+            error_msg = exc.stderr.decode().strip()
+        else:
+            error_msg = str(exc.stderr).strip()
+        raise EncryptionError(error_msg) from exc
 
     return encrypted_path

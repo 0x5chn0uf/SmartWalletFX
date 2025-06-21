@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import List
@@ -13,6 +14,7 @@ from celery.schedules import (  # noqa: F401  # used by Celery beat when inspect
 from app.core.config import settings
 from app.utils.db_backup import (  # noqa: E501 – heavy logic lives in utils module
     create_dump,
+    restore_dump,
 )
 from app.utils.logging import audit
 
@@ -47,6 +49,42 @@ def create_backup_task() -> str:
     except Exception as exc:  # pragma: no cover – let Celery capture traceback
         audit("DB_BACKUP_FAILED", label=label)
         raise exc
+
+
+@shared_task(name="app.tasks.backups.restore_from_upload_task")
+def restore_from_upload_task(temp_file_path: str) -> str:
+    """Celery task: restore database from uploaded backup file.
+
+    Args:
+        temp_file_path: Path to the temporary uploaded file
+
+    Returns:
+        Status message indicating completion
+    """
+
+    try:
+        # Restore the database using the uploaded file
+        restore_dump(Path(temp_file_path), force=True)
+
+        audit(
+            "DB_RESTORE_COMPLETED",
+            dump_path=temp_file_path,
+        )
+
+        return f"Database restored successfully from {temp_file_path}"
+
+    except Exception as exc:  # pragma: no cover
+        audit("DB_RESTORE_FAILED", dump_path=temp_file_path, error=str(exc))
+        raise exc
+    finally:
+        # Clean up the temporary file
+        try:
+            if os.path.exists(temp_file_path):
+                os.unlink(temp_file_path)
+        except Exception as cleanup_exc:
+            logger.warning(
+                f"Failed to clean up temp file {temp_file_path}: {cleanup_exc}"
+            )
 
 
 def _list_expired_dumps(directory: Path, days: int) -> List[Path]:
