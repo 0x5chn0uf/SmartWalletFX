@@ -75,7 +75,43 @@ start_metrics_server(port=9090, addr="0.0.0.0")
 
 ---
 
-## 3. Operational Checks & Troubleshooting
+## 3. JWT Key Rotation Specific Monitoring
+
+### Key Rotation Metrics
+The JWT key rotation system exposes specific metrics that should be monitored:
+
+```bash
+# Check rotation activity
+curl -s http://localhost:9090/metrics | grep jwt_key_rotations_total
+
+# Monitor retirements
+curl -s http://localhost:9090/metrics | grep jwt_key_retirements_total
+
+# Watch for errors
+curl -s http://localhost:9090/metrics | grep jwt_key_rotation_errors_total
+```
+
+### Expected Behavior
+- **Normal Operation**: `jwt_key_rotations_total` should increment periodically (every 5 minutes by default)
+- **Key Lifecycle**: `jwt_key_retirements_total` should increment when keys are retired
+- **Error-Free**: `jwt_key_rotation_errors_total` should remain at 0 or very low
+
+### Alerting Thresholds
+Configure alerts for the following conditions:
+- **No rotation activity**: `jwt_key_rotations_total` hasn't increased in 15 minutes
+- **High error rate**: `jwt_key_rotation_errors_total` > 5 in 1 hour
+- **Lock contention**: Multiple rotation attempts failing due to Redis lock
+
+### Grafana Dashboard
+Create a dashboard with the following panels:
+1. **Rotation Activity**: Line chart of `jwt_key_rotations_total` over time
+2. **Retirement Activity**: Line chart of `jwt_key_retirements_total` over time
+3. **Error Rate**: Line chart of `jwt_key_rotation_errors_total` over time
+4. **Current Key Status**: Gauge showing active key age and next rotation time
+
+---
+
+## 4. Operational Checks & Troubleshooting
 
 ### Verifying Monitoring
 - Ensure `/metrics` endpoint is reachable and metrics are updating.
@@ -84,6 +120,12 @@ start_metrics_server(port=9090, addr="0.0.0.0")
 ### Verifying Alerting
 - Confirm Slack alerts are received for test and real failures.
 - Check backend logs for alerting errors or rate limiting warnings.
+
+### JWT Rotation Specific Checks
+- **Celery Beat Scheduler**: Verify the rotation task is scheduled correctly
+- **Redis Lock**: Check that the distributed lock is working properly
+- **Key Configuration**: Ensure `JWT_KEYS` and `ACTIVE_JWT_KID` are properly set
+- **Grace Period**: Verify grace period settings align with token TTL
 
 ### Common Issues
 - **No metrics exposed:**
@@ -94,6 +136,10 @@ start_metrics_server(port=9090, addr="0.0.0.0")
   - Check for rate limiting or network errors in logs.
 - **Alert spam:**
   - Adjust `SLACK_MAX_ALERTS_PER_HOUR` as needed.
+- **No rotation activity:**
+  - Check Celery beat scheduler is running
+  - Verify Redis connectivity for distributed locking
+  - Confirm key configuration is valid
 
 ### Security
 - Never log or expose webhook URLs or API keys.
@@ -101,10 +147,30 @@ start_metrics_server(port=9090, addr="0.0.0.0")
 
 ---
 
-## 4. References
+## 5. Integration with Existing Monitoring
+
+### Prometheus Integration
+- The JWT rotation metrics integrate seamlessly with existing Prometheus infrastructure
+- Use existing alerting rules and notification channels
+- Leverage existing Grafana dashboards and visualization
+
+### Log Aggregation
+- JWT rotation audit events are structured JSON logs
+- Integrate with existing log aggregation systems (ELK, Splunk, etc.)
+- Use correlation IDs to trace rotation activities across systems
+
+### Incident Response
+- JWT rotation failures should trigger existing incident response procedures
+- Integrate with existing on-call schedules and escalation policies
+- Use existing communication channels for incident coordination
+
+---
+
+## 6. References
 - [Prometheus Python Client](https://github.com/prometheus/client_python)
 - [Slack Incoming Webhooks](https://api.slack.com/messaging/webhooks)
 - [FastAPI Docs](https://fastapi.tiangolo.com/)
+- [JWT Key Rotation Playbook](auth_key_rotation.md) - Complete operational guide
 
 ---
 
