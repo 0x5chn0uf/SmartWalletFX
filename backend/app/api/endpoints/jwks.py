@@ -1,10 +1,18 @@
 """JWKS endpoint for serving JSON Web Key Sets."""
 
+import logging
+
 from fastapi import APIRouter
 
 from app.schemas.jwks import JWKSet
+from app.utils.jwks_cache import (
+    _build_redis_client,
+    get_jwks_cache,
+    set_jwks_cache,
+)
 from app.utils.jwt_keys import format_public_key_to_jwk, get_verifying_keys
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -16,10 +24,26 @@ async def get_jwks():
     JWT signatures. The keys are returned in the standard JWK format
     as defined by RFC 7517.
 
+    The response is cached in Redis to improve performance. The cache
+    is invalidated when keys are rotated to ensure fresh keys are
+    published immediately.
+
     Returns:
         JWKSet: A JSON Web Key Set containing all active public keys.
     """
-    # Get all currently valid keys for verification
+    # Try to get from cache first
+    redis = _build_redis_client()
+    try:
+        cached_jwks = await get_jwks_cache(redis)
+        if cached_jwks:
+            logger.debug("JWKS served from cache")
+            return cached_jwks
+    except Exception as e:
+        logger.warning("Cache lookup failed, falling back to uncached: %s", e)
+    finally:
+        await redis.close()
+
+    # Cache miss or error - generate fresh JWKS
     verifying_keys = get_verifying_keys()
 
     # Format each key as a JWK
@@ -28,10 +52,20 @@ async def get_jwks():
         try:
             jwk = format_public_key_to_jwk(key.value, key.kid)
             jwks.append(jwk)
-        except Exception:
-            # Log the error but continue processing other keys
-            # This prevents a single malformed key from breaking the entire endpoint
+        except Exception as e:
+            logger.warning("Failed to format key %s: %s", key.kid, e)
             continue
 
-    # Return the JWKSet
-    return JWKSet(keys=jwks)
+    jwks_response = JWKSet(keys=jwks)
+
+    # Cache the result (fire and forget - don't block response)
+    redis = _build_redis_client()
+    try:
+        await set_jwks_cache(redis, jwks_response)
+        logger.debug("JWKS cached successfully")
+    except Exception as e:
+        logger.warning("Failed to cache JWKS: %s", e)
+    finally:
+        await redis.close()
+
+    return jwks_response
