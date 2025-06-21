@@ -77,6 +77,8 @@ class Settings(BaseSettings):
     BACKUP_DIR: str = "backups"  # default relative directory for CLI backups
     BACKUP_PGDUMP_PATH: str = "pg_dump"  # override if binary in custom path
     BACKUP_PGRESTORE_PATH: str = "pg_restore"  # override if binary in custom path
+    BACKUP_RETENTION_DAYS: int = 7  # how many days of dumps to keep
+    BACKUP_SCHEDULE_CRON: str = "0 2 * * *"  # default daily at 02:00 UTC
 
 
 settings = Settings()
