@@ -76,4 +76,56 @@ Safety guards prevent accidental restores in production unless `ENV=production` 
 * S3 upload & encryption pipeline (Task 8.4).
 * Admin API endpoints for self-service backup/restore (Task 8.5).
 * Prometheus metrics exporter (Task 8.6 view).
-* Nightly CI job attaching latest dump as artefact for quick download by ops. 
+* Nightly CI job attaching latest dump as artefact for quick download by ops.
+
+## 8. Off-Site Storage & Encryption (Optional – Task 8.4)
+
+Automated backups **can** be encrypted with GPG **and** uploaded to an S3 bucket (or any S3-compatible endpoint) when the corresponding feature flags are enabled.
+
+### 8.1 Enable the feature
+
+Add / adjust the following settings (e.g. in `.env`):
+
+| Variable | Example | Description |
+|----------|---------|-------------|
+| `BACKUP_ENCRYPTION_ENABLED` | `true` | Set to `true` to pass each dump through `gpg --encrypt` before upload / retention. |
+| `GPG_RECIPIENT_KEY_ID` | `0xDEADBEEF12345678` | Public-key **fingerprint** or **email** used as the GPG `--recipient`. *The server must NOT hold the private key.* |
+| `BACKUP_STORAGE_ADAPTER` | `s3` | Switches the storage backend from the default local filesystem to S3. |
+| `BACKUP_S3_BUCKET` | `trading-bot-backups` | Destination bucket for uploads. |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | – | Credentials used by `boto3`. Recommended to scope IAM user *write-only* to the bucket. |
+| `AWS_DEFAULT_REGION` | `us-east-1` | AWS region for the bucket. |
+| `AWS_S3_ENDPOINT_URL` | `https://s3.us-east-1.amazonaws.com` | Override to point at a custom endpoint / MinIO / LocalStack. |
+
+Then install the optional dependencies:
+```bash
+make install-s3   # installs boto3 + python-gnupg
+```
+
+### 8.2 How it works
+
+1. `create_backup_task` (or CLI) produces a logical dump file.
+2. If `BACKUP_ENCRYPTION_ENABLED=true`, the file is encrypted via:
+   ```bash
+   gpg --encrypt --recipient "$GPG_RECIPIENT_KEY_ID" dump.sql.gz
+   ```
+   The original plaintext dump is **not** removed until successful encryption.
+3. The active `StorageAdapter` is resolved:
+   ```python
+   adapter = get_storage_adapter()  # "local" or "s3"
+   adapter.save(encrypted_path)
+   ```
+4. On S3 upload success, an audit event `DB_BACKUP_UPLOADED` is emitted with the S3 key.
+
+### 8.3 Verification & Restore
+
+* **Verify encryption:** download the object, run `gpg --decrypt <file>` – the SHA-256 hash embedded in the filename must match the plaintext digest.
+* **Restore flow:** after decryption, use `make db-restore FILE=<decrypted_dump>` as usual.
+
+### 8.4 Security Recommendations
+
+* Store the **public** GPG key on the server; keep the private key offline.
+* Use an IAM user with **write-only** access to the bucket to minimise blast-radius.
+* Enable S3 versioning & server-side encryption as an extra layer of protection.
+* Rotate GPG keys annually and update `GPG_RECIPIENT_KEY_ID` accordingly.
+
+--- 

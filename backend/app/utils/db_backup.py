@@ -31,6 +31,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Final, Optional, Sequence
 
+from app.core.config import settings
+from app.storage import get_storage_adapter
+from app.utils.encryption import EncryptionError, encrypt_file
 from app.utils.logging import audit
 
 __all__: Final[Sequence[str]] = (
@@ -50,7 +53,7 @@ class RestoreError(RuntimeError):
 
 
 # ---------------------------------------------------------------------------
-# Public helper functions (stubs – to be implemented in 8.1.2+)
+# Public helper functions (stubs – to be implemented in 8.1.2)
 # ---------------------------------------------------------------------------
 
 
@@ -212,6 +215,25 @@ def create_dump(
             final_path, sha256_digest = _compress_and_hash(dump_path)
         else:
             sha256_digest = _hash_file(dump_path)
+
+        # Optional encryption
+        if settings.BACKUP_ENCRYPTION_ENABLED:
+            try:
+                encrypted_path = encrypt_file(final_path)
+                final_path = encrypted_path
+                audit("DB_BACKUP_ENCRYPTED", dump=str(final_path))
+            except EncryptionError as exc:
+                audit("DB_BACKUP_ENCRYPT_FAILED", dump=str(final_path), error=str(exc))
+                raise BackupError("encryption failed") from exc
+
+        # Optional remote storage upload
+        try:
+            adapter = get_storage_adapter()
+            remote_id = adapter.save(final_path, destination=final_path.name)
+            audit("DB_BACKUP_UPLOADED", dump=str(final_path), remote=remote_id)
+        except Exception as exc:
+            audit("DB_BACKUP_UPLOAD_FAILED", dump=str(final_path), error=str(exc))
+            # We do *not* fail the backup if upload fails; local dump remains valid
 
         audit(
             "DB_BACKUP_SUCCEEDED",
