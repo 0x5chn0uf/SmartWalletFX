@@ -27,14 +27,17 @@ import hashlib
 import os
 import shutil
 import subprocess
-from datetime import datetime
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Final, Optional, Sequence
 
 from app.core.config import settings
+from app.schemas.audit_log import DBEvent
 from app.storage import get_storage_adapter
+from app.utils import alerting, metrics
 from app.utils.encryption import EncryptionError, encrypt_file
-from app.utils.logging import audit
+from app.utils.logging import log_structured_audit_event
 
 __all__: Final[Sequence[str]] = (
     "BackupError",
@@ -189,12 +192,12 @@ def create_dump(
     compress: bool = True,
     label: Optional[str] = None,
     env: Optional[Dict[str, str]] = None,
+    trigger: str = "manual",
 ) -> Path:  # noqa: C901
     """Create a logical PostgreSQL dump and return the path to the dump file.
 
     Emits an audit log regardless of success/failure.
     """
-
     cmd = build_pg_dump_cmd(output_dir, label=label, compress=compress)
     # Extract dump file path from command list (value after --file)
     try:
@@ -204,7 +207,17 @@ def create_dump(
         # Should never happen given builder invariant
         raise BackupError("dump path not found in pg_dump command") from None
 
-    audit("DB_BACKUP_STARTED", dump=str(dump_path))
+    # Metrics & audit start
+    log_structured_audit_event(
+        DBEvent(
+            action="db_backup_started",
+            timestamp=datetime.now(timezone.utc),
+            trigger=trigger,
+            dump_path=str(dump_path),
+        )
+    )
+    metrics.BACKUP_TOTAL_L.inc()
+    _t0 = time.perf_counter()
 
     try:
         _run_subprocess(cmd, env=env)
@@ -221,30 +234,90 @@ def create_dump(
             try:
                 encrypted_path = encrypt_file(final_path)
                 final_path = encrypted_path
-                audit("DB_BACKUP_ENCRYPTED", dump=str(final_path))
+                log_structured_audit_event(
+                    DBEvent(
+                        action="db_backup_encrypted",
+                        timestamp=datetime.now(timezone.utc),
+                        trigger=trigger,
+                        dump_path=str(final_path),
+                    )
+                )
             except EncryptionError as exc:
-                audit("DB_BACKUP_ENCRYPT_FAILED", dump=str(final_path), error=str(exc))
+                log_structured_audit_event(
+                    DBEvent(
+                        action="db_backup_encrypt_failed",
+                        timestamp=datetime.now(timezone.utc),
+                        trigger=trigger,
+                        dump_path=str(final_path),
+                        outcome="failure",
+                        error=str(exc),
+                    )
+                )
                 raise BackupError("encryption failed") from exc
 
         # Optional remote storage upload
         try:
             adapter = get_storage_adapter()
             remote_id = adapter.save(final_path, destination=final_path.name)
-            audit("DB_BACKUP_UPLOADED", dump=str(final_path), remote=remote_id)
+            log_structured_audit_event(
+                DBEvent(
+                    action="db_backup_uploaded",
+                    timestamp=datetime.now(timezone.utc),
+                    trigger=trigger,
+                    dump_path=str(final_path),
+                    remote_id=remote_id,
+                )
+            )
         except Exception as exc:
-            audit("DB_BACKUP_UPLOAD_FAILED", dump=str(final_path), error=str(exc))
+            log_structured_audit_event(
+                DBEvent(
+                    action="db_backup_upload_failed",
+                    timestamp=datetime.now(timezone.utc),
+                    trigger=trigger,
+                    dump_path=str(final_path),
+                    outcome="failure",
+                    error=str(exc),
+                )
+            )
             # We do *not* fail the backup if upload fails; local dump remains valid
 
-        audit(
-            "DB_BACKUP_SUCCEEDED",
-            dump=str(final_path),
-            sha256=sha256_digest,
-            size_bytes=final_path.stat().st_size,
+        # Success metrics
+        duration = time.perf_counter() - _t0
+        metrics.BACKUP_DURATION_SECONDS_L.observe(duration)
+        metrics.BACKUP_SIZE_BYTES_L.observe(final_path.stat().st_size)
+
+        log_structured_audit_event(
+            DBEvent(
+                action="db_backup_succeeded",
+                timestamp=datetime.now(timezone.utc),
+                trigger=trigger,
+                outcome="success",
+                dump_path=str(final_path),
+                dump_hash=sha256_digest,
+                size_bytes=final_path.stat().st_size,
+            )
         )
         return final_path
 
     except Exception as exc:
-        audit("DB_BACKUP_FAILED", dump=str(dump_path), error=str(exc))
+        # Metrics & audit end
+        duration = time.perf_counter() - _t0
+        metrics.BACKUP_DURATION_SECONDS_L.observe(duration)
+        metrics.BACKUP_FAILED_TOTAL_L.inc()
+        alerting.send_slack_alert(
+            f"🚨 DB backup failed on {settings.ENVIRONMENT}", error=str(exc)
+        )
+
+        log_structured_audit_event(
+            DBEvent(
+                action="db_backup_failed",
+                timestamp=datetime.now(timezone.utc),
+                trigger=trigger,
+                outcome="failure",
+                dump_path=str(dump_path),
+                error=str(exc),
+            )
+        )
         raise BackupError("backup failed") from exc
 
 
@@ -254,28 +327,59 @@ def restore_dump(
     force: bool = False,
     target_db_url: Optional[str] = None,
     env: Optional[Dict[str, str]] = None,
+    trigger: str = "manual",
 ) -> None:
-    """Restore a PostgreSQL database from *dump_path*.
+    """Restore a database dump from *dump_path*.
 
-    This helper wraps :command:`pg_restore` to load a logical *custom*-format
-    dump created by :pyfunc:`create_dump`.  It intentionally performs **no**
-    environment checks—those are enforced at a higher layer (CLI / API).  The
-    *force* parameter is nevertheless captured for audit-logging symmetry.
+    Emits an audit log regardless of success/failure.
     """
+    if settings.ENVIRONMENT == "production" and not force:
+        raise RestoreError("cannot restore on production without --force flag")
 
     if not dump_path.exists():
-        raise RestoreError(f"dump file not found: {dump_path}")
+        raise FileNotFoundError(f"dump file not found: {dump_path}")
 
-    cmd = build_pg_restore_cmd(
-        dump_path,
-        target_db_url=target_db_url,
+    log_structured_audit_event(
+        DBEvent(
+            action="db_restore_started",
+            timestamp=datetime.now(timezone.utc),
+            trigger=trigger,
+            dump_path=str(dump_path),
+        )
     )
-
-    audit("DB_RESTORE_STARTED", dump=str(dump_path), force=force)
-
+    _t0 = time.perf_counter()
+    cmd = build_pg_restore_cmd(dump_path, target_db_url=target_db_url)
     try:
         _run_subprocess(cmd, env=env)
-        audit("DB_RESTORE_SUCCEEDED", dump=str(dump_path))
-    except Exception as exc:
-        audit("DB_RESTORE_FAILED", dump=str(dump_path), error=str(exc))
+        duration = time.perf_counter() - _t0
+        log_structured_audit_event(
+            DBEvent(
+                action="db_restore_succeeded",
+                timestamp=datetime.now(timezone.utc),
+                trigger=trigger,
+                outcome="success",
+                dump_path=str(dump_path),
+            )
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+        # Metrics & audit end
+        duration = time.perf_counter() - _t0
+        metrics.BACKUP_DURATION_SECONDS_L.observe(duration)
+        metrics.BACKUP_FAILED_TOTAL_L.inc()
+        alerting.send_slack_alert(
+            f"🚨 DB restore failed on {settings.ENVIRONMENT}", error=str(exc)
+        )
+        log_structured_audit_event(
+            DBEvent(
+                action="db_restore_failed",
+                timestamp=datetime.now(timezone.utc),
+                trigger=trigger,
+                outcome="failure",
+                dump_path=str(dump_path),
+                error=str(exc),
+            )
+        )
+        alerting.send_slack_alert(
+            f"🚨 DB restore failed on {settings.ENVIRONMENT}", error=str(exc)
+        )
         raise RestoreError("restore failed") from exc
