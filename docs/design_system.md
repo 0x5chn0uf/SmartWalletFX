@@ -1,8 +1,8 @@
 # Design System – Token Build Pipeline
 
-> **Status**: Initial version – covers token build pipeline introduced in Sub-task 70.2 (2025-06-21).
+> **Status**: Complete implementation – covers all subtasks 70.1-70.7 (2025-06-22).
 
-This document explains how the cross-platform **design tokens** defined in `design/design-tokens.json` are transformed into TypeScript constants that power the MUI theme.  It covers the file layout, build commands, CI integration, and contribution workflow.
+This document explains how the cross-platform **design tokens** defined in `design/design-tokens.json` are transformed into TypeScript constants that power the MUI theme.  It covers the file layout, build commands, CI integration, contribution workflow, and governance guidelines.
 
 ---
 
@@ -80,7 +80,7 @@ A Jest unit test (`frontend/src/__tests__/unit/tokens.build.test.ts`) asserts th
 3. Run `npm test` (frontend) to ensure the token test still passes.
 4. Open PR – CI will re-generate tokens and double-check.
 
-> **Tip**: Use [`docs/security_testing.md`](security_testing.md) helpers to add WCAG contrast tests for new colour pairs.
+> **Tip**: Use [`docs/accessibility.md`](accessibility.md) helpers to add WCAG contrast tests for new colour pairs.
 
 ---
 
@@ -124,14 +124,162 @@ To access theme values in your components:
 
 ---
 
-## 7. Roadmap
-| Milestone | Description | Status |
-|-----------|-------------|--------|
-| 70.5 | Integrate token linting (WCAG contrast) into CI | ⏳ PENDING |
-| 70.6 | Add Storybook visual regression testing (e.g., Chromatic) | ⏳ PENDING |
-| 70.7 | Publish design token documentation site via Storybook Docs | ⏳ PENDING |
-| 71.0 | Create shared `Layout` components (SideNav, Header, Footer) | ⏳ PENDING |
+## 7. Storybook Component Library
 
+> **Status**: Implemented in Sub-task 70.4 (2025-06-22).
+
+The design system includes a comprehensive Storybook component library that showcases all design tokens and provides interactive documentation.
+
+### Available Components
+- **Button**: Primary, secondary, and text variants with different sizes and states
+- **Card**: Surface component with elevation, padding, and content areas
+- **Typography**: Text components demonstrating the typography scale and weights
+- **Surface**: Basic container with background colors and spacing
+- **Accessibility Guide**: Interactive documentation for accessibility best practices
+
+### Running Storybook
+```bash
+cd frontend
+npm run storybook
+```
+
+### Component Development
+When creating new components:
+1. Use design tokens from `frontend/src/theme/generated/`
+2. Create Storybook stories for all variants
+3. Include accessibility testing with `@storybook/addon-a11y`
+4. Test in both light and dark themes
+
+---
+
+## 8. Accessibility & Quality Assurance
+
+> **Status**: Implemented in Sub-task 70.5 (2025-06-22).
+
+### WCAG AA Compliance
+- **Automated Testing**: All color combinations are validated against WCAG AA standards
+- **CI Integration**: Accessibility checks run automatically in the build pipeline
+- **Tools**: `wcag-contrast` library for accurate contrast ratio calculations
+- **Documentation**: Comprehensive accessibility guide in `docs/accessibility.md`
+
+### Testing Commands
+```bash
+# Run accessibility tests
+npm test -- --testPathPattern="accessibility"
+
+# Run contrast checker
+python scripts/contrast_check.py --strict
+
+# Run Storybook accessibility tests
+npm run a11y:test
+```
+
+---
+
+## 9. Governance & Token Versioning
+
+### Token Naming Conventions
+- **Semantic naming**: Use descriptive names that convey purpose (e.g., `color.text.primary` not `color.blue`)
+- **Namespacing**: Group related tokens with dots (e.g., `color.brand.primary`, `spacing.component.small`)
+- **Consistency**: Follow established patterns for similar token types
+
+### Change Management
+1. **Breaking Changes**: Any token removal or value changes require:
+   - Design review and approval
+   - Migration plan for existing components
+   - Version bump in `design/design-tokens.json`
+   - Documentation update
+
+2. **Additive Changes**: New tokens require:
+   - Design review
+   - Accessibility validation (for colors)
+   - Storybook story updates
+   - Documentation update
+
+### Version Control
+- **Token Versioning**: Track major changes in `design/design-tokens.json` with version comments
+- **Changelog**: Document significant changes in this file
+- **Migration Guide**: Provide upgrade paths for breaking changes
+
+### Review Process
+1. **Design Review**: All token changes require design team approval
+2. **Technical Review**: Implementation must follow established patterns
+3. **Accessibility Review**: Color changes must pass WCAG AA validation
+4. **Documentation Review**: Ensure all changes are properly documented
+
+---
+
+## 10. Contribution Guidelines
+
+### For Designers
+1. **Token Creation**: Work with developers to define new tokens
+2. **Accessibility**: Ensure all color combinations meet WCAG AA standards
+3. **Documentation**: Update design system documentation when adding new tokens
+4. **Testing**: Review Storybook stories for new components
+
+### For Developers
+1. **Token Usage**: Always use design tokens instead of hardcoded values
+2. **Component Development**: Create Storybook stories for all new components
+3. **Testing**: Include accessibility tests for all components
+4. **Documentation**: Update component documentation and examples
+
+### For QA Engineers
+1. **Accessibility Testing**: Run accessibility tests on all new components
+2. **Cross-browser Testing**: Ensure components work in all supported browsers
+3. **Theme Testing**: Verify components work correctly in both light and dark themes
+4. **Regression Testing**: Ensure changes don't break existing components
+
+---
+
+## 11. Roadmap & Status
+
+| Milestone | Description | Status | Completion Date |
+|-----------|-------------|--------|-----------------|
+| 70.1 | Seed Token JSON | ✅ **COMPLETED** | 2025-06-21 |
+| 70.2 | Token Build Pipeline | ✅ **COMPLETED** | 2025-06-22 |
+| 70.3 | MUI Theme Integration | ✅ **COMPLETED** | 2025-06-22 |
+| 70.4 | Storybook Setup & Baseline Components | ✅ **COMPLETED** | 2025-06-22 |
+| 70.5 | Accessibility & Contrast Automation | ✅ **COMPLETED** | 2025-06-22 |
+| 70.6 | CI Visual Regression | ❌ **SKIPPED** | N/A |
+| 70.7 | Documentation & Governance | ✅ **COMPLETED** | 2025-06-22 |
+
+### Future Enhancements
+- **Component Library Expansion**: Add more complex components (forms, navigation, data tables)
+- **Design Token Analytics**: Track token usage across the application
+- **Design System Website**: Create a public-facing design system documentation site
+- **Component Testing**: Add comprehensive unit and integration tests for all components
+
+---
+
+## 12. Troubleshooting
+
+### Common Issues
+
+**Build Failures**
+- Ensure `design/design-tokens.json` is valid JSON
+- Run `make build-tokens` to regenerate TypeScript files
+- Check that all token names follow naming conventions
+
+**Accessibility Violations**
+- Use the contrast checker: `python scripts/contrast_check.py`
+- Review color combinations in `docs/accessibility.md`
+- Test with screen readers and keyboard navigation
+
+**Theme Issues**
+- Verify `ThemeProvider` is wrapping the application
+- Check that components use theme values instead of hardcoded styles
+- Test in both light and dark modes
+
+**Storybook Problems**
+- Ensure all dependencies are installed: `npm install`
+- Check Storybook configuration in `.storybook/`
+- Verify components are properly exported
+
+### Getting Help
+- **Documentation**: Check this file and related documentation
+- **Code Examples**: Review Storybook stories for implementation examples
+- **Accessibility**: Consult `docs/accessibility.md` for guidelines
+- **Issues**: Create GitHub issues for bugs or feature requests
 
 ---
 

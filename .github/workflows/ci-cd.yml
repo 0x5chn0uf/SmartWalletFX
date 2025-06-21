@@ -360,6 +360,15 @@ jobs:
         working-directory: ./frontend
         run: npm test -- --watchAll=false --no-watchman --ci --coverage
 
+      - name: Run accessibility checks
+        working-directory: ./frontend
+        run: |
+          # Run design token contrast validation
+          npm test -- --watchAll=false --no-watchman --ci --testPathPattern="accessibility" --passWithNoTests
+          
+          # Run Python contrast checker
+          cd .. && python scripts/contrast_check.py --strict
+
       - name: Enforce frontend coverage threshold (75%)
         working-directory: ./frontend
         run: |
