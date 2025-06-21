@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Authentication endpoints (registration only – Subtask 4.5)."""
+"""Authentication endpoints"""
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
