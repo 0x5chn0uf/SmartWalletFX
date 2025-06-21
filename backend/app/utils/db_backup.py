@@ -232,27 +232,28 @@ def restore_dump(
     force: bool = False,
     target_db_url: Optional[str] = None,
     env: Optional[Dict[str, str]] = None,
-) -> None:  # pragma: no cover – to be implemented in sub-task 8.1.x
+) -> None:
     """Restore a PostgreSQL database from *dump_path*.
 
-    Parameters
-    ----------
-    dump_path:
-        Path to the dump file created by :pyfunc:`create_dump`.
-    force:
-        When *True* bypasses environment-based safety guards that prevent
-        restoring into production databases.  **Use with extreme caution.**
-    target_db_url:
-        Override the default database connection string.  If *None*, the
-        function reads connection details from the current environment.
-    env:
-        Optional mapping of environment variables that overrides the current
-        process environment when invoking external commands.
-
-    Raises
-    ------
-    RestoreError
-        If the restore operation fails.
+    This helper wraps :command:`pg_restore` to load a logical *custom*-format
+    dump created by :pyfunc:`create_dump`.  It intentionally performs **no**
+    environment checks—those are enforced at a higher layer (CLI / API).  The
+    *force* parameter is nevertheless captured for audit-logging symmetry.
     """
-    # NOTE: Implementation will be provided in sub-task 8.1.2
-    raise NotImplementedError
+
+    if not dump_path.exists():
+        raise RestoreError(f"dump file not found: {dump_path}")
+
+    cmd = build_pg_restore_cmd(
+        dump_path,
+        target_db_url=target_db_url,
+    )
+
+    audit("DB_RESTORE_STARTED", dump=str(dump_path), force=force)
+
+    try:
+        _run_subprocess(cmd, env=env)
+        audit("DB_RESTORE_SUCCEEDED", dump=str(dump_path))
+    except Exception as exc:
+        audit("DB_RESTORE_FAILED", dump=str(dump_path), error=str(exc))
+        raise RestoreError("restore failed") from exc
