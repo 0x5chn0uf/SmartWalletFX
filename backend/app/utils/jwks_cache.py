@@ -1,5 +1,6 @@
 """Redis caching utilities for JWKS endpoint."""
 
+import asyncio
 import json
 import logging
 from typing import Optional
@@ -65,6 +66,26 @@ async def invalidate_jwks_cache(redis: Redis) -> bool:
         return True
     except Exception as e:
         logger.warning("Failed to invalidate JWKS cache: %s", e)
+        return False
+
+
+def invalidate_jwks_cache_sync() -> bool:
+    """Synchronous wrapper for JWKS cache invalidation.
+
+    This function can be called from synchronous contexts like Celery tasks.
+    It creates its own Redis client and handles the async/sync bridge.
+
+    Returns:
+        True if successfully invalidated, False on error
+    """
+    try:
+        redis = _build_redis_client()
+        # Use asyncio.run() to bridge async/sync
+        result = asyncio.run(invalidate_jwks_cache(redis))
+        asyncio.run(redis.close())
+        return result
+    except Exception as e:
+        logger.warning("Failed to invalidate JWKS cache (sync): %s", e)
         return False
 
 
