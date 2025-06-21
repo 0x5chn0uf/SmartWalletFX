@@ -84,14 +84,55 @@ A Jest unit test (`frontend/src/__tests__/unit/tokens.build.test.ts`) asserts th
 
 ---
 
-## 6. Roadmap
+## 6. MUI Theme Integration
 
-| Milestone | Description |
-|-----------|-------------|
-| 70.3 | Integrate token linting (WCAG contrast) into CI |
-| 70.4 | Add Storybook theme switcher (light / dark) using generated tokens |
-| 70.5 | Publish design token documentation site via Storybook Docs |
+> **Status**: Implemented in Sub-task 70.3 (2025-06-22).
+
+This section details how the generated tokens are used to create a dynamic, mode-aware MUI theme.
+
+### `ThemeProvider`
+- **Location**: `frontend/src/providers/ThemeProvider.tsx`
+- **Function**: This React context provider is the root of the theming system. It manages the current color mode ('light' or 'dark') and makes it available to all child components.
+- **Global Injection**: It is wrapped around the entire application in `src/index.js`, ensuring `CssBaseline` and the MUI theme are applied globally.
+
+### `createAppTheme`
+- **Location**: `frontend/src/theme/index.ts`
+- **Function**: This function receives the current mode ('light' | 'dark') and returns a complete MUI theme object. It maps the raw values from `theme/generated/index.ts` to the structured properties of the MUI `palette`, `typography`, `shadows`, etc.
+
+### Switching Modes
+A dedicated component, `ColorModeToggle`, has been created to switch between light and dark themes.
+- **Location**: `frontend/src/components/ColorModeToggle/ColorModeToggle.tsx`
+- **Usage**: Simply drop this component into any part of the UI (it's currently in the main `AppBar`). It automatically consumes the `ColorModeContext` and handles the toggle logic.
+
+### Using the Theme in Components
+To access theme values in your components:
+1. **`useTheme` Hook**: For logic-based styling.
+   ```tsx
+   import { useTheme } from '@mui/material/styles';
+
+   const MyComponent = () => {
+     const theme = useTheme();
+     // ...
+   };
+   ```
+2. **`sx` Prop**: For concise, inline styling that has access to the theme.
+   ```tsx
+   <Box sx={{ p: theme => theme.spacing(2), color: 'primary.main' }}>
+     Hello
+   </Box>
+   ```
 
 ---
 
-_Last updated: 2025-06-21_ 
+## 7. Roadmap
+| Milestone | Description | Status |
+|-----------|-------------|--------|
+| 70.5 | Integrate token linting (WCAG contrast) into CI | ⏳ PENDING |
+| 70.6 | Add Storybook visual regression testing (e.g., Chromatic) | ⏳ PENDING |
+| 70.7 | Publish design token documentation site via Storybook Docs | ⏳ PENDING |
+| 71.0 | Create shared `Layout` components (SideNav, Header, Footer) | ⏳ PENDING |
+
+
+---
+
+_Last updated: 2025-06-22_ 
