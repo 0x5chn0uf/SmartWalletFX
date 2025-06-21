@@ -301,7 +301,8 @@ grep '"action":"db_backup_succeeded"' /var/log/audit.log | \
 up == 0
 
 # High cardinality metrics
-prometheus_tsdb_head_series > 1000000
+prometheus_tsdb_
+_series > 1000000
 ```
 
 **Alertmanager Health:**
@@ -316,6 +317,7 @@ alertmanager_notifications_failed_total > 0
 ---
 
 © 2025 Trading-Bot SMC – Infrastructure & DevOps Team 
+------------
 # Monitoring & Alerting – JWT Key Rotation
 
 ## Overview
