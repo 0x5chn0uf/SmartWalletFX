@@ -2,6 +2,9 @@
 
 ![Backend Coverage](https://img.shields.io/badge/Coverage_Backend-94%25-brightgreen)
 ![Frontend Coverage](https://img.shields.io/badge/Coverage_Frontend-58%25-yellow)
+![Backup Tests](https://img.shields.io/badge/backup%20tests-passing-brightgreen)
+![E2E Tests](https://img.shields.io/badge/E2E%20tests-passing-brightgreen)
+![Performance Tests](https://img.shields.io/badge/performance%20tests-passing-brightgreen)
 
 A powerful crypto portfolio tracker providing a centralized overview of all your crypto and DeFi positions, with integrated Smart Money Concepts (SMC) analysis tools.
 
@@ -27,6 +30,14 @@ A powerful crypto portfolio tracker providing a centralized overview of all your
 ### 🎨 User Interface
 - Dark mode with emerald green accents
 - Customizable dashboard, responsive design, intuitive navigation
+
+### 💾 Database Backup & Restore
+- **Automated Daily Backups:** Scheduled PostgreSQL backups with 7-day retention
+- **CLI & API Access:** Manual backup/restore via CLI commands and admin API endpoints
+- **Performance Optimized:** < 30s backup, < 60s restore for 1GB datasets
+- **Comprehensive Testing:** E2E tests with ephemeral PostgreSQL containers
+- **Monitoring & Alerting:** Prometheus metrics, Slack alerts, structured audit logging
+- **Optional Encryption:** GPG encryption and S3 off-site storage support
 
 ### Performance Timeline
 
@@ -189,6 +200,7 @@ For questions or support, please open an issue in the repository.
 - [Testing & QA Guide](docs/defi_testing_guide.md)
 - [Property Testing Templates](docs/property_testing_templates.md)
 - [Knowledge Transfer Slide Deck](docs/defi_knowledge_transfer.md)
+- [Database Backup & Restore](docs/admin_db.md) - Complete operational runbook for backup/restore operations
 
 ---
 

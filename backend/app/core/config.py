@@ -84,6 +84,35 @@ class Settings(BaseSettings):
     BACKUP_DIR: str = "backups"  # default relative directory for CLI backups
     BACKUP_PGDUMP_PATH: str = "pg_dump"  # override if binary in custom path
     BACKUP_PGRESTORE_PATH: str = "pg_restore"  # override if binary in custom path
+    BACKUP_RETENTION_DAYS: int = 7  # how many days of dumps to keep
+    BACKUP_SCHEDULE_CRON: str = "0 2 * * *"  # default daily at 02:00 UTC
+    BACKUP_STORAGE_ADAPTER: str = "local"  # 'local' or 's3'
+    BACKUP_ENCRYPTION_ENABLED: bool = False  # set to True to enable GPG encryption
+    GPG_RECIPIENT_KEY_ID: str | None = None  # required when encryption enabled
+    # --- S3 / AWS (optional) ---
+    BACKUP_S3_BUCKET: str | None = (
+        None  # S3 bucket for backups when using the S3 adapter
+    )
+    AWS_ACCESS_KEY_ID: str | None = None
+    AWS_SECRET_ACCESS_KEY: str | None = None
+    AWS_DEFAULT_REGION: str | None = "us-east-1"
+    AWS_S3_ENDPOINT_URL: str | None = None  # allow custom endpoint / MinIO
+
+    # --- Monitoring & Alerting Settings ------------------------------------
+    # Prometheus metrics endpoint configuration
+    PROMETHEUS_ENABLED: bool = True  # Enable/disable Prometheus metrics
+    PROMETHEUS_PORT: int = 9090  # Port for Prometheus metrics server
+    PROMETHEUS_HOST: str = "0.0.0.0"  # Host for Prometheus metrics server
+
+    # Slack webhook alerting configuration
+    SLACK_WEBHOOK_URL: Optional[str] = None  # Slack webhook URL for alerts
+    SLACK_ALERTING_ENABLED: bool = False  # Enable/disable Slack alerting
+    SLACK_MAX_ALERTS_PER_HOUR: int = 10  # Rate limiting for alerts
+    SLACK_TIMEOUT_SECONDS: int = 10  # HTTP timeout for webhook requests
+
+    # JWT rotation alerting thresholds
+    JWT_ROTATION_ALERT_ON_ERROR: bool = True  # Send alerts on rotation errors
+    JWT_ROTATION_ALERT_ON_RETRY: bool = False  # Send alerts on retries
 
     # --- Monitoring & Alerting Settings ------------------------------------
     # Prometheus metrics endpoint configuration
