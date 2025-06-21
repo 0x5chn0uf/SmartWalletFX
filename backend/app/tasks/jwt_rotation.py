@@ -43,6 +43,14 @@ try:
         "jwt_key_rotation_errors_total",
         "Number of errors encountered during automated key rotation.",
     )
+    _CACHE_INVALIDATION_C = Counter(
+        "jwt_jwks_cache_invalidations_total",
+        "Number of times the JWKS cache has been invalidated during key rotation.",
+    )
+    _CACHE_INVALIDATION_ERROR_C = Counter(
+        "jwt_jwks_cache_invalidation_errors_total",
+        "Number of errors encountered during JWKS cache invalidation.",
+    )
 
     class _MetricsWrapper:
         def __init__(self, c):
@@ -55,6 +63,8 @@ try:
         "promote": _MetricsWrapper(_PROMOTE_C),
         "retire": _MetricsWrapper(_RETIRE_C),
         "error": _MetricsWrapper(_ERROR_C),
+        "cache_invalidation": _MetricsWrapper(_CACHE_INVALIDATION_C),
+        "cache_invalidation_error": _MetricsWrapper(_CACHE_INVALIDATION_ERROR_C),
     }
 
 except ImportError:  # pragma: no cover – prometheus_client optional dependency
@@ -63,7 +73,16 @@ except ImportError:  # pragma: no cover – prometheus_client optional dependenc
         def inc(self, _n: int = 1) -> None:  # noqa: D401 – no-op
             return
 
-    METRICS = {k: _NoOpMetric() for k in ("promote", "retire", "error")}
+    METRICS = {
+        k: _NoOpMetric()
+        for k in (
+            "promote",
+            "retire",
+            "error",
+            "cache_invalidation",
+            "cache_invalidation_error",
+        )
+    }
 
 
 logger = logging.getLogger(__name__)
@@ -110,6 +129,7 @@ def _apply_key_set_update(update: KeySetUpdate) -> None:
         return
 
     from app.utils import jwt as jwt_utils  # local import to avoid cycles
+    from app.utils.jwks_cache import invalidate_jwks_cache_sync
 
     now = datetime.now(timezone.utc)
 
@@ -126,6 +146,24 @@ def _apply_key_set_update(update: KeySetUpdate) -> None:
         jwt_utils._RETIRED_KEYS[kid] = now  # pylint: disable=protected-access
         audit("JWT_KEY_RETIRED", kid=kid)
         METRICS["retire"].inc()
+
+    # Invalidate JWKS cache to ensure fresh keys are published immediately
+    # This is fire-and-forget - failures don't break the rotation process
+    try:
+        success = invalidate_jwks_cache_sync()
+        if success:
+            audit("JWKS_CACHE_INVALIDATED", reason="key_rotation")
+            METRICS["cache_invalidation"].inc()
+        else:
+            audit(
+                "JWKS_CACHE_INVALIDATION_FAILED",
+                error="cache_invalidation_returned_false",
+            )
+            METRICS["cache_invalidation_error"].inc()
+    except Exception as e:
+        logger.warning("Failed to invalidate JWKS cache during key rotation: %s", e)
+        audit("JWKS_CACHE_INVALIDATION_FAILED", error=str(e))
+        METRICS["cache_invalidation_error"].inc()
 
 
 def _build_redis_client():  # pragma: no cover – isolation for patching
