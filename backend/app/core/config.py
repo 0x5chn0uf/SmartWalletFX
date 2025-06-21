@@ -79,6 +79,17 @@ class Settings(BaseSettings):
     BACKUP_PGRESTORE_PATH: str = "pg_restore"  # override if binary in custom path
     BACKUP_RETENTION_DAYS: int = 7  # how many days of dumps to keep
     BACKUP_SCHEDULE_CRON: str = "0 2 * * *"  # default daily at 02:00 UTC
+    BACKUP_STORAGE_ADAPTER: str = "local"  # 'local' or 's3'
+    BACKUP_ENCRYPTION_ENABLED: bool = False  # set to True to enable GPG encryption
+    GPG_RECIPIENT_KEY_ID: str | None = None  # required when encryption enabled
+    # --- S3 / AWS (optional) ---
+    BACKUP_S3_BUCKET: str | None = (
+        None  # S3 bucket for backups when using the S3 adapter
+    )
+    AWS_ACCESS_KEY_ID: str | None = None
+    AWS_SECRET_ACCESS_KEY: str | None = None
+    AWS_DEFAULT_REGION: str | None = "us-east-1"
+    AWS_S3_ENDPOINT_URL: str | None = None  # allow custom endpoint / MinIO
 
 
 settings = Settings()
