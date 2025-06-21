@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.models import Base  # imported lazily to avoid heavy import earlier
 from app.services.snapshot_aggregation import SnapshotAggregationService
