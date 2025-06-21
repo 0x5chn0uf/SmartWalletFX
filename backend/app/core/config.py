@@ -56,6 +56,13 @@ class Settings(BaseSettings):
     # remain valid after rotation.  When 0, rotation is immediate.
     JWT_ROTATION_GRACE_PERIOD_SECONDS: int = 300
 
+    # --- Celery Beat Schedules & Locks ---------------------------------
+    # Cron expression for the automated JWT key rotation task.
+    JWT_ROTATION_SCHEDULE_CRON: str = "*/5 * * * *"  # default: every 5 minutes
+
+    # TTL (seconds) for the Redis lock ensuring single-worker execution.
+    JWT_ROTATION_LOCK_TTL_SEC: int = 600  # default: 10 minutes
+
     # Pydantic v2 config – ignore extra environment variables to prevent
     # validation errors when the host machine defines unrelated keys
     model_config = {
@@ -77,6 +84,22 @@ class Settings(BaseSettings):
     BACKUP_DIR: str = "backups"  # default relative directory for CLI backups
     BACKUP_PGDUMP_PATH: str = "pg_dump"  # override if binary in custom path
     BACKUP_PGRESTORE_PATH: str = "pg_restore"  # override if binary in custom path
+
+    # --- Monitoring & Alerting Settings ------------------------------------
+    # Prometheus metrics endpoint configuration
+    PROMETHEUS_ENABLED: bool = True  # Enable/disable Prometheus metrics
+    PROMETHEUS_PORT: int = 9090  # Port for Prometheus metrics server
+    PROMETHEUS_HOST: str = "0.0.0.0"  # Host for Prometheus metrics server
+
+    # Slack webhook alerting configuration
+    SLACK_WEBHOOK_URL: Optional[str] = None  # Slack webhook URL for alerts
+    SLACK_ALERTING_ENABLED: bool = False  # Enable/disable Slack alerting
+    SLACK_MAX_ALERTS_PER_HOUR: int = 10  # Rate limiting for alerts
+    SLACK_TIMEOUT_SECONDS: int = 10  # HTTP timeout for webhook requests
+
+    # JWT rotation alerting thresholds
+    JWT_ROTATION_ALERT_ON_ERROR: bool = True  # Send alerts on rotation errors
+    JWT_ROTATION_ALERT_ON_RETRY: bool = False  # Send alerts on retries
 
 
 settings = Settings()
