@@ -98,6 +98,22 @@ class Settings(BaseSettings):
     AWS_DEFAULT_REGION: str | None = "us-east-1"
     AWS_S3_ENDPOINT_URL: str | None = None  # allow custom endpoint / MinIO
 
+    # --- Monitoring & Alerting Settings ------------------------------------
+    # Prometheus metrics endpoint configuration
+    PROMETHEUS_ENABLED: bool = True  # Enable/disable Prometheus metrics
+    PROMETHEUS_PORT: int = 9090  # Port for Prometheus metrics server
+    PROMETHEUS_HOST: str = "0.0.0.0"  # Host for Prometheus metrics server
+
+    # Slack webhook alerting configuration
+    SLACK_WEBHOOK_URL: Optional[str] = None  # Slack webhook URL for alerts
+    SLACK_ALERTING_ENABLED: bool = False  # Enable/disable Slack alerting
+    SLACK_MAX_ALERTS_PER_HOUR: int = 10  # Rate limiting for alerts
+    SLACK_TIMEOUT_SECONDS: int = 10  # HTTP timeout for webhook requests
+
+    # JWT rotation alerting thresholds
+    JWT_ROTATION_ALERT_ON_ERROR: bool = True  # Send alerts on rotation errors
+    JWT_ROTATION_ALERT_ON_RETRY: bool = False  # Send alerts on retries
+
 
 settings = Settings()
 
