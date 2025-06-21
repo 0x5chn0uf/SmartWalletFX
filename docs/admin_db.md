@@ -55,9 +55,98 @@ Safety guards prevent accidental restores in production unless `ENV=production` 
 
 ## 5. Monitoring & Alerts
 
-* **Audit logs**: Search for `action:DB_BACKUP_*` in Loki / Datadog.
-* **Prometheus** metrics (future): `db_backup_success_total`, `db_backup_purge_total`, `db_backup_failure_total`.
-* **Slack alerts**: backup failures trigger `#alerts-infra` via existing alerting pipeline.
+### 5.1 Audit Events
+All backup and restore operations emit structured audit events to the `audit` logger following the schema defined in `app.schemas.audit_log.DBEvent`:
+
+| Event Action | Description | Additional Fields |
+|--------------|-------------|-------------------|
+| `db_backup_started` | Backup operation initiated | `trigger`, `dump_path` |
+| `db_backup_succeeded` | Backup completed successfully | `trigger`, `outcome`, `dump_path`, `dump_hash`, `size_bytes` |
+| `db_backup_failed` | Backup operation failed | `trigger`, `outcome`, `error` |
+| `db_restore_started` | Restore operation initiated | `trigger`, `dump_path` |
+| `db_restore_succeeded` | Restore completed successfully | `trigger`, `outcome`, `dump_path` |
+| `db_restore_failed` | Restore operation failed | `trigger`, `outcome`, `dump_path`, `error` |
+
+**Context Fields:**
+- `trigger`: How the operation was initiated (`api`, `cli`, `scheduled`)
+- `user_id`: Authenticated user ID (when triggered via API)
+- `ip_address`: Source IP address (when triggered via API)
+- `trace_id`: Request correlation ID for tracking
+
+**Search Examples:**
+```bash
+# Find all backup failures in the last 24h
+grep '"action":"db_backup_failed"' /var/log/app/audit.log | jq .
+
+# Monitor scheduled backup success
+grep '"trigger":"scheduled"' /var/log/app/audit.log | grep '"outcome":"success"'
+```
+
+### 5.2 Prometheus Metrics
+The following metrics are exposed at `/metrics` endpoint for monitoring backup operations:
+
+| Metric Name | Type | Description | Labels |
+|-------------|------|-------------|--------|
+| `db_backup_total` | Counter | Total number of backup attempts | `env` |
+| `db_backup_failed_total` | Counter | Number of failed backup attempts | `env` |
+| `db_backup_duration_seconds` | Histogram | Duration of backup operations in seconds | `env` |
+| `db_backup_size_bytes` | Histogram | Size of backup files in bytes | `env` |
+
+**Example Queries:**
+```promql
+# Backup success rate over last 24h
+rate(db_backup_total[24h]) - rate(db_backup_failed_total[24h])
+
+# Average backup duration
+histogram_quantile(0.5, rate(db_backup_duration_seconds_bucket[1h]))
+
+# Backup size trend
+histogram_quantile(0.95, rate(db_backup_size_bytes_bucket[24h]))
+```
+
+### 5.3 Slack Alerting
+Critical backup and restore failures automatically trigger Slack alerts to the configured webhook:
+
+**Alert Conditions:**
+- Backup operation fails (any trigger type)
+- Restore operation fails (any trigger type)
+
+**Alert Format:**
+```
+🚨 DB backup failed on production
+Error: pg_dump: connection to database failed
+```
+
+**Configuration:**
+Set `SLACK_WEBHOOK_URL` environment variable to enable alerting. If not configured, alerts are logged as warnings instead.
+
+### 5.4 Monitoring Dashboard Recommendations
+**Grafana Dashboard Panels:**
+1. **Backup Success Rate** - `rate(db_backup_total[1h]) - rate(db_backup_failed_total[1h])`
+2. **Backup Duration Trend** - `histogram_quantile(0.95, rate(db_backup_duration_seconds_bucket[1h]))`
+3. **Backup Size Growth** - `increase(db_backup_size_bytes_sum[24h])`
+4. **Failed Backup Count** - `increase(db_backup_failed_total[24h])`
+
+**Alertmanager Rules:**
+```yaml
+- alert: BackupFailure
+  expr: increase(db_backup_failed_total[1h]) > 0
+  for: 0m
+  labels:
+    severity: critical
+  annotations:
+    summary: "Database backup failed"
+    description: "{{ $value }} backup failures in the last hour"
+
+- alert: BackupDurationHigh
+  expr: histogram_quantile(0.95, rate(db_backup_duration_seconds_bucket[1h])) > 300
+  for: 5m
+  labels:
+    severity: warning
+  annotations:
+    summary: "Backup taking too long"
+    description: "95th percentile backup duration is {{ $value }}s"
+```
 
 ---
 
