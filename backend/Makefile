@@ -121,6 +121,16 @@ db-migrate: ## Apply latest migrations (alias to alembic-upgrade)
 	$(MAKE) alembic-upgrade
 
 # -----------------------------------------------------------------------------
+# Backup & restore helpers (Subtask 8.2 stub)
+# -----------------------------------------------------------------------------
+
+db-backup: ## Create a database dump (stub)
+	$(PYTHON) -m app.cli.db_backup_cli backup $(OUTPUT_DIR) $(LABEL)
+
+db-restore: ## Restore a database dump (stub)
+	$(PYTHON) -m app.cli.db_backup_cli restore $(FILE) --env $(ENV) $(FORCE)
+
+# -----------------------------------------------------------------------------
 # House-keeping
 # -----------------------------------------------------------------------------
 clean: ## Remove caches & artefacts
@@ -129,4 +139,5 @@ clean: ## Remove caches & artefacts
 
 .PHONY: help install install-dev install-perf lint format bandit safety \
 	test test-perf coverage run serve serve-stop celery-worker celery-beat \
-	db-start db-test db-down alembic-upgrade db-migrate locust-smoke clean
+	db-start db-test db-down alembic-upgrade db-migrate locust-smoke clean \
+	db-backup db-restore
