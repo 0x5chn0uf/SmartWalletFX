@@ -8,15 +8,21 @@ types (EC, OKP, symmetric) can be added in future tasks.
 from __future__ import annotations
 
 import base64
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
+from app.core.config import settings
 from app.schemas.jwks import JWK
+from app.utils.jwt_rotation import Key
 
-__all__ = ["format_public_key_to_jwk"]
+__all__ = [
+    "format_public_key_to_jwk",
+    "get_verifying_keys",
+]
 
 
 def _b64url_uint(integer: int) -> str:
@@ -25,6 +31,39 @@ def _b64url_uint(integer: int) -> str:
     byte_length = (integer.bit_length() + 7) // 8
     as_bytes = integer.to_bytes(byte_length, "big")
     return base64.urlsafe_b64encode(as_bytes).rstrip(b"=").decode("ascii")
+
+
+def get_verifying_keys() -> list[Key]:
+    """Return all keys that are currently valid for verifying signatures.
+
+    This function builds a list of all known keys from ``settings.JWT_KEYS``,
+    checks their retirement status against the runtime ``_RETIRED_KEYS`` map,
+    and returns only those that are not yet expired.  This list is suitable
+    for building a JWKS endpoint.
+
+    Returns
+    -------
+    list[Key]
+        A list of :class:`Key` objects representing non-retired public keys.
+    """
+    from app.utils import jwt as jwt_utils  # lazy import to avoid cycles
+
+    now = datetime.now(timezone.utc)
+    valid_keys: list[Key] = []
+
+    for kid, pem_value in settings.JWT_KEYS.items():
+        retired_at = jwt_utils._RETIRED_KEYS.get(
+            kid
+        )  # pylint: disable=protected-access
+
+        # A key is considered valid for verification if its retirement time
+        # has not yet passed.
+        if retired_at and now >= retired_at:
+            continue  # This key is retired, skip it.
+
+        valid_keys.append(Key(kid=kid, value=pem_value, retired_at=retired_at))
+
+    return valid_keys
 
 
 def format_public_key_to_jwk(
