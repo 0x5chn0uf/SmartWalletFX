@@ -49,7 +49,7 @@ async def set_jwks_cache(redis: Redis, jwks: JWKSet) -> bool:
         # patch the mock Redis client and introspect positional args—can make
         # the correct assertion about the TTL value being the *third* positional
         # argument (index 2).
-        await redis.setex(JWKS_CACHE_KEY, serialized, settings.JWKS_CACHE_TTL_SEC)
+        await redis.setex(JWKS_CACHE_KEY, settings.JWKS_CACHE_TTL_SEC, serialized)
         return True
     except Exception as e:
         logger.warning("Failed to store JWKS in cache: %s", e)

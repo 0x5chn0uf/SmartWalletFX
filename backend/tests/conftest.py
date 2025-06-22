@@ -315,3 +315,39 @@ def reset_rate_limiter():
     # Post-test cleanup
     login_rate_limiter.clear()
     login_rate_limiter.max_attempts = original_max
+
+
+# --------------------------------------------------------------------
+# Performance patch – cache RSA key generation to speed up Hypothesis
+# --------------------------------------------------------------------
+
+# Generating real 2048-bit RSA keys is computationally expensive and causes
+# Hypothesis' *too_slow* health-check to fail when the strategy in
+# *tests/property/jwks/test_jwks_property.py* requests many keys per test
+# run.  We work around this by monkey-patching
+# ``cryptography.hazmat.primitives.asymmetric.rsa.generate_private_key`` with
+# a lightweight stub that returns a **pre-generated** key, thereby reducing
+# the per-example overhead from hundreds of milliseconds to microseconds.
+
+from cryptography.hazmat.primitives.asymmetric import rsa as _rsa
+
+_CACHED_TEST_PRIVATE_KEY = _rsa.generate_private_key(
+    public_exponent=65537, key_size=1024
+)
+
+
+def _fast_generate_private_key(
+    public_exponent: int, key_size: int, backend=None
+):  # noqa: D401
+    """Return a cached test key rather than generating a new one each call.
+
+    The *public_exponent*, *key_size*, and *backend* parameters are accepted
+    for signature-compatibility but ignored – tests do not depend on their
+    exact values, only that a compatible key object is returned.
+    """
+
+    return _CACHED_TEST_PRIVATE_KEY
+
+
+# Apply the monkey-patch **before** tests import the function.
+_rsa.generate_private_key = _fast_generate_private_key

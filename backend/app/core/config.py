@@ -9,6 +9,7 @@ from app.validators.security import SecurityValidator
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Wallet Tracker"
     VERSION: str = "0.1.0"
+    ENVIRONMENT: str = "development"
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
     ]  # React default port
