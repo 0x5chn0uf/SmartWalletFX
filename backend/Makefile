@@ -32,6 +32,9 @@ install: ## Install runtime dependencies
 install-dev: ## Install dev & test dependencies
 	$(PIP) install -r requirements/dev.txt
 
+install-s3: ## Install optional S3 & GPG deps
+	$(PIP) install -r requirements/s3.txt
+
 install-perf: ## Install performance-testing deps
 	$(PIP) install -r requirements/perf.txt
 
@@ -50,7 +53,7 @@ format: ## Auto-format with black & isort
 	isort app tests
 
 flake8:
-	flake8 --max-line-length=88 --extend-ignore=E203 --per-file-ignores="app/abi/*.py:E501,migrations/env.py:E402,F403,F405,tests/**/*.py:F401,F811,E501"
+	flake8 --max-line-length=88 --extend-ignore=E203  --exclude=.venv,tests,migrations --per-file-ignores="app/abi/*.py:E501"
 
 bandit: ## Static security scan
 	bandit -r app -ll -ii -f txt
@@ -140,7 +143,7 @@ clean: ## Remove caches & artefacts
 	rm -rf __pycache__ .pytest_cache .coverage htmlcov
 	find . -type d -name '__pycache__' -exec rm -rf {} +
 
-.PHONY: help install install-dev install-perf lint format bandit safety \
+.PHONY: help install install-dev install-s3 install-perf lint format bandit safety \
 	test test-perf coverage run serve serve-stop celery-worker celery-beat \
 	db-start db-test db-down alembic-upgrade db-migrate locust-smoke clean \
 	db-backup db-restore

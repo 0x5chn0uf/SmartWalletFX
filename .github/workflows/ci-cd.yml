@@ -287,6 +287,110 @@ jobs:
           source .venv/bin/activate
           make locust-smoke
 
+  e2e-tests:
+    needs: [test-backend, changes]
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres-e2e:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5434:5432
+      postgres-large:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: largedb
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5435:5432
+      redis-e2e:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6381:6379
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Restore virtualenv
+        uses: actions/cache@v4
+        with:
+          path: backend/.venv
+          key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml', 'backend/requirements/perf.txt') }}
+
+      - name: Install Docker dependencies
+        working-directory: ./backend
+        run: |
+          source .venv/bin/activate
+          pip install docker psutil
+
+      - name: Wait for PostgreSQL services
+        run: |
+          echo "Waiting for PostgreSQL services to be ready..."
+          for port in 5434 5435; do
+            for i in {1..30}; do
+              if pg_isready -h localhost -p $port -U testuser; then
+                echo "PostgreSQL on port $port is ready"
+                break
+              fi
+              echo "Waiting for PostgreSQL on port $port..."
+              sleep 2
+            done
+          done
+
+      - name: Load large dataset into postgres-large
+        working-directory: ./backend
+        run: |
+          source .venv/bin/activate
+          # Load the large dataset SQL fixture
+          psql -h localhost -p 5435 -U testuser -d largedb -f tests/fixtures/large_dataset.sql
+
+      - name: Run E2E tests
+        working-directory: ./backend
+        run: |
+          source .venv/bin/activate
+          pytest -m e2e -v --tb=short
+
+      - name: Run performance tests
+        working-directory: ./backend
+        run: |
+          source .venv/bin/activate
+          pytest -m performance -v --tb=short
+
+      - name: Upload E2E test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-test-results
+          path: |
+            backend/test-results/
+            backend/.pytest_cache/
+          retention-days: 7
+
   build-backend:
     needs: [test-backend, changes]
     if: needs.changes.outputs.backend == 'true'
@@ -347,6 +451,10 @@ jobs:
         working-directory: ./frontend
         run: npm ci --no-audit --fund=false
 
+      - name: Generate design tokens
+        working-directory: ./frontend
+        run: npm run build:tokens --if-present
+
       - name: Lint frontend
         working-directory: ./frontend
         run: |
@@ -355,6 +463,15 @@ jobs:
       - name: Run frontend tests
         working-directory: ./frontend
         run: npm test -- --watchAll=false --no-watchman --ci --coverage
+
+      - name: Run accessibility checks
+        working-directory: ./frontend
+        run: |
+          # Run design token contrast validation
+          npm test -- --watchAll=false --no-watchman --ci --testPathPattern="accessibility" --passWithNoTests
+          
+          # Run Python contrast checker
+          cd .. && python scripts/contrast_check.py --strict
 
       - name: Enforce frontend coverage threshold (75%)
         working-directory: ./frontend

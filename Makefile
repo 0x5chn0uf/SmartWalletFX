@@ -75,6 +75,13 @@ run-frontend: ## Start React dev server
 	cd $(FRONTEND_DIR) && npm start
 
 # -----------------------------------------------------------------------------
+# Tokens
+# -----------------------------------------------------------------------------
+
+build-tokens: ## Generate TypeScript tokens from design-tokens.json via Style Dictionary
+	cd $(FRONTEND_DIR) && npm run build:tokens
+
+# -----------------------------------------------------------------------------
 # Database helpers (delegated to backend Makefile)
 # -----------------------------------------------------------------------------
 

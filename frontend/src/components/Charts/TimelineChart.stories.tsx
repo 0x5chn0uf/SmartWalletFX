@@ -1,36 +1,45 @@
-import React from "react";
-import { TimelineChart } from "./TimelineChart";
-import type { Meta, StoryObj } from "@storybook/react";
-import { PortfolioSnapshot } from "../../types/timeline";
+import type { Meta, StoryObj } from '@storybook/react';
+import { TimelineChart, TimelineChartProps } from './TimelineChart';
+import { ChartDatum } from '../../utils/timelineAdapter';
 
-const mockData: PortfolioSnapshot[] = [
+const mockData: ChartDatum[] = [
   {
-    timestamp: 1690000000,
+    ts: '2023-01-01',
     collateral: 10000,
-    borrowings: 2500,
-    health_score: 1.3,
+    borrowings: 5000,
+    health_score: 1.5,
   },
   {
-    timestamp: 1690600000,
-    collateral: 11000,
-    borrowings: 2600,
-    health_score: 1.35,
+    ts: '2023-01-02',
+    collateral: 10200,
+    borrowings: 4800,
+    health_score: 1.6,
   },
 ];
 
-const meta: Meta<typeof TimelineChart> = {
-  title: "Charts/TimelineChart",
+const meta: Meta<TimelineChartProps> = {
+  title: 'Charts/TimelineChart',
   component: TimelineChart,
-  parameters: {
-    layout: "fullscreen",
+  tags: ['autodocs'],
+  args: {
+    data: mockData,
+    metric: 'collateral',
   },
 };
+
 export default meta;
+type Story = StoryObj<typeof meta>;
 
-type Story = StoryObj<typeof TimelineChart>;
+export const Default: Story = {};
 
-export const Primary: Story = {
+export const Borrowings: Story = {
   args: {
-    snapshots: mockData,
+    metric: 'borrowings',
   },
-}; 
+};
+
+export const HealthScore: Story = {
+  args: {
+    metric: 'health_score',
+  },
+};

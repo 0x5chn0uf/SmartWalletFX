@@ -6,6 +6,10 @@ const config: StorybookConfig = {
     "@storybook/addon-links",
     "@storybook/addon-essentials",
     "@storybook/addon-interactions",
+    "@storybook/addon-a11y",
+    "@storybook/addon-viewport",
+    "@storybook/addon-controls",
+    "@storybook/preset-create-react-app",
   ],
   framework: {
     name: "@storybook/react-webpack5",
