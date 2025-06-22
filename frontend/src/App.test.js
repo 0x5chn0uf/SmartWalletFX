@@ -1,8 +1,13 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
+import { ThemeProvider } from './providers/ThemeProvider';
 
-test('renders learn react link', () => {
-  render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
+test('renders navigation links', () => {
+  render(
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>,
+  );
+  const linkElement = screen.getByText(/Home/i);
   expect(linkElement).toBeInTheDocument();
 });
