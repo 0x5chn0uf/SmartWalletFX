@@ -207,6 +207,34 @@ from app.utils.jwt import rotate_signing_key
 rotate_signing_key("new_key_id", "new_key_secret")
 ```
 
+---
+
+## Client-Side Integration: The JWKS Endpoint
+
+While the Celery task handles the automated rotation of signing keys on the backend, clients and resource servers need a way to dynamically fetch the corresponding *public* keys to verify JWT signatures. This is achieved via the standard **JSON Web Key Set (JWKS)** endpoint.
+
+### How it Works
+
+1.  **Public Endpoint**: The application exposes a public, unauthenticated endpoint at `/.well-known/jwks.json`.
+2.  **Key Publication**: This endpoint returns a JSON object containing a list of all *currently active* public keys. Each key is formatted according to RFC 7517 and includes its Key ID (`kid`), algorithm, and public key material (`n`, `e`).
+3.  **Client-Side Verification**: When a client receives a JWT, it inspects the token's header to find the `kid`. It then fetches the JWKS from the endpoint, finds the matching key by `kid`, and uses that public key to verify the token's signature.
+
+### Caching and Zero-Downtime Invalidation
+
+To ensure high performance, the JWKS endpoint response is aggressively cached in Redis with a default TTL of 1 hour. However, waiting for the TTL to expire after a key rotation would result in downtime, as clients would be trying to verify new tokens with a stale set of keys.
+
+To solve this, the key rotation task is directly integrated with the cache:
+
+-   **Immediate Invalidation**: After a key is successfully promoted or retired, the `promote_and_retire_keys` task immediately calls `invalidate_jwks_cache_sync()`.
+-   **Guaranteed Freshness**: This action deletes the JWKS from Redis. The very next request to the endpoint will result in a cache miss, forcing it to generate a fresh key set and cache the new response. This ensures zero-downtime for clients.
+
+### New Audit & Monitoring for JWKS
+This integration adds new events and metrics to the system:
+- **Audit Events**: `JWKS_REQUESTED` (with `cache_hit` status), `JWKS_CACHE_INVALIDATED`, and `JWKS_CACHE_INVALIDATION_FAILED`.
+- **Metrics**: `jwt_jwks_cache_invalidations_total` and `jwt_jwks_cache_invalidation_errors_total`.
+
+This provides complete observability into the entire lifecycle, from server-side rotation to client-side key publication.
+
 ## Troubleshooting Guide
 
 ### Common Issues
