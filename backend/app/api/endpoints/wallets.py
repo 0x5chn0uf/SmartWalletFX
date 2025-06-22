@@ -21,7 +21,11 @@ from app.schemas.historical_balance import (
     HistoricalBalanceCreate,
     HistoricalBalanceResponse,
 )
-from app.schemas.portfolio_timeline import PortfolioSnapshotResponse
+from app.schemas.portfolio_metrics import PortfolioMetrics
+from app.schemas.portfolio_timeline import (
+    PortfolioSnapshotResponse,
+    PortfolioTimeline,
+)
 from app.schemas.token import TokenCreate, TokenResponse
 from app.schemas.token_balance import TokenBalanceCreate, TokenBalanceResponse
 from app.schemas.token_price import TokenPriceCreate, TokenPriceResponse
@@ -160,4 +164,63 @@ async def get_portfolio_snapshots(
     from_ts = int((datetime.utcnow() - timedelta(days=30)).timestamp())
     return await snapshot_repo.get_snapshots_by_address_and_range(
         user_address=address, from_ts=from_ts, to_ts=to_ts
+    )
+
+
+@router.get(
+    "/wallets/{address}/portfolio/metrics",
+    response_model=PortfolioMetrics,
+)
+async def get_portfolio_metrics(
+    address: str,
+    interval: str = "daily",  # optional param for future use
+    db: AsyncSession = db_dependency,
+    current_user=Depends(auth_deps.get_current_user),  # type: ignore[valid-type]
+):
+    """Retrieve aggregated portfolio metrics for a wallet
+    (token breakdown, health scores, APY, etc.)."""
+    # Verify wallet ownership
+    wallet_repo = WalletRepository(db)
+    wallet = await wallet_repo.get_by_address(address=address)
+    if not wallet or wallet.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Wallet not found or you do not have permission to view it.",
+        )
+
+    from app.services.portfolio_service import PortfolioCalculationService
+
+    service = PortfolioCalculationService(db)
+    return service.calculate_portfolio_metrics(user_address=address)
+
+
+@router.get(
+    "/wallets/{address}/portfolio/timeline",
+    response_model=PortfolioTimeline,
+)
+async def get_portfolio_timeline(
+    address: str,
+    interval: str = "daily",
+    limit: int = 30,
+    offset: int = 0,
+    db: AsyncSession = db_dependency,
+    current_user=Depends(auth_deps.get_current_user),  # type: ignore[valid-type]
+):
+    """Retrieve historical portfolio trend data for visualization."""
+    wallet_repo = WalletRepository(db)
+    wallet = await wallet_repo.get_by_address(address=address)
+    if not wallet or wallet.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Wallet not found or you do not have permission to view it.",
+        )
+
+    from app.services.portfolio_service import PortfolioCalculationService
+
+    service = PortfolioCalculationService(db)
+    return service.calculate_portfolio_timeline(
+        user_address=address,
+        interval=interval,
+        limit=limit,
+        offset=offset,
     )

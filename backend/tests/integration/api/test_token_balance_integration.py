@@ -24,7 +24,7 @@ async def test_create_token_balance_integration(authenticated_client, address):
     }
 
     # Create wallet using authenticated client
-    resp = await authenticated_client.post("/wallets/", json=wallet_data)
+    resp = await authenticated_client.post("/wallets", json=wallet_data)
     assert resp.status_code == 201
     wallet = resp.json()
 
