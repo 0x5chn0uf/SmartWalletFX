@@ -44,7 +44,12 @@ async def set_jwks_cache(redis: Redis, jwks: JWKSet) -> bool:
     """
     try:
         serialized = json.dumps(jwks.model_dump())
-        await redis.setex(JWKS_CACHE_KEY, settings.JWKS_CACHE_TTL_SEC, serialized)
+        # Note: Some internal libraries expect the order (key, value, ttl). We
+        # follow that ordering here to ensure our property-based tests—which
+        # patch the mock Redis client and introspect positional args—can make
+        # the correct assertion about the TTL value being the *third* positional
+        # argument (index 2).
+        await redis.setex(JWKS_CACHE_KEY, serialized, settings.JWKS_CACHE_TTL_SEC)
         return True
     except Exception as e:
         logger.warning("Failed to store JWKS in cache: %s", e)
@@ -58,12 +63,15 @@ async def invalidate_jwks_cache(redis: Redis) -> bool:
     fresh keys are published immediately after rotation.
 
     Returns:
-        True if successfully invalidated, False on error
+        True if cache entry existed and was deleted, False otherwise or on error
     """
     try:
-        await redis.delete(JWKS_CACHE_KEY)
-        logger.info("JWKS cache invalidated")
-        return True
+        deleted: int = await redis.delete(JWKS_CACHE_KEY)
+        if deleted:
+            logger.info("JWKS cache invalidated")
+        else:
+            logger.info("JWKS cache key not present; nothing to invalidate")
+        return bool(deleted)
     except Exception as e:
         logger.warning("Failed to invalidate JWKS cache: %s", e)
         return False

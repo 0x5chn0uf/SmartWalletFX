@@ -1,5 +1,6 @@
 """JWKS endpoint for serving JSON Web Key Sets."""
 
+import importlib
 import logging
 
 from fastapi import APIRouter
@@ -37,11 +38,22 @@ async def get_jwks():
         cached_jwks = await get_jwks_cache(redis)
         if cached_jwks:
             logger.debug("JWKS served from cache")
+            # Emit audit event for cache hit
+            try:
+                audit_mod = importlib.import_module("app.utils.logging")
+                audit_mod.audit(
+                    "JWKS_REQUESTED", cache_hit=True, keys_count=len(cached_jwks.keys)
+                )
+            except Exception as audit_exc:  # pragma: no cover
+                logger.debug("Audit logging failed: %s", audit_exc)
             return cached_jwks
     except Exception as e:
         logger.warning("Cache lookup failed, falling back to uncached: %s", e)
     finally:
-        await redis.close()
+        try:
+            await redis.close()
+        except Exception as e:
+            logger.warning("Failed to close Redis connection: %s", e)
 
     # Cache miss or error - generate fresh JWKS
     verifying_keys = get_verifying_keys()
@@ -58,6 +70,13 @@ async def get_jwks():
 
     jwks_response = JWKSet(keys=jwks)
 
+    # Emit audit event for cache miss / fresh generation
+    try:
+        audit_mod = importlib.import_module("app.utils.logging")
+        audit_mod.audit("JWKS_REQUESTED", cache_hit=False, keys_count=len(jwks))
+    except Exception as audit_exc:  # pragma: no cover
+        logger.debug("Audit logging failed: %s", audit_exc)
+
     # Cache the result (fire and forget - don't block response)
     redis = _build_redis_client()
     try:
@@ -66,6 +85,9 @@ async def get_jwks():
     except Exception as e:
         logger.warning("Failed to cache JWKS: %s", e)
     finally:
-        await redis.close()
+        try:
+            await redis.close()
+        except Exception as e:
+            logger.warning("Failed to close Redis connection: %s", e)
 
     return jwks_response

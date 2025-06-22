@@ -1,7 +1,53 @@
-## JWKS Cache Invalidation & Operational Monitoring
+# Authentication Flow & JWT Management
 
-### Overview
-The JWKS endpoint (`/.well-known/jwks.json`) serves the current set of public keys for JWT verification. To ensure zero-downtime key rotation, the JWKS response is aggressively cached in Redis. However, whenever a key is promoted or retired, the cache must be invalidated immediately so clients always receive the latest keys.
+This document provides a high-level overview of the application's authentication system, focusing on JSON Web Tokens (JWTs), automated key rotation, and the JSON Web Key Set (JWKS) endpoint.
+
+## Authentication Flow Overview
+
+The diagram below illustrates the complete, zero-downtime authentication flow from user login to API request verification.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant ClientApp as Client App
+    participant AuthAPI as Authentication API
+    participant ResourceAPI as Resource API
+    participant JWKS as JWKS Endpoint
+    participant KeyRotation as Key Rotation Task
+
+    User->>ClientApp: 1. Login with credentials
+    ClientApp->>AuthAPI: 2. Request Token
+    AuthAPI-->>ClientApp: 3. Return JWT (signed with active key)
+    
+    loop API Requests
+        ClientApp->>ResourceAPI: 4. Request protected resource (includes JWT)
+        ResourceAPI->>JWKS: 5. Fetch public keys (cached)
+        JWKS-->>ResourceAPI: 6. Return JWK Set
+        ResourceAPI-->>ResourceAPI: 7. Verify JWT signature using correct public key
+        ResourceAPI-->>ClientApp: 8. Return requested resource
+    end
+    
+    KeyRotation-->>JWKS: 9. New key promoted, invalidate cache
+    Note over ResourceAPI,JWKS: Next fetch will get fresh keys
+```
+
+## Key Components
+
+### 1. JSON Web Tokens (JWTs)
+- **Standard**: We use standard JWTs (RFC 7519) for authenticating API requests.
+- **Claims**: Tokens include standard claims (`sub`, `exp`, `iat`) as well as a critical **`kid` (Key ID)** header, which identifies the specific key used to sign the token.
+- **Issuance**: The `/auth/token` endpoint issues JWTs upon successful login.
+
+### 2. JWKS Endpoint (`/.well-known/jwks.json`)
+- **Purpose**: This public, unauthenticated endpoint publishes the set of public keys that clients can use to verify JWT signatures. This allows for zero-downtime key rotation without requiring clients to be restarted or reconfigured.
+- **Format**: The endpoint returns a standard JSON Web Key Set (RFC 7517).
+- **Caching**: The response is aggressively cached in Redis to ensure high performance.
+
+### 3. Automated Key Rotation & Cache Invalidation
+- **Server-Side Rotation**: A background Celery task (`promote_and_retire_keys`) runs periodically to automatically promote new signing keys and retire old ones based on a configured grace period.
+- **Zero-Downtime Invalidation**: When the rotation task runs, it **immediately invalidates the JWKS cache** in Redis. This is the most critical piece of the zero-downtime strategy, ensuring that the public key set is always fresh after a rotation event.
+
+## JWKS Cache Invalidation & Operational Monitoring
 
 ### Integration Details
 - **Trigger Point:** Cache invalidation is triggered by the JWT key rotation Celery task, specifically in the `_apply_key_set_update()` function.
@@ -9,40 +55,13 @@ The JWKS endpoint (`/.well-known/jwks.json`) serves the current set of public ke
 - **Error Handling:** If cache invalidation fails, the error is logged and an audit event is emitted, but the key rotation process continues. The cache will eventually expire based on its TTL (default: 1 hour).
 
 ### Audit Trail
-- **Events Emitted:**
-  - `JWKS_CACHE_INVALIDATED` (on success)
-  - `JWKS_CACHE_INVALIDATION_FAILED` (on failure, with error details)
-- **Fields:** Each event includes a timestamp, action, and context (e.g., reason, error message).
+- **Rotation Events**: `JWT_KEY_PROMOTED`, `JWT_KEY_RETIRED`, `JWT_ROTATION_FAILED`.
+- **JWKS Events**: `JWKS_REQUESTED` (with `cache_hit` status), `JWKS_CACHE_INVALIDATED`, `JWKS_CACHE_INVALIDATION_FAILED`.
 
 ### Metrics & Monitoring
 - **Prometheus Metrics:**
-  - `jwt_jwks_cache_invalidations_total`: Number of successful cache invalidations
-  - `jwt_jwks_cache_invalidation_errors_total`: Number of cache invalidation errors
-- **Alerting:**
-  - High error rates in cache invalidation should trigger operational alerts (e.g., via Slack webhook integration)
-- **Logs:**
-  - All cache invalidation attempts are logged at INFO level, with errors at WARNING level.
+  - `jwt_key_rotations_total`, `jwt_key_rotation_errors_total`
+  - `jwt_jwks_cache_invalidations_total`, `jwt_jwks_cache_invalidation_errors_total`
+- **Alerting:** High error rates in either key rotation or cache invalidation should trigger operational alerts.
 
-### Operational Best Practices
-- **Monitor** the above metrics and audit events to ensure cache invalidation is working as expected.
-- **Investigate** repeated cache invalidation failures promptly, as they may indicate Redis connectivity issues or misconfiguration.
-- **Review** audit logs for `JWKS_CACHE_INVALIDATION_FAILED` events to diagnose root causes.
-
-### Example Audit Log
-```json
-{"timestamp": "2025-06-22T12:34:56Z", "action": "JWKS_CACHE_INVALIDATED", "reason": "key_rotation"}
-{"timestamp": "2025-06-22T12:35:01Z", "action": "JWKS_CACHE_INVALIDATION_FAILED", "error": "redis connection timeout"}
-```
-
-### Example Prometheus Metrics
-```
-jwt_jwks_cache_invalidations_total 42
-jwt_jwks_cache_invalidation_errors_total 1
-```
-
-### Troubleshooting
-- If clients are receiving stale keys after a rotation, check:
-  - Redis availability and connectivity
-  - Recent audit logs for cache invalidation failures
-  - Prometheus metrics for error spikes
-- If cache invalidation is failing but key rotation is succeeding, the system will eventually self-heal when the cache TTL expires, but operational visibility is critical for rapid remediation. 
+For a detailed operational playbook on the rotation task itself, see [JWT Key Rotation – Automated Operational Playbook](auth_key_rotation.md).
