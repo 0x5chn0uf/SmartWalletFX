@@ -16,7 +16,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import create_engine, text
 
-from backend.tests.utils.test_data_manager import TestDataManager
+from tests.utils.test_data_manager import TestDataManager
 
 POSTGRES_URL_TEMPLATE = "postgresql://testuser:testpass@localhost:{port}/{db}"
 
