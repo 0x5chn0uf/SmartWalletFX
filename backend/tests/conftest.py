@@ -1,20 +1,19 @@
 # flake8: noqa
 
-import asyncio
+import contextlib
 import datetime
 import os
 import pathlib
 import subprocess
 import sys
-import time
-from contextlib import AsyncExitStack, asynccontextmanager
+import uuid
 
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
 from freezegun import freeze_time
-from hypothesis import HealthCheck, settings
-from sqlalchemy import create_engine, inspect, text  # sync version
+from hypothesis import settings
+from sqlalchemy import create_engine  # sync version
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -30,75 +29,66 @@ if str(BACKEND_ROOT) not in sys.path:
 
 import app.core.database as db_mod
 from app.core.database import get_db
-from app.main import create_app
 from app.models import Base
 from app.usecase.portfolio_aggregation_usecase import PortfolioMetrics
 
-# Use a file-based SQLite DB for all tests
-TEST_DB_PATH = "./smartwallet_test.db"
-TEST_DB_URL = "sqlite+aiosqlite:///./smartwallet_test.db"
+# ----------------------------------------------------------------------------
+# Per-test database file helper
+# ----------------------------------------------------------------------------
+
 ALEMBIC_CONFIG_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "../alembic.ini")
 )
 
-# Run Alembic migrations in a subprocess before any tests start
 
+def _make_test_db(tmp_path_factory: pytest.TempPathFactory) -> tuple[str, str]:
+    """Return (async_url, sync_url) for a fresh SQLite file under tmp dir."""
 
-@asynccontextmanager
-async def async_test_engine(db_url: str):
-    """
-    Reusable async context manager for test engines.
-    Provides proper engine lifecycle management with AsyncExitStack.
+    db_dir = tmp_path_factory.mktemp("db")
+    db_file = db_dir / "test.sqlite"
+    async_url = f"sqlite+aiosqlite:///{db_file}"
+    sync_url = f"sqlite:///{db_file}"
 
-    Usage:
-        async with async_test_engine("sqlite+aiosqlite:///:memory:") as engine:
-            # Use engine for tests
-            pass
-        # Engine is automatically disposed
-    """
-    async with AsyncExitStack() as stack:
-        engine = create_async_engine(db_url, future=True)
-        stack.push_async_callback(engine.dispose)
-        yield engine
-
-
-def pytest_sessionstart(session):
-    if os.path.exists(TEST_DB_PATH):
-        os.remove(TEST_DB_PATH)
+    # Run Alembic migrations synchronously against *sync_url*
     env = os.environ.copy()
-    env["TEST_DB_URL"] = "sqlite:///./smartwallet_test.db"
+    env["TEST_DB_URL"] = sync_url
     subprocess.run(
         ["alembic", "-c", ALEMBIC_CONFIG_PATH, "upgrade", "head"],
         check=True,
         env=env,
+        stdout=subprocess.DEVNULL,
     )
-    time.sleep(0.1)  # Ensure file is flushed
+
+    return async_url, sync_url
 
 
-def pytest_sessionfinish(session, exitstatus):
-    """Clean up test database file after all tests complete."""
-    if os.path.exists(TEST_DB_PATH):
-        os.remove(TEST_DB_PATH)
+# ----------------------------------------------------------------------------
+# Async engine & DB session fixtures (no SAVEPOINTs)
+# ----------------------------------------------------------------------------
 
 
-@pytest_asyncio.fixture(scope="function")
-async def async_engine():
-    """
-    Function-scoped async engine fixture using AsyncExitStack for proper teardown.
-    Ensures engine disposal happens in the correct async context.
-    """
-    async with AsyncExitStack() as stack:
-        engine = create_async_engine(TEST_DB_URL, future=True)
-        # Register engine for automatic disposal
-        stack.push_async_callback(engine.dispose)
+@pytest_asyncio.fixture(scope="session")
+async def async_engine(tmp_path_factory: pytest.TempPathFactory):
+    """Yield a *brand-new* AsyncEngine bound to a fresh SQLite file."""
+
+    async_url, sync_url = _make_test_db(tmp_path_factory)
+
+    # Expose to other fixtures (patch_sync_db) via environment variable
+    os.environ["TEST_DB_URL"] = sync_url
+
+    engine = create_async_engine(async_url, future=True)
+    try:
         yield engine
-        # AsyncExitStack handles disposal automatically in correct order
+    finally:
+        await engine.dispose()
 
 
 @pytest_asyncio.fixture
 async def db_session(async_engine):
+    """Plain AsyncSession bound to the per-test database file."""
+
     async_session = async_sessionmaker(
-        async_engine, class_=AsyncSession, expire_on_commit=False
+        bind=async_engine, class_=AsyncSession, expire_on_commit=False
     )
     async with async_session() as session:
         yield session
@@ -111,7 +101,7 @@ def client() -> TestClient:
     return TestClient(app)
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="session")
 async def test_app(async_engine):
     """Return the *singleton* FastAPI application for tests.
 
@@ -131,25 +121,6 @@ async def test_app(async_engine):
     from app.main import app as _app
 
     yield _app
-
-
-@pytest.fixture(autouse=True)
-def clean_db():
-    yield  # Run test first
-
-    sync_url = "sqlite:///./smartwallet_test.db"
-    engine = create_engine(sync_url)
-    conn = engine.connect()
-    trans = conn.begin()
-    inspector = inspect(engine)
-
-    for table in inspector.get_table_names():
-        if table != "alembic_version":
-            conn.execute(text(f"DELETE FROM {table}"))
-    trans.commit()
-
-    conn.close()
-    engine.dispose()
 
 
 # --------------------------------------------------------------------
@@ -174,7 +145,10 @@ def patch_sync_db():
     import app.core.database as db_mod
     import app.tasks.snapshots as snapshots_mod
 
-    sync_url = "sqlite:///./smartwallet_test.db"
+    # Reuse the same temp DB file created by the *async_engine* fixture so
+    # that Celery tasks / sync code share state with the async side.
+    sync_url = os.environ.get("TEST_DB_URL", "sqlite:///./smartwallet_test.db")
+
     sync_engine = create_engine(sync_url, connect_args={"check_same_thread": False})
 
     SyncSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_engine)
@@ -249,72 +223,48 @@ def anyio_backend():
 # Register a "fast" profile that limits examples and sets a reasonable deadline
 # across the test suite unless individual tests override it explicitly.
 settings.register_profile(
-    "fast",
-    settings(
-        max_examples=25, deadline=300, suppress_health_check=[HealthCheck.too_slow]
-    ),
+    "fast", max_examples=25, deadline=datetime.timedelta(milliseconds=300)
 )
 settings.load_profile("fast")
 
 
 def pytest_configure(config):  # noqa: D401
-    """Register custom markers used across the test-suite.
+    """Pytest config hook.
 
-    Adding markers here (in addition to pytest.ini) ensures IDE linting and
-    ``pytest --strict-markers`` do not raise warnings when the custom marker is
-    used in standalone test files that might execute outside the project root.
+    Note:
+        We add a custom marker for performance tests which should be
+        skipped during normal test runs.
     """
-
-    config.addinivalue_line("markers", "security: security-related timing tests")
-
-
-# --------------------------------------------------------------------
-# Time-freezing helper fixture for deterministic wall-clock tests
-# --------------------------------------------------------------------
+    config.addinivalue_line("markers", "performance: mark test as performance-related")
 
 
 @pytest.fixture
 def freezer():  # noqa: D401
-    """Provide a ``freezegun`` freezer for deterministic time control.
+    """Fixture that provides a context manager for freezing time.
 
-    Usage::
+    Any calls to datetime.datetime.now() or utcnow() will return the same
+    timestamp within the with block.
 
-        def test_expiry(freezer):
-            freezer.move_to("2025-01-01 00:00:00")
-            ...  # run code that records now()
-            freezer.tick("+61s")
-            ...  # code sees 61 seconds later
-
-    This fixture freezes *wall-clock* time (`datetime`, ``time.time``) but **does
-    not** affect ``time.perf_counter`` / ``perf_counter_ns`` — our high-resolution
-    STF measurements remain accurate.
+    Yields:
+        A context manager for freezing time.
     """
 
-    with freeze_time() as frozen:
-        yield frozen
+    @contextlib.contextmanager
+    def _freezer(timestamp: str | datetime.datetime):
+        with freeze_time(timestamp):
+            yield
 
-
-# --------------------------------------------------------------------
-# Rate-limiter reset fixture – ensures clean slate across tests
-# --------------------------------------------------------------------
+    return _freezer
 
 
 @pytest.fixture(autouse=True)
 def reset_rate_limiter():
-    """Reset the in-memory login rate-limiter before & after each test.
-
-    Prevents cross-test interference and eliminates the need for ad-hoc
-    manual resets inside individual test modules.
-    """
-
+    """Clear the in-memory rate limiter's storage between tests."""
     from app.utils.rate_limiter import login_rate_limiter
 
-    original_max = login_rate_limiter.max_attempts
     login_rate_limiter.clear()
     yield
-    # Post-test cleanup
     login_rate_limiter.clear()
-    login_rate_limiter.max_attempts = original_max
 
 
 # --------------------------------------------------------------------
@@ -351,3 +301,115 @@ def _fast_generate_private_key(
 
 # Apply the monkey-patch **before** tests import the function.
 _rsa.generate_private_key = _fast_generate_private_key
+
+
+@pytest_asyncio.fixture
+async def test_user(db_session: AsyncSession):
+    """Creates and returns a user for testing."""
+    from app.schemas.user import UserCreate
+    from app.services.auth_service import AuthService
+
+    service = AuthService(db_session)
+    user_in = UserCreate(
+        username=f"user-{uuid.uuid4()}",
+        email=f"{uuid.uuid4()}@test.com",
+        password="S3cur3!pwd",
+    )
+    user = await service.register(user_in)
+    return user
+
+
+@pytest_asyncio.fixture
+async def authenticated_client(db_session: AsyncSession, test_app, test_user):
+    """
+    Creates a user, logs them in, and yields an authenticated AsyncClient.
+    """
+    # Log in the user created by the test_user fixture
+    from httpx import AsyncClient
+
+    from app.services.auth_service import AuthService
+
+    service = AuthService(db_session)
+    token_data = await service.authenticate(test_user.username, "S3cur3!pwd")
+    token = token_data.access_token
+    headers = {"Authorization": f"Bearer {token}"}
+
+    async with AsyncClient(app=test_app, base_url="http://test", headers=headers) as ac:
+        yield ac
+
+
+# --------------------------------------------------------------------
+# Per-test DB cleanup (isolation without expensive migrations per test)
+# --------------------------------------------------------------------
+
+
+from sqlalchemy import text  # placed after SQLAlchemy is available
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _clean_database(async_engine):
+    """Delete all rows from every table after each test function.
+
+    This provides strong isolation while keeping the schema intact so we
+    avoid the cost of replaying Alembic migrations for every single test.
+    """
+
+    yield  # run the test
+
+    async with async_engine.begin() as conn:
+        # Temporarily disable FK constraints for SQLite to allow arbitrary
+        # deletion order without worrying about relationships.
+        await conn.execute(text("PRAGMA foreign_keys = OFF"))
+
+        for tbl in Base.metadata.sorted_tables:
+            await conn.execute(text(f'DELETE FROM "{tbl.name}"'))
+
+        await conn.execute(text("PRAGMA foreign_keys = ON"))
+
+
+# --------------------------------------------------------------------
+# Session-scoped asyncio event-loop (required by session-scoped async fixtures)
+# --------------------------------------------------------------------
+
+
+import asyncio
+
+
+@pytest.fixture(scope="session")
+def event_loop():  # noqa: D401 – pytest asyncio helper
+    """Create a dedicated asyncio loop for the entire test session."""
+
+    loop = asyncio.new_event_loop()
+    yield loop
+    loop.close()
+
+
+@pytest_asyncio.fixture
+async def create_user_and_wallet(db_session: AsyncSession):
+    """Factory fixture to create a user and a wallet for them."""
+
+    async def _factory():
+        from app.models.wallet import Wallet
+        from app.repositories.wallet_repository import WalletRepository
+        from app.schemas.user import UserCreate
+        from app.services.auth_service import AuthService
+
+        # Create user
+        service = AuthService(db_session)
+        user_in = UserCreate(
+            username=f"user-{uuid.uuid4()}",
+            email=f"{uuid.uuid4()}@test.com",
+            password="S3cur3!pwd",
+        )
+        user = await service.register(user_in)
+
+        # Create wallet
+        repo = WalletRepository(db_session)
+        wallet = await repo.create(
+            user_id=user.id,
+            address=f"0x{uuid.uuid4().hex[:40]}",
+            name="Test Wallet",
+        )
+        return user, wallet
+
+    return _factory
