@@ -166,7 +166,11 @@ class TestInvalidateJwksCache:
 
         result = await invalidate_jwks_cache(mock_redis)
 
-        assert result is True  # Still considered successful
+        # When the cache key is not found, the operation should return *False*
+        # to indicate that no deletion occurred.  This matches the behaviour
+        # asserted by the integration tests in
+        # *tests/integration/api/test_jwks_metrics.py*.
+        assert result is False
         mock_redis.delete.assert_called_once_with(JWKS_CACHE_KEY)
 
 

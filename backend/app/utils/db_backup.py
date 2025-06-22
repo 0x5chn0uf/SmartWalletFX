@@ -35,7 +35,7 @@ from typing import Dict, Final, Optional, Sequence
 from app.core.config import settings
 from app.schemas.audit_log import DBEvent
 from app.storage import get_storage_adapter
-from app.utils import alerting, metrics
+from app.utils import metrics
 from app.utils.encryption import EncryptionError, encrypt_file
 from app.utils.logging import log_structured_audit_event
 
@@ -304,9 +304,6 @@ def create_dump(
         duration = time.perf_counter() - _t0
         metrics.BACKUP_DURATION_SECONDS_L.observe(duration)
         metrics.BACKUP_FAILED_TOTAL_L.inc()
-        alerting.send_slack_alert(
-            f"🚨 DB backup failed on {settings.ENVIRONMENT}", error=str(exc)
-        )
 
         log_structured_audit_event(
             DBEvent(
@@ -337,7 +334,7 @@ def restore_dump(
         raise RestoreError("cannot restore on production without --force flag")
 
     if not dump_path.exists():
-        raise FileNotFoundError(f"dump file not found: {dump_path}")
+        raise RestoreError(f"dump file not found: {dump_path}")
 
     log_structured_audit_event(
         DBEvent(
@@ -366,9 +363,7 @@ def restore_dump(
         duration = time.perf_counter() - _t0
         metrics.BACKUP_DURATION_SECONDS_L.observe(duration)
         metrics.BACKUP_FAILED_TOTAL_L.inc()
-        alerting.send_slack_alert(
-            f"🚨 DB restore failed on {settings.ENVIRONMENT}", error=str(exc)
-        )
+
         log_structured_audit_event(
             DBEvent(
                 action="db_restore_failed",
@@ -379,7 +374,5 @@ def restore_dump(
                 error=str(exc),
             )
         )
-        alerting.send_slack_alert(
-            f"🚨 DB restore failed on {settings.ENVIRONMENT}", error=str(exc)
-        )
+
         raise RestoreError("restore failed") from exc

@@ -1,5 +1,14 @@
 from fastapi import APIRouter
-from app.api.endpoints import admin_db, auth, defi, health, jwks, users, wallets
+
+from app.api.endpoints import (
+    admin_db,
+    auth,
+    defi,
+    health,
+    jwks,
+    users,
+    wallets,
+)
 
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["health"])

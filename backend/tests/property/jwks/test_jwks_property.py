@@ -192,7 +192,7 @@ async def test_jwks_cache_ttl_property_based(cache_ttl: int):
                 # Property: Should call setex with correct TTL
                 mock_redis.setex.assert_called_once()
                 call_args = mock_redis.setex.call_args
-                assert call_args[0][2] == cache_ttl  # TTL should match configuration
+                assert call_args[0][1] == cache_ttl  # TTL should match configuration
 
 
 @pytest.mark.asyncio
