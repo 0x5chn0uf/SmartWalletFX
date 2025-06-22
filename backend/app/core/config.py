@@ -63,6 +63,9 @@ class Settings(BaseSettings):
     # TTL (seconds) for the Redis lock ensuring single-worker execution.
     JWT_ROTATION_LOCK_TTL_SEC: int = 600  # default: 10 minutes
 
+    # JWKS caching configuration
+    JWKS_CACHE_TTL_SEC: int = 3600  # 1 hour default TTL
+
     # Pydantic v2 config – ignore extra environment variables to prevent
     # validation errors when the host machine defines unrelated keys
     model_config = {
