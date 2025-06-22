@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { AppBar, Toolbar, Typography, Box } from '@mui/material';
-import { Home } from './pages/Home/Home';
+import HomePage from './pages/HomePage';
 import PerformanceTimeline from './pages/PerformanceTimeline';
 import { ColorModeToggle } from './components/ColorModeToggle/ColorModeToggle';
 
@@ -25,7 +25,7 @@ function App() {
         </Toolbar>
       </AppBar>
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<HomePage />} />
         <Route path="/timeline" element={<PerformanceTimeline />} />
       </Routes>
     </Router>
