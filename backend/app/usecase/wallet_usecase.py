@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.user import User
 from app.repositories.wallet_repository import WalletRepository
 from app.schemas.wallet import WalletCreate, WalletResponse
 
@@ -10,8 +11,9 @@ class WalletUsecase:
     listing, and deleting wallets.
     """
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, current_user: User):
         self.db = db
+        self.user = current_user
         self.wallet_repository = WalletRepository(db)
 
     async def create_wallet(self, wallet: WalletCreate) -> WalletResponse:
@@ -24,7 +26,7 @@ class WalletUsecase:
             WalletResponse: The created wallet response object.
         """
         return await self.wallet_repository.create(
-            address=wallet.address, name=wallet.name
+            address=wallet.address, user_id=self.user.id, name=wallet.name
         )
 
     async def list_wallets(self) -> list[WalletResponse]:
@@ -33,7 +35,7 @@ class WalletUsecase:
         Returns:
             List[WalletResponse]: List of wallet response objects.
         """
-        return await self.wallet_repository.list_all()
+        return await self.wallet_repository.list_by_user(self.user.id)
 
     async def delete_wallet(self, address: str):
         """
@@ -41,4 +43,4 @@ class WalletUsecase:
         Args:
             address: Wallet address to delete.
         """
-        await self.wallet_repository.delete(address)
+        await self.wallet_repository.delete(address, user_id=self.user.id)

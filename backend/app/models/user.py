@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from sqlalchemy import Column, DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 
@@ -21,6 +22,8 @@ class User(Base):
     hashed_password = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    wallets = relationship("Wallet", back_populates="user")
 
     def __repr__(self):
         """
