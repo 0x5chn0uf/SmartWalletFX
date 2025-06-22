@@ -7,12 +7,15 @@ import { TimelineFilters, TimelineFilterValues } from '../../components/Timeline
 import { WalletSelector } from '../../components/Timeline/WalletInput';
 import { getWallets } from '../../services/wallets';
 import { mapSnapshotsToChartData } from '../../utils/timelineAdapter';
+import { SmartTraderMoves } from '../../components/SmartTraderMoves/SmartTraderMoves';
+import { PortfolioFilter, PortfolioFilterType } from '../../components/PortfolioFilter/PortfolioFilter';
 
 export const Home: React.FC = () => {
   const nowDate = new Date();
   const oneMonthAgoDate = new Date(nowDate.getTime() - 30 * 24 * 60 * 60 * 1000);
 
   const [address, setAddress] = React.useState('0xmeta');
+  const [portfolioFilter, setPortfolioFilter] = React.useState<PortfolioFilterType>('all');
 
   const [filters, setFilters] = React.useState<TimelineFilterValues>({
     from: oneMonthAgoDate.toISOString().slice(0, 10),
@@ -83,11 +86,15 @@ export const Home: React.FC = () => {
           </Typography>
         )}
 
+        <PortfolioFilter value={portfolioFilter} onChange={setPortfolioFilter} />
+
         {loading && <CircularProgress />}
         {error && <Typography color="error">{error}</Typography>}
         {data && data.length > 0 && (
           <TimelineChart data={mapSnapshotsToChartData(data)} metric="collateral" />
         )}
+
+        <SmartTraderMoves />
       </Box>
     </Layout>
   );
