@@ -166,7 +166,7 @@ class PortfolioSnapshotRepository:
                 day = datetime.utcfromtimestamp(snap.timestamp).date()
                 if day not in grouped or snap.timestamp > grouped[day].timestamp:
                     grouped[day] = snap
-            filtered = list(sorted(grouped.values(), key=lambda s: s.timestamp))
+            filtered = sorted(grouped.values(), key=lambda snap: snap.timestamp)
         elif interval == "weekly":
             grouped = {}
             for snap in snapshots:
@@ -174,7 +174,7 @@ class PortfolioSnapshotRepository:
                 week = dt.isocalendar()[:2]
                 if week not in grouped or snap.timestamp > grouped[week].timestamp:
                     grouped[week] = snap
-            filtered = list(sorted(grouped.values(), key=lambda s: s.timestamp))
+            filtered = sorted(grouped.values(), key=lambda snap: snap.timestamp)
         else:
             raise ValueError("Invalid interval")
 
