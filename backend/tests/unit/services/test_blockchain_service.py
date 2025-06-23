@@ -114,24 +114,26 @@ class TestBlockchainService:
             assert balances == {}
 
     @pytest.mark.asyncio
-    async def test_get_token_price_coingecko_success(self, blockchain_service):
+    async def test_get_token_price_coingecko_success(self):
         """Test getting token price from CoinGecko successfully."""
-        mock_response = Mock()
-        mock_response.status = 200
-        mock_response.json = AsyncMock(
+        mock_response = AsyncMock()
+        mock_response.__aenter__.return_value.status = 200
+        mock_response.__aenter__.return_value.json = AsyncMock(
             return_value={"0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2": {"usd": 3000.0}}
         )
 
-        with patch("aiohttp.ClientSession") as mock_session:
-            mock_session.return_value.__aenter__.return_value.get.return_value.__aenter__.return_value = (
-                mock_response
-            )
+        async def _fake_session(*args, **kwargs):
+            return mock_response
 
-            price = await blockchain_service.get_token_price(
-                "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
-            )
+        with patch("aiohttp.ClientSession", _fake_session):
+            service = BlockchainService()
+            # Ensure Chainlink path returns None to use CoinGecko
+            with patch.object(service, "_get_price_from_chainlink", return_value=None):
+                price = await service.get_token_price(
+                    "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+                )
 
-            assert price == 3000.0
+                assert price == 3000.0
 
     @pytest.mark.asyncio
     async def test_get_token_price_chainlink_success(
@@ -145,23 +147,37 @@ class TestBlockchainService:
                 "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"
             )
 
-            # Mock Chainlink contract
+            # Prepare Web3 instance and contract chain mocks
+            web3_instance = Mock()
+            web3_instance.is_connected.return_value = True
+
+            # Mock Chainlink contract and latestRoundData call chain
             mock_contract = Mock()
-            mock_contract.functions.latestRoundData.return_value.call.return_value = [
-                1,  # roundId
-                300000000000,  # answer (3000 USD with 8 decimals)
-                1234567890,  # startedAt
-                1234567890,  # updatedAt
-                1,  # answeredInRound
+            mock_latest = Mock()
+            mock_latest.call.return_value = [
+                1,
+                300000000000,  # 3000 USD (8 decimals)
+                1234567890,
+                1234567890,
+                1,
             ]
+            mock_contract.functions.latestRoundData.return_value = mock_latest
 
-            mock_web3.eth.contract.return_value = mock_contract
+            web3_instance.eth.contract.return_value = mock_contract
 
-            price = await blockchain_service.get_token_price(
-                "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
-            )
+            # Configure the patched Web3 class to return our prepared instance
+            mock_web3_class.return_value = web3_instance
 
-            assert price == 3000.0
+            # Instantiate service AFTER patching Web3 so it picks up the mock
+            service = BlockchainService()
+
+            # Ensure CoinGecko path returns None to force Chainlink usage
+            with patch.object(service, "_get_price_from_coingecko", return_value=None):
+                price = await service.get_token_price(
+                    "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+                )
+
+                assert price == 3000.0
 
     @pytest.mark.asyncio
     async def test_get_token_price_hardcoded_fallback(self, blockchain_service):
