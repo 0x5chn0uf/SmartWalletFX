@@ -43,39 +43,45 @@ class PortfolioCalculationService:
             PortfolioMetrics object with calculated metrics
         """
         try:
-            # Get the latest portfolio snapshot or create from historical data
-            if timestamp:
-                snapshot = self._get_snapshot_at_timestamp(user_address, timestamp)
-            else:
-                snapshot = self._get_latest_snapshot(user_address)
+            # Get the latest snapshot
+            snapshot = (
+                self._get_snapshot_at_timestamp(user_address, timestamp)
+                if timestamp
+                else self._get_latest_snapshot(user_address)
+            )
 
             if not snapshot:
                 return self._create_empty_metrics(user_address)
 
-            # Calculate aggregate metrics
-            total_collateral = sum(
-                collateral["amount"] for collateral in snapshot.collaterals
-            )
-            total_borrowings = sum(
-                borrowing["amount"] for borrowing in snapshot.borrowings
-            )
-            total_collateral_usd = sum(
-                collateral["usd_value"] for collateral in snapshot.collaterals
-            )
-            total_borrowings_usd = sum(
-                borrowing["usd_value"] for borrowing in snapshot.borrowings
-            )
+            # Ensure we can safely access data regardless of model/dict types
+            collaterals_dict = [self._to_dict(c) for c in snapshot.collaterals]
+            borrowings_dict = [self._to_dict(b) for b in snapshot.borrowings]
+            staked_positions_dict = [
+                self._to_dict(p) for p in snapshot.staked_positions
+            ]
+            health_scores_dict = [self._to_dict(h) for h in snapshot.health_scores]
+
+            # Calculate totals
+            total_collateral = sum(c["amount"] for c in collaterals_dict)
+            total_borrowings = sum(b["amount"] for b in borrowings_dict)
+            total_collateral_usd = sum(c["usd_value"] for c in collaterals_dict)
+            total_borrowings_usd = sum(b["usd_value"] for b in borrowings_dict)
 
             # Calculate aggregate health score (weighted average)
             aggregate_health_score = self._calculate_aggregate_health_score(
-                snapshot.health_scores
+                health_scores_dict
             )
 
             # Calculate aggregate APY
-            aggregate_apy = self._calculate_aggregate_apy(snapshot.staked_positions)
+            aggregate_apy = self._calculate_aggregate_apy(staked_positions_dict)
 
             # Create protocol breakdown
-            protocol_breakdown = self._create_protocol_breakdown(snapshot)
+            protocol_breakdown = self._create_protocol_breakdown(
+                collaterals_dict,
+                borrowings_dict,
+                staked_positions_dict,
+                health_scores_dict,
+            )
 
             return PortfolioMetrics(
                 user_address=user_address,
@@ -85,10 +91,10 @@ class PortfolioCalculationService:
                 total_borrowings_usd=total_borrowings_usd,
                 aggregate_health_score=aggregate_health_score,
                 aggregate_apy=aggregate_apy,
-                collaterals=snapshot.collaterals,
-                borrowings=snapshot.borrowings,
-                staked_positions=snapshot.staked_positions,
-                health_scores=snapshot.health_scores,
+                collaterals=collaterals_dict,
+                borrowings=borrowings_dict,
+                staked_positions=staked_positions_dict,
+                health_scores=health_scores_dict,
                 protocol_breakdown=protocol_breakdown,
                 timestamp=datetime.fromtimestamp(snapshot.timestamp),
             )
@@ -126,7 +132,8 @@ class PortfolioCalculationService:
             collateral_usd = []
             borrowings_usd = []
 
-            for snapshot in snapshots:
+            # Ensure chronological order (oldest first) so the data series is intuitive
+            for snapshot in reversed(snapshots):
                 timestamps.append(snapshot.timestamp)
                 collateral_usd.append(snapshot.total_collateral_usd)
                 borrowings_usd.append(snapshot.total_borrowings_usd)
@@ -173,9 +180,12 @@ class PortfolioCalculationService:
             total_return = self._calculate_total_return(start_snapshot, end_snapshot)
             volatility = self._calculate_volatility(user_address, start_date, end_date)
             sharpe_ratio = self._calculate_sharpe_ratio(total_return, volatility)
-            max_drawdown = self._calculate_max_drawdown(
-                user_address, start_date, end_date
-            )
+            try:
+                max_drawdown = self._calculate_max_drawdown(
+                    user_address, start_date, end_date
+                )
+            except Exception:
+                max_drawdown = 0.0
 
             return {
                 "total_return": total_return,
@@ -340,16 +350,23 @@ class PortfolioCalculationService:
             weighted_sum += apy * value
             total_value += value
 
-        return weighted_sum / total_value if total_value > 0 else None
+        if total_value == 0:
+            return None
+
+        return round(weighted_sum / total_value, 3)
 
     def _create_protocol_breakdown(
-        self, snapshot: DefiPortfolioSnapshot
+        self,
+        collaterals: List[Dict],
+        borrowings: List[Dict],
+        staked_positions: List[Dict],
+        health_scores: List[Dict],
     ) -> Dict[str, ProtocolBreakdown]:
-        """Create protocol breakdown from snapshot data."""
-        breakdown = {}
+        """Create protocol breakdown from snapshot data lists (as dicts)."""
+        breakdown: Dict[str, Dict] = {}
 
-        # Group by protocol
-        for collateral in snapshot.collaterals:
+        # Group by protocol for collaterals
+        for collateral in collaterals:
             protocol = collateral.get("protocol", "OTHER")
             if protocol not in breakdown:
                 breakdown[protocol] = {
@@ -368,7 +385,7 @@ class PortfolioCalculationService:
             breakdown[protocol]["collaterals"].append(collateral)
 
         # Add borrowings
-        for borrowing in snapshot.borrowings:
+        for borrowing in borrowings:
             protocol = borrowing.get("protocol", "OTHER")
             if protocol not in breakdown:
                 breakdown[protocol] = {
@@ -387,7 +404,7 @@ class PortfolioCalculationService:
             breakdown[protocol]["borrowings"].append(borrowing)
 
         # Add staked positions
-        for position in snapshot.staked_positions:
+        for position in staked_positions:
             protocol = position.get("protocol", "OTHER")
             if protocol not in breakdown:
                 breakdown[protocol] = {
@@ -405,7 +422,7 @@ class PortfolioCalculationService:
             breakdown[protocol]["staked_positions"].append(position)
 
         # Add health scores
-        for health_score in snapshot.health_scores:
+        for health_score in health_scores:
             protocol = health_score.get("protocol", "OTHER")
             if protocol not in breakdown:
                 breakdown[protocol] = {
@@ -519,32 +536,32 @@ class PortfolioCalculationService:
         if not metrics.collaterals:
             return 0.0
 
+        # Ensure we work with dictionaries
+        collaterals = [self._to_dict(c) for c in metrics.collaterals]
+
         # Calculate Herfindahl-Hirschman Index
-        total_value = sum(collateral.usd_value for collateral in metrics.collaterals)
+        total_value = sum(c.get("usd_value", 0.0) for c in collaterals)
         if total_value == 0:
             return 0.0
 
-        hhi = sum(
-            (collateral.usd_value / total_value) ** 2
-            for collateral in metrics.collaterals
-        )
+        hhi = sum((c.get("usd_value", 0.0) / total_value) ** 2 for c in collaterals)
 
         # Convert to diversification score (1 - normalized HHI)
-        return 1 - (hhi - 1 / len(metrics.collaterals)) / (
-            1 - 1 / len(metrics.collaterals)
-        )
+        return 1 - (hhi - 1 / len(collaterals)) / (1 - 1 / len(collaterals))
 
     def _calculate_concentration_risk(self, metrics: PortfolioMetrics) -> float:
         """Calculate concentration risk (0-1)."""
         if not metrics.collaterals:
             return 0.0
 
+        collaterals = [self._to_dict(c) for c in metrics.collaterals]
+
         # Calculate the percentage of portfolio in the largest position
-        total_value = sum(collateral.usd_value for collateral in metrics.collaterals)
+        total_value = sum(c.get("usd_value", 0.0) for c in collaterals)
         if total_value == 0:
             return 0.0
 
-        max_position = max(collateral.usd_value for collateral in metrics.collaterals)
+        max_position = max(c.get("usd_value", 0.0) for c in collaterals)
         return max_position / total_value
 
     def _create_empty_metrics(self, user_address: str) -> PortfolioMetrics:
@@ -584,3 +601,20 @@ class PortfolioCalculationService:
             "concentration_risk": 0.0,
             "aggregate_health_score": 0.0,
         }
+
+    # ---------------------------------------------------------------------
+    # Helper utilities
+    # ---------------------------------------------------------------------
+
+    @staticmethod
+    def _to_dict(item):
+        """Convert a Pydantic model or dataclass to a plain dict if needed."""
+        if isinstance(item, dict):
+            return item
+        # Pydantic models have .model_dump in v2, .dict in v1 – try both
+        if hasattr(item, "dict"):
+            return item.dict()
+        if hasattr(item, "model_dump"):
+            return item.model_dump()
+        # Fallback – try vars()
+        return vars(item)
