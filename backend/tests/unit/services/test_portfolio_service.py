@@ -42,13 +42,13 @@ class TestPortfolioCalculationService:
             "aggregate_apy": 0.08,
             "collaterals": [
                 {
-                    "protocol": "aave",
+                    "protocol": "AAVE",
                     "asset": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
                     "amount": 1.5,
                     "usd_value": 4500.0,
                 },
                 {
-                    "protocol": "compound",
+                    "protocol": "COMPOUND",
                     "asset": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
                     "amount": 0.1,
                     "usd_value": 4500.0,
@@ -56,14 +56,14 @@ class TestPortfolioCalculationService:
             ],
             "borrowings": [
                 {
-                    "protocol": "aave",
+                    "protocol": "AAVE",
                     "asset": "0xA0b86a33E6441b8C4C8C8C8C8C8C8C8C8C8C8C8",
                     "amount": 1000.0,
                     "usd_value": 1000.0,
                     "interest_rate": 0.05,
                 },
                 {
-                    "protocol": "compound",
+                    "protocol": "COMPOUND",
                     "asset": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
                     "amount": 500.0,
                     "usd_value": 500.0,
@@ -72,7 +72,7 @@ class TestPortfolioCalculationService:
             ],
             "staked_positions": [
                 {
-                    "protocol": "aave",
+                    "protocol": "AAVE",
                     "asset": "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9",
                     "amount": 10.0,
                     "usd_value": 1000.0,
@@ -80,19 +80,19 @@ class TestPortfolioCalculationService:
                 }
             ],
             "health_scores": [
-                {"protocol": "aave", "score": 0.85, "total_value": 5500.0},
-                {"protocol": "compound", "score": 0.92, "total_value": 5000.0},
+                {"protocol": "AAVE", "score": 0.85, "total_value": 5500.0},
+                {"protocol": "COMPOUND", "score": 0.92, "total_value": 5000.0},
             ],
             "protocol_breakdown": {
-                "aave": {
-                    "protocol": "aave",
+                "AAVE": {
+                    "protocol": "AAVE",
                     "total_collateral": 1.5,
                     "total_borrowings": 1000.0,
                     "aggregate_health_score": 0.85,
                     "aggregate_apy": 0.08,
                 },
-                "compound": {
-                    "protocol": "compound",
+                "COMPOUND": {
+                    "protocol": "COMPOUND",
                     "total_collateral": 0.1,
                     "total_borrowings": 500.0,
                     "aggregate_health_score": 0.92,
@@ -387,14 +387,19 @@ class TestPortfolioCalculationService:
         """Test creating protocol breakdown."""
         snapshot = DefiPortfolioSnapshot(**mock_snapshot_data)
 
-        breakdown = portfolio_service._create_protocol_breakdown(snapshot)
+        breakdown = portfolio_service._create_protocol_breakdown(
+            [c for c in snapshot.collaterals],
+            [b for b in snapshot.borrowings],
+            [p for p in snapshot.staked_positions],
+            [h for h in snapshot.health_scores],
+        )
 
-        assert "aave" in breakdown
-        assert "compound" in breakdown
-        assert breakdown["aave"]["total_collateral"] == 1.5
-        assert breakdown["aave"]["total_borrowings"] == 1000.0
-        assert breakdown["compound"]["total_collateral"] == 0.1
-        assert breakdown["compound"]["total_borrowings"] == 500.0
+        assert "AAVE" in breakdown
+        assert "COMPOUND" in breakdown
+        assert breakdown["AAVE"]["total_collateral"] == 1.5
+        assert breakdown["AAVE"]["total_borrowings"] == 1000.0
+        assert breakdown["COMPOUND"]["total_collateral"] == 0.1
+        assert breakdown["COMPOUND"]["total_borrowings"] == 500.0
 
     def test_error_handling_in_calculate_portfolio_metrics(self, portfolio_service):
         """Test error handling in calculate_portfolio_metrics."""
