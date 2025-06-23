@@ -3,6 +3,7 @@ import shutil
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -39,9 +40,14 @@ def test_backup_and_retention_flow(monkeypatch):
 
         monkeypatch.setattr("app.tasks.backups.create_dump", _fake_create_dump)
 
-        # Run backup task synchronously
-        new_dump_path = Path(create_backup_task())
-        assert new_dump_path.exists()
+        # Mock the async task call to avoid Redis dependency
+        with patch("app.tasks.backups.purge_old_backups_task.delay") as mock_delay:
+            # Run backup task synchronously
+            new_dump_path = Path(create_backup_task())
+            assert new_dump_path.exists()
+
+            # Verify the async task was called
+            mock_delay.assert_called_once()
 
         # Run retention purge explicitly (in eager Celery this would run automatically)
         purged_count = purge_old_backups_task()
