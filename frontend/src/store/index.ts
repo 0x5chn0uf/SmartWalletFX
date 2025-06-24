@@ -3,6 +3,7 @@ import authReducer from './authSlice';
 import dashboardReducer from './dashboardSlice';
 import walletsReducer from './walletsSlice';
 import walletDetailReducer from './walletDetailSlice';
+import notificationReducer from './notificationSlice';
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     dashboard: dashboardReducer,
     wallets: walletsReducer,
     walletDetail: walletDetailReducer,
+    notification: notificationReducer,
   },
 });
 

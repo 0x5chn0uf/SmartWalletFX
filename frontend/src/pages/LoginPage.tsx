@@ -1,16 +1,28 @@
 import React, { useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { login } from '../store/authSlice';
 import { AppDispatch } from '../store';
+import { RootState } from '../store';
+import useNotification from '../hooks/useNotification';
+import { useNavigate } from 'react-router-dom';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const dispatch = useDispatch<AppDispatch>();
+  const { status, error } = useSelector((state: RootState) => state.auth);
+  const { showSuccess, showError } = useNotification();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    dispatch(login({ email, password }));
+    try {
+      await dispatch(login({ email, password })).unwrap();
+      showSuccess('Login successful!');
+      navigate('/dashboard');
+    } catch (err) {
+      showError('Login failed. Please check your credentials.');
+    }
   };
 
   return (
