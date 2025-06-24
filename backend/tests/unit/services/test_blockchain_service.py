@@ -495,7 +495,11 @@ class TestBlockchainService:
         with patch.object(
             blockchain_service,
             "_get_price_from_coingecko",
-            side_effect=Exception("API error"),
+            return_value=None,
+        ), patch.object(
+            blockchain_service,
+            "_get_price_from_chainlink",
+            return_value=None,
         ):
             price = await blockchain_service.get_token_price(
                 "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"

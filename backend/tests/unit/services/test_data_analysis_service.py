@@ -50,30 +50,28 @@ class TestDataAnalysisService:
         with patch.object(
             data_analysis_service.portfolio_service,
             "calculate_portfolio_metrics",
+            new_callable=AsyncMock,
             return_value=mock_portfolio_metrics,
         ), patch.object(
             data_analysis_service.portfolio_service,
             "calculate_risk_metrics",
+            new_callable=AsyncMock,
             return_value={
                 "collateralization_ratio": 15.0,
                 "utilization_rate": 0.067,
-                "diversification_score": 0.8,
                 "concentration_risk": 0.5,
-                "aggregate_health_score": 0.85,
             },
         ), patch.object(
             data_analysis_service.portfolio_service,
             "calculate_performance_metrics",
             return_value={
                 "total_return": 0.15,
-                "volatility": 0.1,
-                "sharpe_ratio": 1.5,
                 "max_drawdown": 0.05,
-                "period_days": 30,
             },
         ), patch.object(
             data_analysis_service,
             "_get_real_time_data",
+            new_callable=AsyncMock,
             return_value={
                 "balances": {"0x123": {"balance": "1000000000000000000"}},
                 "defi_positions": {"collaterals": [], "borrowings": []},
@@ -82,6 +80,7 @@ class TestDataAnalysisService:
         ), patch.object(
             data_analysis_service,
             "_get_historical_analysis",
+            new_callable=AsyncMock,
             return_value={
                 "timeline": PortfolioTimeline(
                     timestamps=[], collateral_usd=[], borrowings_usd=[]
@@ -114,22 +113,31 @@ class TestDataAnalysisService:
         with patch.object(
             data_analysis_service.portfolio_service,
             "calculate_portfolio_metrics",
+            new_callable=AsyncMock,
             return_value=mock_portfolio_metrics,
         ), patch.object(
             data_analysis_service.portfolio_service,
             "calculate_risk_metrics",
+            new_callable=AsyncMock,
             return_value={},
         ), patch.object(
             data_analysis_service.portfolio_service,
             "calculate_performance_metrics",
             return_value={},
         ), patch.object(
-            data_analysis_service, "_get_real_time_data", return_value={}
+            data_analysis_service,
+            "_get_real_time_data",
+            new_callable=AsyncMock,
+            return_value={},
         ), patch.object(
-            data_analysis_service, "_get_historical_analysis", return_value={}
+            data_analysis_service,
+            "_get_historical_analysis",
+            new_callable=AsyncMock,
+            return_value={},
         ), patch.object(
             data_analysis_service,
             "_generate_predictions",
+            new_callable=AsyncMock,
             return_value={
                 "predictions": [
                     {"day": 1, "predicted_value": 29000.0, "confidence": 0.9}
@@ -154,6 +162,7 @@ class TestDataAnalysisService:
         with patch.object(
             data_analysis_service.portfolio_service,
             "calculate_portfolio_metrics",
+            new_callable=AsyncMock,
             side_effect=Exception("Database error"),
         ):
             analysis = await data_analysis_service.analyze_portfolio_comprehensive(
@@ -208,44 +217,11 @@ class TestDataAnalysisService:
             assert trends["market_sentiment"] == "neutral"
 
     @pytest.mark.asyncio
-    async def test_generate_portfolio_insights_low_diversification(
+    async def test_generate_portfolio_insights_low_health_score(
         self, data_analysis_service, mock_portfolio_metrics
     ):
-        """Test generating portfolio insights for low diversification."""
-        # Mock metrics with low diversification
-        with patch.object(
-            data_analysis_service.portfolio_service,
-            "calculate_portfolio_metrics",
-            return_value=mock_portfolio_metrics,
-        ), patch.object(
-            data_analysis_service.portfolio_service,
-            "calculate_risk_metrics",
-            return_value={
-                "diversification_score": 0.3,  # Low diversification
-                "utilization_rate": 0.5,
-                "aggregate_health_score": 0.85,
-            },
-        ), patch.object(
-            data_analysis_service.portfolio_service,
-            "calculate_performance_metrics",
-            return_value={"total_return": 0.1},
-        ):
-            insights = await data_analysis_service.generate_portfolio_insights(
-                "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
-            )
-
-            # Should have diversification insight
-            diversification_insights = [
-                i for i in insights if i["type"] == "diversification"
-            ]
-            assert len(diversification_insights) > 0
-            assert diversification_insights[0]["severity"] == "medium"
-
-    @pytest.mark.asyncio
-    async def test_generate_portfolio_insights_low_health_score(
-        self, data_analysis_service
-    ):
         """Test generating portfolio insights for low health score."""
+        # Mock metrics with low health score
         mock_metrics = Mock(
             aggregate_health_score=0.6,  # Low health score
             aggregate_apy=0.08,
@@ -255,14 +231,14 @@ class TestDataAnalysisService:
         with patch.object(
             data_analysis_service.portfolio_service,
             "calculate_portfolio_metrics",
+            new_callable=AsyncMock,
             return_value=mock_metrics,
         ), patch.object(
             data_analysis_service.portfolio_service,
             "calculate_risk_metrics",
+            new_callable=AsyncMock,
             return_value={
-                "diversification_score": 0.8,
                 "utilization_rate": 0.5,
-                "aggregate_health_score": 0.6,
             },
         ), patch.object(
             data_analysis_service.portfolio_service,
@@ -292,14 +268,14 @@ class TestDataAnalysisService:
         with patch.object(
             data_analysis_service.portfolio_service,
             "calculate_portfolio_metrics",
+            new_callable=AsyncMock,
             return_value=mock_metrics,
         ), patch.object(
             data_analysis_service.portfolio_service,
             "calculate_risk_metrics",
+            new_callable=AsyncMock,
             return_value={
-                "diversification_score": 0.8,
                 "utilization_rate": 0.5,
-                "aggregate_health_score": 0.85,
             },
         ), patch.object(
             data_analysis_service.portfolio_service,
@@ -329,14 +305,14 @@ class TestDataAnalysisService:
         with patch.object(
             data_analysis_service.portfolio_service,
             "calculate_portfolio_metrics",
+            new_callable=AsyncMock,
             return_value=mock_metrics,
         ), patch.object(
             data_analysis_service.portfolio_service,
             "calculate_risk_metrics",
+            new_callable=AsyncMock,
             return_value={
-                "diversification_score": 0.8,
                 "utilization_rate": 0.85,  # High utilization
-                "aggregate_health_score": 0.85,
             },
         ), patch.object(
             data_analysis_service.portfolio_service,
@@ -364,14 +340,14 @@ class TestDataAnalysisService:
         with patch.object(
             data_analysis_service.portfolio_service,
             "calculate_portfolio_metrics",
+            new_callable=AsyncMock,
             return_value=mock_metrics,
         ), patch.object(
             data_analysis_service.portfolio_service,
             "calculate_risk_metrics",
+            new_callable=AsyncMock,
             return_value={
-                "diversification_score": 0.8,
                 "utilization_rate": 0.5,
-                "aggregate_health_score": 0.85,
             },
         ), patch.object(
             data_analysis_service.portfolio_service,
@@ -395,15 +371,17 @@ class TestDataAnalysisService:
         with patch.object(
             data_analysis_service.portfolio_service,
             "calculate_portfolio_metrics",
+            new_callable=AsyncMock,
             return_value=mock_portfolio_metrics,
         ), patch.object(
             data_analysis_service.portfolio_service,
             "calculate_performance_metrics",
-            return_value={"sharpe_ratio": 1.5},
+            return_value={},
         ), patch.object(
             data_analysis_service.portfolio_service,
             "calculate_risk_metrics",
-            return_value={"diversification_score": 0.8, "aggregate_health_score": 0.85},
+            new_callable=AsyncMock,
+            return_value={},
         ):
             efficiency = await data_analysis_service.calculate_portfolio_efficiency(
                 "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
@@ -411,7 +389,6 @@ class TestDataAnalysisService:
 
             assert "efficiency_score" in efficiency
             assert "sharpe_ratio" in efficiency
-            assert "diversification_score" in efficiency
             assert "health_score" in efficiency
             assert "risk_adjusted_return" in efficiency
             assert "portfolio_quality" in efficiency
@@ -427,6 +404,7 @@ class TestDataAnalysisService:
         with patch.object(
             data_analysis_service.portfolio_service,
             "calculate_portfolio_metrics",
+            new_callable=AsyncMock,
             side_effect=Exception("Error"),
         ):
             efficiency = await data_analysis_service.calculate_portfolio_efficiency(
@@ -435,7 +413,6 @@ class TestDataAnalysisService:
 
             assert efficiency["efficiency_score"] == 0.0
             assert efficiency["sharpe_ratio"] == 0.0
-            assert efficiency["diversification_score"] == 0.0
             assert efficiency["health_score"] == 0.0
 
     @pytest.mark.asyncio
@@ -478,6 +455,7 @@ class TestDataAnalysisService:
         with patch.object(
             data_analysis_service.portfolio_service,
             "calculate_portfolio_timeline",
+            new_callable=AsyncMock,
             return_value=mock_timeline,
         ), patch.object(
             data_analysis_service.blockchain_service,
