@@ -26,7 +26,6 @@ def _b64url_uint(integer: int) -> str:
     return base64.urlsafe_b64encode(as_bytes).rstrip(b"=").decode("ascii")
 
 
-@pytest.mark.unit
 def test_format_public_key_to_jwk_roundtrip():
     """Ensure RSA public key is accurately converted to JWK fields n/e."""
 
