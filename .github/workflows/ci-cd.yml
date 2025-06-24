@@ -161,12 +161,13 @@ jobs:
           sys.exit(0 if coverage >= 90 else 1)
           PY
 
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./backend/coverage.xml
-          flags: backend
-          name: backend-coverage
+      - name: Upload coverage to Coveralls
+        working-directory: ./backend
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          source .venv/bin/activate
+          coveralls --service=github
 
   security-tests:
     needs: [isort, black, flake8, changes]
