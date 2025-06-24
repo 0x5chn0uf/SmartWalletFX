@@ -99,6 +99,7 @@ class AuthDeps:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Too many login attempts, please try again later.",
+                headers={"Retry-After": str(settings.AUTH_RATE_LIMIT_WINDOW_SECONDS)},
             )
 
     async def get_current_user(

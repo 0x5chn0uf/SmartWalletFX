@@ -39,6 +39,7 @@ class WalletResponse(BaseModel):
     """
 
     id: uuid.UUID
+    user_id: Optional[uuid.UUID]
     address: str
     name: Optional[str]
     created_at: datetime

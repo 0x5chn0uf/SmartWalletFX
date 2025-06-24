@@ -10,7 +10,7 @@ from app.domain.errors import InvalidCredentialsError
 from app.schemas.user import UserCreate
 from app.services.auth_service import AuthService, WeakPasswordError
 from app.utils.jwt import JWTUtils
-from app.utils.rate_limiter import login_rate_limiter
+from app.utils.rate_limiter import InMemoryRateLimiter, login_rate_limiter
 
 
 @pytest.mark.parametrize(
@@ -84,7 +84,16 @@ async def test_obtain_token_success(db_session, test_app):
 
 
 @pytest.mark.anyio
-async def test_login_rate_limit(db_session, test_app):
+async def test_login_rate_limit(db_session, test_app, mocker):
+    # Patch the global limiter for this test only to ensure full isolation
+    mocker.patch(
+        "app.api.dependencies.login_rate_limiter",
+        new=InMemoryRateLimiter(
+            settings.AUTH_RATE_LIMIT_ATTEMPTS,
+            settings.AUTH_RATE_LIMIT_WINDOW_SECONDS,
+        ),
+    )
+
     async with AsyncClient(app=test_app, base_url="http://test") as ac:
         service = AuthService(db_session)
         await service.register(

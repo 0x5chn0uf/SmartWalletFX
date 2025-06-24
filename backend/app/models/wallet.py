@@ -1,15 +1,15 @@
 import re
-from datetime import datetime
-from uuid import uuid4
+import uuid
 
 from sqlalchemy import (
-    JSON,
     Boolean,
     Column,
     DateTime,
+    Float,
     ForeignKey,
-    Numeric,
     String,
+    UniqueConstraint,
+    func,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -19,35 +19,84 @@ from app.core.database import Base
 
 class Wallet(Base):
     """
-    SQLAlchemy model for a wallet entity.
-    Represents a blockchain wallet with address, user, balances, and metadata.
+    Represents a wallet in the database.
+    - `id`: Primary key.
+    - `address`: EVM wallet address.
+    - `name`: User-defined wallet name.
+    - `created_at`: Timestamp of creation.
+    - `updated_at`: Timestamp of last update.
+    - `is_active`: Flag for active status.
+    - `balance_usd`: Cached balance in USD.
     """
 
     __tablename__ = "wallets"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, index=True, default=uuid4)
-    user_id = Column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True
+    id = Column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        doc="Unique identifier for the wallet.",
     )
-    address = Column(String, unique=True, index=True)
-    name = Column(String, nullable=True, default="Unnamed Wallet")
-    type = Column(String, nullable=True)  # EVM, BTC, etc.
-    extra_metadata = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    is_active = Column(Boolean, default=True)
-    balance_usd = Column(Numeric(precision=18, scale=2), nullable=True)
-    balance = Column(Numeric(precision=18, scale=8), nullable=False)
+    address = Column(
+        String,
+        nullable=False,
+        index=True,
+        doc="EVM wallet address.",
+    )
+    name = Column(String, nullable=True, doc="User-defined wallet name.")
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=False,
+        doc="Foreign key to the users table.",
+    )
 
-    # Relationships
-    token_balances = relationship("TokenBalance", back_populates="wallet")
-    historical_balances = relationship("HistoricalBalance", back_populates="wallet")
-    transactions = relationship("Transaction", back_populates="wallet")
-    # groups = relationship(
-    #     "Group",
-    #     secondary="wallet_groups",
-    #     back_populates="wallets",
-    # )
+    created_at = Column(
+        DateTime,
+        default=func.now(),
+        nullable=False,
+        doc="Timestamp of wallet creation.",
+    )
+    updated_at = Column(
+        DateTime,
+        default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+        doc="Timestamp of last wallet update.",
+    )
+    is_active = Column(
+        Boolean, default=True, nullable=False, doc="Flag for active status."
+    )
+    balance_usd = Column(
+        Float, default=0.0, nullable=True, doc="Cached balance in USD."
+    )
+
+    # One-to-many – time-series of token balances
+    historical_balances = relationship(
+        "HistoricalBalance",
+        back_populates="wallet",
+        cascade="all, delete-orphan",
+    )
+
+    # One-to-many relationship with TokenBalance
+    token_balances = relationship(
+        "TokenBalance",
+        back_populates="wallet",
+        cascade="all, delete-orphan",
+    )
+
+    # One-to-many relationship with Transaction
+    transactions = relationship(
+        "Transaction",
+        back_populates="wallet",
+        cascade="all, delete-orphan",
+    )
+
+    user = relationship("User", back_populates="wallets")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "address", name="uq_wallet_user_address"),
+    )
 
     def __repr__(self):
         """
