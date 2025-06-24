@@ -1,4 +1,6 @@
+import React from 'react';
 import { render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import App from './App';
 import { ThemeProvider } from './providers/ThemeProvider';
 
@@ -8,6 +10,8 @@ test('renders navigation links', () => {
       <App />
     </ThemeProvider>,
   );
-  const linkElement = screen.getByText(/Home/i);
-  expect(linkElement).toBeInTheDocument();
+  const dashboardLink = screen.getByText(/Dashboard/i);
+  const walletsLink = screen.getByText(/Wallets/i);
+  expect(dashboardLink).toBeInTheDocument();
+  expect(walletsLink).toBeInTheDocument();
 });
