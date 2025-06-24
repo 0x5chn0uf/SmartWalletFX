@@ -10,21 +10,27 @@ import {
 } from '../store/walletDetailSlice';
 import BalanceAreaChart from '../components/BalanceAreaChart';
 import TransactionTable from '../components/TransactionTable';
+import useNotification from '../hooks/useNotification';
 
 const WalletDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const dispatch = useDispatch<AppDispatch>();
   const { wallet, transactions, status, error } = useSelector((state: RootState) => state.walletDetail);
+  const { showError } = useNotification();
 
   useEffect(() => {
     if (id) {
-      dispatch(fetchWalletDetail(id));
-      dispatch(fetchWalletTransactions(id));
+      Promise.all([
+        dispatch(fetchWalletDetail(id)),
+        dispatch(fetchWalletTransactions(id))
+      ]).catch((err) => {
+        showError('Failed to load wallet details. Please try again.');
+      });
     }
     return () => {
       dispatch(clearWalletDetail());
     };
-  }, [dispatch, id]);
+  }, [dispatch, id, showError]);
 
   if (status === 'loading' || !wallet) {
     return (

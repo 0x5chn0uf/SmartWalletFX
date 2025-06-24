@@ -5,16 +5,20 @@ import BalanceAreaChart from '../components/BalanceAreaChart';
 import ChartPlaceholder from '../components/ChartPlaceholder';
 import { fetchDashboardOverview } from '../store/dashboardSlice';
 import { RootState, AppDispatch } from '../store';
+import useNotification from '../hooks/useNotification';
 
 const DashboardPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { overview, status } = useSelector((state: RootState) => state.dashboard);
+  const { overview, status, error } = useSelector((state: RootState) => state.dashboard);
+  const { showError } = useNotification();
 
   useEffect(() => {
     if (status === 'idle') {
-      dispatch(fetchDashboardOverview());
+      dispatch(fetchDashboardOverview()).catch((err) => {
+        showError('Failed to load dashboard data. Please try again.');
+      });
     }
-  }, [dispatch, status]);
+  }, [dispatch, status, showError]);
 
   const cards = [
     { title: 'Total Wallets', value: overview?.totalWallets ?? '—' },

@@ -12,6 +12,7 @@ import { RootState, AppDispatch } from '../store';
 import { fetchWallets, setSearch, setPage } from '../store/walletsSlice';
 import WalletTable from '../components/WalletTable';
 import Pagination from '../components/Pagination';
+import useNotification from '../hooks/useNotification';
 
 const WalletList: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -19,10 +20,13 @@ const WalletList: React.FC = () => {
     (state: RootState) => state.wallets
   );
   const [searchInput, setSearchInput] = useState(search);
+  const { showError } = useNotification();
 
   useEffect(() => {
-    dispatch(fetchWallets({ page, limit, search }));
-  }, [dispatch, page, limit, search]);
+    dispatch(fetchWallets({ page, limit, search })).catch((err) => {
+      showError('Failed to load wallets. Please try again.');
+    });
+  }, [dispatch, page, limit, search, showError]);
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchInput(event.target.value);
