@@ -1,13 +1,12 @@
-import { api } from './api';
+import api from './api';
 import { PortfolioSnapshot, TimelineResponse } from '../types/timeline';
 
 interface TimelineQueryParams {
-  from_ts: number;
-  to_ts: number;
-  limit?: number;
-  offset?: number;
-  interval?: 'none' | 'daily' | 'weekly';
-  raw?: boolean;
+  startDate?: string;
+  endDate?: string;
+  interval?: string;
+  from_ts?: number;
+  to_ts?: number;
 }
 
 export async function getTimeline(
@@ -23,5 +22,15 @@ export async function getTimeline(
   const search = searchParams.toString();
   const url = `/defi/timeline/${address}?${search}`;
   const response = await api.get<PortfolioSnapshot[] | TimelineResponse>(url);
+  return response.data;
+}
+
+export async function getPortfolioTimeline(params: TimelineQueryParams = {}): Promise<TimelineResponse> {
+  const response = await api.get<TimelineResponse>('/defi/portfolio/timeline', { params });
+  return response.data;
+}
+
+export async function getPortfolioSnapshot(): Promise<PortfolioSnapshot> {
+  const response = await api.get<PortfolioSnapshot>('/defi/portfolio/snapshot');
   return response.data;
 }
