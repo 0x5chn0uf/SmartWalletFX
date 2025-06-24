@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import WalletTable from '../../components/WalletTable';
+import { MemoryRouter } from 'react-router-dom';
 
 const mockWallets = [
   {
@@ -23,7 +24,11 @@ const mockWallets = [
 
 describe('WalletTable', () => {
   it('renders wallet data correctly', () => {
-    render(<WalletTable wallets={mockWallets} />);
+    render(
+      <MemoryRouter>
+        <WalletTable wallets={mockWallets} />
+      </MemoryRouter>
+    );
     
     expect(screen.getByText('Main Wallet')).toBeInTheDocument();
     expect(screen.getByText('Trading Wallet')).toBeInTheDocument();
@@ -33,7 +38,11 @@ describe('WalletTable', () => {
   });
 
   it('renders table headers', () => {
-    render(<WalletTable wallets={mockWallets} />);
+    render(
+      <MemoryRouter>
+        <WalletTable wallets={mockWallets} />
+      </MemoryRouter>
+    );
     
     expect(screen.getByText('Name')).toBeInTheDocument();
     expect(screen.getByText('Address')).toBeInTheDocument();

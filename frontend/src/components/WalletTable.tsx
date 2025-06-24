@@ -1,5 +1,6 @@
 import React from 'react';
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
+import { Link as RouterLink } from 'react-router-dom';
 
 interface Wallet {
   id: string;
@@ -27,7 +28,7 @@ const WalletTable: React.FC<WalletTableProps> = ({ wallets }) => (
       </TableHead>
       <TableBody>
         {wallets.map((wallet) => (
-          <TableRow key={wallet.id} hover>
+          <TableRow key={wallet.id} hover component={RouterLink} to={`/wallets/${wallet.id}`} sx={{ textDecoration: 'none' }}>
             <TableCell>{wallet.name}</TableCell>
             <TableCell>{wallet.address}</TableCell>
             <TableCell align="right">${wallet.balance.toLocaleString()}</TableCell>
