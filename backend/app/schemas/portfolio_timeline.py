@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List
 
 from pydantic import BaseModel
@@ -16,3 +17,19 @@ class TimelineResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class PortfolioSnapshotResponse(BaseModel):
+    user_address: str
+    timestamp: datetime
+    total_collateral_usd: float
+    total_borrowings_usd: float
+
+    class Config:
+        orm_mode = True
+
+
+class PortfolioTimeline(BaseModel):
+    timestamps: list[int]
+    collateral_usd: list[float]
+    borrowings_usd: list[float]

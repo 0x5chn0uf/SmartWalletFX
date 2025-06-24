@@ -71,11 +71,12 @@ class StakedPosition(BaseModel):
 class HealthScore(BaseModel):
     protocol: ProtocolName
     score: float
+    total_value: Optional[float] = None
 
 
 class DeFiAccountSnapshot(BaseModel):
-    user_address: str
-    timestamp: int
+    user_address: str = ""
+    timestamp: int = 0  # Unix timestamp (UTC)
     collaterals: List[Collateral]
     borrowings: List[Borrowing]
     staked_positions: List[StakedPosition]
@@ -89,16 +90,16 @@ class PortfolioSnapshot(BaseModel):
     Used for time-series storage and retrieval.
     """
 
-    user_address: str
-    timestamp: int  # Unix timestamp (UTC)
-    total_collateral: float
-    total_borrowings: float
-    total_collateral_usd: float
-    total_borrowings_usd: float
-    aggregate_health_score: Optional[float]
-    aggregate_apy: Optional[float]
-    collaterals: List[Collateral]
-    borrowings: List[Borrowing]
-    staked_positions: List[StakedPosition]
-    health_scores: List[HealthScore]
-    protocol_breakdown: dict  # {protocol_name: {...metrics...}}
+    user_address: str = ""
+    timestamp: int = 0  # Unix timestamp (UTC)
+    total_collateral: float = 0.0
+    total_borrowings: float = 0.0
+    total_collateral_usd: float = 0.0
+    total_borrowings_usd: float = 0.0
+    aggregate_health_score: Optional[float] = None
+    aggregate_apy: Optional[float] = None
+    collaterals: List[Collateral] = []
+    borrowings: List[Borrowing] = []
+    staked_positions: List[StakedPosition] = []
+    health_scores: List[HealthScore] = []
+    protocol_breakdown: dict = {}  # {protocol_name: {...metrics...}}
