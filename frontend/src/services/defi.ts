@@ -7,6 +7,9 @@ interface TimelineQueryParams {
   interval?: string;
   from_ts?: number;
   to_ts?: number;
+  limit?: number;
+  offset?: number;
+  raw?: boolean;
 }
 
 export async function getTimeline(
