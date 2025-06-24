@@ -14,11 +14,9 @@ class TestDataManager:
       - Measure database size
     """
 
-    def __init__(self, db_url: str):
-        self.db_url = db_url
-
+    @staticmethod
     def generate_realistic_schema(
-        self, size: Literal["small", "large"] = "small"
+        db_url: str, size: Literal["small", "large"] = "small"
     ) -> None:
         """
         Create tables, indexes, and optionally triggers/views for the test DB.
@@ -30,12 +28,15 @@ class TestDataManager:
         )
         with open(schema_file, "r") as f:
             sql = f.read()
-        with psycopg2.connect(self.db_url) as conn:
+        with psycopg2.connect(db_url) as conn:
             with conn.cursor() as cur:
                 cur.execute(sql)
             conn.commit()
 
-    def populate_test_data(self, volume: Literal["small", "large"] = "small") -> None:
+    @staticmethod
+    def populate_test_data(
+        db_url: str, volume: Literal["small", "large"] = "small"
+    ) -> None:
         """
         Populate the database with test data. For 'large', assumes schema already includes data.
         """
@@ -43,7 +44,7 @@ class TestDataManager:
         if volume == "large":
             return
         # For 'small', insert a few rows
-        with psycopg2.connect(self.db_url) as conn:
+        with psycopg2.connect(db_url) as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
@@ -63,7 +64,8 @@ class TestDataManager:
                 )
             conn.commit()
 
-    def validate_data_integrity(self, db_url_1: str, db_url_2: str) -> bool:
+    @staticmethod
+    def validate_data_integrity(db_url_1: str, db_url_2: str) -> bool:
         """
         Compare row counts and table checksums between two databases.
         Returns True if all match, False otherwise.
@@ -86,11 +88,12 @@ class TestDataManager:
         c2 = get_table_checksums(db_url_2)
         return c1 == c2
 
-    def measure_database_size(self) -> int:
+    @staticmethod
+    def measure_database_size(db_url: str) -> int:
         """
         Return the total size of the database in bytes.
         """
-        with psycopg2.connect(self.db_url) as conn:
+        with psycopg2.connect(db_url) as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT pg_database_size(current_database());")
                 (size,) = cur.fetchone()

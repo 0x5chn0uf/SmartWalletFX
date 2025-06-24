@@ -84,9 +84,8 @@ class TestBackupPerformance:
                 pytest.fail("Database not ready within timeout")
 
             # Load large dataset
-            tdm = TestDataManager(dsn)
-            tdm.generate_realistic_schema(size="large")
-            tdm.populate_test_data(volume="large")
+            TestDataManager.generate_realistic_schema(dsn, size="large")
+            TestDataManager.populate_test_data(dsn, volume="large")
 
             yield dsn
 
@@ -619,7 +618,8 @@ class TestRestorePerformance:
             assert result.returncode == 0, f"Restore failed: {result.stderr}"
 
             # Validate data integrity using TestDataManager
-            _ = TestDataManager(restore_dsn)
+            TestDataManager.generate_realistic_schema(restore_dsn, size="large")
+            TestDataManager.populate_test_data(restore_dsn, volume="large")
 
             # Check that all tables exist and have data
             import psycopg2

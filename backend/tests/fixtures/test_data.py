@@ -259,8 +259,7 @@ async def create_large_test_dataset(dsn: str, target_size_mb: int = 100) -> None
         dsn: Database connection string
         target_size_mb: Target size in MB for the test dataset
     """
-    manager = TestDataManager(dsn)
-    await manager.create_test_database()
+    await TestDataManager.create_test_database(dsn)
 
     # Calculate how much additional data to add to reach target size
     # This is a simplified approach - in practice you'd measure actual table sizes
@@ -274,9 +273,9 @@ async def create_large_test_dataset(dsn: str, target_size_mb: int = 100) -> None
         batch_size = 1000
         for i in range(0, additional_count, batch_size):
             _ = min(batch_size, additional_count - i)
-            await manager.insert_additional_test_data()
+            await TestDataManager.insert_additional_test_data(dsn)
 
-    await manager.cleanup()
+    await TestDataManager.cleanup(dsn)
 
 
 async def verify_backup_integrity(original_dsn: str, restored_dsn: str) -> bool:
@@ -289,13 +288,10 @@ async def verify_backup_integrity(original_dsn: str, restored_dsn: str) -> bool:
     Returns:
         True if databases match, False otherwise
     """
-    original_manager = TestDataManager(original_dsn)
-    restored_manager = TestDataManager(restored_dsn)
-
     try:
         # Get row counts from both databases
-        original_counts = await original_manager.validate_data_integrity()
-        restored_counts = await restored_manager.validate_data_integrity()
+        original_counts = await TestDataManager.validate_data_integrity(original_dsn)
+        restored_counts = await TestDataManager.validate_data_integrity(restored_dsn)
 
         # Compare row counts
         if original_counts != restored_counts:
@@ -310,8 +306,8 @@ async def verify_backup_integrity(original_dsn: str, restored_dsn: str) -> bool:
         return True
 
     finally:
-        await original_manager.cleanup()
-        await restored_manager.cleanup()
+        await TestDataManager.cleanup(original_dsn)
+        await TestDataManager.cleanup(restored_dsn)
 
 
 async def _compare_sample_data(original_dsn: str, restored_dsn: str) -> bool:
