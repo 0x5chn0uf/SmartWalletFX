@@ -11,6 +11,7 @@ describe('App Component', () => {
         <App />
       </ThemeProvider>
     );
-    expect(screen.getByText(/Home/i)).toBeInTheDocument();
+    expect(screen.getByText(/Dashboard/i)).toBeInTheDocument();
+    expect(screen.getByText(/Wallets/i)).toBeInTheDocument();
   });
 });
