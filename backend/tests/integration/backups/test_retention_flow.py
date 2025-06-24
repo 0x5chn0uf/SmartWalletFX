@@ -11,7 +11,6 @@ from app.core.config import settings
 from app.tasks.backups import create_backup_task, purge_old_backups_task
 
 
-@pytest.mark.integration
 def test_backup_and_retention_flow(monkeypatch):
     """Running the backup task should create a new dump and purge old ones."""
 
