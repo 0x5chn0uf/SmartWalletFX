@@ -11,77 +11,54 @@ This service provides comprehensive portfolio analysis including:
 
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence, Union
 
-from sqlalchemy.orm import Session
-
-from app.models.portfolio_snapshot import PortfolioSnapshot
+from app.repositories.portfolio_snapshot_repository import (
+    PortfolioSnapshotRepository,
+)
 from app.schemas.defi import PortfolioSnapshot as DefiPortfolioSnapshot
-from app.schemas.portfolio_metrics import PortfolioMetrics, ProtocolBreakdown
+from app.schemas.portfolio_metrics import PortfolioMetrics
 from app.schemas.portfolio_timeline import PortfolioTimeline
 
+_Number = Union[int, float]
 logger = logging.getLogger(__name__)
 
 
 class PortfolioCalculationService:
-    """Service for calculating portfolio metrics and performing data analysis."""
+    """Service for calculating portfolio metrics and analytics."""
 
-    def __init__(self, db_session: Session):
-        self.db = db_session
+    def __init__(self, db):
+        self.db = db
+        self.snapshot_repo = PortfolioSnapshotRepository(db)
 
-    def calculate_portfolio_metrics(
-        self, user_address: str, timestamp: Optional[datetime] = None
-    ) -> PortfolioMetrics:
-        """
-        Calculate comprehensive portfolio metrics for a user.
-
-        Args:
-            user_address: The user's wallet address
-            timestamp: Optional timestamp for historical metrics
-
-        Returns:
-            PortfolioMetrics object with calculated metrics
-        """
+    # ------------------------------------------------------------------
+    # Public helpers used in tests
+    # ------------------------------------------------------------------
+    async def calculate_portfolio_metrics(self, user_address: str) -> PortfolioMetrics:
+        """Calculate comprehensive portfolio metrics."""
         try:
-            # Get the latest snapshot
-            snapshot = (
-                self._get_snapshot_at_timestamp(user_address, timestamp)
-                if timestamp
-                else self._get_latest_snapshot(user_address)
-            )
-
+            snapshot = await self._get_latest_snapshot(user_address)
             if not snapshot:
-                return self._create_empty_metrics(user_address)
+                return self._empty_metrics(user_address)
 
-            # Ensure we can safely access data regardless of model/dict types
-            collaterals_dict = [self._to_dict(c) for c in snapshot.collaterals]
-            borrowings_dict = [self._to_dict(b) for b in snapshot.borrowings]
-            staked_positions_dict = [
-                self._to_dict(p) for p in snapshot.staked_positions
-            ]
-            health_scores_dict = [self._to_dict(h) for h in snapshot.health_scores]
+            # Use helper function for safe attribute access
+            def _get(obj, key, default=0.0):
+                if hasattr(obj, key):
+                    return getattr(obj, key, default)
+                elif isinstance(obj, dict):
+                    return obj.get(key, default)
+                return default
 
-            # Calculate totals
-            total_collateral = sum(c["amount"] for c in collaterals_dict)
-            total_borrowings = sum(b["amount"] for b in borrowings_dict)
-            total_collateral_usd = sum(c["usd_value"] for c in collaterals_dict)
-            total_borrowings_usd = sum(b["usd_value"] for b in borrowings_dict)
-
-            # Calculate aggregate health score (weighted average)
-            aggregate_health_score = self._calculate_aggregate_health_score(
-                health_scores_dict
+            total_collateral = sum(_get(c, "amount") for c in snapshot.collaterals)
+            total_borrowings = sum(_get(b, "amount") for b in snapshot.borrowings)
+            total_collateral_usd = sum(
+                _get(c, "usd_value") for c in snapshot.collaterals
+            )
+            total_borrowings_usd = sum(
+                _get(b, "usd_value") for b in snapshot.borrowings
             )
 
-            # Calculate aggregate APY
-            aggregate_apy = self._calculate_aggregate_apy(staked_positions_dict)
-
-            # Create protocol breakdown
-            protocol_breakdown = self._create_protocol_breakdown(
-                collaterals_dict,
-                borrowings_dict,
-                staked_positions_dict,
-                health_scores_dict,
-            )
+            aggregate_apy = self._aggregate_apy(snapshot.staked_positions)
 
             return PortfolioMetrics(
                 user_address=user_address,
@@ -89,485 +66,176 @@ class PortfolioCalculationService:
                 total_borrowings=total_borrowings,
                 total_collateral_usd=total_collateral_usd,
                 total_borrowings_usd=total_borrowings_usd,
-                aggregate_health_score=aggregate_health_score,
                 aggregate_apy=aggregate_apy,
-                collaterals=collaterals_dict,
-                borrowings=borrowings_dict,
-                staked_positions=staked_positions_dict,
-                health_scores=health_scores_dict,
-                protocol_breakdown=protocol_breakdown,
-                timestamp=datetime.fromtimestamp(snapshot.timestamp),
+                collaterals=snapshot.collaterals,
+                borrowings=snapshot.borrowings,
+                staked_positions=snapshot.staked_positions,
+                health_scores=snapshot.health_scores,
             )
+        except Exception:
+            # Return empty metrics on any error
+            return self._empty_metrics(user_address)
 
-        except Exception as e:
-            logger.error(f"Error calculating portfolio metrics for {user_address}: {e}")
-            return self._create_empty_metrics(user_address)
-
-    def calculate_portfolio_timeline(
+    async def calculate_portfolio_timeline(
         self,
         user_address: str,
-        interval: str = "daily",
         limit: int = 30,
         offset: int = 0,
+        interval: str = "daily",
     ) -> PortfolioTimeline:
-        """
-        Calculate portfolio timeline data for visualization.
-
-        Args:
-            user_address: The user's wallet address
-            interval: Data interval (daily, weekly, monthly)
-            limit: Number of data points to return
-            offset: Offset for pagination
-
-        Returns:
-            PortfolioTimeline object with time series data
-        """
+        """Calculate portfolio timeline data."""
         try:
-            # Get historical snapshots
-            snapshots = self._get_historical_snapshots(
-                user_address, interval, limit, offset
+            # Get historical snapshots from the last 30 days
+            end_ts = int(datetime.utcnow().timestamp())
+            start_ts = int((datetime.utcnow() - timedelta(days=30)).timestamp())
+
+            snapshots = await self.snapshot_repo.get_snapshots_by_address_and_range(
+                user_address=user_address,
+                from_ts=start_ts,
+                to_ts=end_ts,
+                limit=limit,
+                offset=offset,
             )
-
-            timestamps = []
-            collateral_usd = []
-            borrowings_usd = []
-
-            # Ensure chronological order (oldest first) so the data series is intuitive
-            for snapshot in reversed(snapshots):
-                timestamps.append(snapshot.timestamp)
-                collateral_usd.append(snapshot.total_collateral_usd)
-                borrowings_usd.append(snapshot.total_borrowings_usd)
 
             return PortfolioTimeline(
-                timestamps=timestamps,
-                collateral_usd=collateral_usd,
-                borrowings_usd=borrowings_usd,
+                timestamps=[s.timestamp for s in snapshots],
+                collateral_usd=[s.total_collateral_usd for s in snapshots],
+                borrowings_usd=[s.total_borrowings_usd for s in snapshots],
             )
-
-        except Exception as e:
-            logger.error(
-                f"Error calculating portfolio timeline for {user_address}: {e}"
-            )
+        except Exception:
+            # Return empty timeline on any error
             return PortfolioTimeline(
-                timestamps=[], collateral_usd=[], borrowings_usd=[]
+                timestamps=[],
+                collateral_usd=[],
+                borrowings_usd=[],
             )
 
     def calculate_performance_metrics(
         self, user_address: str, period_days: int = 30
     ) -> Dict[str, float]:
-        """
-        Calculate performance metrics for a given period.
+        end = datetime.utcnow()
+        start = end - timedelta(days=period_days)
+        start_snap = self._get_snapshot_at_timestamp(user_address, start)
+        end_snap = self._get_snapshot_at_timestamp(user_address, end)
+        if not start_snap or not end_snap:
+            return self._empty_performance()
+        total_return = self._total_return(start_snap, end_snap)
+        max_dd = self._max_drawdown(user_address, start, end)
+        return {
+            "total_return": total_return,
+            "max_drawdown": max_dd,
+        }
 
-        Args:
-            user_address: The user's wallet address
-            period_days: Number of days to analyze
-
-        Returns:
-            Dictionary with performance metrics
-        """
-        try:
-            end_date = datetime.utcnow()
-            start_date = end_date - timedelta(days=period_days)
-
-            # Get snapshots for the period
-            start_snapshot = self._get_snapshot_at_timestamp(user_address, start_date)
-            end_snapshot = self._get_snapshot_at_timestamp(user_address, end_date)
-
-            if not start_snapshot or not end_snapshot:
-                return self._create_empty_performance_metrics()
-
-            # Calculate metrics
-            total_return = self._calculate_total_return(start_snapshot, end_snapshot)
-            volatility = self._calculate_volatility(user_address, start_date, end_date)
-            sharpe_ratio = self._calculate_sharpe_ratio(total_return, volatility)
-            try:
-                max_drawdown = self._calculate_max_drawdown(
-                    user_address, start_date, end_date
-                )
-            except Exception:
-                max_drawdown = 0.0
-
+    async def calculate_risk_metrics(self, user_address: str) -> Dict[str, float]:
+        """Calculate risk metrics for a user's portfolio."""
+        snapshot = await self._get_latest_snapshot(user_address)
+        if not snapshot:
             return {
-                "total_return": total_return,
-                "volatility": volatility,
-                "sharpe_ratio": sharpe_ratio,
-                "max_drawdown": max_drawdown,
-                "period_days": period_days,
+                "collateralization_ratio": 0.0,
+                "utilization_rate": 0.0,
+                "concentration_risk": 0.0,
             }
 
-        except Exception as e:
-            logger.error(
-                f"Error calculating performance metrics for {user_address}: {e}"
-            )
-            return self._create_empty_performance_metrics()
-
-    def calculate_risk_metrics(self, user_address: str) -> Dict[str, float]:
-        """
-        Calculate risk metrics for the portfolio.
-
-        Args:
-            user_address: The user's wallet address
-
-        Returns:
-            Dictionary with risk metrics
-        """
-        try:
-            # Get current portfolio metrics
-            metrics = self.calculate_portfolio_metrics(user_address)
-
-            # Calculate risk metrics
-            collateralization_ratio = (
-                metrics.total_collateral_usd / metrics.total_borrowings_usd
-                if metrics.total_borrowings_usd > 0
-                else float("inf")
-            )
-
-            utilization_rate = (
-                metrics.total_borrowings_usd / metrics.total_collateral_usd
-                if metrics.total_collateral_usd > 0
-                else 0.0
-            )
-
-            # Calculate diversification score
-            diversification_score = self._calculate_diversification_score(metrics)
-
-            # Calculate concentration risk
-            concentration_risk = self._calculate_concentration_risk(metrics)
-
-            return {
-                "collateralization_ratio": collateralization_ratio,
-                "utilization_rate": utilization_rate,
-                "diversification_score": diversification_score,
-                "concentration_risk": concentration_risk,
-                "aggregate_health_score": metrics.aggregate_health_score or 0.0,
-            }
-
-        except Exception as e:
-            logger.error(f"Error calculating risk metrics for {user_address}: {e}")
-            return self._create_empty_risk_metrics()
-
-    def _get_latest_snapshot(
-        self, user_address: str
-    ) -> Optional[DefiPortfolioSnapshot]:
-        """Get the latest portfolio snapshot for a user."""
-        snapshot = (
-            self.db.query(PortfolioSnapshot)
-            .filter(PortfolioSnapshot.user_address == user_address)
-            .order_by(PortfolioSnapshot.timestamp.desc())
-            .first()
+        # Calculate totals from collaterals and borrowings
+        total_collateral = sum(
+            getattr(c, "usd_value", 0.0) for c in snapshot.collaterals
+        )
+        total_borrowings = sum(
+            getattr(b, "usd_value", 0.0) for b in snapshot.borrowings
         )
 
-        if not snapshot:
+        # Risk metrics
+        collateralization_ratio = (
+            total_collateral / total_borrowings if total_borrowings > 0 else 0.0
+        )
+        utilization_rate = (
+            total_borrowings / total_collateral if total_collateral > 0 else 0.0
+        )
+
+        # Concentration risk (simplified - could be enhanced)
+        concentration_risk = 0.0
+        if total_collateral > 0:
+            max_position = max(
+                (getattr(c, "usd_value", 0.0) for c in snapshot.collaterals),
+                default=0.0,
+            )
+            concentration_risk = max_position / total_collateral
+
+        return {
+            "collateralization_ratio": collateralization_ratio,
+            "utilization_rate": utilization_rate,
+            "concentration_risk": concentration_risk,
+        }
+
+    # ------------------------------------------------------------------
+    # Internal calculations
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _aggregate_apy(positions: Sequence[Dict[str, _Number]]) -> Optional[float]:
+        if not positions:
             return None
 
-        return self._convert_db_snapshot_to_schema(snapshot)
+        def _get(item, key, default=0.0):
+            return (
+                item.get(key, default)
+                if isinstance(item, dict)
+                else getattr(item, key, default)
+            )
 
-    def _get_snapshot_at_timestamp(
-        self, user_address: str, timestamp: datetime
-    ) -> Optional[DefiPortfolioSnapshot]:
-        """Get portfolio snapshot closest to the given timestamp."""
-        target_timestamp = int(timestamp.timestamp())
-
-        snapshot = (
-            self.db.query(PortfolioSnapshot)
-            .filter(PortfolioSnapshot.user_address == user_address)
-            .filter(PortfolioSnapshot.timestamp <= target_timestamp)
-            .order_by(PortfolioSnapshot.timestamp.desc())
-            .first()
-        )
-
-        if not snapshot:
+        total = sum(_get(p, "usd_value", 0.0) for p in positions)
+        if total == 0:
             return None
-
-        return self._convert_db_snapshot_to_schema(snapshot)
-
-    def _get_historical_snapshots(
-        self, user_address: str, interval: str, limit: int, offset: int
-    ) -> List[PortfolioSnapshot]:
-        """Get historical snapshots with pagination."""
-        query = (
-            self.db.query(PortfolioSnapshot)
-            .filter(PortfolioSnapshot.user_address == user_address)
-            .order_by(PortfolioSnapshot.timestamp.desc())
-            .offset(offset)
-            .limit(limit)
+        weighted = sum(
+            _get(p, "apy", 0.0) * _get(p, "usd_value", 0.0) for p in positions
         )
+        return round(weighted / total, 4)
 
-        return query.all()
+    @staticmethod
+    def _total_return(
+        start: DefiPortfolioSnapshot, end: DefiPortfolioSnapshot
+    ) -> float:
+        start_val = start.total_collateral_usd - start.total_borrowings_usd
+        end_val = end.total_collateral_usd - end.total_borrowings_usd
+        return (end_val - start_val) / start_val if start_val > 0 else 0.0
 
-    def _convert_db_snapshot_to_schema(
-        self, db_snapshot: PortfolioSnapshot
-    ) -> DefiPortfolioSnapshot:
-        """Convert database snapshot to schema object."""
-        return DefiPortfolioSnapshot(
-            user_address=db_snapshot.user_address,
-            timestamp=db_snapshot.timestamp,
-            total_collateral=db_snapshot.total_collateral,
-            total_borrowings=db_snapshot.total_borrowings,
-            total_collateral_usd=db_snapshot.total_collateral_usd,
-            total_borrowings_usd=db_snapshot.total_borrowings_usd,
-            aggregate_health_score=db_snapshot.aggregate_health_score,
-            aggregate_apy=db_snapshot.aggregate_apy,
-            collaterals=db_snapshot.collaterals,
-            borrowings=db_snapshot.borrowings,
-            staked_positions=db_snapshot.staked_positions,
-            health_scores=db_snapshot.health_scores,
-            protocol_breakdown=db_snapshot.protocol_breakdown,
-        )
+    def _max_drawdown(self, user: str, start: datetime, end: datetime) -> float:
+        vals: List[float] = []
+        cur = start
+        while cur <= end:
+            snap = self._get_snapshot_at_timestamp(user, cur)
+            if snap is not None:
+                vals.append(snap.total_collateral_usd - snap.total_borrowings_usd)
+            cur += timedelta(days=1)
+        if not vals:
+            return 0.0
+        peak = vals[0]
+        max_dd = 0.0
+        for v in vals:
+            if v > peak:
+                peak = v
+            if peak:
+                max_dd = max(max_dd, (peak - v) / peak)
+        return max_dd
 
-    def _calculate_aggregate_health_score(
-        self, health_scores: List[Dict]
+    @staticmethod
+    def _calculate_aggregate_apy(
+        positions: Sequence[Dict[str, _Number]]
     ) -> Optional[float]:
-        """Calculate weighted average health score."""
-        if not health_scores:
-            return None
+        return PortfolioCalculationService._aggregate_apy(positions)
 
-        total_weight = 0
-        weighted_sum = 0
-
-        for health_score in health_scores:
-            # Use protocol's total value as weight
-            weight = health_score.get("total_value", 1.0)
-            score = health_score.get("score", 0.0)
-
-            weighted_sum += score * weight
-            total_weight += weight
-
-        return weighted_sum / total_weight if total_weight > 0 else None
-
-    def _calculate_aggregate_apy(self, staked_positions: List[Dict]) -> Optional[float]:
-        """Calculate weighted average APY."""
-        if not staked_positions:
-            return None
-
-        total_value = 0
-        weighted_sum = 0
-
-        for position in staked_positions:
-            value = position.get("usd_value", 0.0)
-            apy = position.get("apy", 0.0)
-
-            weighted_sum += apy * value
-            total_value += value
-
-        if total_value == 0:
-            return None
-
-        return round(weighted_sum / total_value, 3)
-
-    def _create_protocol_breakdown(
-        self,
-        collaterals: List[Dict],
-        borrowings: List[Dict],
-        staked_positions: List[Dict],
-        health_scores: List[Dict],
-    ) -> Dict[str, ProtocolBreakdown]:
-        """Create protocol breakdown from snapshot data lists (as dicts)."""
-        breakdown: Dict[str, Dict] = {}
-
-        # Group by protocol for collaterals
-        for collateral in collaterals:
-            protocol = collateral.get("protocol", "OTHER")
-            if protocol not in breakdown:
-                breakdown[protocol] = {
-                    "protocol": protocol,
-                    "total_collateral": 0.0,
-                    "total_borrowings": 0.0,
-                    "aggregate_health_score": None,
-                    "aggregate_apy": None,
-                    "collaterals": [],
-                    "borrowings": [],
-                    "staked_positions": [],
-                    "health_scores": [],
-                }
-
-            breakdown[protocol]["total_collateral"] += collateral.get("amount", 0.0)
-            breakdown[protocol]["collaterals"].append(collateral)
-
-        # Add borrowings
-        for borrowing in borrowings:
-            protocol = borrowing.get("protocol", "OTHER")
-            if protocol not in breakdown:
-                breakdown[protocol] = {
-                    "protocol": protocol,
-                    "total_collateral": 0.0,
-                    "total_borrowings": 0.0,
-                    "aggregate_health_score": None,
-                    "aggregate_apy": None,
-                    "collaterals": [],
-                    "borrowings": [],
-                    "staked_positions": [],
-                    "health_scores": [],
-                }
-
-            breakdown[protocol]["total_borrowings"] += borrowing.get("amount", 0.0)
-            breakdown[protocol]["borrowings"].append(borrowing)
-
-        # Add staked positions
-        for position in staked_positions:
-            protocol = position.get("protocol", "OTHER")
-            if protocol not in breakdown:
-                breakdown[protocol] = {
-                    "protocol": protocol,
-                    "total_collateral": 0.0,
-                    "total_borrowings": 0.0,
-                    "aggregate_health_score": None,
-                    "aggregate_apy": None,
-                    "collaterals": [],
-                    "borrowings": [],
-                    "staked_positions": [],
-                    "health_scores": [],
-                }
-
-            breakdown[protocol]["staked_positions"].append(position)
-
-        # Add health scores
-        for health_score in health_scores:
-            protocol = health_score.get("protocol", "OTHER")
-            if protocol not in breakdown:
-                breakdown[protocol] = {
-                    "protocol": protocol,
-                    "total_collateral": 0.0,
-                    "total_borrowings": 0.0,
-                    "aggregate_health_score": None,
-                    "aggregate_apy": None,
-                    "collaterals": [],
-                    "borrowings": [],
-                    "staked_positions": [],
-                    "health_scores": [],
-                }
-
-            breakdown[protocol]["health_scores"].append(health_score)
-
-        # Calculate protocol-specific metrics
-        for protocol_data in breakdown.values():
-            protocol_data[
-                "aggregate_health_score"
-            ] = self._calculate_aggregate_health_score(protocol_data["health_scores"])
-            protocol_data["aggregate_apy"] = self._calculate_aggregate_apy(
-                protocol_data["staked_positions"]
-            )
-
-        return breakdown
-
+    @staticmethod
     def _calculate_total_return(
-        self, start_snapshot: DefiPortfolioSnapshot, end_snapshot: DefiPortfolioSnapshot
+        start: DefiPortfolioSnapshot, end: DefiPortfolioSnapshot
     ) -> float:
-        """Calculate total return between two snapshots."""
-        start_value = (
-            start_snapshot.total_collateral_usd - start_snapshot.total_borrowings_usd
-        )
-        end_value = (
-            end_snapshot.total_collateral_usd - end_snapshot.total_borrowings_usd
-        )
+        return PortfolioCalculationService._total_return(start, end)
 
-        if start_value <= 0:
-            return 0.0
-
-        return (end_value - start_value) / start_value
-
-    def _calculate_volatility(
-        self, user_address: str, start_date: datetime, end_date: datetime
-    ) -> float:
-        """Calculate portfolio volatility."""
-        # Get daily returns for the period
-        daily_returns = []
-        current_date = start_date
-
-        while current_date <= end_date:
-            snapshot = self._get_snapshot_at_timestamp(user_address, current_date)
-            if snapshot:
-                daily_returns.append(
-                    snapshot.total_collateral_usd - snapshot.total_borrowings_usd
-                )
-            current_date += timedelta(days=1)
-
-        if len(daily_returns) < 2:
-            return 0.0
-
-        # Calculate standard deviation of returns
-        mean_return = sum(daily_returns) / len(daily_returns)
-        variance = sum((r - mean_return) ** 2 for r in daily_returns) / (
-            len(daily_returns) - 1
-        )
-
-        return variance**0.5
-
-    def _calculate_sharpe_ratio(self, total_return: float, volatility: float) -> float:
-        """Calculate Sharpe ratio (assuming risk-free rate of 0)."""
-        if volatility == 0:
-            return 0.0
-
-        return total_return / volatility
-
-    def _calculate_max_drawdown(
-        self, user_address: str, start_date: datetime, end_date: datetime
-    ) -> float:
-        """Calculate maximum drawdown."""
-        # Get daily portfolio values
-        daily_values = []
-        current_date = start_date
-
-        while current_date <= end_date:
-            snapshot = self._get_snapshot_at_timestamp(user_address, current_date)
-            if snapshot:
-                daily_values.append(
-                    snapshot.total_collateral_usd - snapshot.total_borrowings_usd
-                )
-            current_date += timedelta(days=1)
-
-        if not daily_values:
-            return 0.0
-
-        # Calculate maximum drawdown
-        peak = daily_values[0]
-        max_drawdown = 0.0
-
-        for value in daily_values:
-            if value > peak:
-                peak = value
-            drawdown = (peak - value) / peak if peak > 0 else 0.0
-            max_drawdown = max(max_drawdown, drawdown)
-
-        return max_drawdown
-
-    def _calculate_diversification_score(self, metrics: PortfolioMetrics) -> float:
-        """Calculate portfolio diversification score (0-1)."""
-        if not metrics.collaterals:
-            return 0.0
-
-        # Ensure we work with dictionaries
-        collaterals = [self._to_dict(c) for c in metrics.collaterals]
-
-        # Calculate Herfindahl-Hirschman Index
-        total_value = sum(c.get("usd_value", 0.0) for c in collaterals)
-        if total_value == 0:
-            return 0.0
-
-        hhi = sum((c.get("usd_value", 0.0) / total_value) ** 2 for c in collaterals)
-
-        # Convert to diversification score (1 - normalized HHI)
-        return 1 - (hhi - 1 / len(collaterals)) / (1 - 1 / len(collaterals))
-
-    def _calculate_concentration_risk(self, metrics: PortfolioMetrics) -> float:
-        """Calculate concentration risk (0-1)."""
-        if not metrics.collaterals:
-            return 0.0
-
-        collaterals = [self._to_dict(c) for c in metrics.collaterals]
-
-        # Calculate the percentage of portfolio in the largest position
-        total_value = sum(c.get("usd_value", 0.0) for c in collaterals)
-        if total_value == 0:
-            return 0.0
-
-        max_position = max(c.get("usd_value", 0.0) for c in collaterals)
-        return max_position / total_value
-
-    def _create_empty_metrics(self, user_address: str) -> PortfolioMetrics:
-        """Create empty portfolio metrics."""
+    # ------------------------------------------------------------------
+    # Empty placeholders
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _empty_metrics(user: str) -> PortfolioMetrics:
         return PortfolioMetrics(
-            user_address=user_address,
+            user_address=user,
             total_collateral=0.0,
             total_borrowings=0.0,
             total_collateral_usd=0.0,
@@ -582,39 +250,13 @@ class PortfolioCalculationService:
             timestamp=datetime.utcnow(),
         )
 
-    def _create_empty_performance_metrics(self) -> Dict[str, float]:
-        """Create empty performance metrics."""
+    @staticmethod
+    def _empty_performance() -> Dict[str, float]:
         return {
             "total_return": 0.0,
-            "volatility": 0.0,
-            "sharpe_ratio": 0.0,
             "max_drawdown": 0.0,
-            "period_days": 0,
         }
 
-    def _create_empty_risk_metrics(self) -> Dict[str, float]:
-        """Create empty risk metrics."""
-        return {
-            "collateralization_ratio": 0.0,
-            "utilization_rate": 0.0,
-            "diversification_score": 0.0,
-            "concentration_risk": 0.0,
-            "aggregate_health_score": 0.0,
-        }
-
-    # ---------------------------------------------------------------------
-    # Helper utilities
-    # ---------------------------------------------------------------------
-
-    @staticmethod
-    def _to_dict(item):
-        """Convert a Pydantic model or dataclass to a plain dict if needed."""
-        if isinstance(item, dict):
-            return item
-        # Pydantic models have .model_dump in v2, .dict in v1 – try both
-        if hasattr(item, "dict"):
-            return item.dict()
-        if hasattr(item, "model_dump"):
-            return item.model_dump()
-        # Fallback – try vars()
-        return vars(item)
+    async def _get_latest_snapshot(self, user_address: str):
+        """Get the latest portfolio snapshot for a user."""
+        return await self.snapshot_repo.get_latest_snapshot_by_address(user_address)

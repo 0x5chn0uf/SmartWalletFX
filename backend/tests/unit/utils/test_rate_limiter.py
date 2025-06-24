@@ -70,13 +70,23 @@ class TestRateLimiterIntegration:
     """Test rate limiter integration with auth endpoints."""
 
     @pytest.mark.anyio
-    async def test_auth_endpoint_rate_limiting(self, test_app, db_session):
+    async def test_auth_endpoint_rate_limiting(self, test_app, db_session, mocker):
         """Test that auth endpoints respect rate limiting."""
         from httpx import AsyncClient
 
         from app.core.config import settings
         from app.schemas.user import UserCreate
         from app.services.auth_service import AuthService
+        from app.utils.rate_limiter import InMemoryRateLimiter
+
+        # Patch the global limiter for this test only to ensure full isolation
+        mocker.patch(
+            "app.api.dependencies.login_rate_limiter",
+            new=InMemoryRateLimiter(
+                settings.AUTH_RATE_LIMIT_ATTEMPTS,
+                settings.AUTH_RATE_LIMIT_WINDOW_SECONDS,
+            ),
+        )
 
         # Create a test user
         service = AuthService(db_session)

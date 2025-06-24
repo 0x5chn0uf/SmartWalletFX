@@ -64,7 +64,7 @@ class DataAnalysisService:
             # Get portfolio metrics
             analysis[
                 "portfolio_metrics"
-            ] = self.portfolio_service.calculate_portfolio_metrics(user_address)
+            ] = await self.portfolio_service.calculate_portfolio_metrics(user_address)
 
             # Get real-time blockchain data
             if include_real_time:
@@ -79,9 +79,9 @@ class DataAnalysisService:
                 )
 
             # Get risk assessment
-            analysis["risk_assessment"] = self.portfolio_service.calculate_risk_metrics(
-                user_address
-            )
+            analysis[
+                "risk_assessment"
+            ] = await self.portfolio_service.calculate_risk_metrics(user_address)
 
             # Get performance metrics
             analysis[
@@ -154,32 +154,15 @@ class DataAnalysisService:
             insights = []
 
             # Get portfolio data
-            portfolio_metrics = self.portfolio_service.calculate_portfolio_metrics(
+            portfolio_metrics = (
+                await self.portfolio_service.calculate_portfolio_metrics(user_address)
+            )
+            risk_metrics = await self.portfolio_service.calculate_risk_metrics(
                 user_address
             )
-            risk_metrics = self.portfolio_service.calculate_risk_metrics(user_address)
             performance_metrics = self.portfolio_service.calculate_performance_metrics(
                 user_address
             )
-
-            # Analyze diversification
-            if risk_metrics["diversification_score"] < 0.5:
-                insights.append(
-                    {
-                        "type": "diversification",
-                        "severity": "medium",
-                        "title": "Low Portfolio Diversification",
-                        "description": (
-                            "Your portfolio is highly concentrated."
-                            + "Consider diversifying across more assets."
-                        ),
-                        "recommendation": (
-                            "Add more different types of tokens to"
-                            + "reduce concentration risk."
-                        ),
-                        "impact": "risk_reduction",
-                    }
-                )
 
             # Analyze health score
             if (
@@ -277,35 +260,29 @@ class DataAnalysisService:
         """
         try:
             # Get portfolio data
-            portfolio_metrics = self.portfolio_service.calculate_portfolio_metrics(
-                user_address
+            portfolio_metrics = (
+                await self.portfolio_service.calculate_portfolio_metrics(user_address)
             )
             performance_metrics = self.portfolio_service.calculate_performance_metrics(
                 user_address
             )
-            risk_metrics = self.portfolio_service.calculate_risk_metrics(user_address)
 
             # Calculate efficiency metrics
             sharpe_ratio = performance_metrics.get("sharpe_ratio", 0.0)
-            diversification_score = risk_metrics.get("diversification_score", 0.0)
             health_score = portfolio_metrics.aggregate_health_score or 0.0
 
             # Calculate overall efficiency score (0-100)
             efficiency_score = (
-                (sharpe_ratio * 0.4)
-                + (diversification_score * 0.3)  # 40% weight to risk-adjusted returns
-                + (  # 30% weight to diversification
-                    health_score * 0.3
-                )  # 30% weight to health score
+                (sharpe_ratio * 0.6)  # 60% weight to risk-adjusted returns
+                + (health_score * 0.4)  # 40% weight to health score
             ) * 100
 
             return {
                 "efficiency_score": max(0, min(100, efficiency_score)),
                 "sharpe_ratio": sharpe_ratio,
-                "diversification_score": diversification_score,
                 "health_score": health_score,
                 "risk_adjusted_return": sharpe_ratio,
-                "portfolio_quality": (diversification_score + health_score) / 2,
+                "portfolio_quality": health_score,
             }
 
         except Exception as e:
@@ -315,7 +292,6 @@ class DataAnalysisService:
             return {
                 "efficiency_score": 0.0,
                 "sharpe_ratio": 0.0,
-                "diversification_score": 0.0,
                 "health_score": 0.0,
                 "risk_adjusted_return": 0.0,
                 "portfolio_quality": 0.0,
@@ -352,7 +328,7 @@ class DataAnalysisService:
         """Get historical analysis data."""
         try:
             # Get portfolio timeline
-            timeline = self.portfolio_service.calculate_portfolio_timeline(
+            timeline = await self.portfolio_service.calculate_portfolio_timeline(
                 user_address, limit=90
             )
 
