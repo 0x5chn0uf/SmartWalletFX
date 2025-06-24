@@ -52,6 +52,55 @@ const handlers = [
       })
     );
   }),
+  http.get('/api/v1/wallets/:id', (req, res, ctx) => {
+    const { id } = req.params as { id: string };
+    const wallet = {
+      id,
+      name: id === '1' ? 'Main Wallet' : id === '2' ? 'Trading Wallet' : 'Savings Wallet',
+      address: id === '1' ? '0x1234...5678' : id === '2' ? '0x8765...4321' : '0xabcd...efgh',
+      balance: id === '1' ? 15000 : id === '2' ? 8500 : 22000,
+      currency: 'USD',
+      lastUpdated: new Date().toISOString(),
+      trend: [
+        { date: '2024-06-18', balance: 12000 },
+        { date: '2024-06-19', balance: 13000 },
+        { date: '2024-06-20', balance: 14000 },
+        { date: '2024-06-21', balance: 14500 },
+        { date: '2024-06-22', balance: id === '1' ? 15000 : id === '2' ? 8500 : 22000 },
+      ],
+    };
+    return res(ctx.status(200), ctx.json(wallet));
+  }),
+  http.get('/api/v1/wallets/:id/transactions', (req, res, ctx) => {
+    const { id } = req.params as { id: string };
+    const transactions = [
+      {
+        id: `${id}-t1`,
+        date: '2024-06-21T10:00:00Z',
+        type: 'deposit',
+        amount: 500,
+        currency: 'USD',
+        balanceAfter: 15000,
+      },
+      {
+        id: `${id}-t2`,
+        date: '2024-06-20T14:30:00Z',
+        type: 'trade',
+        amount: -200,
+        currency: 'USD',
+        balanceAfter: 14500,
+      },
+      {
+        id: `${id}-t3`,
+        date: '2024-06-19T09:45:00Z',
+        type: 'withdraw',
+        amount: -300,
+        currency: 'USD',
+        balanceAfter: 14700,
+      },
+    ];
+    return res(ctx.status(200), ctx.json(transactions));
+  }),
 ];
 
 export default handlers;
