@@ -1,4 +1,4 @@
-"""Comprehensive tests for JWT key-rotation (Subtask 4.13).
+"""Comprehensive tests for JWT key-rotation.
 
 This single module consolidates:
 • **Unit tests** – verify helper behaviour (`rotate_signing_key`, grace-period).

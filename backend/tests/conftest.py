@@ -53,10 +53,7 @@ def _make_test_db(tmp_path_factory: pytest.TempPathFactory) -> tuple[str, str]:
     env = os.environ.copy()
     env["TEST_DB_URL"] = sync_url
     subprocess.run(
-        ["alembic", "-c", ALEMBIC_CONFIG_PATH, "upgrade", "head"],
-        check=True,
-        env=env,
-        stdout=subprocess.DEVNULL,
+        ["alembic", "-c", ALEMBIC_CONFIG_PATH, "upgrade", "head"], check=True, env=env
     )
 
     return async_url, sync_url
@@ -362,7 +359,13 @@ async def _clean_database(async_engine):
         await conn.execute(text("PRAGMA foreign_keys = OFF"))
 
         for tbl in Base.metadata.sorted_tables:
-            await conn.execute(text(f'DELETE FROM "{tbl.name}"'))
+            try:
+                await conn.execute(text(f'DELETE FROM "{tbl.name}"'))
+            except (
+                Exception
+            ):  # noqa: BLE001 – ignore tables not present in SQLite test DB
+                # Table may not exist if corresponding migration hasn't run yet.
+                continue
 
         await conn.execute(text("PRAGMA foreign_keys = ON"))
 
