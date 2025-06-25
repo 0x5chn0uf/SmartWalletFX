@@ -1,2 +1,0 @@
-pytest-benchmark==4.0.0
-locust==2.27.0 
