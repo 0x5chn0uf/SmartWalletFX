@@ -75,5 +75,4 @@ cd frontend && npx cypress open
 Badges are auto-updated by CI in README using `codecov` uploads.
 
 ## 9. Performance & Load Testing (Future)
-- Use `locust` for backend load profiles.
 - Lighthouse-CI for frontend performance budgets. 

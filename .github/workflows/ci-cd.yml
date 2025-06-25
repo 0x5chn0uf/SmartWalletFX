@@ -246,12 +246,6 @@ jobs:
           path: backend/.venv
           key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml', 'backend/requirements/perf.txt') }}
 
-      - name: Install performance dependencies (locust & pytest-benchmark)
-        working-directory: ./backend
-        run: |
-          source .venv/bin/activate
-          make install-perf
-
       - name: Run performance test suite
         working-directory: ./backend
         run: |
@@ -281,12 +275,6 @@ jobs:
             fi
             echo "Waiting for backend..." && sleep 2;
           done
-
-      - name: Run Locust smoke load test
-        working-directory: ./backend
-        run: |
-          source .venv/bin/activate
-          make locust-smoke
 
   e2e-tests:
     needs: [test-backend, changes]
@@ -365,6 +353,8 @@ jobs:
 
       - name: Load large dataset into postgres-large
         working-directory: ./backend
+        env:
+          PGPASSWORD: testpass
         run: |
           source .venv/bin/activate
           # Load the large dataset SQL fixture

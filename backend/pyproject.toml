@@ -66,7 +66,6 @@ dev = [
     "respx==0.22.0",
     "hypothesis==6.135.10",
     "pytest-benchmark==4.0.0",
-    "locust==2.27.0",
     "freezegun==1.4.0",
     "structlog==24.2.0",
     "coveralls==3.3.1"
