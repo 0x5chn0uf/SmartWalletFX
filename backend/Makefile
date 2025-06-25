@@ -142,5 +142,5 @@ clean: ## Remove caches & artefacts
 
 .PHONY: help install install-dev install-s3 install-perf lint format bandit safety \
 	test test-perf coverage run serve serve-stop celery-worker celery-beat \
-	db-start db-test db-down alembic-upgrade db-migrate locust-smoke clean \
+	db-start db-test db-down alembic-upgrade db-migrate clean \
 	db-backup db-restore
