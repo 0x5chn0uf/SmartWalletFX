@@ -1,5 +1,3 @@
-import pytest
-
 from app.celery_app import celery
 
 

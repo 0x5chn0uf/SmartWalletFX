@@ -1,8 +1,7 @@
 import re
-from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, Column, DateTime, Integer, Numeric, String
+from sqlalchemy import Column, Integer, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -22,17 +21,10 @@ class Token(Base):
     symbol = Column(String, index=True, nullable=False)
     name = Column(String, nullable=False)
     decimals = Column(Integer, default=18)
-    chain = Column(String, nullable=True)  # ETH, POLYGON, etc.
-    extra_metadata = Column(JSON, nullable=True)
     current_price_usd = Column(Numeric(precision=18, scale=8), nullable=True)
-    last_price_update = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     balances = relationship("TokenBalance", back_populates="token")
-    historical_prices = relationship("TokenPrice", back_populates="token")
-    historical_balances = relationship("HistoricalBalance", back_populates="token")
     # transactions = relationship("Transaction", back_populates="token")
 
     def __repr__(self):

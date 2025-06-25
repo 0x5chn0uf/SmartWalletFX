@@ -5,10 +5,8 @@ Unit tests for BlockchainService.
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, Mock, patch
 
-import aiohttp
 import pytest
 
-from app.schemas.defi import ProtocolName
 from app.services.blockchain_service import BlockchainService
 
 

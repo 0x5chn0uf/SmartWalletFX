@@ -1,4 +1,3 @@
-import hashlib
 from typing import Literal
 
 import psycopg2

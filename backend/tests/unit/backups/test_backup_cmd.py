@@ -1,12 +1,10 @@
 import hashlib
-import os
 from pathlib import Path
 
 import pytest
 
 from app.utils.db_backup import (
     _compress_and_hash,
-    _hash_file,
     build_pg_dump_cmd,
     build_pg_restore_cmd,
     create_dump,

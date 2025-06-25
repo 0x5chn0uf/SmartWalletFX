@@ -20,18 +20,6 @@ class PositionSchema(BaseModel):
     usd_value: float = Field(..., ge=0)
     apy: Optional[float] = Field(None, ge=0)
 
-    class Config:
-        orm_mode = True
-        schema_extra = {
-            "example": {
-                "protocol": "aave",
-                "asset": "DAI",
-                "amount": 1234.56,
-                "usd_value": 1234.56,
-                "apy": 0.045,
-            }
-        }
-
 
 class AggregateMetricsSchema(BaseModel):
     id: UUID
@@ -41,9 +29,6 @@ class AggregateMetricsSchema(BaseModel):
     aggregate_apy: Optional[float] = Field(None, ge=0)
     as_of: datetime
     positions: List[PositionSchema]
-
-    class Config:
-        orm_mode = True
 
     @field_validator("wallet_id")
     def lowercase_address(cls, v: str) -> str:  # noqa: N805 – pydantic convention

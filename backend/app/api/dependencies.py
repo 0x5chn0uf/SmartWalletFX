@@ -199,10 +199,6 @@ __all__ = [
 async def get_redis() -> AsyncGenerator["Redis", None]:  # type: ignore[name-defined]
     """Provide a managed Redis client for request scope."""
 
-    from redis.asyncio import (
-        Redis,  # local import to avoid optional dep in cold paths
-    )
-
     client: Redis = _build_redis_client()
     try:
         yield client

@@ -1,4 +1,3 @@
-import pytest
 from celery.schedules import crontab
 
 from app.celery_app import celery

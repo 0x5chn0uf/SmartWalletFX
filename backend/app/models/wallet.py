@@ -4,12 +4,10 @@ import uuid
 from sqlalchemy import (
     Boolean,
     Column,
-    DateTime,
     Float,
     ForeignKey,
     String,
     UniqueConstraint,
-    func,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -23,8 +21,6 @@ class Wallet(Base):
     - `id`: Primary key.
     - `address`: EVM wallet address.
     - `name`: User-defined wallet name.
-    - `created_at`: Timestamp of creation.
-    - `updated_at`: Timestamp of last update.
     - `is_active`: Flag for active status.
     - `balance_usd`: Cached balance in USD.
     """
@@ -51,19 +47,6 @@ class Wallet(Base):
         doc="Foreign key to the users table.",
     )
 
-    created_at = Column(
-        DateTime,
-        default=func.now(),
-        nullable=False,
-        doc="Timestamp of wallet creation.",
-    )
-    updated_at = Column(
-        DateTime,
-        default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-        doc="Timestamp of last wallet update.",
-    )
     is_active = Column(
         Boolean, default=True, nullable=False, doc="Flag for active status."
     )

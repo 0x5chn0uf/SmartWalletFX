@@ -1,4 +1,3 @@
-from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import Column, DateTime, ForeignKey, Numeric
@@ -19,14 +18,10 @@ class HistoricalBalance(Base):
     balance = Column(Numeric(precision=36, scale=18))
     balance_usd = Column(Numeric(precision=18, scale=2))
     timestamp = Column(DateTime, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
     wallet = relationship("Wallet", back_populates="historical_balances")
-    token = relationship("Token", back_populates="historical_balances")
-
-    class Config:
-        orm_mode = True
+    token = relationship("Token")
 
     def __repr__(self):
         return f"""

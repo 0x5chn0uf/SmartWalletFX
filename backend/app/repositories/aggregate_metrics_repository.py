@@ -82,16 +82,3 @@ class AggregateMetricsRepository:
         else:
             # Create new record
             return await self.save(metrics)
-
-    async def delete_by_wallet_id(self, wallet_id: str) -> None:
-        """Delete all aggregate metrics for a wallet."""
-        stmt = select(AggregateMetricsModel).filter(
-            AggregateMetricsModel.wallet_id == wallet_id.lower()
-        )
-        result = await self._session.execute(stmt)
-        metrics_list = result.scalars().all()
-
-        for metrics in metrics_list:
-            await self._session.delete(metrics)
-
-        await self._session.commit()

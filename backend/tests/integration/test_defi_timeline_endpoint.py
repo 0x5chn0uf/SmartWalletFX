@@ -6,7 +6,7 @@ import sqlalchemy
 from fastapi import status
 from httpx import AsyncClient
 
-from app.core.database import engine, get_db
+from app.core.database import engine
 from app.main import app
 from app.models.portfolio_snapshot import PortfolioSnapshot
 

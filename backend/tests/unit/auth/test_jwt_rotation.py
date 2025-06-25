@@ -19,8 +19,7 @@ from app.core.config import settings
 # Integration test dependencies
 from app.schemas.user import UserCreate
 from app.services.auth_service import AuthService
-from app.utils import jwt as jwt_utils
-from app.utils.jwt import _RETIRED_KEYS, JWTUtils, _now_utc, rotate_signing_key
+from app.utils.jwt import _RETIRED_KEYS, JWTUtils, rotate_signing_key
 
 pytestmark = pytest.mark.nightly
 
