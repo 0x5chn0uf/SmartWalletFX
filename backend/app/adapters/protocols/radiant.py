@@ -44,7 +44,6 @@ class RadiantContractAdapter(ProtocolAdapter):
     """Adapter that talks to Radiant Capital contracts on Arbitrum."""
 
     name = "radiant"
-    display_name = "Radiant"
 
     # ------------------------------------------------------------------
     # Initialisation helpers
@@ -163,6 +162,50 @@ class RadiantContractAdapter(ProtocolAdapter):
         except Exception as exc:  # pragma: no cover – runtime error
             raise RadiantAdapterError(f"RadiantContractAdapter error: {exc}")
 
+    def get_reserves_data(self) -> List[Dict[str, Any]]:
+        """Get all reserves data from the contract."""
+        try:
+            result = self.contract.functions.getReservesData(self.provider).call()
+            reserves: List[Dict[str, Any]] = []
+            for r in result:
+                token_address = r[0]
+                symbol, decimals = self.get_token_metadata(token_address)
+                reserves.append(
+                    {
+                        "token_address": token_address,
+                        "symbol": symbol,
+                        "decimals": decimals,
+                    }
+                )
+            return reserves
+        except Exception as exc:
+            raise RadiantAdapterError(f"get_reserves_data error: {exc}")
+
+    def get_health_factor(self, user_address: str) -> float:
+        """Get health factor for a specific user."""
+        try:
+            user_data = self.get_user_data(user_address)
+            if user_data and "health_factor" in user_data:
+                # Convert from wei (18 decimal places) to human-readable format
+                health_factor_wei = user_data["health_factor"]
+                return float(health_factor_wei) / (10**18)
+            return 0.0
+        except Exception as exc:
+            raise RadiantAdapterError(f"get_health_factor error: {exc}")
+
+    def get_user_summary(self, user_address: str) -> Dict[str, Any]:
+        """Get a summary of user data including health factor."""
+        try:
+            user_data = self.get_user_data(user_address)
+            if user_data:
+                return {
+                    "health_factor": user_data.get("health_factor", 0),
+                    "reserves": user_data.get("reserves", []),
+                }
+            return {"health_factor": 0, "reserves": []}
+        except Exception as exc:
+            raise RadiantAdapterError(f"get_user_summary error: {exc}")
+
     async def async_get_user_data(
         self, user_address: str
     ) -> Optional[Dict[str, Any]]:  # noqa: D401
@@ -243,53 +286,3 @@ class RadiantContractAdapter(ProtocolAdapter):
             price = self.get_token_price(token_address)
             return float(amount) * price
         return float(amount)
-
-    # ---------------- protocol-wide helper calls ----------------------
-
-    def get_reserves_data(self) -> Optional[List[Dict[str, Any]]]:
-        try:
-            reserves_data = self.contract.functions.getReservesData(
-                self.provider
-            ).call()
-            reserves_list = (
-                reserves_data[0]
-                if isinstance(reserves_data, (list, tuple))
-                else reserves_data
-            )
-            reserves: list[dict[str, Any]] = []
-            for r in reserves_list:
-                token_address = r[0]
-                symbol, decimals = self.get_token_metadata(token_address)
-                reserves.append(
-                    {
-                        "token_address": token_address,
-                        "symbol": symbol,
-                        "decimals": decimals,
-                    }
-                )
-            return reserves
-        except Exception as exc:  # pragma: no cover
-            raise RadiantAdapterError(f"get_reserves_data error: {exc}")
-
-    def get_health_factor(self, user_address: str) -> Optional[float]:
-        try:
-            user = self.w3.to_checksum_address(user_address)
-            result = self.contract.functions.getUserReservesData(
-                self.provider, user
-            ).call()
-            return float(result[1]) / 1e18 if result else None
-        except Exception as exc:  # pragma: no cover
-            raise RadiantAdapterError(f"get_health_factor error: {exc}")
-
-    def get_user_summary(self, user_address: str) -> Optional[Dict[str, Any]]:
-        try:
-            user = self.w3.to_checksum_address(user_address)
-            user_data = self.get_user_data(user)
-            if not user_data:
-                return None
-            return {
-                "health_factor": user_data["health_factor"],
-                "reserves": user_data["reserves"],
-            }
-        except Exception as exc:  # pragma: no cover
-            raise RadiantAdapterError(f"get_user_summary error: {exc}")

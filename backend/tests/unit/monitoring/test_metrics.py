@@ -1,6 +1,6 @@
 """Unit tests for Prometheus metrics functionality."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 

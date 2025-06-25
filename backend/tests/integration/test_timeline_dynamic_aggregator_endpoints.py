@@ -1,5 +1,4 @@
 import pytest
-from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.adapters.protocols.base import ProtocolAdapter
@@ -8,7 +7,6 @@ from app.aggregators.protocol_aggregator import (
 )
 from app.main import app
 from app.schemas.defi import (
-    Borrowing,
     Collateral,
     DeFiAccountSnapshot,
     HealthScore,

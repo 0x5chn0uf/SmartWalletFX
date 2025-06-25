@@ -12,17 +12,11 @@ schema defined in :pymod:`app.schemas.defi`.
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, Protocol, runtime_checkable
+from typing import Optional
 
 from app.schemas.defi import DeFiAccountSnapshot
 
 __all__ = ["ProtocolAdapter"]
-
-
-@runtime_checkable
-class _AsyncCallable(Protocol):
-    async def __call__(self, address: str) -> Optional[DeFiAccountSnapshot]:
-        ...
 
 
 class ProtocolAdapter(ABC):
@@ -30,9 +24,6 @@ class ProtocolAdapter(ABC):
 
     #: Unique protocol name identifier (e.g. "aave", "compound").
     name: str
-
-    #: Human-readable protocol display name (optional, defaults to ``name``).
-    display_name: str | None = None
 
     # ------------------------------------------------------------------
     # Primary API surface

@@ -1,4 +1,3 @@
-from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import Column, DateTime, ForeignKey, Numeric
@@ -20,13 +19,9 @@ class TokenPrice(Base):
     token_id = Column(UUID(as_uuid=True), ForeignKey("tokens.id"), index=True)
     price_usd = Column(Numeric(precision=18, scale=8))
     timestamp = Column(DateTime, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
     token = relationship("Token", back_populates="historical_prices")
-
-    class Config:
-        orm_mode = True
 
     def __repr__(self):
         """

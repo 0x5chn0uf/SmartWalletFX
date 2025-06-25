@@ -44,8 +44,6 @@ def test_create_dump_with_encryption_and_upload(
     # Patch factory to return dummy adapter
     monkeypatch.setitem(os.environ, "DUMMY", "1")  # ensure env exists
 
-    import importlib
-
     from app import storage as storage_pkg  # noqa: WPS433
 
     monkeypatch.setattr(

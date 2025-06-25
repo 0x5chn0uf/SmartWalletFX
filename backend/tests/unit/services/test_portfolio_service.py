@@ -3,15 +3,11 @@ Unit tests for PortfolioCalculationService.
 """
 
 from datetime import datetime, timedelta
-from decimal import Decimal
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from app.models.portfolio_snapshot import PortfolioSnapshot
 from app.schemas.defi import PortfolioSnapshot as DefiPortfolioSnapshot
-from app.schemas.portfolio_metrics import PortfolioMetrics
-from app.schemas.portfolio_timeline import PortfolioTimeline
 from app.services.portfolio_service import PortfolioCalculationService
 
 

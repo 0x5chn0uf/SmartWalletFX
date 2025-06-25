@@ -25,14 +25,3 @@ def test_get_storage_adapter_unknown():
     """Unknown adapter id raises ValueError."""
     with pytest.raises(ValueError):
         get_storage_adapter("unknown")
-
-
-# Mark legacy tests as xfail until removed
-@pytest.mark.xfail(reason="Legacy placeholder removed", strict=False)
-def test_local_storage_adapter_save_not_implemented():
-    pass
-
-
-@pytest.mark.xfail(reason="Legacy placeholder removed", strict=False)
-def test_local_storage_adapter_list_not_implemented():
-    pass

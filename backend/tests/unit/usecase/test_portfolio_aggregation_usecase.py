@@ -12,7 +12,6 @@ from app.schemas.defi import (
 )
 from app.usecase.portfolio_aggregation_usecase import (
     PortfolioAggregationUsecase,
-    PortfolioMetrics,
 )
 
 

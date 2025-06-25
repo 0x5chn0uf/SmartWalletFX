@@ -10,7 +10,6 @@ Stub implementation currently raises NotImplementedError, so both tests expect f
 
 from __future__ import annotations
 
-import math
 import time
 
 import pytest

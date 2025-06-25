@@ -8,7 +8,6 @@ of credential correctness.
 """
 
 import pytest
-from hypothesis import given
 
 try:
     from tests.utils import security_testing as st

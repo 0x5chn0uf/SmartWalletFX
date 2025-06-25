@@ -1,12 +1,11 @@
 """Comprehensive unit tests for JWT utilities."""
 
 from datetime import datetime, timedelta, timezone
-from unittest.mock import ANY, MagicMock, Mock, mock_open, patch
+from unittest.mock import ANY, mock_open, patch
 
 import pytest
-from jose import ExpiredSignatureError, JWTError, jwt
+from jose import ExpiredSignatureError, JWTError
 
-from app.core.config import settings
 from app.utils.jwt import (
     _RETIRED_KEYS,
     JWTUtils,

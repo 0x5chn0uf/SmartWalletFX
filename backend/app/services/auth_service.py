@@ -100,10 +100,10 @@ class AuthService:
         avoid user enumeration.
         """
 
-        from app.domain.errors import (  # local import to avoid circular deps
-            InactiveUserError,
-            InvalidCredentialsError,
+        from app.domain.errors import (
+            InactiveUserError,  # local import to avoid circular deps
         )
+        from app.domain.errors import InvalidCredentialsError
 
         identity_lc = identity.lower().strip()
 

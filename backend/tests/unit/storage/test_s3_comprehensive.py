@@ -1,7 +1,7 @@
 """Comprehensive unit tests for S3 storage adapter."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -15,7 +15,6 @@ except ImportError:
     BotoCoreError = Exception
     ClientError = Exception
 
-from app.core.config import settings
 from app.storage.s3 import S3StorageAdapter
 
 
@@ -387,4 +386,4 @@ class TestS3StorageAdapterWithoutBotocore:
     def test_import_error_when_botocore_not_available(self):
         """Test that S3StorageAdapter raises ImportError when botocore is not available."""
         with pytest.raises(ImportError):
-            from app.storage.s3 import S3StorageAdapter
+            pass

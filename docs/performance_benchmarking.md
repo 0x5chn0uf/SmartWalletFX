@@ -21,7 +21,6 @@ High-cost cryptographic primitives (bcrypt) and security middleware (JWT validat
 |------|---------|----------|
 | **pytest-benchmark** | Micro-benchmarks for Python call-sites (bcrypt hash/verify, JWT encode/decode). Autosaves JSON + histogram. | `backend/tests/performance/*`
 | **Security Test Framework (STF)** | Statistical helpers for constant-time assertions (<https://link/to/doc>) | `backend/tests/utils/security_testing.py`
-| **Locust** | Macro load testing (HTTP).  Smoke profile in CI; full profile for nightly pipeline. | `backend/locustfile.py`
 
 All dependencies are pinned in `backend/requirements/perf.txt` and installed via `make install-perf` locally or automatically in CI.
 
@@ -108,7 +107,6 @@ The current CI smoke test validates basic scalability.  A **full-scale** Locust 
 |---------|----------------|------------|
 | CI job fails with `BenchmarkMedianRegressed` | Code path added extra DB query or lowered bcrypt rounds in prod vs test | Inspect flamegraph, profile `bcrypt.raise_invalid_rounds`, adjust code, or raise threshold if expected. |
 | STF constant-time test flaky on PRs | GitHub runner jitter | Increase `STF_VARIANCE_THRESHOLD` to `0.40` for that run, retry, then investigate root cause. |
-| Locust smoke cannot authenticate (`401`) | Test user missing or password mismatch | Ensure `on_start` hook in `locustfile.py` successfully registers the user; check backend logs. |
 
 ---
 

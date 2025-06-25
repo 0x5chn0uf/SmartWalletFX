@@ -42,9 +42,7 @@ class RefreshToken(Base):
     user = relationship("app.models.user.User", backref="refresh_tokens")
 
     expires_at = Column(DateTime, nullable=False, index=True)
-    revoked = Column(Boolean, default=False, nullable=False, index=True)
-
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    revoked = Column(Boolean, nullable=False, default=False, server_default="false")
 
     __table_args__ = (
         UniqueConstraint("jti_hash", name="uq_refresh_tokens_jti_hash"),
@@ -67,13 +65,3 @@ class RefreshToken(Base):
         expires = now + ttl
         jti_hash = hashlib.sha256(jti.encode()).hexdigest()
         return cls(jti_hash=jti_hash, user_id=user_id, expires_at=expires)
-
-    # ---------------------------------------------------------------------
-    # Utilities
-    # ---------------------------------------------------------------------
-
-    def is_expired(self, *, at: datetime | None = None) -> bool:
-        """Return *True* if the token is expired at *at* (default: now)."""
-
-        current = at or datetime.now(timezone.utc)
-        return current >= self.expires_at
