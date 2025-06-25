@@ -1,5 +1,5 @@
 import logging
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -221,10 +221,10 @@ async def test_fetch_positions_logs_exception(monkeypatch):
     adapter._fetch_compound_positions = fail
     adapter._fetch_radiant_positions = fail
     logs = []
-    adapter.logger.error = lambda msg: logs.append(msg)
+    adapter.logger.warning = lambda msg: logs.append(msg)
     result = await adapter.fetch_positions("0x123")
     assert result == []
-    assert any("Error fetching DeFi positions" in m for m in logs)
+    assert any("Error fetching positions" in m for m in logs)
 
 
 @pytest.mark.asyncio

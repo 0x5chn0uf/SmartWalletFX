@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import BigInteger, Column, DateTime, Integer, String, Text
@@ -18,3 +19,7 @@ class PortfolioSnapshotCache(Base):
     offset = Column(Integer, nullable=False)
     response_json = Column(Text, nullable=False)
     expires_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )

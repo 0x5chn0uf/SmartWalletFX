@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from sqlalchemy import desc
+from sqlalchemy import delete, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -82,3 +82,14 @@ class AggregateMetricsRepository:
         else:
             # Create new record
             return await self.save(metrics)
+
+    async def delete_old_metrics(self, wallet_id: str, before_date) -> int:
+        """Delete all aggregate metrics for a wallet before a given date."""
+        stmt = (
+            delete(AggregateMetricsModel)
+            .where(AggregateMetricsModel.wallet_id == wallet_id.lower())
+            .where(AggregateMetricsModel.as_of < before_date)
+        )
+        result = await self._session.execute(stmt)
+        await self._session.commit()
+        return result.rowcount

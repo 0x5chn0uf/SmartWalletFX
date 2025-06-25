@@ -68,6 +68,7 @@ TEST_FLAGS := -v
 
 test: ## Run pytest suite
 	$(TEST_ENV) pytest $(TEST_FLAGS)
+	$(MAKE) clean
 
 test-perf: ## Run performance-marked tests
 	$(TEST_ENV) pytest -m performance $(TEST_FLAGS)
@@ -136,7 +137,7 @@ db-restore: ## Restore a database dump (stub)
 # House-keeping
 # -----------------------------------------------------------------------------
 clean: ## Remove caches & artefacts
-	rm -rf __pycache__ .pytest_cache .coverage htmlcov .coverage.* .mypy_cache .ruff_cache
+	rm -rf __pycache__ .pytest_cache .coverage htmlcov .coverage.* .mypy_cache .ruff_cache .hypothesis .benchmarks
 	find . -type d -name '__pycache__' -exec rm -rf {} +
 
 .PHONY: help install install-dev install-s3 install-perf lint format bandit safety \

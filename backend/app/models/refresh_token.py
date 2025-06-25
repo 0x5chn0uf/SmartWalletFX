@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     ForeignKey,
@@ -41,6 +42,7 @@ class RefreshToken(Base):
     user = relationship("app.models.user.User", backref="refresh_tokens")
 
     expires_at = Column(DateTime, nullable=False, index=True)
+    revoked = Column(Boolean, nullable=False, default=False, server_default="false")
 
     __table_args__ = (
         UniqueConstraint("jti_hash", name="uq_refresh_tokens_jti_hash"),
