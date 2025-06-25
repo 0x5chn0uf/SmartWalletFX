@@ -20,11 +20,6 @@ from typing import Callable
 
 from app.utils import db_backup  # Lazy import safe for unit tests
 
-# NOTE: The actual implementation will be completed in Subtask 8.2.4 / 8.2.6.
-# For now we provide a minimal stub so that early unit tests can exercise the
-# argument parser and observe an intentional exit-code of ``1`` (RED phase of
-# TDD).
-
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(

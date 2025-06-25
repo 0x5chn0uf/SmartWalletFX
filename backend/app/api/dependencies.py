@@ -1,14 +1,27 @@
+from __future__ import annotations
+
 import uuid
+from contextlib import asynccontextmanager
 from functools import lru_cache
+from typing import AsyncGenerator
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
+from redis import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 from web3 import Web3
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.user import User
+
+# DeFi-tracker infrastructure
+from app.repositories.aggregate_metrics_repository import (
+    AggregateMetricsRepository,
+)
+
+# Services
+from app.services.defi_aggregation_service import DeFiAggregationService
 from app.services.snapshot_aggregation import SnapshotAggregationService
 from app.usecase.defi_aave_usecase import AaveUsecase
 from app.usecase.defi_compound_usecase import CompoundUsecase
@@ -16,6 +29,7 @@ from app.usecase.defi_radiant_usecase import RadiantUsecase
 from app.usecase.portfolio_aggregation_usecase import (
     PortfolioAggregationUsecase,
 )
+from app.utils.jwks_cache import _build_redis_client
 from app.utils.jwt import JWTUtils
 from app.utils.rate_limiter import login_rate_limiter
 
@@ -40,6 +54,17 @@ class DBDeps:  # noqa: D101 – small wrapper for DB related deps
         """Return SnapshotAggregationService bound to provided DB session."""
 
         return SnapshotAggregationService(db, _build_aggregator_async())
+
+    # ------------------------------------------------------------------
+    # DeFi tracker repository / service providers
+    # ------------------------------------------------------------------
+
+    def get_aggregate_metrics_repo(
+        self, db: AsyncSession = Depends(get_db)
+    ) -> AggregateMetricsRepository:  # noqa: D401 – factory
+        """Return SQLAlchemy implementation of AggregateMetricsRepository."""
+
+        return AggregateMetricsRepository(db)
 
 
 db_deps = DBDeps()
@@ -153,10 +178,44 @@ auth_deps = AuthDeps()
 
 # Public API – expose only the three singletons and the DB snapshot helper
 get_snapshot_service = db_deps.get_snapshot_service  # convenience bound method
+get_aggregate_metrics_repo = db_deps.get_aggregate_metrics_repo
 
 __all__ = [
     "db_deps",
     "blockchain_deps",
     "auth_deps",
+    "get_redis",
     "get_snapshot_service",
+    "get_aggregate_metrics_repo",
+    "get_aggregator_service",
 ]
+
+# ---------------------------------------------------------------------------
+# Redis dependency
+# ---------------------------------------------------------------------------
+
+
+@asynccontextmanager
+async def get_redis() -> AsyncGenerator["Redis", None]:  # type: ignore[name-defined]
+    """Provide a managed Redis client for request scope."""
+
+    from redis.asyncio import (
+        Redis,  # local import to avoid optional dep in cold paths
+    )
+
+    client: Redis = _build_redis_client()
+    try:
+        yield client
+    finally:
+        try:
+            await client.close()
+        except Exception:  # noqa: BLE001 – ignore shutdown errors
+            pass
+
+
+async def get_aggregator_service(
+    db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
+) -> DeFiAggregationService:
+    """Return DeFiAggregationService with database and Redis dependencies."""
+    return DeFiAggregationService(db, redis)
