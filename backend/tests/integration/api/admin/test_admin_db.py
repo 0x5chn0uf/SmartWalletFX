@@ -1,7 +1,6 @@
 import io
 from unittest.mock import patch
 
-from fastapi import Depends
 from fastapi.testclient import TestClient
 
 from app.api.dependencies import auth_deps

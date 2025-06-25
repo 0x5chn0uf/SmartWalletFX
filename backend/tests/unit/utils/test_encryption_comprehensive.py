@@ -3,11 +3,10 @@
 import subprocess
 from pathlib import Path
 from subprocess import CalledProcessError
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
-from app.core.config import settings
 from app.utils.encryption import GPG_BINARY, EncryptionError, encrypt_file
 
 

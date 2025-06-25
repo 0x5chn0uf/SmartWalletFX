@@ -7,7 +7,6 @@ helper should report that there is nothing to change.
 """
 from datetime import datetime, timedelta, timezone
 
-import pytest
 from freezegun import freeze_time
 
 from app.utils.jwt_rotation import Key, KeySet, promote_and_retire_keys

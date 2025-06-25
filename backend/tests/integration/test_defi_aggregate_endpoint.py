@@ -1,17 +1,11 @@
-import types
-import uuid
 from typing import AsyncGenerator
 
 import pytest
 from httpx import AsyncClient
-from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import auth_deps, get_aggregator_service, get_redis
-from app.core.database import get_db
 from app.domain.defi_tracker.models import AggregateMetrics
 from app.main import app
-from app.models.user import User
 from app.utils.jwt import JWTUtils
 
 

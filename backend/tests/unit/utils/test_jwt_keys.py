@@ -6,7 +6,6 @@ import base64
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
-import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 

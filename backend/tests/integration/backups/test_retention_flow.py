@@ -1,11 +1,8 @@
 import os
-import shutil
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
-
-import pytest
 
 from app.core.config import settings
 from app.tasks.backups import create_backup_task, purge_old_backups_task

@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 
 import hypothesis.strategies as st

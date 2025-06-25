@@ -1,7 +1,6 @@
-from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import Column, DateTime, ForeignKey, Numeric
+from sqlalchemy import Column, ForeignKey, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -21,14 +20,10 @@ class TokenBalance(Base):
     token_id = Column(UUID(as_uuid=True), ForeignKey("tokens.id"), index=True)
     balance = Column(Numeric(precision=36, scale=18))  # Large precision for wei values
     balance_usd = Column(Numeric(precision=18, scale=2), nullable=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     wallet = relationship("Wallet", back_populates="token_balances")
     token = relationship("Token", back_populates="balances")
-
-    class Config:
-        orm_mode = True
 
     def __repr__(self):
         """

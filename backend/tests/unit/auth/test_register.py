@@ -1,11 +1,7 @@
 import pytest
 
 from app.schemas.user import UserCreate
-from app.services.auth_service import (
-    AuthService,
-    DuplicateError,
-    WeakPasswordError,
-)
+from app.services.auth_service import AuthService, DuplicateError
 
 
 @pytest.mark.anyio

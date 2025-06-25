@@ -199,28 +199,43 @@ class DeFiPositionAdapter:
             positions: List of position dictionaries
 
         Returns:
-            Dictionary with aggregate metrics (TVL, total borrowings, APY, etc.)
+            Dictionary containing aggregate metrics
         """
+        if not positions:
+            return {
+                "tvl": 0.0,
+                "total_borrowings": 0.0,
+                "aggregate_apy": None,
+                "positions": [],
+            }
+
+        tvl = 0.0
+        total_borrowings = 0.0
         total_supply_value = 0.0
-        total_borrow_value = 0.0
-        weighted_apy = 0.0
-        total_weight = 0.0
+        total_supply_apy = 0.0
+        supply_count = 0
 
         for position in positions:
-            if position.get("type") == "supply":
-                total_supply_value += position.get("usd_value", 0.0)
-                if position.get("apy"):
-                    weight = position.get("usd_value", 0.0)
-                    weighted_apy += position["apy"] * weight
-                    total_weight += weight
-            elif position.get("type") == "borrow":
-                total_borrow_value += position.get("usd_value", 0.0)
+            usd_value = position.get("usd_value", 0) or 0
+            apy = position.get("apy")
 
-        aggregate_apy = weighted_apy / total_weight if total_weight > 0 else None
+            if position.get("type") == "supply":
+                tvl += usd_value
+                total_supply_value += usd_value
+                if apy is not None:
+                    total_supply_apy += usd_value * apy
+                    supply_count += 1
+            elif position.get("type") == "borrow":
+                total_borrowings += usd_value
+
+        # Calculate weighted average APY
+        aggregate_apy = None
+        if total_supply_value > 0 and supply_count > 0:
+            aggregate_apy = total_supply_apy / total_supply_value
 
         return {
-            "tvl": total_supply_value,
-            "total_borrowings": total_borrow_value,
+            "tvl": tvl,
+            "total_borrowings": total_borrowings,
             "aggregate_apy": aggregate_apy,
             "positions": positions,
         }

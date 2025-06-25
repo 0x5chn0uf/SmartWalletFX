@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import auth_deps
 from app.api.dependencies import blockchain_deps as deps
-from app.api.dependencies import get_aggregator_service, get_redis
 from app.celery_app import celery
 from app.core.database import get_db
 from app.repositories.portfolio_snapshot_repository import (
@@ -27,7 +26,6 @@ from app.usecase.portfolio_aggregation_usecase import (
     PortfolioMetrics,
 )
 from app.usecase.portfolio_snapshot_usecase import PortfolioSnapshotUsecase
-from app.utils.metrics_cache import get_metrics_cache, set_metrics_cache
 
 router = APIRouter()
 
@@ -236,7 +234,6 @@ async def defi_health_check():
 async def get_aggregate_metrics(
     address: str,
     db: AsyncSession = db_dependency,
-    redis=Depends(get_redis),  # type: ignore[valid-type]
 ):
     """Return aggregated multi-protocol metrics for *address* with caching."""
 
@@ -244,7 +241,7 @@ async def get_aggregate_metrics(
     validated_address = validate_ethereum_address(address)
 
     # Create service instance
-    aggregation_service = DeFiAggregationService(db, redis)
+    aggregation_service = DeFiAggregationService(db)
 
     # Validate address using service method
     if not aggregation_service.validate_ethereum_address(validated_address):

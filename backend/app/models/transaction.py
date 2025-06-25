@@ -1,7 +1,6 @@
-from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, Column, DateTime, ForeignKey, Numeric, String
+from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -26,10 +25,6 @@ class Transaction(Base):
     amount = Column(Numeric(precision=18, scale=8), nullable=False)
     usd_value = Column(Numeric(precision=18, scale=2), nullable=True)
     timestamp = Column(DateTime, index=True)
-    from_address = Column(String, index=True)
-    to_address = Column(String, index=True)
-    extra_metadata = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
     wallet = relationship("Wallet", back_populates="transactions")

@@ -1,7 +1,7 @@
 """Reusable Hypothesis strategies for property-based tests."""
 
 from decimal import Decimal
-from typing import Dict, List
+from typing import List
 
 from hypothesis import strategies as st
 

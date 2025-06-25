@@ -1,8 +1,6 @@
 from contextlib import asynccontextmanager
 from unittest.mock import MagicMock
 
-import pytest
-
 from app.tasks.jwt_rotation import promote_and_retire_keys_task
 from app.utils.jwt_rotation import KeySetUpdate  # local import
 
