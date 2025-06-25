@@ -1,6 +1,6 @@
 import pytest
 
-from app.domain.errors import InactiveUserError, InvalidCredentialsError
+from app.domain.errors import InvalidCredentialsError
 from app.schemas.user import UserCreate
 from app.services.auth_service import AuthService
 

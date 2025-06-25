@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-"""JWT utility helpers leveraging python-jose.
-
-NOTE: Functions raise NotImplementedError until Subtask 4.7 implementation
-is completed. Unit tests for TDD will initially fail against these stubs.
+"""
+JWT utility helpers leveraging python-jose.
 """
 
 import uuid

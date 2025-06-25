@@ -1,12 +1,13 @@
 # flake8: noqa
 
+import re
 from enum import Enum
-from typing import Any, List, Union
+from typing import List, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from web3 import Web3
 
+from app.api.dependencies import auth_deps
 from app.api.dependencies import blockchain_deps as deps
 from app.celery_app import celery
 from app.core.database import get_db
@@ -14,7 +15,9 @@ from app.repositories.portfolio_snapshot_repository import (
     PortfolioSnapshotRepository,
 )
 from app.schemas.defi import DeFiAccountSnapshot, PortfolioSnapshot
+from app.schemas.defi_aggregate import AggregateMetricsSchema, PositionSchema
 from app.schemas.portfolio_timeline import TimelineResponse
+from app.services.defi_aggregation_service import DeFiAggregationService
 from app.usecase.defi_aave_usecase import AaveUsecase
 from app.usecase.defi_compound_usecase import CompoundUsecase
 from app.usecase.defi_radiant_usecase import RadiantUsecase
@@ -26,7 +29,21 @@ from app.usecase.portfolio_snapshot_usecase import PortfolioSnapshotUsecase
 
 router = APIRouter()
 
+# Database dependency
 db_dependency = Depends(get_db)
+
+# Ethereum address validation pattern
+ETH_ADDRESS_PATTERN = re.compile(r"^0x[a-fA-F0-9]{40}$")
+
+
+def validate_ethereum_address(address: str) -> str:
+    """Validate that the address is a valid Ethereum address."""
+    if not ETH_ADDRESS_PATTERN.match(address):
+        raise HTTPException(
+            status_code=422,
+            detail="Invalid Ethereum address format. Must be a 42-character hex string starting with 0x.",
+        )
+    return address.lower()
 
 
 class IntervalEnum(str, Enum):
@@ -200,3 +217,60 @@ def trigger_snapshot_collection():
     """Manually trigger the portfolio snapshot collection task."""
     task = celery.send_task("app.tasks.snapshots.collect_portfolio_snapshots")
     return {"status": "triggered", "task_id": task.id}
+
+
+@router.get("/defi/health", tags=["DeFi"])
+async def defi_health_check():
+    """Lightweight health check for DeFi component."""
+    return {"status": "ok"}
+
+
+@router.get(
+    "/defi/aggregate/{address}",
+    response_model=AggregateMetricsSchema,
+    tags=["DeFi"],
+    dependencies=[Depends(auth_deps.get_current_user)],
+)
+async def get_aggregate_metrics(
+    address: str,
+    db: AsyncSession = db_dependency,
+):
+    """Return aggregated multi-protocol metrics for *address* with caching."""
+
+    # Validate Ethereum address format
+    validated_address = validate_ethereum_address(address)
+
+    # Create service instance
+    aggregation_service = DeFiAggregationService(db)
+
+    # Validate address using service method
+    if not aggregation_service.validate_ethereum_address(validated_address):
+        raise HTTPException(
+            status_code=422,
+            detail="Invalid Ethereum address format. Must be a 42-character hex string starting with 0x.",
+        )
+
+    # Aggregate positions using the service
+    metrics = await aggregation_service.aggregate_wallet_positions(validated_address)
+
+    # Convert to schema for API response
+    schema = AggregateMetricsSchema(
+        id=str(metrics.id),
+        wallet_id=metrics.wallet_id,
+        tvl=metrics.tvl,
+        total_borrowings=metrics.total_borrowings,
+        aggregate_apy=metrics.aggregate_apy,
+        as_of=metrics.as_of,
+        positions=[
+            PositionSchema(
+                protocol=p.get("protocol", "unknown"),
+                asset=p.get("asset", "unknown"),
+                amount=p.get("amount", 0.0),
+                usd_value=p.get("usd_value", 0.0),
+                apy=p.get("apy"),
+            )
+            for p in metrics.positions
+        ],
+    )
+
+    return schema

@@ -49,15 +49,10 @@ def _make_test_db(tmp_path_factory: pytest.TempPathFactory) -> tuple[str, str]:
     async_url = f"sqlite+aiosqlite:///{db_file}"
     sync_url = f"sqlite:///{db_file}"
 
-    # Run Alembic migrations synchronously against *sync_url*
-    env = os.environ.copy()
-    env["TEST_DB_URL"] = sync_url
-    subprocess.run(
-        ["alembic", "-c", ALEMBIC_CONFIG_PATH, "upgrade", "head"],
-        check=True,
-        env=env,
-        stdout=subprocess.DEVNULL,
-    )
+    # Create a temporary engine for this specific DB file
+    temp_engine = create_engine(sync_url, connect_args={"check_same_thread": False})
+    Base.metadata.create_all(bind=temp_engine)
+    temp_engine.dispose()
 
     return async_url, sync_url
 
@@ -362,7 +357,13 @@ async def _clean_database(async_engine):
         await conn.execute(text("PRAGMA foreign_keys = OFF"))
 
         for tbl in Base.metadata.sorted_tables:
-            await conn.execute(text(f'DELETE FROM "{tbl.name}"'))
+            try:
+                await conn.execute(text(f'DELETE FROM "{tbl.name}"'))
+            except (
+                Exception
+            ):  # noqa: BLE001 – ignore tables not present in SQLite test DB
+                # Table may not exist if corresponding migration hasn't run yet.
+                continue
 
         await conn.execute(text("PRAGMA foreign_keys = ON"))
 

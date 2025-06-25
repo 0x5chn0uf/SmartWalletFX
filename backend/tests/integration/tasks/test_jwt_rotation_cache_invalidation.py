@@ -1,6 +1,5 @@
 """Integration tests for JWT rotation cache invalidation."""
 
-import asyncio
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 

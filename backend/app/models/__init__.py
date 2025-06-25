@@ -1,5 +1,6 @@
 from app.core.database import Base
 
+from .aggregate_metrics import AggregateMetricsModel
 from .group import Group
 from .historical_balance import HistoricalBalance
 from .portfolio_snapshot import PortfolioSnapshot
@@ -27,4 +28,5 @@ __all__ = [
     "PortfolioSnapshotCache",
     "Base",
     "RefreshToken",
+    "AggregateMetricsModel",
 ]

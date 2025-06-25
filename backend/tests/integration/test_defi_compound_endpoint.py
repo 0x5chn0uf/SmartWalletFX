@@ -1,12 +1,9 @@
 from datetime import datetime
-from unittest.mock import ANY, AsyncMock, MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
-import httpx
 import pytest
 from httpx import AsyncClient
-from web3 import Web3
 
-from app.main import app
 from app.schemas.defi import DeFiAccountSnapshot
 
 TEST_ADDRESS = "0x1111111111111111111111111111111111111111"

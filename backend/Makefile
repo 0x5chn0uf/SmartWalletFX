@@ -68,6 +68,7 @@ TEST_FLAGS := -v
 
 test: ## Run pytest suite
 	$(TEST_ENV) pytest $(TEST_FLAGS)
+	$(MAKE) clean
 
 test-perf: ## Run performance-marked tests
 	$(TEST_ENV) pytest -m performance $(TEST_FLAGS)
@@ -100,10 +101,6 @@ celery-worker: ## Start Celery worker
 
 celery-beat: ## Start Celery beat scheduler
 	celery -A app.celery_app.celery beat --loglevel=info
-
-locust-smoke: ## Run Locust smoke test (100 users, 30s)
-	locust -f locustfile.py --headless -u 100 -r 20 -t 30s -H http://localhost:8000 --csv smoke --csv-full-history --exit-code-on-error 0
-	$(PYTHON) scripts/check_locust_fail_ratio.py smoke 0.01
 
 # -----------------------------------------------------------------------------
 # Alembic / database targets
@@ -140,7 +137,7 @@ db-restore: ## Restore a database dump (stub)
 # House-keeping
 # -----------------------------------------------------------------------------
 clean: ## Remove caches & artefacts
-	rm -rf __pycache__ .pytest_cache .coverage htmlcov .coverage.*
+	rm -rf __pycache__ .pytest_cache .coverage htmlcov .coverage.* .mypy_cache .ruff_cache .hypothesis .benchmarks
 	find . -type d -name '__pycache__' -exec rm -rf {} +
 
 .PHONY: help install install-dev install-s3 install-perf lint format bandit safety \

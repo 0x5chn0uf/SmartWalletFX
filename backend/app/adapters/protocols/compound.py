@@ -13,7 +13,6 @@ class CompoundContractAdapter(ProtocolAdapter):
     """Adapter delegating to Compound snapshot usecase."""
 
     name = "compound"
-    display_name = "Compound"
 
     async def fetch_snapshot(self, address: str) -> Optional[DeFiAccountSnapshot]:
         w3 = Web3(Web3.HTTPProvider("https://ethereum-rpc.publicnode.com"))

@@ -13,7 +13,6 @@ class AaveContractAdapter(ProtocolAdapter):
     """Adapter that delegates to :pyfunc:`AaveUsecase.get_user_snapshot`."""
 
     name = "aave"
-    display_name = "Aave"
 
     async def fetch_snapshot(self, address: str) -> Optional[DeFiAccountSnapshot]:
         w3 = Web3(Web3.HTTPProvider("https://ethereum-rpc.publicnode.com"))

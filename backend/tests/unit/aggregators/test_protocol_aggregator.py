@@ -1,5 +1,3 @@
-import asyncio
-
 import pytest
 
 from app.adapters.protocols.base import ProtocolAdapter
