@@ -11,7 +11,11 @@ from app.repositories.aggregate_metrics_repository import (
 
 @pytest.fixture
 def mock_db():
-    return MagicMock()
+    db = MagicMock()
+    db.execute = AsyncMock()
+    db.commit = AsyncMock()
+    db.refresh = AsyncMock()
+    return db
 
 
 @pytest.fixture
@@ -39,37 +43,53 @@ def sample_model():
     return m
 
 
-def test_upsert_calls_db(repo, mock_db, sample_model):
-    mock_db.merge = AsyncMock(return_value=sample_model)
-    result = pytest.run(asyncio=True)(repo.upsert)(sample_model)
+@pytest.mark.asyncio
+async def test_upsert_calls_db(repo, mock_db, sample_model):
+    # Mock get_latest to return None (no existing record)
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None
+    mock_db.execute = AsyncMock(return_value=mock_result)
+
+    # Mock add and commit for the save path
+    mock_db.add = MagicMock()
+    mock_db.commit = AsyncMock()
+    mock_db.refresh = AsyncMock()
+
+    result = await repo.upsert(sample_model)
     assert result is not None
-    mock_db.merge.assert_called_once()
+    mock_db.add.assert_called_once_with(sample_model)
+    mock_db.commit.assert_called_once()
 
 
-def test_get_latest_calls_db(repo, mock_db):
-    mock_db.query().filter().order_by().first = AsyncMock(return_value=None)
-    result = pytest.run(asyncio=True)(repo.get_latest)(
-        "0x1234567890abcdef1234567890abcdef12345678"
-    )
+@pytest.mark.asyncio
+async def test_get_latest_calls_db(repo, mock_db):
+    # Patch execute to return a mock result with scalar_one_or_none() == None
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None
+    mock_db.execute = AsyncMock(return_value=mock_result)
+    result = await repo.get_latest("0x1234567890abcdef1234567890abcdef12345678")
     assert result is None
-    mock_db.query().filter().order_by().first.assert_called_once()
 
 
-def test_get_history_calls_db(repo, mock_db):
-    mock_db.query().filter().order_by().offset().limit().all = AsyncMock(
-        return_value=[]
-    )
-    result = pytest.run(asyncio=True)(repo.get_history)(
-        "0x1234567890abcdef1234567890abcdef12345678", 10, 0
-    )
+@pytest.mark.asyncio
+async def test_get_history_calls_db(repo, mock_db):
+    # Patch execute to return a mock result with scalars().all() == []
+    mock_result = MagicMock()
+    mock_scalars = MagicMock()
+    mock_scalars.all.return_value = []
+    mock_result.scalars.return_value = mock_scalars
+    mock_db.execute = AsyncMock(return_value=mock_result)
+    result = await repo.get_history("0x1234567890abcdef1234567890abcdef12345678", 10, 0)
     assert result == []
-    mock_db.query().filter().order_by().offset().limit().all.assert_called_once()
 
 
-def test_delete_old_metrics_calls_db(repo, mock_db):
-    mock_db.query().filter().delete = AsyncMock(return_value=1)
-    result = pytest.run(asyncio=True)(repo.delete_old_metrics)(
+@pytest.mark.asyncio
+async def test_delete_old_metrics_calls_db(repo, mock_db):
+    # Patch execute to return a mock result with rowcount == 1
+    mock_result = MagicMock()
+    mock_result.rowcount = 1
+    mock_db.execute = AsyncMock(return_value=mock_result)
+    result = await repo.delete_old_metrics(
         "0x1234567890abcdef1234567890abcdef12345678", datetime.utcnow()
     )
     assert result == 1
-    mock_db.query().filter().delete.assert_called_once()

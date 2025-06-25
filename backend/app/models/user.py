@@ -1,6 +1,7 @@
+from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import Column, String
+from sqlalchemy import Column, DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -19,6 +20,17 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=True)
+
+    created_at = Column(
+        DateTime, default=datetime.utcnow, nullable=False, doc="Creation timestamp."
+    )
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False,
+        doc="Last update timestamp.",
+    )
 
     wallets = relationship("Wallet", back_populates="user")
 

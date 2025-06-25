@@ -25,6 +25,7 @@ class Token(Base):
 
     # Relationships
     balances = relationship("TokenBalance", back_populates="token")
+    historical_prices = relationship("TokenPrice", back_populates="token")
     # transactions = relationship("Transaction", back_populates="token")
 
     def __repr__(self):
