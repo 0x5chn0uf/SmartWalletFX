@@ -245,7 +245,6 @@ jobs:
         with:
           path: backend/.venv
           key: ${{ runner.os }}-venv-${{ hashFiles('backend/pyproject.toml') }}
-          pip install docker
 
       - name: Run performance test suite
         working-directory: ./backend
