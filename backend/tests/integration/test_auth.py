@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
@@ -64,18 +66,22 @@ def test_register_duplicate_email(client):
 
 @pytest.mark.anyio
 async def test_obtain_token_success(db_session, test_app):
+    username = f"tokenuser-{uuid.uuid4().hex[:8]}"
+    password = "Str0ng!pwd"
+    email = f"token-{uuid.uuid4().hex[:8]}@ex.com"
+
     async with AsyncClient(app=test_app, base_url="http://test") as ac:
         # Arrange – create user via service
         service = AuthService(db_session)
         await service.register(
             UserCreate(
-                username="tokenuser",
-                email="token@ex.com",
-                password="Str0ng!pwd",
+                username=username,
+                email=email,
+                password=password,
             )
         )
 
-        data = {"username": "tokenuser", "password": "Str0ng!pwd"}
+        data = {"username": username, "password": password}
         resp = await ac.post("/auth/token", data=data)
         assert resp.status_code == 200
         body = resp.json()
@@ -94,18 +100,21 @@ async def test_login_rate_limit(db_session, test_app, mocker):
         ),
     )
 
+    username = f"rluser-{uuid.uuid4().hex[:8]}"
+    email = f"rl-{uuid.uuid4().hex[:8]}@example.com"
+
     async with AsyncClient(app=test_app, base_url="http://test") as ac:
         service = AuthService(db_session)
         await service.register(
             UserCreate(
-                username="rluser",
-                email="rl@example.com",
+                username=username,
+                email=email,
                 password="S3cur3!pwd",
             )
         )
 
         attempts = settings.AUTH_RATE_LIMIT_ATTEMPTS
-        data = {"username": "rluser", "password": "wrong-password"}
+        data = {"username": username, "password": "wrong-password"}
 
         # Exhaust allowed attempts (expect 401)
         for _ in range(attempts):
@@ -121,15 +130,18 @@ async def test_login_rate_limit(db_session, test_app, mocker):
 async def test_users_me_endpoint(test_app, db_session):
     """/users/me should require auth and return current profile when token provided."""
 
+    username = f"meuser-{uuid.uuid4().hex[:8]}"
+    email = f"me-{uuid.uuid4().hex[:8]}@ex.com"
+
     async with AsyncClient(app=test_app, base_url="http://test") as ac:
         # Register user & obtain token
         service = AuthService(db_session)
         await service.register(
-            UserCreate(username="meuser", email="me@ex.com", password="Str0ng!pwd")
+            UserCreate(username=username, email=email, password="Str0ng!pwd")
         )
 
         token_resp = await ac.post(
-            "/auth/token", data={"username": "meuser", "password": "Str0ng!pwd"}
+            "/auth/token", data={"username": username, "password": "Str0ng!pwd"}
         )
         assert token_resp.status_code == 200
         access_token = token_resp.json()["access_token"]
@@ -143,8 +155,8 @@ async def test_users_me_endpoint(test_app, db_session):
         auth_resp = await ac.get("/users/me", headers=headers)
         assert auth_resp.status_code == 200
         body = auth_resp.json()
-        assert body["username"] == "meuser"
-        assert body["email"] == "me@ex.com"
+        assert body["username"] == username
+        assert body["email"] == email
         assert "hashed_password" not in body
 
 

@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 
 from app.domain.errors import InvalidCredentialsError
@@ -9,14 +11,15 @@ pytestmark = pytest.mark.anyio
 
 async def test_authenticate_success(db_session):
     svc = AuthService(db_session)
+    username = f"alice-{uuid.uuid4().hex[:8]}"
     user_payload = UserCreate(
-        username="alice",
-        email="alice@example.com",
+        username=username,
+        email=f"alice-{uuid.uuid4().hex[:8]}@example.com",
         password="Str0ng!pwd1@",
     )
     await svc.register(user_payload)
 
-    tokens = await svc.authenticate("alice", "Str0ng!pwd1@")
+    tokens = await svc.authenticate(username, "Str0ng!pwd1@")
     assert tokens.access_token
     assert tokens.refresh_token
     assert tokens.token_type == "bearer"
@@ -25,8 +28,8 @@ async def test_authenticate_success(db_session):
 async def test_authenticate_bad_password(db_session):
     svc = AuthService(db_session)
     user_payload = UserCreate(
-        username="bob",
-        email="bob@example.com",
+        username=f"bob-{uuid.uuid4().hex[:8]}",
+        email=f"bob-{uuid.uuid4().hex[:8]}@example.com",
         password="GoodP@ssw0rd",
     )
     await svc.register(user_payload)

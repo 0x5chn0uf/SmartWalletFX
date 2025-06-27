@@ -1,3 +1,4 @@
+import uuid
 from types import SimpleNamespace
 
 import pytest
@@ -13,24 +14,27 @@ async def test_user_repository_crud_and_exists(db_session):
     repo = UserRepository(db_session)
 
     # Save a new user
-    user = User(username="alice", email="alice@example.com")
+    user = User(
+        username=f"alice-{uuid.uuid4().hex[:8]}",
+        email=f"alice-{uuid.uuid4().hex[:8]}@example.com",
+    )
     saved = await repo.save(user)
 
     assert saved.id is not None
 
     # Fetch by username / email
-    by_username = await repo.get_by_username("alice")
-    by_email = await repo.get_by_email("alice@example.com")
+    by_username = await repo.get_by_username(user.username)
+    by_email = await repo.get_by_email(user.email)
     assert by_username is saved
     assert by_email is saved
 
     # exists helper (positive cases)
-    assert await repo.exists(username="alice") is True
-    assert await repo.exists(email="alice@example.com") is True
+    assert await repo.exists(username=user.username) is True
+    assert await repo.exists(email=user.email) is True
 
     # Negative case – non-existing
-    assert await repo.exists(username="bob") is False
-    assert await repo.get_by_username("bob") is None
+    assert await repo.exists(username="bob-doesnotexist") is False
+    assert await repo.get_by_username("bob-doesnotexist") is None
 
 
 @pytest.mark.asyncio
