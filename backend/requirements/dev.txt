@@ -46,3 +46,5 @@ trio==0.25.0
 structlog==24.2.0
 # Freezing time
 freezegun==1.4.0
+
+docker==7.1.0

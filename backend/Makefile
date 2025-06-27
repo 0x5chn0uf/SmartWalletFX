@@ -35,9 +35,6 @@ install-dev: ## Install dev & test dependencies
 install-s3: ## Install optional S3 & GPG deps
 	$(PIP) install -r requirements/s3.txt
 
-install-perf: ## Install performance-testing deps
-	$(PIP) install -r requirements/perf.txt
-
 # -----------------------------------------------------------------------------
 # Linting & formatting
 # -----------------------------------------------------------------------------
