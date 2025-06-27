@@ -1,4 +1,5 @@
 import io
+import uuid
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -27,7 +28,11 @@ def test_backup_authenticated_admin(mock_task):
     mock_task.delay.return_value.id = "fake-task-id-123"
 
     # Create a mock user
-    mock_user = User(id="test-user-id", username="admin", email="admin@test.com")
+    mock_user = User(
+        id=f"test-user-id-{uuid.uuid4().hex[:8]}",
+        username=f"admin-{uuid.uuid4().hex[:8]}",
+        email=f"admin-{uuid.uuid4().hex[:8]}@test.com",
+    )
 
     # Override the dependency for this test
     def override_get_current_user():
@@ -63,7 +68,11 @@ def test_restore_authenticated_admin(mock_task):
     mock_task.delay.return_value.id = "fake-restore-task-id-456"
 
     # Create a mock user
-    mock_user = User(id="test-user-id", username="admin", email="admin@test.com")
+    mock_user = User(
+        id=f"test-user-id-{uuid.uuid4().hex[:8]}",
+        username=f"admin-{uuid.uuid4().hex[:8]}",
+        email=f"admin-{uuid.uuid4().hex[:8]}@test.com",
+    )
 
     # Override the dependency for this test
     def override_get_current_user():
@@ -101,7 +110,11 @@ def test_restore_invalid_file_type(mock_task):
     Test that uploading a non-.sql.gz file returns a 400 error.
     """
     # Create a mock user
-    mock_user = User(id="test-user-id", username="admin", email="admin@test.com")
+    mock_user = User(
+        id=f"test-user-id-{uuid.uuid4().hex[:8]}",
+        username=f"admin-{uuid.uuid4().hex[:8]}",
+        email=f"admin-{uuid.uuid4().hex[:8]}@test.com",
+    )
 
     # Override the dependency for this test
     def override_get_current_user():
@@ -130,7 +143,11 @@ def test_restore_missing_file(mock_task):
     Test that a request without a file returns a 422 validation error.
     """
     # Create a mock user
-    mock_user = User(id="test-user-id", username="admin", email="admin@test.com")
+    mock_user = User(
+        id=f"test-user-id-{uuid.uuid4().hex[:8]}",
+        username=f"admin-{uuid.uuid4().hex[:8]}",
+        email=f"admin-{uuid.uuid4().hex[:8]}@test.com",
+    )
 
     # Override the dependency for this test
     def override_get_current_user():

@@ -6,6 +6,7 @@ This single module consolidates:
 • **Property-based tests** – randomised round-trip invariants using Hypothesis.
 """
 
+import uuid
 from datetime import timedelta
 
 import hypothesis.strategies as st
@@ -77,7 +78,11 @@ async def test_key_rotation_lifecycle(test_app, db_session, freezer):
     async with AsyncClient(app=test_app, base_url="http://test") as ac:
         svc = AuthService(db_session)
         await svc.register(
-            UserCreate(username="rotuser", email="rot@ex.com", password="Str0ng!pwd")
+            UserCreate(
+                username=f"rotuser-{uuid.uuid4().hex[:8]}",
+                email=f"rot-{uuid.uuid4().hex[:8]}@ex.com",
+                password="Str0ng!pwd",
+            )
         )
 
         # Old token (key A)
