@@ -7,4 +7,4 @@ describe('WalletListPage', () => {
     render(<WalletListPage />);
     expect(screen.getByText(/wallet/i)).toBeInTheDocument();
   });
-}); 
+});

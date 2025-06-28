@@ -45,9 +45,10 @@ export const SmartTraderMoves: React.FC = () => {
         </Tooltip>
       </Box>
       <Typography variant="body2" color="text.secondary">
-        Placeholder for recent transactions from top-performing wallets. This feature is coming soon.
+        Placeholder for recent transactions from top-performing wallets. This feature is coming
+        soon.
       </Typography>
       {/* Future implementation will include a list of transactions */}
     </Paper>
   );
-}; 
+};

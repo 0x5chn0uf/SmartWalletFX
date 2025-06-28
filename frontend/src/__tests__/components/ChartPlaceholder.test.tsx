@@ -7,4 +7,4 @@ describe('ChartPlaceholder', () => {
     render(<ChartPlaceholder />);
     expect(screen.getByText('Chart coming soon...')).toBeInTheDocument();
   });
-}); 
+});

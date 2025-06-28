@@ -48,4 +48,4 @@ describe('NotificationManager', () => {
     expect(screen.getByText('Test notification')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toBeInTheDocument();
   });
-}); 
+});

@@ -56,7 +56,7 @@ const FeaturedStats: React.FC = () => {
             justifyContent: 'center',
           }}
         >
-          {featuredStats.map((stat) => (
+          {featuredStats.map(stat => (
             <Box
               key={stat.title}
               sx={{

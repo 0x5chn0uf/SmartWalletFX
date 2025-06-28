@@ -7,4 +7,4 @@ describe('BalanceAreaChart', () => {
     render(<BalanceAreaChart data={[]} />);
     // No assertion: just check render does not throw
   });
-}); 
+});

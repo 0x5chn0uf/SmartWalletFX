@@ -1,4 +1,7 @@
-import notificationReducer, { addNotification, removeNotification } from '../../store/notificationSlice';
+import notificationReducer, {
+  addNotification,
+  removeNotification,
+} from '../../store/notificationSlice';
 import type { AlertColor } from '@mui/material';
 
 // Inline Notification types for test
@@ -29,9 +32,11 @@ describe('notificationSlice', () => {
   });
 
   it('should handle removeNotification', () => {
-    const prevState: NotificationState = { notifications: [{ id: '1', message: 'Test', severity: 'info' }] };
+    const prevState: NotificationState = {
+      notifications: [{ id: '1', message: 'Test', severity: 'info' }],
+    };
     expect(notificationReducer(prevState, removeNotification('1'))).toEqual({
       notifications: [],
     });
   });
-}); 
+});

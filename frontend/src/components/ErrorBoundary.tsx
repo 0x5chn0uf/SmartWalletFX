@@ -51,11 +51,7 @@ class ErrorBoundary extends Component<Props, State> {
             <Typography variant="body2" gutterBottom>
               {this.state.error?.message || 'An unexpected error occurred'}
             </Typography>
-            <Button
-              variant="contained"
-              onClick={this.handleReset}
-              sx={{ mt: 2 }}
-            >
+            <Button variant="contained" onClick={this.handleReset} sx={{ mt: 2 }}>
               Try Again
             </Button>
           </Alert>
@@ -67,4 +63,4 @@ class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-export default ErrorBoundary; 
+export default ErrorBoundary;

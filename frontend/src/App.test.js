@@ -8,7 +8,7 @@ test('renders navigation links', () => {
   render(
     <ThemeProvider>
       <App />
-    </ThemeProvider>,
+    </ThemeProvider>
   );
   const dashboardLink = screen.getByText(/Dashboard/i);
   const walletsLink = screen.getByText(/Wallets/i);

@@ -7,4 +7,4 @@ describe('HomePage', () => {
     render(<HomePage />);
     expect(screen.getByText('Your Smart Wallet for Algorithmic Trading')).toBeInTheDocument();
   });
-}); 
+});

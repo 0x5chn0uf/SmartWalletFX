@@ -29,12 +29,33 @@ const handlers = [
     const search = url.searchParams.get('search') || '';
 
     const mockWallets = [
-      { id: '1', name: 'Main Wallet', address: '0x1234...5678', balance: 15000, currency: 'USD', lastUpdated: '2024-06-22T10:30:00Z' },
-      { id: '2', name: 'Trading Wallet', address: '0x8765...4321', balance: 8500, currency: 'USD', lastUpdated: '2024-06-22T09:15:00Z' },
-      { id: '3', name: 'Savings Wallet', address: '0xabcd...efgh', balance: 22000, currency: 'USD', lastUpdated: '2024-06-22T11:45:00Z' },
+      {
+        id: '1',
+        name: 'Main Wallet',
+        address: '0x1234...5678',
+        balance: 15000,
+        currency: 'USD',
+        lastUpdated: '2024-06-22T10:30:00Z',
+      },
+      {
+        id: '2',
+        name: 'Trading Wallet',
+        address: '0x8765...4321',
+        balance: 8500,
+        currency: 'USD',
+        lastUpdated: '2024-06-22T09:15:00Z',
+      },
+      {
+        id: '3',
+        name: 'Savings Wallet',
+        address: '0xabcd...efgh',
+        balance: 22000,
+        currency: 'USD',
+        lastUpdated: '2024-06-22T11:45:00Z',
+      },
     ];
 
-    const filteredWallets = search 
+    const filteredWallets = search
       ? mockWallets.filter(w => w.name.toLowerCase().includes(search.toLowerCase()))
       : mockWallets;
 

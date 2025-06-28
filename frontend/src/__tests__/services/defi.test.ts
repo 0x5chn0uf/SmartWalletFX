@@ -11,4 +11,4 @@ describe('getTimeline', () => {
     expect(apiClient.get).toHaveBeenCalledWith('/defi/timeline/0x123?from_ts=0&to_ts=0');
     expect(result).toEqual(mockData);
   });
-}); 
+});

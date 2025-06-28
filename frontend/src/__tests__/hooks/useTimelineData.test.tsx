@@ -24,4 +24,4 @@ describe('useTimelineData', () => {
     expect(result.current).toHaveProperty('isLoading');
     expect(result.current).toHaveProperty('error');
   });
-}); 
+});

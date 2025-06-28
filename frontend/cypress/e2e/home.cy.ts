@@ -5,4 +5,4 @@ describe('Home page', () => {
     cy.visit('/');
     cy.contains('SmartWalletFX');
   });
-}); 
+});

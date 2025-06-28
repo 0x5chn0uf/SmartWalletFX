@@ -19,7 +19,14 @@ describe('WalletDetailPage', () => {
   }
 
   it('renders wallet detail page', () => {
-    renderWithStore({ walletDetail: { wallet: { id: '1', name: 'Test Wallet', balance: 1000, currency: 'USD' }, transactions: [], status: 'idle', error: null } });
+    renderWithStore({
+      walletDetail: {
+        wallet: { id: '1', name: 'Test Wallet', balance: 1000, currency: 'USD' },
+        transactions: [],
+        status: 'idle',
+        error: null,
+      },
+    });
     expect(screen.getByText(/wallet/i)).toBeInTheDocument();
   });
-}); 
+});

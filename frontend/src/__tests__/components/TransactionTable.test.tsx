@@ -27,4 +27,4 @@ describe('TransactionTable', () => {
     expect(screen.getByText('deposit')).toBeInTheDocument();
     expect(screen.getByText('withdraw')).toBeInTheDocument();
   });
-}); 
+});

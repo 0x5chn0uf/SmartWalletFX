@@ -20,4 +20,4 @@ const SummaryCard: React.FC<SummaryCardProps> = ({ title, value, className = '' 
   </Card>
 );
 
-export default SummaryCard; 
+export default SummaryCard;
