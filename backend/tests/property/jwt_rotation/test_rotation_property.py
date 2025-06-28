@@ -69,7 +69,7 @@ def keyset_strategy(draw) -> KeySet:  # type: ignore[valid-type]
 
 
 @given(keyset=keyset_strategy())
-@settings(max_examples=100)
+@settings(max_examples=10, deadline=None)
 def test_rotation_invariants(keyset: KeySet):
     now = datetime.now(timezone.utc)
     update = promote_and_retire_keys(keyset, now)

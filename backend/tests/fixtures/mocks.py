@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.fixture(autouse=True)
@@ -14,6 +15,13 @@ def mock_settings(monkeypatch):
     """
     monkeypatch.setattr("app.core.config.settings.ARBITRUM_RPC_URL", "http://mock-rpc")
     yield
+
+
+@pytest.fixture
+def mock_async_session():
+    """Create a mock AsyncSession for testing."""
+    session = AsyncMock(spec=AsyncSession)
+    return session
 
 
 @pytest.fixture
@@ -201,3 +209,9 @@ def mock_all_external_services(
         "password_hasher": mock_password_hasher,
         "external_apis": mock_external_apis,
     }
+
+
+@pytest.fixture
+def mock_db_session():
+    """Mock database session for usecase/service testing."""
+    return Mock()

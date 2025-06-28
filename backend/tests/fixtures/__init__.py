@@ -10,6 +10,9 @@ The fixtures are organized into modules based on their functionality:
 - client.py: FastAPI TestClient fixtures
 - mocks.py: External service mocking fixtures
 - config.py: Fixture configuration and settings
+- test_data.py: Sample data and model fixtures
+- usecase.py: Usecase-specific fixtures
+- services.py: Service-specific fixtures
 
 Usage:
     # Import specific fixtures
@@ -17,6 +20,9 @@ Usage:
     from tests.fixtures.auth import test_user, authenticated_client
     from tests.fixtures.client import client, async_client
     from tests.fixtures.mocks import mock_redis, mock_web3
+    from tests.fixtures.test_data import sample_user, sample_wallet
+    from tests.fixtures.usecase import historical_balance_usecase, sample_historical_balance_data
+    from tests.fixtures.services import portfolio_service, mock_snapshot_data
 
     # Use in tests
     async def test_something(db_session, test_user, client):
@@ -61,7 +67,9 @@ from .database import (
 )
 from .mocks import (
     mock_all_external_services,
+    mock_async_session,
     mock_celery,
+    mock_db_session,
     mock_external_apis,
     mock_httpx_client,
     mock_jwt_utils,
@@ -70,6 +78,18 @@ from .mocks import (
     mock_s3_client,
     mock_web3,
 )
+from .services import mock_snapshot_data, portfolio_service
+from .test_data import (
+    sample_aggregate_metrics,
+    sample_historical_balance,
+    sample_historical_data,
+    sample_portfolio_data,
+    sample_portfolio_snapshot,
+    sample_user,
+    sample_wallet,
+    sample_wallet_data,
+)
+from .usecase import historical_balance_usecase, sample_historical_balance_data
 
 __all__ = [
     # Base fixtures
@@ -102,6 +122,7 @@ __all__ = [
     # Mock fixtures
     "mock_redis",
     "mock_web3",
+    "mock_async_session",
     "mock_httpx_client",
     "mock_celery",
     "mock_s3_client",
@@ -114,4 +135,20 @@ __all__ = [
     "mock_settings",
     "fixture_config",
     "test_data_config",
+    # Sample data fixtures
+    "sample_user",
+    "sample_wallet",
+    "sample_portfolio_snapshot",
+    "sample_historical_balance",
+    "sample_aggregate_metrics",
+    "sample_wallet_data",
+    "sample_historical_data",
+    "sample_portfolio_data",
+    # Usecase fixtures
+    "historical_balance_usecase",
+    "mock_db_session",
+    "sample_historical_balance_data",
+    # Service fixtures
+    "portfolio_service",
+    "mock_snapshot_data",
 ]

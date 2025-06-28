@@ -4,6 +4,7 @@ import asyncio
 import datetime
 import pathlib
 import uuid
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -17,7 +18,8 @@ from .fixtures.auth import *
 from .fixtures.base import *
 from .fixtures.database import *
 from .fixtures.mocks import *
-from .fixtures.portfolio import *
+from .fixtures.portfolio_metrics import *
+from .fixtures.test_data import *
 
 ALEMBIC_CONFIG_PATH = str(pathlib.Path(__file__).parent.parent / "alembic.ini")
 
@@ -48,9 +50,7 @@ def anyio_backend():
 
 # Register a "fast" profile that limits examples and sets a reasonable deadline
 # across the test suite unless individual tests override it explicitly.
-settings.register_profile(
-    "fast", max_examples=25, deadline=datetime.timedelta(milliseconds=300)
-)
+settings.register_profile("fast", max_examples=25, deadline=timedelta(milliseconds=300))
 settings.load_profile("fast")
 
 
