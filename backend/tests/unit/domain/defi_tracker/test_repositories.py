@@ -6,8 +6,8 @@ Tests the abstract repository interfaces (ports) for persistence.
 
 import pytest
 
-from app.domain.defi_tracker.models import AggregateMetrics
-from app.domain.defi_tracker.repositories import AggregateMetricsRepository
+from app.domain.defi_tracker.entities import AggregateMetrics
+from app.domain.defi_tracker.interfaces import AggregateMetricsRepository
 
 
 class MockAggregateMetricsRepository(AggregateMetricsRepository):
@@ -70,6 +70,7 @@ class TestAggregateMetricsRepository:
         assert callable(repo.get_latest)
         assert callable(repo.get_history)
 
+    @pytest.mark.asyncio
     async def test_mock_repository_upsert_method(self):
         """Test the mock repository upsert method."""
         repo = MockAggregateMetricsRepository()
@@ -87,6 +88,7 @@ class TestAggregateMetricsRepository:
         assert wallet_id in repo.metrics_store
         assert repo.metrics_store[wallet_id] == metrics
 
+    @pytest.mark.asyncio
     async def test_mock_repository_get_latest_method(self):
         """Test the mock repository get_latest method."""
         repo = MockAggregateMetricsRepository()
@@ -105,6 +107,7 @@ class TestAggregateMetricsRepository:
         result = await repo.get_latest(wallet_id)
         assert result == metrics
 
+    @pytest.mark.asyncio
     async def test_mock_repository_get_history_method(self):
         """Test the mock repository get_history method."""
         repo = MockAggregateMetricsRepository()
@@ -141,6 +144,7 @@ class TestAggregateMetricsRepository:
         assert len(result) == 1
         assert result == [history[1]]
 
+    @pytest.mark.asyncio
     async def test_mock_repository_get_history_with_large_offset(self):
         """Test get_history with offset larger than available data."""
         repo = MockAggregateMetricsRepository()
@@ -154,6 +158,7 @@ class TestAggregateMetricsRepository:
         result = await repo.get_history(wallet_id, offset=10)
         assert result == []
 
+    @pytest.mark.asyncio
     async def test_mock_repository_get_history_with_zero_limit(self):
         """Test get_history with zero limit."""
         repo = MockAggregateMetricsRepository()
@@ -167,6 +172,7 @@ class TestAggregateMetricsRepository:
         result = await repo.get_history(wallet_id, limit=0)
         assert result == []
 
+    @pytest.mark.asyncio
     async def test_mock_repository_get_history_with_negative_offset(self):
         """Test get_history with negative offset."""
         repo = MockAggregateMetricsRepository()
@@ -176,10 +182,11 @@ class TestAggregateMetricsRepository:
         history = [AggregateMetrics.new(wallet_id), AggregateMetrics.new(wallet_id)]
         repo.history_store[wallet_id] = history
 
-        # Test with negative offset
+        # Test with negative offset (should return last item, per Python slicing)
         result = await repo.get_history(wallet_id, offset=-1)
-        assert result == history
+        assert result == history[-1:]
 
+    @pytest.mark.asyncio
     async def test_mock_repository_get_history_with_negative_limit(self):
         """Test get_history with negative limit."""
         repo = MockAggregateMetricsRepository()
@@ -189,10 +196,11 @@ class TestAggregateMetricsRepository:
         history = [AggregateMetrics.new(wallet_id), AggregateMetrics.new(wallet_id)]
         repo.history_store[wallet_id] = history
 
-        # Test with negative limit
+        # Test with negative limit (should return all but last item, per Python slicing)
         result = await repo.get_history(wallet_id, limit=-1)
-        assert result == []
+        assert result == history[:-1]
 
+    @pytest.mark.asyncio
     async def test_mock_repository_multiple_wallets(self):
         """Test repository with multiple wallets."""
         repo = MockAggregateMetricsRepository()
@@ -217,6 +225,7 @@ class TestAggregateMetricsRepository:
         assert result_2 == metrics_2
         assert result_1 != result_2
 
+    @pytest.mark.asyncio
     async def test_mock_repository_upsert_overwrites_existing(self):
         """Test that upsert overwrites existing metrics."""
         repo = MockAggregateMetricsRepository()
@@ -241,6 +250,7 @@ class TestAggregateMetricsRepository:
         assert result == metrics_2
         assert result != metrics_1
 
+    @pytest.mark.asyncio
     async def test_mock_repository_empty_wallet_id(self):
         """Test repository with empty wallet_id."""
         repo = MockAggregateMetricsRepository()
@@ -254,6 +264,7 @@ class TestAggregateMetricsRepository:
         result = await repo.get_latest(wallet_id)
         assert result == metrics
 
+    @pytest.mark.asyncio
     async def test_mock_repository_special_characters_wallet_id(self):
         """Test repository with special characters in wallet_id."""
         repo = MockAggregateMetricsRepository()
@@ -267,6 +278,7 @@ class TestAggregateMetricsRepository:
         result = await repo.get_latest(wallet_id)
         assert result == metrics
 
+    @pytest.mark.asyncio
     async def test_mock_repository_large_history(self):
         """Test repository with large history."""
         repo = MockAggregateMetricsRepository()
@@ -283,8 +295,8 @@ class TestAggregateMetricsRepository:
 
         # Test with large offset
         result = await repo.get_history(wallet_id, offset=500)
-        assert len(result) == 500
-        assert result == history[500:]
+        assert len(result) == 100
+        assert result == history[500:600]
 
     def test_repository_method_signatures(self):
         """Test that repository methods have correct signatures."""

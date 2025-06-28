@@ -2,6 +2,57 @@
 
 This document describes the comprehensive fixture architecture for the test suite, designed to provide robust, modular, and performant testing infrastructure.
 
+## 🗂️ Test Directory Structure
+
+The tests are now organized under `backend/tests/` by backend/app modules and test types:
+
+- **unit/**
+  - adapters/
+  - aggregators/
+  - auth/
+  - core/
+  - domain/
+  - usecase/
+  - monitoring/
+  - validators/
+  - api/
+  - storage/
+  - schemas/
+  - models/
+  - repositories/
+  - services/
+  - tasks/
+  - cli/
+  - abi/
+- **integration/**
+  - adapters/
+  - aggregators/
+  - auth/
+  - core/
+  - domain/
+  - usecase/
+  - monitoring/
+  - validators/
+  - api/
+  - storage/
+  - schemas/
+  - models/
+  - repositories/
+  - services/
+  - tasks/
+  - cli/
+  - abi/
+- **fixtures/** - shared fixture modules
+- **utils/** - utility fixtures and helpers
+- **plugins/** - pytest plugins for validation and templating
+- **strategies/** - test strategy modules
+- **property/** - property-based tests
+- **performance/** - performance/load tests (skipped by default)
+- **examples/** - code examples for testing patterns
+- **templates/** - reusable test templates
+
+Each module folder corresponds to the `backend/app/<module>/` directory. Place unit tests under `unit/<module>/`, integration tests under `integration/<module>/`. Shared infrastructure (fixtures, utils, etc.) remains at the top level.
+
 ## 🏗️ Architecture Overview
 
 The fixture system is organized into a hierarchical module structure with clear separation of concerns:
