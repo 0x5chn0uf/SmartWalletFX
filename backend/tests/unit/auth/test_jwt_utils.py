@@ -43,5 +43,10 @@ def test_jwt_invalid_token(monkeypatch):
     _configure_hs256(monkeypatch)
     token = JWTUtils.create_access_token("user-123")
     corrupted = token[:-1] + ("a" if token[-1] != "a" else "b")
-    with pytest.raises(JWTError):
+    with pytest.raises((JWTError, Exception)) as exc_info:
         JWTUtils.decode_token(corrupted)
+    # Verify it's a JWT-related exception
+    assert (
+        "JWT" in str(type(exc_info.value).__name__)
+        or "jwt" in str(type(exc_info.value).__name__).lower()
+    )

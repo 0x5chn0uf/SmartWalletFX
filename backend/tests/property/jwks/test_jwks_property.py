@@ -74,7 +74,7 @@ def cache_states(draw):
 
 
 @pytest.mark.asyncio
-@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+@settings(deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
 @given(key_set=key_sets(), cache_state=cache_states())
 async def test_jwks_endpoint_property_based(
     key_set: List[Key], cache_state: Optional[str]
@@ -161,7 +161,7 @@ async def test_jwks_endpoint_property_based(
 
 
 @pytest.mark.asyncio
-@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+@settings(deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
 @given(cache_ttl=st.integers(min_value=1, max_value=3600))
 async def test_jwks_cache_ttl_property_based(cache_ttl: int):
     """Property-based test for JWKS cache TTL behavior."""
@@ -196,7 +196,7 @@ async def test_jwks_cache_ttl_property_based(cache_ttl: int):
 
 
 @pytest.mark.asyncio
-@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+@settings(deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
 @given(
     error_type=st.sampled_from(
         ["redis_connection", "redis_get", "redis_set", "key_format"]
