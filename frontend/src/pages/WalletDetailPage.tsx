@@ -15,17 +15,18 @@ import useNotification from '../hooks/useNotification';
 const WalletDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const dispatch = useDispatch<AppDispatch>();
-  const { wallet, transactions, status, error } = useSelector((state: RootState) => state.walletDetail);
+  const { wallet, transactions, status, error } = useSelector(
+    (state: RootState) => state.walletDetail
+  );
   const { showError } = useNotification();
 
   useEffect(() => {
     if (id) {
-      Promise.all([
-        dispatch(fetchWalletDetail(id)),
-        dispatch(fetchWalletTransactions(id))
-      ]).catch((err) => {
-        showError('Failed to load wallet details. Please try again.');
-      });
+      Promise.all([dispatch(fetchWalletDetail(id)), dispatch(fetchWalletTransactions(id))]).catch(
+        _err => {
+          showError('Failed to load wallet details. Please try again.');
+        }
+      );
     }
     return () => {
       dispatch(clearWalletDetail());
