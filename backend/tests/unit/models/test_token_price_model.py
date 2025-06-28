@@ -1,13 +1,12 @@
+import uuid
+
 import pytest
 from httpx import AsyncClient
 
 
 @pytest.mark.parametrize(
     "address",
-    [
-        "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
-        "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C598",
-    ],
+    [f"0x{uuid.uuid4().hex[:40]}", f"0x{uuid.uuid4().hex[:40]}"],
 )
 @pytest.mark.asyncio
 async def test_create_token_price(test_app, address):

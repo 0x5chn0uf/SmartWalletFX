@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from hypothesis import HealthCheck, assume, given, settings
 from hypothesis import strategies as st
@@ -24,7 +26,11 @@ async def test_authenticate_random_passwords_fail(db_session, random_password): 
 
     svc = AuthService(db_session)
     pw = "Secur3Pwd!@#"  # fixed good password
-    user = UserCreate(username="charlie", email="charlie@example.com", password=pw)
+    user = UserCreate(
+        username=f"charlie-{uuid.uuid4().hex[:8]}",
+        email=f"charlie-{uuid.uuid4().hex[:8]}@example.com",
+        password=pw,
+    )
     try:
         await svc.register(user)
     except DuplicateError:

@@ -21,9 +21,10 @@ class AggregateMetricsRepository:
 
     async def get_latest(self, wallet_id: str) -> Optional[AggregateMetricsModel]:
         """Get the latest aggregate metrics for a wallet."""
+        wallet_id = wallet_id.lower()
         stmt = (
             select(AggregateMetricsModel)
-            .filter(AggregateMetricsModel.wallet_id == wallet_id.lower())
+            .filter(AggregateMetricsModel.wallet_id == wallet_id)
             .order_by(desc(AggregateMetricsModel.as_of))
             .limit(1)
         )
@@ -34,9 +35,10 @@ class AggregateMetricsRepository:
         self, wallet_id: str, limit: int = 100, offset: int = 0
     ) -> List[AggregateMetricsModel]:
         """Get historical aggregate metrics for a wallet."""
+        wallet_id = wallet_id.lower()
         stmt = (
             select(AggregateMetricsModel)
-            .filter(AggregateMetricsModel.wallet_id == wallet_id.lower())
+            .filter(AggregateMetricsModel.wallet_id == wallet_id)
             .order_by(desc(AggregateMetricsModel.as_of))
             .offset(offset)
             .limit(limit)
@@ -46,9 +48,10 @@ class AggregateMetricsRepository:
 
     async def exists(self, wallet_id: str) -> bool:
         """Return True if aggregate metrics exist for the given wallet."""
+        wallet_id = wallet_id.lower()
         stmt = (
             select(AggregateMetricsModel.id)
-            .filter(AggregateMetricsModel.wallet_id == wallet_id.lower())
+            .filter(AggregateMetricsModel.wallet_id == wallet_id)
             .limit(1)
         )
         result = await self._session.execute(stmt)
@@ -85,9 +88,10 @@ class AggregateMetricsRepository:
 
     async def delete_old_metrics(self, wallet_id: str, before_date) -> int:
         """Delete all aggregate metrics for a wallet before a given date."""
+        wallet_id = wallet_id.lower()
         stmt = (
             delete(AggregateMetricsModel)
-            .where(AggregateMetricsModel.wallet_id == wallet_id.lower())
+            .where(AggregateMetricsModel.wallet_id == wallet_id)
             .where(AggregateMetricsModel.as_of < before_date)
         )
         result = await self._session.execute(stmt)

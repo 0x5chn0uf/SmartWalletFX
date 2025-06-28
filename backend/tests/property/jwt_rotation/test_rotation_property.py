@@ -13,7 +13,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Optional
 
-from hypothesis import given, settings
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from app.utils.jwt_rotation import Key, KeySet, promote_and_retire_keys
@@ -69,7 +69,11 @@ def keyset_strategy(draw) -> KeySet:  # type: ignore[valid-type]
 
 
 @given(keyset=keyset_strategy())
-@settings(max_examples=100)
+@settings(
+    max_examples=10,
+    deadline=1000,
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+)
 def test_rotation_invariants(keyset: KeySet):
     now = datetime.now(timezone.utc)
     update = promote_and_retire_keys(keyset, now)

@@ -12,7 +12,7 @@ def user_payload():
     }
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_register_login_and_me(client: TestClient, user_payload):
     """Happy-path: register → login → protected `/users/me`."""
 
@@ -65,7 +65,7 @@ def test_protected_route_rejects_invalid_token(client: TestClient):
     assert resp.status_code == 401, resp.text
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_access_token_contains_expected_claims(client: TestClient, user_payload):
     """Verify issued access token contains required claims."""
 

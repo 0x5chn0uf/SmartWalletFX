@@ -60,20 +60,34 @@ class PortfolioCalculationService:
 
             aggregate_apy = self._aggregate_apy(snapshot.staked_positions)
 
+            # Convert snapshot timestamp (int/str/datetime) to datetime
+            snap_ts = getattr(snapshot, "timestamp", None)
+            if isinstance(snap_ts, (int, float)):
+                snap_dt = datetime.utcfromtimestamp(snap_ts)
+            elif isinstance(snap_ts, datetime):
+                snap_dt = snap_ts
+            else:
+                snap_dt = datetime.utcnow()
+
             return PortfolioMetrics(
                 user_address=user_address,
                 total_collateral=total_collateral,
                 total_borrowings=total_borrowings,
                 total_collateral_usd=total_collateral_usd,
                 total_borrowings_usd=total_borrowings_usd,
+                aggregate_health_score=getattr(
+                    snapshot, "aggregate_health_score", None
+                ),
                 aggregate_apy=aggregate_apy,
                 collaterals=snapshot.collaterals,
                 borrowings=snapshot.borrowings,
                 staked_positions=snapshot.staked_positions,
                 health_scores=snapshot.health_scores,
+                protocol_breakdown=getattr(snapshot, "protocol_breakdown", {}),
+                timestamp=snap_dt,
             )
-        except Exception:
-            # Return empty metrics on any error
+        except Exception as exc:
+            logger.exception("calculate_portfolio_metrics failed", exc_info=exc)
             return self._empty_metrics(user_address)
 
     async def calculate_portfolio_timeline(

@@ -25,6 +25,19 @@ logger = logging.getLogger(__name__)
 class BlockchainService:
     """Service for blockchain data retrieval and calculations."""
 
+    # Move price_feeds to a class attribute for easier testing/mocking
+    price_feeds = {
+        "0xA0b86a33E6441b8C4C8C8C8C8C8C8C8C8C8C8C80": (
+            "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"  # USDC/USD
+        ),
+        "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599": (
+            "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c"  # BTC/USD
+        ),
+        "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2": (
+            "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"  # ETH/USD
+        ),
+    }
+
     def __init__(self):
         self.w3 = None
         self._setup_web3()
@@ -37,6 +50,8 @@ class BlockchainService:
                 if not self.w3.is_connected():
                     logger.warning("Failed to connect to Ethereum RPC")
                     self.w3 = None
+            else:
+                self.w3 = None
         except Exception as e:
             logger.error(f"Error setting up Web3: {e}")
             self.w3 = None
@@ -193,19 +208,24 @@ class BlockchainService:
             for token_address, balance_data in balances.items():
                 # Get token price
                 price = await self.get_token_price(token_address)
-                if price:
-                    # Calculate value
-                    balance_wei = balance_data["balance_wei"]
-                    decimals = balance_data["decimals"]
-                    balance = balance_wei / (10**decimals)
-                    value = balance * price
 
+                # Calculate value
+                balance_wei = balance_data["balance_wei"]
+                decimals = balance_data["decimals"]
+                balance = balance_wei / (10**decimals)
+
+                if price:
+                    value = balance * price
                     total_value += value
-                    token_values[token_address] = {
-                        "balance": balance,
-                        "price": price,
-                        "value": value,
-                    }
+                else:
+                    value = 0.0
+
+                # Always add token to token_values
+                token_values[token_address] = {
+                    "balance": balance,
+                    "price": price,
+                    "value": value,
+                }
 
             return {"total_value": total_value, "token_values": token_values}
 
@@ -250,7 +270,7 @@ class BlockchainService:
     def _get_common_tokens(self) -> List[str]:
         """Get list of common token addresses."""
         return [
-            "0xA0b86a33E6441b8C4C8C8C8C8C8C8C8C8C8C8C8",  # USDC
+            "0xA0b86a33E6441b8C4C8C8C8C8C8C8C8C8C8C8C80",  # USDC (fixed to 42 chars)
             "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",  # WBTC
             "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",  # WETH
             "0xdAC17F958D2ee523a2206206994597C13D831ec7",  # USDT
@@ -328,18 +348,8 @@ class BlockchainService:
             if not self.w3:
                 return None
 
-            # Chainlink price feed addresses (simplified)
-            price_feeds = {
-                "0xA0b86a33E6441b8C4C8C8C8C8C8C8C8C8C8C8C8": (
-                    "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"  # USDC/USD
-                ),
-                "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599": (
-                    "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c"  # BTC/USD
-                ),
-                "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2": (
-                    "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"  # ETH/USD
-                ),
-            }
+            # Use the class attribute for price feeds
+            price_feeds = self.price_feeds
 
             if token_address not in price_feeds:
                 return None
@@ -365,7 +375,7 @@ class BlockchainService:
     ) -> Optional[float]:
         """Get hardcoded prices for common tokens."""
         prices = {
-            "0xA0b86a33E6441b8C4C8C8C8C8C8C8C8C8C8C8C8": 1.0,  # USDC
+            "0xA0b86a33E6441b8C4C8C8C8C8C8C8C8C8C8C8C80": 1.0,  # USDC
             "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599": 45000.0,  # WBTC
             "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2": 3000.0,  # WETH
             "0xdAC17F958D2ee523a2206206994597C13D831ec7": 1.0,  # USDT
@@ -488,7 +498,9 @@ class BlockchainService:
             data.append(
                 {
                     "timestamp": int(current_date.timestamp()),
+                    "date": current_date.isoformat(),
                     "portfolio_value": portfolio_value,
+                    "value": portfolio_value,
                     "collateral_value": portfolio_value * 0.8,
                     "borrowing_value": portfolio_value * 0.2,
                     "health_score": 0.85 + (0.1 * variation),
@@ -502,5 +514,8 @@ class BlockchainService:
                 current_date += timedelta(weeks=1)
             elif interval == "monthly":
                 current_date += timedelta(days=30)
+            else:
+                # Default to daily for invalid intervals
+                current_date += timedelta(days=1)
 
         return data

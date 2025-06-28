@@ -250,11 +250,9 @@ class JWTUtils:
             # If the failure is due to token expiry or other standard issues,
             # propagate it immediately.  We only want to retry on key-format
             # problems (e.g., JWKError about string/bytes).
-            from jose.exceptions import ExpiredSignatureError, JWKError
-
             if isinstance(exc, ExpiredSignatureError):
                 raise
-            if not isinstance(exc, JWKError):
+            if not isinstance(exc, JWTError):
                 # Any other JWT-related error should bubble up.
                 raise
 
@@ -272,8 +270,6 @@ class JWTUtils:
                 try:
                     payload = _decode_with_key(alt_key)
                 except Exception as inner_exc:
-                    from jose.exceptions import ExpiredSignatureError
-
                     if isinstance(inner_exc, ExpiredSignatureError):
                         raise
                     # Final fallback – manual HMAC verification (handles rare

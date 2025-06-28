@@ -8,34 +8,44 @@ from app.schemas.user import UserCreate, UserInDB, UserRead
 
 
 def test_user_create_valid():
-    user = UserCreate(username="alice", email="alice@example.com", password="Abcd1234!")
-    assert user.username == "alice"
+    username = f"alice-{uuid.uuid4().hex[:8]}"
+    user = UserCreate(
+        username=username,
+        email=f"alice-{uuid.uuid4().hex[:8]}@example.com",
+        password="Abcd1234!",
+    )
+    assert user.username == username
 
 
 def test_user_create_invalid_password():
     with pytest.raises(ValidationError):
-        UserCreate(username="bob", email="bob@example.com", password="weak")
+        UserCreate(
+            username=f"bob-{uuid.uuid4().hex[:8]}",
+            email=f"bob-{uuid.uuid4().hex[:8]}@example.com",
+            password="weak",
+        )
 
 
 def test_user_read_roundtrip():
     now = datetime.utcnow()
+    username = f"carol-{uuid.uuid4().hex[:8]}"
     read = UserRead(
         id=uuid.uuid4(),
-        username="carol",
-        email="carol@example.com",
+        username=username,
+        email=f"carol-{uuid.uuid4().hex[:8]}@example.com",
         created_at=now,
         updated_at=now,
     )
     serialized = read.model_dump()
-    assert serialized["username"] == "carol"
+    assert serialized["username"] == username
 
 
 def test_user_in_db_includes_hash():
     now = datetime.utcnow()
     user_in_db = UserInDB(
         id=uuid.uuid4(),
-        username="dave",
-        email="dave@example.com",
+        username=f"dave-{uuid.uuid4().hex[:8]}",
+        email=f"dave-{uuid.uuid4().hex[:8]}@example.com",
         created_at=now,
         updated_at=now,
         hashed_password="hash",
