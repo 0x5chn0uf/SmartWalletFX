@@ -9,7 +9,7 @@ from uuid import UUID
 
 import pytest
 
-from app.domain.defi_tracker.models import AggregateMetrics, Position
+from app.domain.defi_tracker.entities import AggregateMetrics, Position
 
 
 class TestPosition:
