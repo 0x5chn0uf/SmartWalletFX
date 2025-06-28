@@ -112,7 +112,7 @@ async def test_wallet_invalid_address_format(authenticated_client):
     assert bad.status_code == 422
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_create_wallet_authenticated(authenticated_client: AsyncClient):
     wallet_data = {
         "address": "0x1234567890123456789012345678901234567890",

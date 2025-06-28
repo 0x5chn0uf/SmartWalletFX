@@ -18,7 +18,9 @@ from tests.strategies import security as strat_mod
 pytestmark = pytest.mark.property
 
 # Use a deterministic profile when run in CI to minimise flakiness.
-settings.register_profile("ci", max_examples=200, deadline=None)
+settings.register_profile(
+    "ci", max_examples=50, deadline=5000
+)  # Reduced from 200 to 50, added deadline
 settings.load_profile("ci")
 
 

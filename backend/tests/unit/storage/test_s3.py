@@ -4,21 +4,11 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
-
-# Try to import botocore exceptions, skip tests if not available
-try:
-    from botocore.exceptions import BotoCoreError, ClientError
-
-    BOTOCORE_AVAILABLE = True
-except ImportError:
-    BOTOCORE_AVAILABLE = False
-    BotoCoreError = Exception
-    ClientError = Exception
+from botocore.exceptions import BotoCoreError, ClientError
 
 from app.storage.s3 import S3StorageAdapter
 
 
-@pytest.mark.skipif(not BOTOCORE_AVAILABLE, reason="botocore not available")
 class TestS3StorageAdapter:
     """Test S3 storage adapter functionality."""
 
@@ -377,13 +367,3 @@ class TestS3StorageAdapter:
         mock_paginator.paginate.assert_called_once_with(
             Bucket=self.test_bucket, Prefix="test/"
         )
-
-
-class TestS3StorageAdapterWithoutBotocore:
-    """Test S3 storage adapter when botocore is not available."""
-
-    @pytest.mark.skipif(BOTOCORE_AVAILABLE, reason="botocore is available")
-    def test_import_error_when_botocore_not_available(self):
-        """Test that S3StorageAdapter raises ImportError when botocore is not available."""
-        with pytest.raises(ImportError):
-            pass

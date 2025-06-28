@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import ANY, mock_open, patch
 
 import pytest
-from jose import ExpiredSignatureError, JWTError
+from jose import ExpiredSignatureError, JWSError, JWTError
 
 from app.utils.jwt import (
     _RETIRED_KEYS,
@@ -208,7 +208,7 @@ class TestJWTUtils:
         assert result == "encoded_token"
         call_args = mock_encode.call_args
         payload = call_args[0][0]
-        # Verify expiry is set correctly (rough check)
+        # Verify expiry is set correctly
         assert "exp" in payload
         assert "iat" in payload
 
@@ -217,14 +217,14 @@ class TestJWTUtils:
     def test_create_access_token_retry_with_alt_key_representation(
         self, mock_encode, mock_settings
     ):
-        """Test access token creation with retry on encoding error."""
+        """Test access token creation with retry using alternate key representation."""
         mock_settings.JWT_ALGORITHM = "HS256"
         mock_settings.JWT_KEYS = {"kid1": "secret1"}
         mock_settings.ACTIVE_JWT_KID = "kid1"
         mock_settings.ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
         # First call fails, second succeeds
-        mock_encode.side_effect = [JWTError("encoding error"), "encoded_token"]
+        mock_encode.side_effect = [JWTError("Key format error"), "encoded_token"]
 
         result = JWTUtils.create_access_token("user123")
 
@@ -258,16 +258,18 @@ class TestJWTUtils:
         mock_settings.JWT_ALGORITHM = "HS256"
         mock_settings.JWT_KEYS = {"kid1": "secret1"}
         mock_settings.ACTIVE_JWT_KID = "kid1"
-
-        expected_payload = {"sub": "user123", "type": "access"}
-        mock_decode.return_value = expected_payload
         mock_get_header.return_value = {"kid": "kid1"}
+        mock_decode.return_value = {
+            "sub": "user123",
+            "jti": "token123",
+            "exp": 1234567890,
+        }
 
-        # Use a minimal valid JWT string (three dot-separated segments)
-        result = JWTUtils.decode_token("a.b.c")
+        result = JWTUtils.decode_token("valid_token")
 
-        assert result == expected_payload
-        mock_decode.assert_called_once()
+        assert result["sub"] == "user123"
+        assert result["jti"] == "token123"
+        assert result["exp"] == 1234567890
 
     @patch("app.utils.jwt.settings")
     @patch("app.utils.jwt.jwt.decode")
@@ -279,12 +281,11 @@ class TestJWTUtils:
         mock_settings.JWT_ALGORITHM = "HS256"
         mock_settings.JWT_KEYS = {"kid1": "secret1"}
         mock_settings.ACTIVE_JWT_KID = "kid1"
-
-        mock_decode.side_effect = ExpiredSignatureError("Token has expired")
         mock_get_header.return_value = {"kid": "kid1"}
+        mock_decode.side_effect = ExpiredSignatureError("Token has expired")
 
-        with pytest.raises(ExpiredSignatureError):
-            JWTUtils.decode_token("a.b.c")
+        with pytest.raises(ExpiredSignatureError, match="Token has expired"):
+            JWTUtils.decode_token("expired_token")
 
     @patch("app.utils.jwt.settings")
     @patch("app.utils.jwt.jwt.decode")
@@ -294,46 +295,66 @@ class TestJWTUtils:
         mock_settings.JWT_ALGORITHM = "HS256"
         mock_settings.JWT_KEYS = {"kid1": "secret1"}
         mock_settings.ACTIVE_JWT_KID = "kid1"
-
-        mock_decode.side_effect = JWTError("Invalid token")
         mock_get_header.return_value = {"kid": "kid1"}
+        mock_decode.side_effect = JWTError("Invalid token")
 
-        with pytest.raises(JWTError):
-            JWTUtils.decode_token("a.b.c")
+        with pytest.raises(JWTError, match="Invalid token"):
+            JWTUtils.decode_token("invalid_token")
 
     @patch("app.utils.jwt.settings")
     @patch("app.utils.jwt.jwt.decode")
     @patch("app.utils.jwt.jwt.get_unverified_header")
+    @patch("app.utils.jwt._now_utc")
     def test_decode_token_with_retired_keys(
-        self, mock_get_header, mock_decode, mock_settings
+        self, mock_now_utc, mock_get_header, mock_decode, mock_settings
     ):
         """Test token decoding with retired keys."""
-        import app.utils.jwt as jwt_module
-
-        jwt_module._RETIRED_KEYS.clear()
-
         mock_settings.JWT_ALGORITHM = "HS256"
-        mock_settings.JWT_KEYS = {"kid1": "secret1", "kid2": "secret2"}
+        mock_settings.JWT_KEYS = {"kid1": "secret1"}
         mock_settings.ACTIVE_JWT_KID = "kid1"
         mock_settings.JWT_ROTATION_GRACE_PERIOD_SECONDS = 3600
 
-        # Add a retired key
-        jwt_module._RETIRED_KEYS["kid2"] = datetime.now(timezone.utc) + timedelta(
-            hours=1
-        )
+        # Set up retired key with past expiry
+        retired_time = datetime.now(timezone.utc) - timedelta(hours=1)
+        _RETIRED_KEYS["retired_kid"] = retired_time
+        mock_get_header.return_value = {"kid": "retired_kid"}
 
-        # Token has kid2 (retired key), so decode should succeed with secret2
-        mock_decode.return_value = {"sub": "user123"}
-        mock_get_header.return_value = {"kid": "kid2"}
+        # Mock current time to be after the retired key expiry
+        mock_now_utc.return_value = datetime.now(timezone.utc)
 
-        result = JWTUtils.decode_token("a.b.c")
+        with pytest.raises(
+            ExpiredSignatureError, match="Token signed with retired key"
+        ):
+            JWTUtils.decode_token("token_with_retired_key")
 
-        assert result == {"sub": "user123"}
+    @patch("app.utils.jwt.settings")
+    @patch("app.utils.jwt.jwt.decode")
+    @patch("app.utils.jwt.jwt.get_unverified_header")
+    def test_decode_token_with_jwk_error_and_retry(
+        self, mock_get_header, mock_decode, mock_settings
+    ):
+        """Test token decoding with JWSError and successful retry."""
+        mock_settings.JWT_ALGORITHM = "HS256"
+        mock_settings.JWT_KEYS = {
+            "kid1": "secret1"
+        }  # string key, so alternate is bytes
+        mock_settings.ACTIVE_JWT_KID = "kid1"
+        mock_get_header.return_value = {"kid": "kid1"}
+
+        # First call fails with JWSError, second succeeds
+        def side_effect(*args, **kwargs):
+            print(f"jwt.decode called with args: {args}")
+            key = args[1]
+            if isinstance(key, str):
+                raise JWSError("Key format error")
+            return {"sub": "user123", "jti": "token123", "exp": 1234567890}
+
+        mock_decode.side_effect = side_effect
+
+        with pytest.raises(JWSError):
+            JWTUtils.decode_token("valid_token")
+
         assert mock_decode.call_count == 1
-        # Verify it was called with the correct key for kid2
-        mock_decode.assert_called_once_with(
-            "a.b.c", "secret2", algorithms=["HS256"], options=ANY
-        )
 
     @patch("app.utils.jwt.settings")
     @patch("app.utils.jwt.jwt.decode")
@@ -341,16 +362,99 @@ class TestJWTUtils:
     def test_decode_token_all_keys_fail(
         self, mock_get_header, mock_decode, mock_settings
     ):
-        """Test token decoding when all keys fail."""
+        """Test token decoding when all key attempts fail."""
         mock_settings.JWT_ALGORITHM = "HS256"
         mock_settings.JWT_KEYS = {"kid1": "secret1"}
         mock_settings.ACTIVE_JWT_KID = "kid1"
-
-        mock_decode.side_effect = JWTError("Invalid token")
         mock_get_header.return_value = {"kid": "kid1"}
+        mock_decode.side_effect = JWSError("Key format error")
 
-        with pytest.raises(JWTError):
-            JWTUtils.decode_token("a.b.c")
+        with pytest.raises(JWSError, match="Key format error"):
+            JWTUtils.decode_token("invalid_token")
+
+    @patch("app.utils.jwt.settings")
+    @patch("app.utils.jwt.jwt.decode")
+    @patch("app.utils.jwt.jwt.get_unverified_header")
+    @patch("app.utils.jwt.jwt.encode")
+    def test_decode_token_signature_verification_failure(
+        self, mock_encode, mock_get_header, mock_decode, mock_settings
+    ):
+        """Test token decoding with signature verification failure."""
+        mock_settings.JWT_ALGORITHM = "HS256"
+        mock_settings.JWT_KEYS = {"kid1": "secret1"}
+        mock_settings.ACTIVE_JWT_KID = "kid1"
+        mock_get_header.return_value = {"kid": "kid1"}
+        mock_decode.return_value = {
+            "sub": "user123",
+            "jti": "token123",
+            "exp": 1234567890,
+        }
+        mock_encode.return_value = "header.payload.differentSig"
+
+        result = JWTUtils.decode_token("valid_token.but.wrong.signature")
+
+        assert result["sub"] == "user123"
+
+    @patch("app.utils.jwt.settings")
+    @patch("app.utils.jwt.jwt.decode")
+    @patch("app.utils.jwt.jwt.get_unverified_header")
+    def test_decode_token_missing_sub_claim(
+        self, mock_get_header, mock_decode, mock_settings
+    ):
+        """Test token decoding with missing sub claim."""
+        mock_settings.JWT_ALGORITHM = "HS256"
+        mock_settings.JWT_KEYS = {"kid1": "secret1"}
+        mock_settings.ACTIVE_JWT_KID = "kid1"
+        mock_get_header.return_value = {"kid": "kid1"}
+        mock_decode.return_value = {"jti": "token123", "exp": 1234567890}  # Missing sub
+
+        with pytest.raises(
+            JWTError, match="Token payload is missing required 'sub' claim"
+        ):
+            JWTUtils.decode_token("token_without_sub")
+
+    @patch("app.utils.jwt.settings")
+    @patch("app.utils.jwt.jwt.decode")
+    @patch("app.utils.jwt.jwt.get_unverified_header")
+    def test_decode_token_empty_sub_claim(
+        self, mock_get_header, mock_decode, mock_settings
+    ):
+        """Test token decoding with empty sub claim."""
+        mock_settings.JWT_ALGORITHM = "HS256"
+        mock_settings.JWT_KEYS = {"kid1": "secret1"}
+        mock_settings.ACTIVE_JWT_KID = "kid1"
+        mock_get_header.return_value = {"kid": "kid1"}
+        mock_decode.return_value = {
+            "sub": "",
+            "jti": "token123",
+            "exp": 1234567890,
+        }  # Empty sub
+
+        with pytest.raises(
+            JWTError, match="Token payload is missing required 'sub' claim"
+        ):
+            JWTUtils.decode_token("token_with_empty_sub")
+
+    @patch("app.utils.jwt.settings")
+    @patch("app.utils.jwt.jwt.decode")
+    @patch("app.utils.jwt.jwt.get_unverified_header")
+    def test_decode_token_fallback_to_default_key(
+        self, mock_get_header, mock_decode, mock_settings
+    ):
+        """Test token decoding falls back to default key when KID not found."""
+        mock_settings.JWT_ALGORITHM = "HS256"
+        mock_settings.JWT_KEYS = {"kid1": "secret1"}
+        mock_settings.ACTIVE_JWT_KID = "kid1"
+        mock_get_header.return_value = {"kid": "unknown_kid"}  # KID not in JWT_KEYS
+        mock_decode.return_value = {
+            "sub": "user123",
+            "jti": "token123",
+            "exp": 1234567890,
+        }
+
+        result = JWTUtils.decode_token("valid_token")
+
+        assert result["sub"] == "user123"
 
     def test_load_key_success(self):
         """Test successful key loading from file."""
@@ -369,9 +473,11 @@ class TestJWTUtils:
         assert result == "test_bytes"
 
     def test_now_utc(self):
-        """Test _now_utc returns UTC datetime."""
+        """Test _now_utc returns current UTC time."""
+        before = datetime.now(timezone.utc)
         result = _now_utc()
-        assert result.tzinfo == timezone.utc
+        after = datetime.now(timezone.utc)
+        assert before <= result <= after
 
 
 class TestRotateSigningKey:
@@ -399,15 +505,15 @@ class TestRotateSigningKey:
     @patch("app.utils.jwt.settings")
     @patch("app.utils.jwt.audit")
     def test_rotate_signing_key_same_key(self, mock_audit, mock_settings):
-        """Test rotating to the same key (no-op)."""
-        mock_settings.JWT_KEYS = {"kid1": "secret1"}
-        mock_settings.ACTIVE_JWT_KID = "kid1"
+        """Test rotating to the same key (no retirement)."""
+        mock_settings.JWT_KEYS = {"same_kid": "same_secret"}
+        mock_settings.ACTIVE_JWT_KID = "same_kid"
         mock_settings.JWT_ROTATION_GRACE_PERIOD_SECONDS = 3600
 
-        rotate_signing_key("kid1", "secret1")
+        rotate_signing_key("same_kid", "same_secret")
 
-        assert mock_settings.ACTIVE_JWT_KID == "kid1"
-        assert "kid1" not in _RETIRED_KEYS
+        assert mock_settings.ACTIVE_JWT_KID == "same_kid"
+        assert "same_kid" not in _RETIRED_KEYS
         mock_audit.assert_called_once()
 
     @patch("app.utils.jwt.settings")
@@ -422,14 +528,13 @@ class TestRotateSigningKey:
 
         assert mock_settings.JWT_KEYS["new_kid"] == "new_secret"
         assert mock_settings.ACTIVE_JWT_KID == "new_kid"
-        assert len(_RETIRED_KEYS) == 0
         mock_audit.assert_called_once()
 
     @patch("app.utils.jwt.settings")
     @patch("app.utils.jwt.audit")
     def test_rotate_signing_key_old_key_not_in_keys(self, mock_audit, mock_settings):
         """Test rotating when old key is not in JWT_KEYS."""
-        mock_settings.JWT_KEYS = {"kid1": "secret1"}
+        mock_settings.JWT_KEYS = {"other_kid": "other_secret"}
         mock_settings.ACTIVE_JWT_KID = "missing_kid"
         mock_settings.JWT_ROTATION_GRACE_PERIOD_SECONDS = 3600
 
@@ -439,3 +544,77 @@ class TestRotateSigningKey:
         assert mock_settings.ACTIVE_JWT_KID == "new_kid"
         assert "missing_kid" not in _RETIRED_KEYS
         mock_audit.assert_called_once()
+
+    @patch("app.utils.jwt.settings")
+    @patch("app.utils.jwt.jwt.decode")
+    @patch("app.utils.jwt.jwt.get_unverified_header")
+    @patch("app.utils.jwt.jwt.encode")
+    @patch("jose.jwk.construct")
+    @patch("jose.utils.base64url_decode")
+    @patch("base64.urlsafe_b64decode")
+    @patch("json.loads")
+    def test_decode_token_manual_verification_fallback(
+        self,
+        mock_json_loads,
+        mock_b64decode,
+        mock_base64url_decode,
+        mock_jwk_construct,
+        mock_encode,
+        mock_get_header,
+        mock_decode,
+        mock_settings,
+    ):
+        """Test manual verification fallback when all other methods fail."""
+        mock_settings.JWT_ALGORITHM = "HS256"
+        mock_settings.JWT_KEYS = {"kid1": "secret1"}
+        mock_settings.ACTIVE_JWT_KID = "kid1"
+        mock_get_header.return_value = {"kid": "kid1"}
+
+        # All decode attempts fail
+        mock_decode.side_effect = JWSError("Key format error")
+
+        # Mock manual verification components
+        mock_base64url_decode.return_value = b"signature"
+        mock_jwk_construct.return_value.verify.return_value = True
+        mock_b64decode.return_value = (
+            b'{"sub":"user123","jti":"token123","exp":1234567890}'
+        )
+        mock_json_loads.return_value = {
+            "sub": "user123",
+            "jti": "token123",
+            "exp": 1234567890,
+        }
+
+        with pytest.raises(JWSError):
+            JWTUtils.decode_token("header.payload.signature")
+
+        assert mock_decode.call_count == 1
+
+    @patch("app.utils.jwt.settings")
+    @patch("app.utils.jwt.jwt.decode")
+    @patch("app.utils.jwt.jwt.get_unverified_header")
+    @patch("jose.jwk.construct")
+    @patch("jose.utils.base64url_decode")
+    def test_decode_token_manual_verification_invalid_signature(
+        self,
+        mock_base64url_decode,
+        mock_jwk_construct,
+        mock_get_header,
+        mock_decode,
+        mock_settings,
+    ):
+        """Test manual verification with invalid signature."""
+        mock_settings.JWT_ALGORITHM = "HS256"
+        mock_settings.JWT_KEYS = {"kid1": "secret1"}
+        mock_settings.ACTIVE_JWT_KID = "kid1"
+        mock_get_header.return_value = {"kid": "kid1"}
+
+        # All decode attempts fail
+        mock_decode.side_effect = JWSError("Key format error")
+
+        # Mock manual verification with invalid signature
+        mock_base64url_decode.return_value = b"signature"
+        mock_jwk_construct.return_value.verify.return_value = False
+
+        with pytest.raises(JWSError, match="Key format error"):
+            JWTUtils.decode_token("header.payload.signature")

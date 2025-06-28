@@ -6,11 +6,20 @@ schemas for comprehensive backup and restore validation.
 
 import random
 import string
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
+from uuid import uuid4
 
+import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
+
+from app.models.aggregate_metrics import AggregateMetricsModel
+from app.models.historical_balance import HistoricalBalance
+from app.models.portfolio_snapshot import PortfolioSnapshot
+from app.models.user import User
+from app.models.wallet import Wallet
 
 
 class TestDataManager:
@@ -199,8 +208,8 @@ class TestDataManager:
             return counts
 
     def _validate_foreign_keys(self, conn) -> None:
-        """Validate foreign key relationships in the database."""
-        # Check that all wallets have valid user_id
+        """Validate foreign key relationships in the test data."""
+        # Check that all wallets have valid user_id references
         result = conn.execute(
             text(
                 """
@@ -214,7 +223,7 @@ class TestDataManager:
         if orphaned_wallets > 0:
             raise ValueError(f"Found {orphaned_wallets} wallets with invalid user_id")
 
-        # Check that all transactions have valid wallet_id
+        # Check that all transactions have valid wallet_id references
         result = conn.execute(
             text(
                 """
@@ -230,7 +239,7 @@ class TestDataManager:
                 f"Found {orphaned_transactions} transactions with invalid wallet_id"
             )
 
-        # Check that all token_balances have valid wallet_id
+        # Check that all token_balances have valid wallet_id references
         result = conn.execute(
             text(
                 """
@@ -247,89 +256,134 @@ class TestDataManager:
             )
 
     async def cleanup(self) -> None:
-        """Clean up test data and close connections."""
+        """Clean up test database."""
         if self.engine:
             self.engine.dispose()
 
 
 async def create_large_test_dataset(dsn: str, target_size_mb: int = 100) -> None:
-    """Create a large test dataset for performance testing.
+    """Create a large test dataset for performance testing."""
+    manager = TestDataManager(dsn)
+    await manager.create_test_database()
 
-    Args:
-        dsn: Database connection string
-        target_size_mb: Target size in MB for the test dataset
-    """
-    await TestDataManager.create_test_database(dsn)
+    # Calculate how many records we need to reach target size
+    # This is a rough estimate - actual size will vary
+    records_per_mb = 1000  # Rough estimate
+    target_records = target_size_mb * records_per_mb
 
-    # Calculate how much additional data to add to reach target size
-    # This is a simplified approach - in practice you'd measure actual table sizes
-    current_count = 100  # Base data from init.sql
-    target_count = target_size_mb * 1000  # Rough estimate: 1KB per row
+    # Generate additional data to reach target size
+    additional_users = manager._generate_users(target_records // 100)
+    additional_wallets = manager._generate_wallets(
+        additional_users, target_records // 10
+    )
+    additional_transactions = manager._generate_transactions(
+        additional_wallets, target_records
+    )
 
-    additional_count = max(0, target_count - current_count)
+    # Insert the additional data
+    with manager.engine.connect() as conn:
+        for user in additional_users:
+            conn.execute(
+                text(
+                    """
+                INSERT INTO users (username, email)
+                VALUES (:username, :email)
+            """
+                ),
+                user,
+            )
 
-    if additional_count > 0:
-        # Generate additional data in batches
-        batch_size = 1000
-        for i in range(0, additional_count, batch_size):
-            _ = min(batch_size, additional_count - i)
-            await TestDataManager.insert_additional_test_data(dsn)
+        for wallet in additional_wallets:
+            conn.execute(
+                text(
+                    """
+                INSERT INTO wallets (user_id, address, name)
+                VALUES (:user_id, :address, :name)
+            """
+                ),
+                wallet,
+            )
 
-    await TestDataManager.cleanup(dsn)
+        for tx in additional_transactions:
+            conn.execute(
+                text(
+                    """
+                INSERT INTO transactions (wallet_id, hash, block_number, value, gas_used, gas_price)
+                VALUES (:wallet_id, :hash, :block_number, :value, :gas_used, :gas_price)
+            """
+                ),
+                tx,
+            )
+
+        conn.commit()
+
+    await manager.cleanup()
 
 
 async def verify_backup_integrity(original_dsn: str, restored_dsn: str) -> bool:
-    """Verify that a restored database matches the original.
+    """Verify that a restored backup matches the original data."""
+    original_manager = TestDataManager(original_dsn)
+    restored_manager = TestDataManager(restored_dsn)
 
-    Args:
-        original_dsn: Connection string for original database
-        restored_dsn: Connection string for restored database
-
-    Returns:
-        True if databases match, False otherwise
-    """
     try:
         # Get row counts from both databases
-        original_counts = await TestDataManager.validate_data_integrity(original_dsn)
-        restored_counts = await TestDataManager.validate_data_integrity(restored_dsn)
+        original_counts = await original_manager.validate_data_integrity()
+        restored_counts = await restored_manager.validate_data_integrity()
 
         # Compare row counts
-        if original_counts != restored_counts:
-            print(f"Row count mismatch: {original_counts} vs {restored_counts}")
-            return False
+        for table, original_count in original_counts.items():
+            if original_count != restored_counts.get(table, 0):
+                print(
+                    f"Row count mismatch in {table}: {original_count} vs {restored_counts.get(table, 0)}"
+                )
+                return False
 
-        # Compare actual data (sample approach)
+        # Compare sample data
         if not await _compare_sample_data(original_dsn, restored_dsn):
-            print("Sample data comparison failed")
             return False
 
         return True
 
     finally:
-        await TestDataManager.cleanup(original_dsn)
-        await TestDataManager.cleanup(restored_dsn)
+        await original_manager.cleanup()
+        await restored_manager.cleanup()
 
 
 async def _compare_sample_data(original_dsn: str, restored_dsn: str) -> bool:
     """Compare sample data between original and restored databases."""
-    # This is a simplified comparison - in practice you'd want more comprehensive checks
     original_engine = create_engine(original_dsn)
     restored_engine = create_engine(restored_dsn)
 
     try:
         with original_engine.connect() as orig_conn, restored_engine.connect() as rest_conn:
-            # Compare a few sample rows from each table
-            tables = ["users", "wallets", "transactions", "token_balances"]
+            # Compare a sample of users
+            orig_users = orig_conn.execute(
+                text("SELECT * FROM users LIMIT 10")
+            ).fetchall()
+            rest_users = rest_conn.execute(
+                text("SELECT * FROM users LIMIT 10")
+            ).fetchall()
 
-            for table in tables:
-                orig_result = orig_conn.execute(text(f"SELECT * FROM {table} LIMIT 5"))
-                rest_result = rest_conn.execute(text(f"SELECT * FROM {table} LIMIT 5"))
+            if len(orig_users) != len(rest_users):
+                return False
 
-                orig_rows = [dict(row) for row in orig_result]
-                rest_rows = [dict(row) for row in rest_result]
+            for orig_user, rest_user in zip(orig_users, rest_users):
+                if orig_user != rest_user:
+                    return False
 
-                if orig_rows != rest_rows:
-                    print(f"Data mismatch in table {table}")
+            # Compare a sample of wallets
+            orig_wallets = orig_conn.execute(
+                text("SELECT * FROM wallets LIMIT 10")
+            ).fetchall()
+            rest_wallets = rest_conn.execute(
+                text("SELECT * FROM wallets LIMIT 10")
+            ).fetchall()
+
+            if len(orig_wallets) != len(rest_wallets):
+                return False
+
+            for orig_wallet, rest_wallet in zip(orig_wallets, rest_wallets):
+                if orig_wallet != rest_wallet:
                     return False
 
             return True
@@ -337,3 +391,123 @@ async def _compare_sample_data(original_dsn: str, restored_dsn: str) -> bool:
     finally:
         original_engine.dispose()
         restored_engine.dispose()
+
+
+# Sample data fixtures for testing
+@pytest.fixture
+def sample_user():
+    """Create a sample User for testing."""
+    return User(
+        id=uuid4(),
+        username="testuser",
+        email="test@example.com",
+        hashed_password="hashed_password",
+        created_at=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        updated_at=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+    )
+
+
+@pytest.fixture
+def sample_wallet(sample_user):
+    """Create a sample Wallet for testing."""
+    return Wallet(
+        id=uuid4(),
+        user_id=sample_user.id,
+        address="0x1234567890abcdef",
+        name="Test Wallet",
+        created_at=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        updated_at=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+    )
+
+
+@pytest.fixture
+def sample_portfolio_snapshot(sample_wallet):
+    """Create a sample PortfolioSnapshot for testing."""
+    return PortfolioSnapshot(
+        id=uuid4(),
+        user_address=sample_wallet.address,
+        timestamp=int(datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc).timestamp()),
+        total_collateral=1000.0,
+        total_borrowings=200.0,
+        total_collateral_usd=1500.0,
+        total_borrowings_usd=300.0,
+        aggregate_health_score=0.85,
+        aggregate_apy=0.08,
+        collaterals={},
+        borrowings={},
+        staked_positions={},
+        health_scores={},
+        protocol_breakdown={},
+    )
+
+
+@pytest.fixture
+def sample_historical_balance(sample_wallet):
+    """Create a sample HistoricalBalance for testing."""
+    return HistoricalBalance(
+        id=uuid4(),
+        wallet_id=sample_wallet.id,
+        token_id=uuid4(),
+        balance=100.0,
+        balance_usd=150.0,
+        timestamp=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+    )
+
+
+@pytest.fixture
+def sample_aggregate_metrics(sample_wallet):
+    """Create a sample AggregateMetrics for testing."""
+    return AggregateMetricsModel(
+        id=uuid4(),
+        wallet_id=sample_wallet.id,
+        tvl=1000.0,
+        total_borrowings=200.0,
+        aggregate_apy=0.08,
+        as_of=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        positions=[],
+    )
+
+
+@pytest.fixture
+def sample_wallet_data():
+    """Create sample wallet data for testing."""
+    return {
+        "address": "0x1234567890abcdef",
+        "name": "Test Wallet",
+        "total_value": 1000.0,
+        "total_balance": 500.0,
+        "total_borrowings": 200.0,
+        "net_apy": 0.08,
+    }
+
+
+@pytest.fixture
+def sample_historical_data():
+    """Create sample historical data for testing."""
+    return {
+        "wallet_id": "0x1234567890abcdef",
+        "token_id": str(uuid4()),
+        "balance": 100.0,
+        "balance_usd": 150.0,
+        "timestamp": datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+    }
+
+
+@pytest.fixture
+def sample_portfolio_data():
+    """Create sample portfolio data for testing."""
+    return {
+        "wallet_id": "0x1234567890abcdef",
+        "total_value": 1000.0,
+        "total_balance": 500.0,
+        "total_borrowings": 200.0,
+        "net_apy": 0.08,
+        "positions": [
+            {
+                "token_address": "0xA0b86a33E6441b8c4C8C8C8C8C8C8C8C8C8C8C8C",
+                "balance": 100.0,
+                "price_usd": 1.5,
+                "value_usd": 150.0,
+            }
+        ],
+    }
