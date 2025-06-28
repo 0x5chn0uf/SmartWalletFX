@@ -15,4 +15,4 @@ describe('ErrorBoundary', () => {
     );
     expect(screen.getByText(/something went wrong/i)).toBeInTheDocument();
   });
-}); 
+});

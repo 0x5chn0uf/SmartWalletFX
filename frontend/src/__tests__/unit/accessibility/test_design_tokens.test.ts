@@ -61,4 +61,4 @@ describe('Design Tokens – WCAG AA Contrast', () => {
       throw new Error(message);
     }
   });
-}); 
+});

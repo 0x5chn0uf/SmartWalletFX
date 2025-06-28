@@ -8,4 +8,4 @@ const ChartPlaceholder: React.FC<{ className?: string }> = ({ className }) => (
   </div>
 );
 
-export default ChartPlaceholder; 
+export default ChartPlaceholder;

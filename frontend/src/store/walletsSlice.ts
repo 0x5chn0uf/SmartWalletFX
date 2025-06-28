@@ -62,9 +62,9 @@ const walletsSlice = createSlice({
       state.page = action.payload;
     },
   },
-  extraReducers: (builder) => {
+  extraReducers: builder => {
     builder
-      .addCase(fetchWallets.pending, (state) => {
+      .addCase(fetchWallets.pending, state => {
         state.status = 'loading';
       })
       .addCase(fetchWallets.fulfilled, (state, action) => {
@@ -82,4 +82,4 @@ const walletsSlice = createSlice({
 });
 
 export const { setSearch, setPage } = walletsSlice.actions;
-export default walletsSlice.reducer; 
+export default walletsSlice.reducer;

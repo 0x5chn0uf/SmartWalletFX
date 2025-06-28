@@ -39,7 +39,15 @@ describe('walletsSlice', () => {
   });
 
   it('should handle fetchWallets.fulfilled', () => {
-    const prevState: WalletsState = { wallets: [], total: 0, page: 1, limit: 10, search: '', status: 'idle', error: null };
+    const prevState: WalletsState = {
+      wallets: [],
+      total: 0,
+      page: 1,
+      limit: 10,
+      search: '',
+      status: 'idle',
+      error: null,
+    };
     const wallets: Wallet[] = [
       { id: '1', name: 'Wallet 1', address: '', balance: 100, currency: 'USD', lastUpdated: '' },
       { id: '2', name: 'Wallet 2', address: '', balance: 200, currency: 'EUR', lastUpdated: '' },
@@ -54,4 +62,4 @@ describe('walletsSlice', () => {
     expect(nextState.status).toBe('succeeded');
     expect(nextState.error).toBeNull();
   });
-}); 
+});

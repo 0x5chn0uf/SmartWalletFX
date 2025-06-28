@@ -20,21 +20,18 @@ const initialState: DashboardState = {
   error: null,
 };
 
-export const fetchDashboardOverview = createAsyncThunk(
-  'dashboard/fetchOverview',
-  async () => {
-    const res = await apiClient.get<Overview>('/dashboard/overview');
-    return res.data;
-  }
-);
+export const fetchDashboardOverview = createAsyncThunk('dashboard/fetchOverview', async () => {
+  const res = await apiClient.get<Overview>('/dashboard/overview');
+  return res.data;
+});
 
 const dashboardSlice = createSlice({
   name: 'dashboard',
   initialState,
   reducers: {},
-  extraReducers: (builder) => {
+  extraReducers: builder => {
     builder
-      .addCase(fetchDashboardOverview.pending, (state) => {
+      .addCase(fetchDashboardOverview.pending, state => {
         state.status = 'loading';
       })
       .addCase(fetchDashboardOverview.fulfilled, (state, action) => {
@@ -48,4 +45,4 @@ const dashboardSlice = createSlice({
   },
 });
 
-export default dashboardSlice.reducer; 
+export default dashboardSlice.reducer;

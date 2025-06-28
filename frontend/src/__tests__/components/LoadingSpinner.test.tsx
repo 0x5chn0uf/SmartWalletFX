@@ -8,4 +8,4 @@ describe('LoadingSpinner', () => {
     // MUI CircularProgress uses role="progressbar"
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
   });
-}); 
+});

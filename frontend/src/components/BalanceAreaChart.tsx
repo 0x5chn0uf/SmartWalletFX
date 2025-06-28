@@ -1,12 +1,5 @@
 import React from 'react';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface BalanceAreaChartProps {
   data: { date: string; balance: number }[];
@@ -38,4 +31,4 @@ const BalanceAreaChart: React.FC<BalanceAreaChartProps> = ({ data, className }) 
   </div>
 );
 
-export default BalanceAreaChart; 
+export default BalanceAreaChart;

@@ -17,7 +17,8 @@ const HeroSection: React.FC = () => {
           Your Smart Wallet for Algorithmic Trading
         </Typography>
         <Typography variant="h5" component="p" color="text.secondary" paragraph>
-          Automate your strategies, manage your risk, and trade with confidence on the decentralized web.
+          Automate your strategies, manage your risk, and trade with confidence on the decentralized
+          web.
         </Typography>
         <Box sx={{ mt: 4 }}>
           <Button variant="contained" color="primary" size="large" sx={{ mr: 2 }}>

@@ -10,7 +10,7 @@ const mockWallets = [
     address: '0x1234...5678',
     balance: 15000,
     currency: 'USD',
-    lastUpdated: '2024-06-22T10:30:00Z'
+    lastUpdated: '2024-06-22T10:30:00Z',
   },
   {
     id: '2',
@@ -18,8 +18,8 @@ const mockWallets = [
     address: '0x8765...4321',
     balance: 8500,
     currency: 'USD',
-    lastUpdated: '2024-06-22T09:15:00Z'
-  }
+    lastUpdated: '2024-06-22T09:15:00Z',
+  },
 ];
 
 describe('WalletTable', () => {
@@ -29,7 +29,7 @@ describe('WalletTable', () => {
         <WalletTable wallets={mockWallets} />
       </MemoryRouter>
     );
-    
+
     expect(screen.getByText('Main Wallet')).toBeInTheDocument();
     expect(screen.getByText('Trading Wallet')).toBeInTheDocument();
     expect(screen.getByText('0x1234...5678')).toBeInTheDocument();
@@ -43,10 +43,10 @@ describe('WalletTable', () => {
         <WalletTable wallets={mockWallets} />
       </MemoryRouter>
     );
-    
+
     expect(screen.getByText('Name')).toBeInTheDocument();
     expect(screen.getByText('Address')).toBeInTheDocument();
     expect(screen.getByText('Balance')).toBeInTheDocument();
     expect(screen.getByText('Last Updated')).toBeInTheDocument();
   });
-}); 
+});

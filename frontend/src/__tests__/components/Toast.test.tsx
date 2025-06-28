@@ -10,27 +10,13 @@ describe('Toast', () => {
   });
 
   it('renders toast with message', () => {
-    render(
-      <Toast
-        open={true}
-        message="Test message"
-        severity="success"
-        onClose={mockOnClose}
-      />
-    );
+    render(<Toast open={true} message="Test message" severity="success" onClose={mockOnClose} />);
 
     expect(screen.getByText('Test message')).toBeInTheDocument();
   });
 
   it('calls onClose when close button is clicked', () => {
-    render(
-      <Toast
-        open={true}
-        message="Test message"
-        severity="error"
-        onClose={mockOnClose}
-      />
-    );
+    render(<Toast open={true} message="Test message" severity="error" onClose={mockOnClose} />);
 
     const closeButton = screen.getByRole('button', { name: /close/i });
     fireEvent.click(closeButton);
@@ -39,16 +25,9 @@ describe('Toast', () => {
   });
 
   it('applies correct severity styling', () => {
-    render(
-      <Toast
-        open={true}
-        message="Test message"
-        severity="warning"
-        onClose={mockOnClose}
-      />
-    );
+    render(<Toast open={true} message="Test message" severity="warning" onClose={mockOnClose} />);
 
     const alert = screen.getByRole('alert');
     expect(alert).toHaveClass('MuiAlert-standardWarning');
   });
-}); 
+});

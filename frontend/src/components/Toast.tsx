@@ -28,4 +28,4 @@ const Toast: React.FC<ToastProps> = ({
   </Snackbar>
 );
 
-export default Toast; 
+export default Toast;

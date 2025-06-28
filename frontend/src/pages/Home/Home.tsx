@@ -8,7 +8,10 @@ import { WalletSelector } from '../../components/Timeline/WalletInput';
 import { getWallets } from '../../services/wallets';
 import { mapSnapshotsToChartData } from '../../utils/timelineAdapter';
 import { SmartTraderMoves } from '../../components/SmartTraderMoves/SmartTraderMoves';
-import { PortfolioFilter, PortfolioFilterType } from '../../components/PortfolioFilter/PortfolioFilter';
+import {
+  PortfolioFilter,
+  PortfolioFilterType,
+} from '../../components/PortfolioFilter/PortfolioFilter';
 
 export const Home: React.FC = () => {
   const nowDate = new Date();
