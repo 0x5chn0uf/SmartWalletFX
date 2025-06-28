@@ -5,9 +5,11 @@ This module provides fixtures for testing service classes and their dependencies
 """
 
 from datetime import datetime
+from unittest.mock import Mock
 
 import pytest
 
+from app.services.blockchain_service import BlockchainService
 from app.services.portfolio_service import PortfolioCalculationService
 
 from .mocks import mock_db_session
@@ -17,6 +19,30 @@ from .mocks import mock_db_session
 def portfolio_service(mock_db_session):
     """Portfolio calculation service instance."""
     return PortfolioCalculationService(mock_db_session)
+
+
+@pytest.fixture
+def blockchain_service():
+    """Create BlockchainService instance."""
+    return BlockchainService()
+
+
+@pytest.fixture
+def mock_contract():
+    """Create mock contract instance."""
+    contract = Mock()
+    contract.functions = Mock()
+    return contract
+
+
+@pytest.fixture
+def mock_web3_for_blockchain():
+    """Create mock Web3 instance specifically for blockchain service tests."""
+    web3 = Mock()
+    web3.is_connected.return_value = True
+    web3.eth.contract.return_value = Mock()
+    web3.to_checksum_address = Mock(side_effect=lambda x: x)
+    return web3
 
 
 @pytest.fixture

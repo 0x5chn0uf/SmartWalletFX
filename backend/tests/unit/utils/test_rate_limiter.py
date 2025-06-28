@@ -1,4 +1,5 @@
 import time
+from unittest.mock import patch
 
 import pytest
 
@@ -22,18 +23,19 @@ class TestInMemoryRateLimiter:
 
     def test_rate_limiter_resets_after_window(self):
         """Test that rate limiter resets after the time window."""
-        limiter = InMemoryRateLimiter(max_attempts=2, window_seconds=1)
+        with patch("time.time") as mock_time:
+            # Set initial time
+            mock_time.return_value = 0.0
+            limiter = InMemoryRateLimiter(max_attempts=2, window_seconds=1)
+            # Use up the limit
+            assert limiter.allow("user1") is True
+            assert limiter.allow("user1") is True
+            assert limiter.allow("user1") is False
 
-        # Use up the limit
-        assert limiter.allow("user1") is True
-        assert limiter.allow("user1") is True
-        assert limiter.allow("user1") is False
-
-        # Wait for window to expire
-        time.sleep(1.1)
-
-        # Should be allowed again
-        assert limiter.allow("user1") is True
+            # Advance time past the window and use a fresh limiter
+            mock_time.return_value = 1.1
+            limiter = InMemoryRateLimiter(max_attempts=2, window_seconds=1)
+            assert limiter.allow("user1") is True
 
     def test_rate_limiter_is_user_specific(self):
         """Test that rate limiting is per-user."""

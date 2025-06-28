@@ -25,6 +25,19 @@ logger = logging.getLogger(__name__)
 class BlockchainService:
     """Service for blockchain data retrieval and calculations."""
 
+    # Move price_feeds to a class attribute for easier testing/mocking
+    price_feeds = {
+        "0xA0b86a33E6441b8C4C8C8C8C8C8C8C8C8C8C8C80": (
+            "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"  # USDC/USD
+        ),
+        "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599": (
+            "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c"  # BTC/USD
+        ),
+        "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2": (
+            "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"  # ETH/USD
+        ),
+    }
+
     def __init__(self):
         self.w3 = None
         self._setup_web3()
@@ -335,18 +348,8 @@ class BlockchainService:
             if not self.w3:
                 return None
 
-            # Chainlink price feed addresses (simplified)
-            price_feeds = {
-                "0xA0b86a33E6441b8C4C8C8C8C8C8C8C8C8C8C8C80": (
-                    "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"  # USDC/USD
-                ),
-                "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599": (
-                    "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c"  # BTC/USD
-                ),
-                "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2": (
-                    "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"  # ETH/USD
-                ),
-            }
+            # Use the class attribute for price feeds
+            price_feeds = self.price_feeds
 
             if token_address not in price_feeds:
                 return None

@@ -78,7 +78,13 @@ from .mocks import (
     mock_s3_client,
     mock_web3,
 )
-from .services import mock_snapshot_data, portfolio_service
+from .services import (
+    blockchain_service,
+    mock_contract,
+    mock_snapshot_data,
+    mock_web3_for_blockchain,
+    portfolio_service,
+)
 from .test_data import (
     sample_aggregate_metrics,
     sample_historical_balance,
@@ -122,6 +128,7 @@ __all__ = [
     # Mock fixtures
     "mock_redis",
     "mock_web3",
+    "mock_web3_for_blockchain",
     "mock_async_session",
     "mock_httpx_client",
     "mock_celery",
@@ -150,5 +157,7 @@ __all__ = [
     "sample_historical_balance_data",
     # Service fixtures
     "portfolio_service",
+    "blockchain_service",
+    "mock_contract",
     "mock_snapshot_data",
 ]

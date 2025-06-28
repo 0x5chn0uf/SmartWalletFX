@@ -80,7 +80,7 @@ class DataAnalysisService:
             )
 
             # Get portfolio value
-            portfolio_value = await self.blockchain_service.get_portfolio_value(
+            portfolio_value = await self.blockchain_service.calculate_portfolio_value(
                 user_address
             )
 
