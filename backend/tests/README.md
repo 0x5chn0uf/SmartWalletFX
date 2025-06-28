@@ -252,4 +252,15 @@ pytest --tb=short
 - [Pytest Fixture Documentation](https://docs.pytest.org/en/stable/explanation/fixtures.html)
 - [Pytest-Asyncio Documentation](https://pytest-asyncio.readthedocs.io/)
 - [FastAPI Testing Guide](https://fastapi.tiangolo.com/tutorial/testing/)
-- [SQLAlchemy Testing Patterns](https://docs.sqlalchemy.org/en/14/orm/session_transaction.html#joining-a-session-into-an-external-transaction-such-as-for-test-suites) 
+- [SQLAlchemy Testing Patterns](https://docs.sqlalchemy.org/en/14/orm/session_transaction.html#joining-a-session-into-an-external-transaction-such-as-for-test-suites)
+
+## 🔍 Example Test Patterns
+
+Explore practical examples in the `backend/tests/examples` directory:
+
+- `examples/basic/`: Simple patterns (authentication, database, API)
+- `examples/api/`: Endpoint testing examples (error handling, mocking)
+- `examples/integration/`: Complex workflow examples (end-to-end, performance)
+- `examples/templates/`: Reusable test templates for quick scaffolding
+
+Refer to each subdirectory's README for detailed usage and code snippets. 

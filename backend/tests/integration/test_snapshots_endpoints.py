@@ -13,7 +13,7 @@ from app.repositories.wallet_repository import WalletRepository
 client = TestClient(app)
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_get_portfolio_snapshots_returns_200(
     db_session, authenticated_client: AsyncClient, test_user
 ):
@@ -36,7 +36,7 @@ async def test_get_portfolio_snapshots_returns_200(
     assert isinstance(response.json(), list)
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_get_portfolio_snapshots_for_nonexistent_wallet_returns_404(
     authenticated_client: AsyncClient,
 ):

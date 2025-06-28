@@ -6,7 +6,7 @@ from app.schemas.user import UserCreate
 from app.services.auth_service import AuthService, DuplicateError
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_register_success(db_session):
     service = AuthService(db_session)
     username = f"alice-{uuid.uuid4().hex[:8]}"
@@ -20,7 +20,7 @@ async def test_register_success(db_session):
     assert user.hashed_password.startswith("$2")
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_register_duplicate_username(db_session):
     service = AuthService(db_session)
     username = f"bob-{uuid.uuid4().hex[:8]}"
@@ -34,7 +34,7 @@ async def test_register_duplicate_username(db_session):
         await service.register(dup_payload)
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_register_weak_password(db_session):
     service = AuthService(db_session)
     with pytest.raises(ValueError):

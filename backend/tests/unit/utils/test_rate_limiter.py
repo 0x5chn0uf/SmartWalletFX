@@ -70,7 +70,7 @@ class TestInMemoryRateLimiter:
 class TestRateLimiterIntegration:
     """Test rate limiter integration with auth endpoints."""
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_auth_endpoint_rate_limiting(self, test_app, db_session, mocker):
         """Test that auth endpoints respect rate limiting."""
         from httpx import AsyncClient
