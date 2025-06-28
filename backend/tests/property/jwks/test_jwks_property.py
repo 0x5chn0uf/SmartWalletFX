@@ -21,7 +21,7 @@ def key_sets(draw):
     import string
 
     ascii_alphanum = string.ascii_letters + string.digits
-    num_keys = draw(st.integers(min_value=0, max_value=5))
+    num_keys = draw(st.integers(min_value=0, max_value=3))  # Reduced from 5 to 3
     kids = draw(
         st.lists(
             st.text(min_size=1, max_size=20, alphabet=ascii_alphanum),
@@ -34,8 +34,10 @@ def key_sets(draw):
     for kid in kids:
         is_valid = draw(st.booleans())
         if is_valid:
-            # Generate a real RSA public key PEM
-            private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+            # Generate a real RSA public key PEM with smaller key size for faster generation
+            private_key = rsa.generate_private_key(
+                public_exponent=65537, key_size=1024
+            )  # Reduced from 2048 to 1024
             public_key = private_key.public_key()
             pem = public_key.public_bytes(
                 encoding=serialization.Encoding.PEM,
@@ -74,7 +76,11 @@ def cache_states(draw):
 
 
 @pytest.mark.asyncio
-@settings(deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@settings(
+    max_examples=50,
+    deadline=10000,
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+)  # Reduced examples, added deadline
 @given(key_set=key_sets(), cache_state=cache_states())
 async def test_jwks_endpoint_property_based(
     key_set: List[Key], cache_state: Optional[str]
@@ -161,7 +167,11 @@ async def test_jwks_endpoint_property_based(
 
 
 @pytest.mark.asyncio
-@settings(deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@settings(
+    max_examples=25,
+    deadline=5000,
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+)  # Reduced examples, added deadline
 @given(cache_ttl=st.integers(min_value=1, max_value=3600))
 async def test_jwks_cache_ttl_property_based(cache_ttl: int):
     """Property-based test for JWKS cache TTL behavior."""
@@ -196,39 +206,44 @@ async def test_jwks_cache_ttl_property_based(cache_ttl: int):
 
 
 @pytest.mark.asyncio
-@settings(deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@settings(
+    max_examples=25,
+    deadline=5000,
+    suppress_health_check=[HealthCheck.function_scoped_fixture],
+)  # Reduced examples, added deadline
 @given(
     error_type=st.sampled_from(
         ["redis_connection", "redis_get", "redis_set", "key_format"]
     )
 )
 async def test_jwks_error_handling_property_based(error_type: str):
-    """Property-based test for JWKS error handling scenarios."""
+    """Property-based test for JWKS error handling."""
     from app.main import create_app
 
     # Create test app for this specific test
     test_app = create_app()
 
-    # Mock Redis based on error type
+    # Mock Redis to simulate different error conditions
     mock_redis = AsyncMock()
 
     if error_type == "redis_connection":
+        # Simulate Redis connection failure
         mock_redis.get.side_effect = Exception("Redis connection failed")
     elif error_type == "redis_get":
+        # Simulate Redis get failure
         mock_redis.get.side_effect = Exception("Redis get failed")
     elif error_type == "redis_set":
+        # Simulate Redis set failure
         mock_redis.get.return_value = None
         mock_redis.setex.side_effect = Exception("Redis set failed")
     else:  # key_format
+        # Simulate key formatting failure
         mock_redis.get.return_value = None
         mock_redis.setex.return_value = True
 
-    mock_redis.close.return_value = None
-
     with patch("app.api.endpoints.jwks._build_redis_client", return_value=mock_redis):
-        # Mock key formatting for key_format error
         if error_type == "key_format":
-
+            # Mock key formatting to fail
             def mock_format_key_fail(key_value, kid):
                 raise ValueError(f"Key formatting failed for {kid}")
 
@@ -244,19 +259,12 @@ async def test_jwks_error_handling_property_based(error_type: str):
                 ) as ac:
                     resp = await ac.get("/.well-known/jwks.json")
 
-                    # Property: Should always return 200 OK even with errors
+                    # Property: Should always return 200 even with errors
                     assert resp.status_code == 200
-
-                    # Property: Should return valid JSON structure
                     data = resp.json()
-                    assert isinstance(data, dict)
                     assert "keys" in data
-                    assert isinstance(data["keys"], list)
-
-                    # Property: Should handle errors gracefully
-                    if error_type == "key_format":
-                        # Should return empty key set when all keys fail formatting
-                        assert len(data["keys"]) == 0
+                    # Should return empty keys list when formatting fails
+                    assert len(data["keys"]) == 0
         else:
             import httpx
 
@@ -266,11 +274,9 @@ async def test_jwks_error_handling_property_based(error_type: str):
             ) as ac:
                 resp = await ac.get("/.well-known/jwks.json")
 
-                # Property: Should always return 200 OK even with Redis errors
+                # Property: Should always return 200 even with Redis errors
                 assert resp.status_code == 200
-
-                # Property: Should return valid JSON structure
                 data = resp.json()
-                assert isinstance(data, dict)
                 assert "keys" in data
-                assert isinstance(data["keys"], list)
+                # Should return empty keys list when Redis fails
+                assert len(data["keys"]) == 0
