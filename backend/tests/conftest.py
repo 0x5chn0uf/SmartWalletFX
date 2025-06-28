@@ -19,6 +19,7 @@ from .fixtures.base import *
 from .fixtures.database import *
 from .fixtures.mocks import *
 from .fixtures.portfolio_metrics import *
+from .fixtures.services import *
 from .fixtures.test_data import *
 
 ALEMBIC_CONFIG_PATH = str(pathlib.Path(__file__).parent.parent / "alembic.ini")

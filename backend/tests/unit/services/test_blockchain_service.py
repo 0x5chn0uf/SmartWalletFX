@@ -15,35 +15,6 @@ from app.services.blockchain_service import BlockchainService
 class TestBlockchainService:
     """Test cases for BlockchainService."""
 
-    @pytest.fixture
-    def blockchain_service(self):
-        """Create BlockchainService instance."""
-        return BlockchainService()
-
-    @pytest.fixture
-    def mock_web3(self):
-        """Create mock Web3 instance."""
-        web3 = Mock()
-        web3.is_connected.return_value = True
-
-        # Create mock eth attribute
-        mock_eth = Mock()
-        mock_eth.contract = Mock()
-        web3.eth = mock_eth
-
-        # Add to_checksum_address method
-        web3.to_checksum_address = Mock()
-
-        return web3
-
-    @pytest.fixture
-    def mock_contract(self):
-        """Create mock contract instance."""
-        contract = Mock()
-        contract.functions.balanceOf = Mock()
-        contract.functions.decimals = Mock()
-        return contract
-
     def test_blockchain_service_initialization(self, blockchain_service):
         """Test BlockchainService initialization."""
         assert hasattr(blockchain_service, "w3")
@@ -131,19 +102,19 @@ class TestBlockchainService:
         mock_get_abi,
         mock_get_common_tokens,
         blockchain_service,
-        mock_web3,
+        mock_web3_for_blockchain,
         mock_contract,
     ):
         """Test successful get_wallet_balances operation."""
         valid_address = "0x2222222222222222222222222222222222222222"
-        blockchain_service.w3 = mock_web3
+        blockchain_service.w3 = mock_web3_for_blockchain
         mock_get_common_tokens.return_value = [valid_address]
         mock_get_abi.return_value = [{"name": "balanceOf"}]
         mock_get_balance.return_value = 1000000000000000000  # 1 token with 18 decimals
         mock_get_decimals.return_value = 18
 
-        mock_web3.eth.contract.return_value = mock_contract
-        mock_web3.to_checksum_address.return_value = valid_address
+        mock_web3_for_blockchain.eth.contract.return_value = mock_contract
+        mock_web3_for_blockchain.to_checksum_address.return_value = valid_address
 
         result = await blockchain_service.get_wallet_balances(valid_address)
 
@@ -160,18 +131,21 @@ class TestBlockchainService:
         mock_get_abi,
         mock_get_common_tokens,
         blockchain_service,
-        mock_web3,
+        mock_web3_for_blockchain,
         mock_contract,
     ):
         """Test get_wallet_balances with specific token list."""
         valid_address = "0x3333333333333333333333333333333333333333"
         valid_address2 = "0x4444444444444444444444444444444444444444"
-        blockchain_service.w3 = mock_web3
+        blockchain_service.w3 = mock_web3_for_blockchain
         mock_get_abi.return_value = [{"name": "balanceOf"}]
         tokens = [valid_address, valid_address2]
 
-        mock_web3.eth.contract.return_value = mock_contract
-        mock_web3.to_checksum_address.return_value = valid_address
+        # Reset mock call count to ensure clean state
+        mock_web3_for_blockchain.eth.contract.reset_mock()
+
+        mock_web3_for_blockchain.eth.contract.return_value = mock_contract
+        mock_web3_for_blockchain.to_checksum_address.return_value = valid_address
 
         # Mock the async methods
         with patch.object(
@@ -185,21 +159,25 @@ class TestBlockchainService:
                 )
 
         assert len(result) == 0  # No balances > 0
-        assert mock_web3.eth.contract.call_count == 2
+        assert mock_web3_for_blockchain.eth.contract.call_count == 2
 
     @patch.object(BlockchainService, "_get_common_tokens")
     @patch.object(BlockchainService, "_get_erc20_abi")
     @pytest.mark.asyncio
     async def test_get_wallet_balances_contract_error(
-        self, mock_get_abi, mock_get_common_tokens, blockchain_service, mock_web3
+        self,
+        mock_get_abi,
+        mock_get_common_tokens,
+        blockchain_service,
+        mock_web3_for_blockchain,
     ):
         """Test get_wallet_balances when contract creation fails."""
         valid_address = "0x5555555555555555555555555555555555555555"
-        blockchain_service.w3 = mock_web3
+        blockchain_service.w3 = mock_web3_for_blockchain
         mock_get_common_tokens.return_value = [valid_address]
         mock_get_abi.return_value = [{"name": "balanceOf"}]
 
-        mock_web3.eth.contract.side_effect = Exception("Contract error")
+        mock_web3_for_blockchain.eth.contract.side_effect = Exception("Contract error")
 
         result = await blockchain_service.get_wallet_balances(valid_address)
 
@@ -213,16 +191,16 @@ class TestBlockchainService:
         mock_get_abi,
         mock_get_common_tokens,
         blockchain_service,
-        mock_web3,
+        mock_web3_for_blockchain,
         mock_contract,
     ):
         """Test get_wallet_balances when balance retrieval fails."""
         valid_address = "0x6666666666666666666666666666666666666666"
-        blockchain_service.w3 = mock_web3
+        blockchain_service.w3 = mock_web3_for_blockchain
         mock_get_common_tokens.return_value = [valid_address]
         mock_get_abi.return_value = [{"name": "balanceOf"}]
-        mock_web3.eth.contract.return_value = mock_contract
-        mock_web3.to_checksum_address.return_value = valid_address
+        mock_web3_for_blockchain.eth.contract.return_value = mock_contract
+        mock_web3_for_blockchain.to_checksum_address.return_value = valid_address
 
         with patch.object(
             blockchain_service,
@@ -638,11 +616,14 @@ class TestBlockchainService:
 
     @pytest.mark.asyncio
     async def test_get_price_from_chainlink_success(
-        self, blockchain_service, mock_web3, mock_contract
+        self, blockchain_service, mock_web3_for_blockchain, mock_contract
     ):
         """Test successful _get_price_from_chainlink method."""
-        blockchain_service.w3 = mock_web3
-        mock_web3.eth.contract.return_value = mock_contract
+        blockchain_service.w3 = mock_web3_for_blockchain
+        # Patch contract to always return mock_contract regardless of args
+        mock_web3_for_blockchain.eth.contract.side_effect = (
+            lambda *args, **kwargs: mock_contract
+        )
 
         mock_latest_round_data = Mock()
         mock_latest_round_data.call.return_value = (
@@ -654,10 +635,18 @@ class TestBlockchainService:
         )  # (roundId, answer, startedAt, updatedAt, answeredInRound)
         mock_contract.functions.latestRoundData.return_value = mock_latest_round_data
 
-        result = await blockchain_service._get_price_from_chainlink(
-            "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", "USD"
-        )
-
+        test_address = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+        feed_address = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"
+        with patch.object(
+            BlockchainService, "price_feeds", {test_address: feed_address}
+        ):
+            with patch(
+                "app.services.blockchain_service.Web3.to_checksum_address",
+                return_value=feed_address,
+            ):
+                result = await blockchain_service._get_price_from_chainlink(
+                    test_address, "USD"
+                )
         assert result == 1.0  # 100000000 / 10^8
 
     @pytest.mark.asyncio
@@ -673,11 +662,11 @@ class TestBlockchainService:
 
     @pytest.mark.asyncio
     async def test_get_price_from_chainlink_exception(
-        self, blockchain_service, mock_web3
+        self, blockchain_service, mock_web3_for_blockchain
     ):
         """Test _get_price_from_chainlink when exception occurs."""
-        blockchain_service.w3 = mock_web3
-        mock_web3.eth.contract.side_effect = Exception("Contract error")
+        blockchain_service.w3 = mock_web3_for_blockchain
+        mock_web3_for_blockchain.eth.contract.side_effect = Exception("Contract error")
 
         result = await blockchain_service._get_price_from_chainlink(
             "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "USD"
@@ -870,7 +859,10 @@ class TestBlockchainService:
         end_date = datetime(2023, 1, 31)
 
         result = blockchain_service._generate_mock_historical_data(
-            "0x5555555555555555555555555555555555555555", start_date, end_date, "weekly"
+            "0x5555555555555555555555555555555555555555",
+            start_date,
+            end_date,
+            "weekly",
         )
 
         assert isinstance(result, list)
@@ -908,12 +900,12 @@ class TestBlockchainService:
 
     @pytest.mark.asyncio
     async def test_get_wallet_balances_zero_balance(
-        self, blockchain_service, mock_web3, mock_contract
+        self, blockchain_service, mock_web3_for_blockchain, mock_contract
     ):
         """Test get_wallet_balances with zero balance."""
-        blockchain_service.w3 = mock_web3
-        mock_web3.eth.contract.return_value = mock_contract
-        mock_web3.to_checksum_address.return_value = (
+        blockchain_service.w3 = mock_web3_for_blockchain
+        mock_web3_for_blockchain.eth.contract.return_value = mock_contract
+        mock_web3_for_blockchain.to_checksum_address.return_value = (
             "0x8888888888888888888888888888888888888888"
         )
 
@@ -941,12 +933,12 @@ class TestBlockchainService:
 
     @pytest.mark.asyncio
     async def test_get_wallet_balances_negative_balance(
-        self, blockchain_service, mock_web3, mock_contract
+        self, blockchain_service, mock_web3_for_blockchain, mock_contract
     ):
         """Test get_wallet_balances with negative balance."""
-        blockchain_service.w3 = mock_web3
-        mock_web3.eth.contract.return_value = mock_contract
-        mock_web3.to_checksum_address.return_value = (
+        blockchain_service.w3 = mock_web3_for_blockchain
+        mock_web3_for_blockchain.eth.contract.return_value = mock_contract
+        mock_web3_for_blockchain.to_checksum_address.return_value = (
             "0x9999999999999999999999999999999999999999"
         )
 
