@@ -63,7 +63,7 @@ def test_rotation_grace_period_allows_old_tokens(freezer):
     assert JWTUtils.decode_token(token_new)["sub"] == user_id
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_key_rotation_lifecycle(test_app, db_session, freezer):
     """End-to-end validation: old token accepted during grace, rejected after."""
 

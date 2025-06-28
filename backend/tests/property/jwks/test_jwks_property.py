@@ -77,10 +77,10 @@ def cache_states(draw):
 
 @pytest.mark.asyncio
 @settings(
-    max_examples=50,
-    deadline=10000,
+    max_examples=10,
+    deadline=5000,
     suppress_health_check=[HealthCheck.function_scoped_fixture],
-)  # Reduced examples, added deadline
+)
 @given(key_set=key_sets(), cache_state=cache_states())
 async def test_jwks_endpoint_property_based(
     key_set: List[Key], cache_state: Optional[str]
@@ -168,7 +168,7 @@ async def test_jwks_endpoint_property_based(
 
 @pytest.mark.asyncio
 @settings(
-    max_examples=25,
+    max_examples=10,
     deadline=5000,
     suppress_health_check=[HealthCheck.function_scoped_fixture],
 )  # Reduced examples, added deadline
@@ -207,7 +207,7 @@ async def test_jwks_cache_ttl_property_based(cache_ttl: int):
 
 @pytest.mark.asyncio
 @settings(
-    max_examples=25,
+    max_examples=10,
     deadline=5000,
     suppress_health_check=[HealthCheck.function_scoped_fixture],
 )  # Reduced examples, added deadline

@@ -64,7 +64,7 @@ def test_register_duplicate_email(client):
     assert dup_resp.status_code == 409
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_obtain_token_success(db_session, test_app):
     username = f"tokenuser-{uuid.uuid4().hex[:8]}"
     password = "Str0ng!pwd"
@@ -89,7 +89,7 @@ async def test_obtain_token_success(db_session, test_app):
         assert all(k in body for k in ("access_token", "refresh_token", "expires_in"))
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_login_rate_limit(db_session, test_app, mocker):
     # Patch the global limiter for this test only to ensure full isolation
     mocker.patch(
@@ -126,7 +126,7 @@ async def test_login_rate_limit(db_session, test_app, mocker):
         assert r_final.status_code == 429
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_users_me_endpoint(test_app, db_session):
     """/users/me should require auth and return current profile when token provided."""
 
@@ -207,7 +207,7 @@ def test_register_weak_password(client: TestClient, patched_auth_service):
     assert resp.json()["detail"].startswith("Password does not meet")
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_token_invalid_credentials(test_app, patched_auth_service):
     """/auth/token should return 401 when authentication fails in AuthService."""
 
@@ -220,7 +220,7 @@ async def test_token_invalid_credentials(test_app, patched_auth_service):
 # New test for inactive user -------------------------------------------------
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_token_inactive_user(test_app, patched_auth_service):
     """/auth/token should return 403 when account inactive."""
 
