@@ -81,4 +81,4 @@ This document provides a comprehensive overview of the wallet and portfolio anal
     "collateral_usd": "[float]",
     "borrowings_usd": "[float]"
   }
-  ``` 
+  ```

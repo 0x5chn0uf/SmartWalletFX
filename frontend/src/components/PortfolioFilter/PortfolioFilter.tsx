@@ -42,4 +42,4 @@ export const PortfolioFilter: React.FC<PortfolioFilterProps> = ({ value, onChang
       </ToggleButtonGroup>
     </Box>
   );
-}; 
+};

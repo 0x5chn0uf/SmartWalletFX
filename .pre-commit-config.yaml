@@ -17,8 +17,17 @@ repos:
     hooks:
       - id: flake8
         language_version: python3.12
-        args: [
-          "--max-line-length=88",
-          "--extend-ignore=E203",
-          "--per-file-ignores=backend/app/abi/*.py:E501,backend/migrations/env.py:E402,F403,F405,backend/tests/**/*.py:F401,F811,E501"
-        ] 
+        args:
+          [
+            "--max-line-length=88",
+            "--extend-ignore=E203",
+            "--per-file-ignores=backend/app/abi/*.py:E501,backend/migrations/env.py:E402,F403,F405,backend/tests/**/*.py:F401,F811,E501",
+          ]
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        types_or: [javascript, jsx, ts, tsx, json, css, scss, markdown, yaml]
+        additional_dependencies:
+          - prettier@3.6.2

@@ -3,12 +3,14 @@
 > Version 0.1 – drafted 2025-06-16
 
 ## 1. Goals & Principles
+
 - **Reliability first**: safeguard critical financial calculations.
 - **Shift-left**: catch issues in unit & integration layers before E2E.
 - **Fast feedback**: CI runs < 10 min; dev locally < 30 s.
 - **Coverage gates**: ≥ 90 % backend, ≥ 75 % frontend.
 
 ## 2. Directory Conventions
+
 ```
 backend/tests/
     unit/
@@ -22,19 +24,21 @@ frontend/src/__tests__/
 ```
 
 ## 3. Toolchain
-| Layer | Tooling |
-|-------|---------|
-| Backend – Unit | `pytest`, `pytest-asyncio` |
-| Backend – Property | `hypothesis` |
-| Backend – Performance | `pytest-benchmark` |
-| Frontend – Unit | `@testing-library/react`, `jest` |
-| Frontend – Storybook snapshots | `@storybook/test-runner` |
-| Frontend – Integration | `msw` for API mocks |
-| End-to-End | `Cypress` (Chrome / Mobile viewport) |
-| Security | `bandit`, `safety`, `detect-secrets` |
-| Linting | `ruff`, `mypy`, `eslint`, `prettier` |
+
+| Layer                          | Tooling                              |
+| ------------------------------ | ------------------------------------ |
+| Backend – Unit                 | `pytest`, `pytest-asyncio`           |
+| Backend – Property             | `hypothesis`                         |
+| Backend – Performance          | `pytest-benchmark`                   |
+| Frontend – Unit                | `@testing-library/react`, `jest`     |
+| Frontend – Storybook snapshots | `@storybook/test-runner`             |
+| Frontend – Integration         | `msw` for API mocks                  |
+| End-to-End                     | `Cypress` (Chrome / Mobile viewport) |
+| Security                       | `bandit`, `safety`, `detect-secrets` |
+| Linting                        | `ruff`, `mypy`, `eslint`, `prettier` |
 
 ## 4. CI Pipeline Stages
+
 1. **security** – bandit, safety, detect-secrets.
 2. **quality** – ruff, mypy, eslint.
 3. **test** – pytest (`--cov`), jest (`--coverage`).
@@ -42,11 +46,13 @@ frontend/src/__tests__/
 5. **deploy** – only if all above pass and branch=main.
 
 ## 5. Mocking External Dependencies
+
 - **Alchemy / EVM RPC**: mocked via `responses` (`pytest`) and `msw` (frontend).
 - **CoinGecko**: cached fixture JSON; use `VCR.py` for integration tests.
 - **Redis & Celery**: `fakeredis` and `celery.app.control.inspect` mock.
 
 ## 6. Property-Based Testing Examples
+
 ```python
 from hypothesis import given, strategies as st
 
@@ -57,6 +63,7 @@ def test_health_score_range(total, borrowed):
 ```
 
 ## 7. Running Tests Locally
+
 ```bash
 # backend
 poetry run pytest --cov=app --cov-report=term-missing
@@ -72,7 +79,9 @@ cd frontend && npx cypress open
 ```
 
 ## 8. Coverage Badges
+
 Badges are auto-updated by CI in README using `codecov` uploads.
 
 ## 9. Performance & Load Testing (Future)
-- Lighthouse-CI for frontend performance budgets. 
+
+- Lighthouse-CI for frontend performance budgets.

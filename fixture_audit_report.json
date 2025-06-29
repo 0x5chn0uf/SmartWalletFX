@@ -9,13 +9,8 @@
         "override_get_db",
         "mock_db"
       ],
-      "authentication": [
-        "user_payload",
-        "patched_auth_service"
-      ],
-      "application": [
-        "client"
-      ],
+      "authentication": ["user_payload", "patched_auth_service"],
+      "application": ["client"],
       "utility": [
         "anyio_backend",
         "freezer",
@@ -47,9 +42,7 @@
         "mock_position_adapter",
         "mock_snapshot_data"
       ],
-      "performance": [
-        "postgres_large_container"
-      ],
+      "performance": ["postgres_large_container"],
       "other": [
         "_dependency_override",
         "adapter",
@@ -107,9 +100,7 @@
       "autouse": true,
       "params": [],
       "docstring": "Mocks the ARBITRUM_RPC_URL setting.",
-      "dependencies": [
-        "monkeypatch"
-      ],
+      "dependencies": ["monkeypatch"],
       "line_number": 163,
       "file": "backend/tests/conftest.py"
     },
@@ -129,9 +120,7 @@
       "autouse": true,
       "params": [],
       "docstring": "Fixture to override the 'get_db' dependency in the FastAPI app.",
-      "dependencies": [
-        "db_session"
-      ],
+      "dependencies": ["db_session"],
       "line_number": 190,
       "file": "backend/tests/conftest.py"
     },
@@ -151,9 +140,7 @@
       "autouse": false,
       "params": [],
       "docstring": "Mock Redis client.",
-      "dependencies": [
-        "self"
-      ],
+      "dependencies": ["self"],
       "line_number": 20,
       "file": "backend/tests/unit/utils/test_metrics_cache.py"
     },
@@ -163,9 +150,7 @@
       "autouse": false,
       "params": [],
       "docstring": "Mock Web3 instance.",
-      "dependencies": [
-        "self"
-      ],
+      "dependencies": ["self"],
       "line_number": 22,
       "file": "backend/tests/unit/services/test_blockchain_service.py"
     },
@@ -245,9 +230,7 @@
       "autouse": true,
       "params": [],
       "docstring": "Snapshot & restore mutable settings between tests.",
-      "dependencies": [
-        "monkeypatch"
-      ],
+      "dependencies": ["monkeypatch"],
       "line_number": 18,
       "file": "backend/tests/integration/jwt_rotation/test_rotation_task.py"
     },
@@ -257,9 +240,7 @@
       "autouse": true,
       "params": [],
       "docstring": "Patch Redis client builder and *acquire_lock* helper for isolation.",
-      "dependencies": [
-        "monkeypatch"
-      ],
+      "dependencies": ["monkeypatch"],
       "line_number": 30,
       "file": "backend/tests/integration/jwt_rotation/test_rotation_task.py"
     },
@@ -269,9 +250,7 @@
       "autouse": false,
       "params": [],
       "docstring": "Patch *AuthService* used in auth endpoints with DummyAuthService.",
-      "dependencies": [
-        "monkeypatch"
-      ],
+      "dependencies": ["monkeypatch"],
       "line_number": 169,
       "file": "backend/tests/integration/test_auth.py"
     },
@@ -291,9 +270,7 @@
       "autouse": false,
       "params": [],
       "docstring": "",
-      "dependencies": [
-        "monkeypatch"
-      ],
+      "dependencies": ["monkeypatch"],
       "line_number": 34,
       "file": "backend/tests/integration/test_defi_aggregate_endpoint.py"
     },
@@ -313,9 +290,7 @@
       "autouse": false,
       "params": [],
       "docstring": "",
-      "dependencies": [
-        "db_session"
-      ],
+      "dependencies": ["db_session"],
       "line_number": 76,
       "file": "backend/tests/integration/test_timeline_dynamic_aggregator_endpoints.py"
     },
@@ -325,10 +300,7 @@
       "autouse": false,
       "params": [],
       "docstring": "Return a RadiantContractAdapter instance with on-chain calls mocked.",
-      "dependencies": [
-        "monkeypatch",
-        "tmp_path"
-      ],
+      "dependencies": ["monkeypatch", "tmp_path"],
       "line_number": 61,
       "file": "backend/tests/unit/adapters/test_radiant_contract_adapter.py"
     },
@@ -338,9 +310,7 @@
       "autouse": true,
       "params": [],
       "docstring": "Ensure we start each test with a clean key-set state.",
-      "dependencies": [
-        "monkeypatch"
-      ],
+      "dependencies": ["monkeypatch"],
       "line_number": 28,
       "file": "backend/tests/unit/auth/test_jwt_rotation.py"
     },
@@ -350,9 +320,7 @@
       "autouse": false,
       "params": [],
       "docstring": "Provides a temporary directory for backup dumps.",
-      "dependencies": [
-        "tmp_path"
-      ],
+      "dependencies": ["tmp_path"],
       "line_number": 13,
       "file": "backend/tests/unit/backups/test_audit_logging.py"
     },
@@ -362,9 +330,7 @@
       "autouse": false,
       "params": [],
       "docstring": "",
-      "dependencies": [
-        "tmp_path_factory"
-      ],
+      "dependencies": ["tmp_path_factory"],
       "line_number": 15,
       "file": "backend/tests/unit/backups/test_backup_cmd.py"
     },
@@ -384,9 +350,7 @@
       "autouse": false,
       "params": [],
       "docstring": "",
-      "dependencies": [
-        "mock_db"
-      ],
+      "dependencies": ["mock_db"],
       "line_number": 22,
       "file": "backend/tests/unit/repositories/test_aggregate_metrics_repository.py"
     },
@@ -406,9 +370,7 @@
       "autouse": false,
       "params": [],
       "docstring": "Blockchain service instance.",
-      "dependencies": [
-        "self"
-      ],
+      "dependencies": ["self"],
       "line_number": 17,
       "file": "backend/tests/unit/services/test_blockchain_service.py"
     },
@@ -418,10 +380,7 @@
       "autouse": false,
       "params": [],
       "docstring": "Create a DataAnalysisService instance for testing.",
-      "dependencies": [
-        "self",
-        "db_session"
-      ],
+      "dependencies": ["self", "db_session"],
       "line_number": 18,
       "file": "backend/tests/unit/services/test_data_analysis_service.py"
     },
@@ -431,9 +390,7 @@
       "autouse": false,
       "params": [],
       "docstring": "Mock portfolio metrics.",
-      "dependencies": [
-        "self"
-      ],
+      "dependencies": ["self"],
       "line_number": 23,
       "file": "backend/tests/unit/services/test_data_analysis_service.py"
     },
@@ -443,9 +400,7 @@
       "autouse": false,
       "params": [],
       "docstring": "Mock aggregate metrics repository.",
-      "dependencies": [
-        "self"
-      ],
+      "dependencies": ["self"],
       "line_number": 19,
       "file": "backend/tests/unit/services/test_defi_aggregation_service.py"
     },
@@ -455,9 +410,7 @@
       "autouse": false,
       "params": [],
       "docstring": "Mock DeFi position adapter.",
-      "dependencies": [
-        "self"
-      ],
+      "dependencies": ["self"],
       "line_number": 24,
       "file": "backend/tests/unit/services/test_defi_aggregation_service.py"
     },
@@ -467,11 +420,7 @@
       "autouse": false,
       "params": [],
       "docstring": "DeFi aggregation service instance.",
-      "dependencies": [
-        "self",
-        "mock_db",
-        "mock_redis"
-      ],
+      "dependencies": ["self", "mock_db", "mock_redis"],
       "line_number": 29,
       "file": "backend/tests/unit/services/test_defi_aggregation_service.py"
     },
@@ -481,9 +430,7 @@
       "autouse": false,
       "params": [],
       "docstring": "Sample DeFi positions for testing.",
-      "dependencies": [
-        "self"
-      ],
+      "dependencies": ["self"],
       "line_number": 37,
       "file": "backend/tests/unit/services/test_defi_aggregation_service.py"
     },
@@ -493,9 +440,7 @@
       "autouse": false,
       "params": [],
       "docstring": "Sample AggregateMetricsModel instance.",
-      "dependencies": [
-        "self"
-      ],
+      "dependencies": ["self"],
       "line_number": 67,
       "file": "backend/tests/unit/services/test_defi_aggregation_service.py"
     },
@@ -505,10 +450,7 @@
       "autouse": false,
       "params": [],
       "docstring": "Portfolio calculation service instance.",
-      "dependencies": [
-        "self",
-        "mock_db"
-      ],
+      "dependencies": ["self", "mock_db"],
       "line_number": 18,
       "file": "backend/tests/unit/services/test_portfolio_service.py"
     },
@@ -518,9 +460,7 @@
       "autouse": false,
       "params": [],
       "docstring": "Mock portfolio snapshot data.",
-      "dependencies": [
-        "self"
-      ],
+      "dependencies": ["self"],
       "line_number": 23,
       "file": "backend/tests/unit/services/test_portfolio_service.py"
     },
@@ -530,9 +470,7 @@
       "autouse": false,
       "params": [],
       "docstring": "Sample metrics data for testing.",
-      "dependencies": [
-        "self"
-      ],
+      "dependencies": ["self"],
       "line_number": 25,
       "file": "backend/tests/unit/utils/test_metrics_cache.py"
     },
@@ -542,10 +480,7 @@
       "autouse": false,
       "params": [],
       "docstring": "Sample AggregateMetricsSchema instance.",
-      "dependencies": [
-        "self",
-        "sample_metrics_data"
-      ],
+      "dependencies": ["self", "sample_metrics_data"],
       "line_number": 46,
       "file": "backend/tests/unit/utils/test_metrics_cache.py"
     }
@@ -567,9 +502,7 @@
       "backend/tests/unit/utils/test_jwt_comprehensive.py",
       "backend/tests/integration/tasks/test_jwt_rotation_cache_invalidation.py"
     ],
-    "large_database": [
-      "backend/tests/e2e/test_performance.py"
-    ],
+    "large_database": ["backend/tests/e2e/test_performance.py"],
     "tmp_path": [
       "backend/tests/unit/backups/test_restore_dump.py",
       "backend/tests/unit/backups/test_backup_failure.py",
@@ -583,12 +516,8 @@
       "backend/tests/unit/backups/test_s3_storage_adapter.py",
       "backend/tests/integration/backups/test_backup_encryption_upload.py"
     ],
-    "backup_file": [
-      "backend/tests/e2e/test_performance.py"
-    ],
-    "mock_task": [
-      "backend/tests/integration/api/admin/test_admin_db.py"
-    ],
+    "backup_file": ["backend/tests/e2e/test_performance.py"],
+    "mock_task": ["backend/tests/integration/api/admin/test_admin_db.py"],
     "client": [
       "backend/tests/integration/test_auth.py",
       "backend/tests/integration/audit/test_audit_validation.py",
@@ -597,9 +526,7 @@
       "backend/tests/integration/auth/test_auth_flow.py",
       "backend/tests/integration/test_auth_token_endpoint.py"
     ],
-    "user_payload": [
-      "backend/tests/integration/auth/test_auth_flow.py"
-    ],
+    "user_payload": ["backend/tests/integration/auth/test_auth_flow.py"],
     "monkeypatch": [
       "backend/tests/unit/backups/test_cli_restore.py",
       "backend/tests/unit/core/test_di.py",
@@ -625,15 +552,9 @@
     "mock_redis": [
       "backend/tests/integration/tasks/test_jwt_rotation_cache_invalidation.py"
     ],
-    "payload": [
-      "backend/tests/integration/test_auth.py"
-    ],
-    "expected_status": [
-      "backend/tests/integration/test_auth.py"
-    ],
-    "patched_auth_service": [
-      "backend/tests/integration/test_auth.py"
-    ],
+    "payload": ["backend/tests/integration/test_auth.py"],
+    "expected_status": ["backend/tests/integration/test_auth.py"],
+    "patched_auth_service": ["backend/tests/integration/test_auth.py"],
     "_dependency_override": [
       "backend/tests/integration/test_timeline_dynamic_aggregator_endpoints.py"
     ],
@@ -641,31 +562,19 @@
       "backend/tests/performance/test_bcrypt_rounds.py",
       "backend/tests/performance/test_jwt_perf.py"
     ],
-    "rounds": [
-      "backend/tests/performance/test_bcrypt_rounds.py"
-    ],
+    "rounds": ["backend/tests/performance/test_bcrypt_rounds.py"],
     "tmp_path_factory": [
       "backend/tests/property/backups/test_builder_property.py"
     ],
-    "label": [
-      "backend/tests/property/backups/test_builder_property.py"
-    ],
-    "keyset": [
-      "backend/tests/property/jwt_rotation/test_rotation_property.py"
-    ],
-    "snapshots": [
-      "backend/tests/property/test_timeline_response.py"
-    ],
-    "interval": [
-      "backend/tests/property/test_timeline_response.py"
-    ],
+    "label": ["backend/tests/property/backups/test_builder_property.py"],
+    "keyset": ["backend/tests/property/jwt_rotation/test_rotation_property.py"],
+    "snapshots": ["backend/tests/property/test_timeline_response.py"],
+    "interval": ["backend/tests/property/test_timeline_response.py"],
     "pwd": [
       "backend/tests/unit/strategies/test_strong_passwords.py",
       "backend/tests/templates/test_auth_property_templates.py"
     ],
-    "email": [
-      "backend/tests/templates/test_auth_property_templates.py"
-    ],
+    "email": ["backend/tests/templates/test_auth_property_templates.py"],
     "adapter": [
       "backend/tests/unit/adapters/test_radiant_contract_adapter.py",
       "backend/tests/unit/adapters/test_defi_position_adapter.py"
@@ -677,45 +586,21 @@
       "backend/tests/unit/adapters/test_radiant_helpers_extra.py",
       "backend/tests/unit/adapters/test_radiant_contract_adapter.py"
     ],
-    "freezer": [
-      "backend/tests/unit/auth/test_jwt_rotation.py"
-    ],
-    "secret": [
-      "backend/tests/unit/auth/test_jwt_rotation.py"
-    ],
-    "user_id": [
-      "backend/tests/unit/auth/test_jwt_rotation.py"
-    ],
-    "ttl": [
-      "backend/tests/unit/auth/test_jwt_rotation.py"
-    ],
-    "password": [
-      "backend/tests/unit/auth/test_password_hasher.py"
-    ],
-    "mock_log_event": [
-      "backend/tests/unit/backups/test_audit_logging.py"
-    ],
-    "mock_run_subprocess": [
-      "backend/tests/unit/backups/test_audit_logging.py"
-    ],
-    "mock_encrypt_file": [
-      "backend/tests/unit/backups/test_audit_logging.py"
-    ],
+    "freezer": ["backend/tests/unit/auth/test_jwt_rotation.py"],
+    "secret": ["backend/tests/unit/auth/test_jwt_rotation.py"],
+    "user_id": ["backend/tests/unit/auth/test_jwt_rotation.py"],
+    "ttl": ["backend/tests/unit/auth/test_jwt_rotation.py"],
+    "password": ["backend/tests/unit/auth/test_password_hasher.py"],
+    "mock_log_event": ["backend/tests/unit/backups/test_audit_logging.py"],
+    "mock_run_subprocess": ["backend/tests/unit/backups/test_audit_logging.py"],
+    "mock_encrypt_file": ["backend/tests/unit/backups/test_audit_logging.py"],
     "mock_get_storage_adapter": [
       "backend/tests/unit/backups/test_audit_logging.py"
     ],
-    "mock_metrics": [
-      "backend/tests/unit/backups/test_audit_logging.py"
-    ],
-    "mock_output_dir": [
-      "backend/tests/unit/backups/test_audit_logging.py"
-    ],
-    "tmp_output_dir": [
-      "backend/tests/unit/backups/test_backup_cmd.py"
-    ],
-    "target": [
-      "backend/tests/unit/backups/test_make_targets.py"
-    ],
+    "mock_metrics": ["backend/tests/unit/backups/test_audit_logging.py"],
+    "mock_output_dir": ["backend/tests/unit/backups/test_audit_logging.py"],
+    "tmp_output_dir": ["backend/tests/unit/backups/test_backup_cmd.py"],
+    "target": ["backend/tests/unit/backups/test_make_targets.py"],
     "dummy_metrics": [
       "backend/tests/unit/service/test_snapshot_aggregation_service.py"
     ],
@@ -734,24 +619,16 @@
     "portfolio_service": [
       "backend/tests/unit/services/test_portfolio_service.py"
     ],
-    "mock_boto3": [
-      "backend/tests/unit/storage/test_s3_comprehensive.py"
-    ],
+    "mock_boto3": ["backend/tests/unit/storage/test_s3_comprehensive.py"],
     "mock_settings": [
       "backend/tests/unit/storage/test_s3_comprehensive.py",
       "backend/tests/unit/utils/test_jwt_comprehensive.py",
       "backend/tests/unit/utils/test_encryption_comprehensive.py",
       "backend/tests/unit/tasks/test_backups_comprehensive.py"
     ],
-    "addr": [
-      "backend/tests/unit/strategies/test_email_addresses.py"
-    ],
-    "tok": [
-      "backend/tests/unit/strategies/test_jwt_tokens.py"
-    ],
-    "sql": [
-      "backend/tests/unit/strategies/test_safe_sql_strings.py"
-    ],
+    "addr": ["backend/tests/unit/strategies/test_email_addresses.py"],
+    "tok": ["backend/tests/unit/strategies/test_jwt_tokens.py"],
+    "sql": ["backend/tests/unit/strategies/test_safe_sql_strings.py"],
     "mock_purge_task": [
       "backend/tests/unit/tasks/test_backups_comprehensive.py"
     ],
@@ -762,41 +639,19 @@
     "mock_create_dump": [
       "backend/tests/unit/tasks/test_backups_comprehensive.py"
     ],
-    "mock_logger": [
-      "backend/tests/unit/tasks/test_backups_comprehensive.py"
-    ],
+    "mock_logger": ["backend/tests/unit/tasks/test_backups_comprehensive.py"],
     "mock_restore_dump": [
       "backend/tests/unit/tasks/test_backups_comprehensive.py"
     ],
-    "mock_os": [
-      "backend/tests/unit/tasks/test_backups_comprehensive.py"
-    ],
-    "mock_datetime": [
-      "backend/tests/unit/tasks/test_backups_comprehensive.py"
-    ],
-    "mock_run": [
-      "backend/tests/unit/utils/test_encryption_comprehensive.py"
-    ],
-    "mock_redis_class": [
-      "backend/tests/unit/utils/test_jwks_cache.py"
-    ],
-    "mock_file": [
-      "backend/tests/unit/utils/test_jwt_comprehensive.py"
-    ],
-    "mock_encode": [
-      "backend/tests/unit/utils/test_jwt_comprehensive.py"
-    ],
-    "mock_get_header": [
-      "backend/tests/unit/utils/test_jwt_comprehensive.py"
-    ],
-    "mock_decode": [
-      "backend/tests/unit/utils/test_jwt_comprehensive.py"
-    ],
-    "input_val": [
-      "backend/tests/unit/validators/test_security_validator.py"
-    ],
-    "expected": [
-      "backend/tests/unit/validators/test_security_validator.py"
-    ]
+    "mock_os": ["backend/tests/unit/tasks/test_backups_comprehensive.py"],
+    "mock_datetime": ["backend/tests/unit/tasks/test_backups_comprehensive.py"],
+    "mock_run": ["backend/tests/unit/utils/test_encryption_comprehensive.py"],
+    "mock_redis_class": ["backend/tests/unit/utils/test_jwks_cache.py"],
+    "mock_file": ["backend/tests/unit/utils/test_jwt_comprehensive.py"],
+    "mock_encode": ["backend/tests/unit/utils/test_jwt_comprehensive.py"],
+    "mock_get_header": ["backend/tests/unit/utils/test_jwt_comprehensive.py"],
+    "mock_decode": ["backend/tests/unit/utils/test_jwt_comprehensive.py"],
+    "input_val": ["backend/tests/unit/validators/test_security_validator.py"],
+    "expected": ["backend/tests/unit/validators/test_security_validator.py"]
   }
 }

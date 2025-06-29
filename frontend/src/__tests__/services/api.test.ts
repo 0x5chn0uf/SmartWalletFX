@@ -6,4 +6,4 @@ describe('apiClient', () => {
     expect(typeof apiClient.get).toBe('function');
     expect(typeof apiClient.post).toBe('function');
   });
-}); 
+});

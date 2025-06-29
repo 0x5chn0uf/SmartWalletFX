@@ -2,7 +2,7 @@ name: nightly-audit-log-validate
 
 on:
   schedule:
-    - cron: '30 2 * * *'  # every day at 02:30 UTC
+    - cron: "30 2 * * *" # every day at 02:30 UTC
   workflow_dispatch:
 
 jobs:
@@ -15,7 +15,7 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Install dependencies (validator only)
         run: |
@@ -48,4 +48,4 @@ jobs:
 
       - name: Slack Notify (stub)
         if: failure()
-        run: echo 'Notify Slack – audit validation failed.' 
+        run: echo 'Notify Slack – audit validation failed.'

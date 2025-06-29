@@ -71,12 +71,14 @@ backend/tests/fixtures/
 ## 📋 Fixture Categories
 
 ### 1. Base Fixtures (`base.py`)
+
 Foundation fixtures that provide the core testing infrastructure:
 
 - **`async_engine`** (session-scoped): Async database engine for the test session
 - **`test_app`** (session-scoped): FastAPI application instance for testing
 
 ### 2. Database Fixtures (`database.py`)
+
 Database-specific fixtures with proper transaction management:
 
 - **`db_session`** (function-scoped): Async database session with automatic rollback
@@ -87,6 +89,7 @@ Database-specific fixtures with proper transaction management:
 - **`clean_sync_session`** (function-scoped): Sync session with automatic cleanup
 
 ### 3. Authentication Fixtures (`auth.py`)
+
 User and authentication management fixtures:
 
 - **`test_user`**: Basic test user with authentication
@@ -100,6 +103,7 @@ User and authentication management fixtures:
 - **`create_user_with_tokens`**: Factory for creating users with multiple wallets
 
 ### 4. Client Fixtures (`client.py`)
+
 FastAPI TestClient fixtures for endpoint testing:
 
 - **`client`**: Basic test client without authentication
@@ -110,6 +114,7 @@ FastAPI TestClient fixtures for endpoint testing:
 - **`authenticated_async_client`**: Async client with user authentication
 
 ### 5. Mock Fixtures (`mocks.py`)
+
 External service mocking fixtures:
 
 - **`mock_redis`**: Mock Redis client
@@ -123,6 +128,7 @@ External service mocking fixtures:
 - **`mock_all_external_services`**: All external service mocks combined
 
 ### 6. Configuration Fixtures (`config.py`)
+
 Test configuration and settings:
 
 - **`test_config`** (session-scoped): Centralized test configuration
@@ -135,15 +141,18 @@ Test configuration and settings:
 The fixture system implements a 3-tier scoping strategy for optimal performance:
 
 ### Session Scope (Expensive Setup)
+
 - Database engines
 - Application instances
 - Global configuration
 
 ### Module Scope (Shared Data)
+
 - Database sessions for shared test data
 - Test data setup that can be reused across tests
 
 ### Function Scope (Test Isolation)
+
 - Individual test data
 - Mock objects
 - Test clients
@@ -152,6 +161,7 @@ The fixture system implements a 3-tier scoping strategy for optimal performance:
 ## 🔧 Usage Examples
 
 ### Basic Test with Authentication
+
 ```python
 import pytest
 
@@ -161,19 +171,21 @@ async def test_protected_endpoint(authenticated_client, test_user):
 ```
 
 ### Database Testing with Clean Session
+
 ```python
 async def test_user_creation(clean_db_session):
     # Database is clean at start
     user = User(username="test", email="test@example.com")
     clean_db_session.add(user)
     await clean_db_session.commit()
-    
+
     # Verify user was created
     result = await clean_db_session.get(User, user.id)
     assert result is not None
 ```
 
 ### Testing with External Service Mocks
+
 ```python
 async def test_blockchain_integration(mock_web3, db_session):
     # Web3 is mocked, no real blockchain calls
@@ -183,6 +195,7 @@ async def test_blockchain_integration(mock_web3, db_session):
 ```
 
 ### Factory Pattern for Complex Data
+
 ```python
 async def test_multiple_users(create_multiple_users):
     users = await create_multiple_users(5)
@@ -193,27 +206,33 @@ async def test_multiple_users(create_multiple_users):
 ## 🚀 Performance Optimizations
 
 ### Transactional Rollbacks
+
 All database fixtures use transactions with automatic rollback to ensure test isolation without the overhead of database recreation.
 
 ### Session-Scoped Expensive Operations
+
 Database engines and application instances are created once per test session and reused across all tests.
 
 ### Mock External Services
+
 External services are mocked by default to avoid network calls and external dependencies during testing.
 
 ## 🔒 Test Isolation
 
 ### Database Isolation
+
 - Each test function gets a fresh database transaction
 - Automatic rollback ensures no data persists between tests
 - Module-scoped sessions available for shared data scenarios
 
 ### Authentication Isolation
+
 - Each test gets unique user credentials
 - JWT tokens are generated fresh for each test
 - No shared authentication state between tests
 
 ### External Service Isolation
+
 - All external services are mocked by default
 - No real network calls during testing
 - Predictable responses for consistent test results
@@ -221,6 +240,7 @@ External services are mocked by default to avoid network calls and external depe
 ## 📝 Best Practices
 
 ### Fixture Composition
+
 ```python
 # Good: Compose fixtures for complex scenarios
 async def test_complex_scenario(
@@ -234,6 +254,7 @@ async def test_complex_scenario(
 ```
 
 ### Scoping Considerations
+
 ```python
 # Use function scope for test isolation
 @pytest_asyncio.fixture
@@ -249,6 +270,7 @@ async def shared_test_data(module_db_session):  # module-scoped
 ```
 
 ### Mock Usage
+
 ```python
 # Use specific mocks for targeted testing
 async def test_redis_operations(mock_redis):
@@ -264,6 +286,7 @@ async def test_full_integration(mock_all_external_services):
 ## 🔄 Migration Guide
 
 ### From Old Fixtures
+
 If you have existing tests using old fixtures, you can gradually migrate:
 
 1. **Replace direct imports** with new fixture imports
@@ -272,6 +295,7 @@ If you have existing tests using old fixtures, you can gradually migrate:
 4. **Use composition** for complex scenarios
 
 ### Example Migration
+
 ```python
 # Old way
 from tests.conftest import db_session, test_user
@@ -314,4 +338,4 @@ Explore practical examples in the `backend/tests/examples` directory:
 - `examples/integration/`: Complex workflow examples (end-to-end, performance)
 - `examples/templates/`: Reusable test templates for quick scaffolding
 
-Refer to each subdirectory's README for detailed usage and code snippets. 
+Refer to each subdirectory's README for detailed usage and code snippets.

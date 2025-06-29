@@ -13,13 +13,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   fullScreen = false,
 }) => {
   const content = (
-    <Box
-      display="flex"
-      flexDirection="column"
-      alignItems="center"
-      justifyContent="center"
-      gap={2}
-    >
+    <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" gap={2}>
       <CircularProgress size={size} />
       {message && (
         <Typography variant="body2" color="textSecondary">
@@ -49,15 +43,10 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   }
 
   return (
-    <Box
-      display="flex"
-      alignItems="center"
-      justifyContent="center"
-      minHeight={200}
-    >
+    <Box display="flex" alignItems="center" justifyContent="center" minHeight={200}>
       {content}
     </Box>
   );
 };
 
-export default LoadingSpinner; 
+export default LoadingSpinner;

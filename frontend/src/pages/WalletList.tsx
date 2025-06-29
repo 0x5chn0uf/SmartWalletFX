@@ -1,13 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { 
-  Container, 
-  Typography, 
-  TextField, 
-  Box, 
-  CircularProgress,
-  Alert
-} from '@mui/material';
+import { Container, Typography, TextField, Box, CircularProgress, Alert } from '@mui/material';
 import { RootState, AppDispatch } from '../store';
 import { fetchWallets, setSearch, setPage } from '../store/walletsSlice';
 import WalletTable from '../components/WalletTable';
@@ -23,7 +16,7 @@ const WalletList: React.FC = () => {
   const { showError } = useNotification();
 
   useEffect(() => {
-    dispatch(fetchWallets({ page, limit, search })).catch((err) => {
+    dispatch(fetchWallets({ page, limit, search })).catch(_err => {
       showError('Failed to load wallets. Please try again.');
     });
   }, [dispatch, page, limit, search, showError]);
@@ -76,14 +69,9 @@ const WalletList: React.FC = () => {
 
       <WalletTable wallets={wallets} />
 
-      <Pagination
-        page={page}
-        total={total}
-        limit={limit}
-        onPageChange={handlePageChange}
-      />
+      <Pagination page={page} total={total} limit={limit} onPageChange={handlePageChange} />
     </Container>
   );
 };
 
-export default WalletList; 
+export default WalletList;

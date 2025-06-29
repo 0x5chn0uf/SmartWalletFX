@@ -24,4 +24,4 @@ describe('DashboardPage', () => {
     expect(screen.getByText(/total balance/i)).toBeInTheDocument();
     expect(screen.getByText(/24h volume/i)).toBeInTheDocument();
   });
-}); 
+});

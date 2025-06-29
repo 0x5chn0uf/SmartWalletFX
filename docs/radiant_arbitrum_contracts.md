@@ -3,17 +3,20 @@
 Source: [Radiant Capital Docs - Arbitrum Contracts](https://docs.radiant.capital/radiant/contracts-and-security/arbitrum-contracts)
 
 ## Core Contracts
+
 - **PoolAddressProvider:** 0x454a8daf74b24037ee2fa073ce1be9277ed6160a
 - **LendingPool:** 0xE23B4AE3624fB6f7cDEF29bC8EAD912f1Ede6886
 - **PoolAddressesProviderRegistry:** 0x9D36DCe6c66E3c206526f5D7B3308fFF16c1aa5E
 - **PoolHelper:** 0xfC05ec21b106E0c1e035Ec4718C1394f098FBb57
 
 ## Data Providers
+
 - **UI Pool Data Provider:** 0x56D4b07292343b149E0c60c7C41B7B1eEefdD733
 - **Wallet Balance Provider:** 0x6AC30E227468773AF2F70cD0F3A0375520885610
 - **Eligibility Data Provider:** 0xd4966DC49a10aa5467D65f4fA4b1449b5d874399
 
 ## Tokenization
+
 - **rWBTC:** 0xa366742D785C288EcAD8120D5303Db4EB675c9EC
 - **rWETH:** 0xfB6f79Db694Ab6B7bf9Eb71b3e2702191A91dF56
 - **rUSDC:** 0xb1D71c15D7c00A1b38C7ad182FA49889A70DB4be
@@ -22,28 +25,32 @@ Source: [Radiant Capital Docs - Arbitrum Contracts](https://docs.radiant.capital
 - **vdUSDC:** 0x7bF39AF1Dd18D6dAfca6B931589eF850F9D0Be25
 
 ## Oracles
+
 - **rizOracleRouter:** 0xacA72b23081f3786159edbca8e5FD2Ae71171C69
 
 ## Rewards & Misc
+
 - **chefIncentivesController:** 0xebC85d44cefb1293707b11f707bd3CEc34B4D5fA
 - **multiFeeDistribution:** 0xc2054A8C33bfce28De8aF4aF548C48915c455c13
 - **wethGateway:** 0x8a8f65cabb82a857fa22289ad0a5785a5e7dbd22
 
 ## Method Mapping for User Data Extraction
 
-| Data Needed         | Contract                | Method (ABI)                        | Notes                                 |
-|---------------------|------------------------|--------------------------------------|---------------------------------------|
-| Supplied assets     | UI Pool Data Provider  | `getUserReservesData(poolProvider, user)`    | First arg is Pool Address Provider, not LendingPool. Returns all user reserves.             |
-| Borrowed assets     | UI Pool Data Provider  | `getUserReservesData(poolProvider, user)`    | Includes borrow data                  |
-| Health factor       | UI Pool Data Provider  | `getUserReservesData(poolProvider, user)`    | Usually included in return struct     |
-| APY (rates)         | UI Pool Data Provider  | `getReservesData(poolProvider)`              | Returns rates for all assets          |
-| Token metadata      | ERC20                  | `symbol()`, `decimals()`             | Use standard ERC20 ABI                |
+| Data Needed     | Contract              | Method (ABI)                              | Notes                                                                           |
+| --------------- | --------------------- | ----------------------------------------- | ------------------------------------------------------------------------------- |
+| Supplied assets | UI Pool Data Provider | `getUserReservesData(poolProvider, user)` | First arg is Pool Address Provider, not LendingPool. Returns all user reserves. |
+| Borrowed assets | UI Pool Data Provider | `getUserReservesData(poolProvider, user)` | Includes borrow data                                                            |
+| Health factor   | UI Pool Data Provider | `getUserReservesData(poolProvider, user)` | Usually included in return struct                                               |
+| APY (rates)     | UI Pool Data Provider | `getReservesData(poolProvider)`           | Returns rates for all assets                                                    |
+| Token metadata  | ERC20                 | `symbol()`, `decimals()`                  | Use standard ERC20 ABI                                                          |
 
 > **Note:**
+>
 > - The first argument to `getUserReservesData` is the Pool Address Provider (`0x454a8daf74b24037ee2fa073ce1be9277ed6160a`), not the LendingPool.
 > - The result is a tuple: the first element is a list of reserve tuples (token address, supplied, borrowed, collateral, etc.), the second is the user's health factor or aggregate metric.
 
 ### ABI Reference
+
 - **UI Pool Data Provider ABI:** [Etherscan ABI](https://arbiscan.io/address/0x56D4b07292343b149E0c60c7C41B7B1eEefdD733#code)
 - **ERC20 ABI:** [OpenZeppelin ERC20 ABI](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol)
 
@@ -96,4 +103,4 @@ For the full and latest list, see the [official Radiant docs](https://docs.radia
   - See `backend/app/adapters/radiant_contract_adapter.py` for how these are used in code.
 
 - **Testing:**
-  - Always run tests after updating addresses or ABIs to ensure compatibility. 
+  - Always run tests after updating addresses or ABIs to ensure compatibility.

@@ -17,4 +17,4 @@ describe('useTimeline', () => {
     expect(result.current.loading).toBe(false);
     expect(result.current.error).toBeNull();
   });
-}); 
+});

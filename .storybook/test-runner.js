@@ -1,5 +1,5 @@
-const { getStoryContext } = require('@storybook/test-runner');
-const AxeBuilder = require('axe-core').AxeBuilder;
+const { getStoryContext } = require("@storybook/test-runner");
+const AxeBuilder = require("axe-core").AxeBuilder;
 
 module.exports = {
   async preRender(page, context) {
@@ -16,14 +16,14 @@ module.exports = {
     }
 
     const results = await new AxeBuilder({ page })
-      .disableRules(['color-contrast']) // keep contrast handled in separate test
+      .disableRules(["color-contrast"]) // keep contrast handled in separate test
       .analyze();
 
     if (results.violations.length > 0) {
       const formatted = results.violations
         .map((v) => `${v.help} (${v.id})\n  Affected: ${v.nodes.length}`)
-        .join('\n');
+        .join("\n");
       throw new Error(`A11y Violations in story ${context.id}:\n${formatted}`);
     }
   },
-}; 
+};

@@ -4,24 +4,25 @@
 
 ## 1. Public REST Endpoints
 
-| Method | Path | Description | Auth | Notes |
-|--------|------|-------------|------|-------|
-| GET | `/defi/portfolio/{address}` | Live aggregate of collateral, borrowings, health score | None | Wraps on-chain data from supported protocols |
-| GET | `/defi/timeline/{address}` | Historical snapshots timeline | None | Supports `from_ts`, `to_ts`, `limit`, `offset`, `interval`, `raw` query params |
-| GET | `/defi/radiant/{address}` | Radiant single-protocol snapshot | None | Arbitrum network |
-| GET | `/defi/aave/{address}` | Aave single-protocol snapshot | None | Mainnet |
-| GET | `/defi/compound/{address}` | Compound single-protocol snapshot | None | Mainnet |
+| Method | Path                        | Description                                            | Auth | Notes                                                                          |
+| ------ | --------------------------- | ------------------------------------------------------ | ---- | ------------------------------------------------------------------------------ |
+| GET    | `/defi/portfolio/{address}` | Live aggregate of collateral, borrowings, health score | None | Wraps on-chain data from supported protocols                                   |
+| GET    | `/defi/timeline/{address}`  | Historical snapshots timeline                          | None | Supports `from_ts`, `to_ts`, `limit`, `offset`, `interval`, `raw` query params |
+| GET    | `/defi/radiant/{address}`   | Radiant single-protocol snapshot                       | None | Arbitrum network                                                               |
+| GET    | `/defi/aave/{address}`      | Aave single-protocol snapshot                          | None | Mainnet                                                                        |
+| GET    | `/defi/compound/{address}`  | Compound single-protocol snapshot                      | None | Mainnet                                                                        |
 
 ### Response Models
+
 - **PortfolioMetrics** – returned by `/defi/portfolio` (see backend doc).
 - **TimelineResponse** – default wrapper for `/defi/timeline`; optionally plain `PortfolioSnapshot[]` when `raw=true`.
 - **DeFiAccountSnapshot** – base model for each protocol-specific endpoint.
 
 ## 2. Admin / Internal Endpoints
 
-| Method | Path | Description | Auth | Notes |
-|--------|------|-------------|------|-------|
-| POST | `/defi/admin/trigger-snapshot` | Manually trigger snapshot aggregation for selected wallets | JWT (admin) | Returns Celery task ID |
+| Method | Path                           | Description                                                | Auth        | Notes                  |
+| ------ | ------------------------------ | ---------------------------------------------------------- | ----------- | ---------------------- |
+| POST   | `/defi/admin/trigger-snapshot` | Manually trigger snapshot aggregation for selected wallets | JWT (admin) | Returns Celery task ID |
 
 ## 3. OpenAPI & Client Generation
 
@@ -36,4 +37,4 @@
 ## 5. Future Additions
 
 - WebSocket channel `ws://{host}/defi/portfolio/stream/{address}` (Phase 3).
-- Batch timeline endpoint to fetch multiple addresses in one call. 
+- Batch timeline endpoint to fetch multiple addresses in one call.

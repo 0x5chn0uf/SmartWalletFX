@@ -54,10 +54,10 @@ export const createAppTheme = (mode: 'light' | 'dark' = 'dark'): Theme => {
       },
     },
     shape: {
-      borderRadius: tokens.SizeRadiiMd,
+      borderRadius: parseInt(tokens.SizeRadiiMd.toString(), 10),
     },
     // Use the xs spacing value (4px) as base multiplier for MUI spacing helper
-    spacing: tokens.SizeSpacingXs,
+    spacing: parseInt(tokens.SizeSpacingXs.toString(), 10),
     // Provide a minimal shadows array derived from elevation tokens
     shadows: [
       'none',

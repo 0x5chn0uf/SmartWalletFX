@@ -14,7 +14,7 @@ const NotificationManager: React.FC = () => {
 
   return (
     <>
-      {notifications.map((notification) => (
+      {notifications.map(notification => (
         <Toast
           key={notification.id}
           open={true}
@@ -28,4 +28,4 @@ const NotificationManager: React.FC = () => {
   );
 };
 
-export default NotificationManager; 
+export default NotificationManager;

@@ -1,6 +1,7 @@
 # flake8: noqa
 
 import re
+from datetime import datetime
 from enum import Enum
 from typing import List, Union
 
@@ -16,6 +17,7 @@ from app.repositories.portfolio_snapshot_repository import (
 )
 from app.schemas.defi import DeFiAccountSnapshot, PortfolioSnapshot
 from app.schemas.defi_aggregate import AggregateMetricsSchema, PositionSchema
+from app.schemas.defi_dashboard import DefiKPI, ProtocolBreakdown
 from app.schemas.portfolio_timeline import TimelineResponse
 from app.services.defi_aggregation_service import DeFiAggregationService
 from app.usecase.defi_aave_usecase import AaveUsecase
@@ -28,6 +30,67 @@ from app.usecase.portfolio_aggregation_usecase import (
 from app.usecase.portfolio_snapshot_usecase import PortfolioSnapshotUsecase
 
 router = APIRouter()
+
+
+# --- Dashboard Endpoints (Mocked) ---
+
+MOCK_PROTOCOLS: List[ProtocolBreakdown] = [
+    ProtocolBreakdown(name="Aave", tvl=534221.12, apy=1.2, positions=10),
+    ProtocolBreakdown(name="Compound", tvl=312876.44, apy=9.1, positions=2),
+    ProtocolBreakdown(name="Radiant", tvl=407224.89, apy=20.2, positions=5),
+]
+
+MOCK_PORTFOLIO_TIMELINE = {
+    "snapshots": [
+        {
+            "user_address": "0xMOCK",
+            "timestamp": 1719446400,
+            "total_collateral": 1200000,
+            "total_borrowings": 0,
+            "aggregate_health_score": None,
+        },
+        {
+            "user_address": "0xMOCK",
+            "timestamp": 1719532800,
+            "total_collateral": 1225000,
+            "total_borrowings": 0,
+            "aggregate_health_score": None,
+        },
+        {
+            "user_address": "0xMOCK",
+            "timestamp": 1719619200,
+            "total_collateral": 1210000,
+            "total_borrowings": 0,
+            "aggregate_health_score": None,
+        },
+    ],
+    "interval": "1d",
+    "limit": 3,
+    "offset": 0,
+    "total": 3,
+}
+
+
+@router.get("/defi/portfolio/kpi", response_model=DefiKPI, tags=["DeFi"])
+async def get_defi_kpi():
+    """Return basic KPI metrics for the DeFi dashboard (mock placeholder)."""
+    total_tvl = sum(p.tvl for p in MOCK_PROTOCOLS)
+    avg_apy = round(sum(p.apy for p in MOCK_PROTOCOLS) / len(MOCK_PROTOCOLS), 2)
+    return DefiKPI(
+        tvl=total_tvl,
+        apy=avg_apy,
+        protocols=MOCK_PROTOCOLS,
+        updated_at=datetime.utcnow(),
+    )
+
+
+@router.get(
+    "/defi/portfolio/protocols", response_model=List[ProtocolBreakdown], tags=["DeFi"]
+)
+async def get_protocol_breakdown():
+    """Return protocol-level breakdown for dashboard table (mock placeholder)."""
+    return MOCK_PROTOCOLS
+
 
 # Database dependency
 db_dependency = Depends(get_db)
@@ -109,6 +172,12 @@ async def get_compound_user_data(
     if snapshot is None:
         raise HTTPException(status_code=404, detail="User data not found on Compound.")
     return snapshot
+
+
+@router.get("/defi/portfolio/timeline", response_model=TimelineResponse, tags=["DeFi"])
+async def get_main_portfolio_timeline():
+    """Return a timeline for the main portfolio view (mock placeholder)."""
+    return MOCK_PORTFOLIO_TIMELINE
 
 
 @router.get(

@@ -11,4 +11,4 @@ describe('getWallets', () => {
     expect(apiClient.get).toHaveBeenCalledWith('/defi/wallets');
     expect(result).toEqual(mockData);
   });
-}); 
+});

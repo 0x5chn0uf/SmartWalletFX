@@ -1,5 +1,13 @@
 import React from 'react';
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
 interface Wallet {
@@ -34,14 +42,14 @@ const WalletTable: React.FC<WalletTableProps> = ({ wallets }) => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {wallets.map((wallet) => (
-            <TableRow 
-              key={wallet.id} 
-              hover 
+          {wallets.map(wallet => (
+            <TableRow
+              key={wallet.id}
+              hover
               onClick={() => handleRowClick(wallet.id)}
-              sx={{ 
+              sx={{
                 cursor: 'pointer',
-                '&:hover': { backgroundColor: 'action.hover' }
+                '&:hover': { backgroundColor: 'action.hover' },
               }}
             >
               <TableCell>{wallet.name}</TableCell>
@@ -56,4 +64,4 @@ const WalletTable: React.FC<WalletTableProps> = ({ wallets }) => {
   );
 };
 
-export default WalletTable; 
+export default WalletTable;

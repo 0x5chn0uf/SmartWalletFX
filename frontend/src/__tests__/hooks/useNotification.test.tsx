@@ -26,4 +26,4 @@ describe('useNotification', () => {
       result.current.showError('Error message');
     });
   });
-}); 
+});
