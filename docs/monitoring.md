@@ -175,7 +175,7 @@ groups:
 
 ### 5.1 Application Health
 
-**Endpoint:** `GET /api/v1/health`
+**Endpoint:** `GET /health`
 
 **Response:**
 

@@ -382,7 +382,7 @@ Set `SLACK_WEBHOOK_URL` environment variable to enable alerting. If not configur
 
    ```bash
    # Verify application health
-   curl http://localhost:8000/api/v1/health
+   curl http://localhost:8000/health
 
    # Run critical functionality tests
    pytest tests/smoke/ -v
