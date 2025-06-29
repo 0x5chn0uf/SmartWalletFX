@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cobalt Portfolio Tracker - UI Variant 2</title>
+  <style>
+    :root {
+      --color-bg: #1a1f2e;
+      --color-surface: #242937;
+      --color-primary: #4fd1c7;
+      --text-primary: #ffffff;
+      --text-secondary: #c6c8cc;
+      --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --spacing-md: 16px;
+      --spacing-lg: 24px;
+      --radius-md: 12px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--color-bg); color: var(--text-primary); font-family: var(--font-primary); }
+    header { display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-md) var(--spacing-lg); background: var(--color-surface); }
+    .logo { font-size: 24px; font-weight: 600; color: var(--color-primary); text-decoration: none; }
+    nav a { margin-left: var(--spacing-lg); color: var(--text-secondary); text-decoration: none; font-weight: 500; }
+    nav a:hover { color: var(--text-primary); }
+    .hero { display: flex; align-items: center; justify-content: center; padding: 100px var(--spacing-lg); }
+    .hero .text { max-width: 480px; }
+    .hero h1 { font-size: 48px; font-weight: 600; margin: 0 0 16px; }
+    .hero p { color: var(--text-secondary); margin: 0 0 24px; font-size: 18px; line-height: 1.5; }
+    .btn-primary { display: inline-block; padding: 12px 24px; border-radius: var(--radius-md); background: var(--color-primary); color: #1f2937; text-decoration: none; font-weight: 500; transition: all 0.2s ease; }
+    .btn-primary:hover { background: #3eb9ad; }
+    .hero .image { margin-left: 64px; }
+    .hero .image img { max-width: 100%; border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    @media (max-width: 768px) { .hero { flex-direction: column; text-align: center; } .hero .image { margin: 24px 0 0; } }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="#" class="logo">CobaltTracker</a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#login">Login</a>
+    </nav>
+  </header>
+  <section class="hero">
+    <div class="text">
+      <h1>Your Portfolio, Simplified</h1>
+      <p>Consolidate all your assets in one place and get clear insights at a glance.</p>
+      <a href="#" class="btn-primary">Sign Up Free</a>
+    </div>
+    <div class="image">
+      <img src="https://via.placeholder.com/600x400" alt="Dashboard screenshot">
+    </div>
+  </section>
+</body>
+</html> 

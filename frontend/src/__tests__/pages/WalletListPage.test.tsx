@@ -2,19 +2,23 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { MemoryRouter } from 'react-router-dom';
 import walletsReducer from '../../store/walletsSlice';
 import WalletList from '../../pages/WalletList';
+import { RootState } from '../../store';
 
 describe('WalletList Page', () => {
-  function renderWithStore(preloadedState: any) {
+  function renderWithStore(preloadedState?: Partial<RootState>) {
     const store = configureStore({
-      reducer: { wallets: walletsReducer } as any,
+      reducer: { wallets: walletsReducer },
       preloadedState,
     });
 
     return render(
       <Provider store={store}>
-        <WalletList />
+        <MemoryRouter>
+          <WalletList />
+        </MemoryRouter>
       </Provider>
     );
   }

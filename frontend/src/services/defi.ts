@@ -134,7 +134,9 @@ export async function getPortfolioSnapshot(): Promise<PortfolioSnapshot> {
 // Mock data helpers (used in development when backend is unavailable)
 // ---------------------------------------------------------------------------
 
-const USE_MOCK = process.env.REACT_APP_USE_MOCK === 'true';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+const USE_MOCK = ((import.meta as any).env.VITE_USE_MOCK ?? 'false') === 'true';
 
 const MOCK_DEFI_KPI: DefiKPI = {
   tvl: 1254321.45,

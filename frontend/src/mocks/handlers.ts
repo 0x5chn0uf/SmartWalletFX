@@ -1,6 +1,8 @@
 import { http, HttpResponse } from 'msw';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:8000';
 
 const handlers = [
   http.get(`${API_URL}/timeline`, () => {

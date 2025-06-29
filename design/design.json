@@ -188,7 +188,12 @@
       "background": "transparent",
       "gridColor": "rgba(255, 255, 255, 0.1)",
       "axisColor": "text.muted",
-      "dataColors": ["accent.primary", "accent.secondary", "accent.success", "accent.warning"]
+      "dataColors": [
+        "accent.primary",
+        "accent.secondary",
+        "accent.success",
+        "accent.warning"
+      ]
     }
   },
   "patterns": {

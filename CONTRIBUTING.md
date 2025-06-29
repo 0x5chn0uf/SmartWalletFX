@@ -21,7 +21,7 @@ Thanks for considering contributing to **SmartWalletFX**! This document explains
 
 - Docker & Docker Compose v2
 - Python 3.12+
-- Node.js 18+
+- Node.js 20.19+
 
 Clone the repo and copy environment variables:
 

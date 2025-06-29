@@ -5,14 +5,11 @@ import * as tokens from './generated';
 /**
  * createAppTheme
  * Builds a Material-UI theme from the auto-generated design tokens.
- * Supports light and dark modes – default is dark.
  */
-export const createAppTheme = (mode: 'light' | 'dark' = 'dark'): Theme => {
-  const isDark = mode === 'dark';
-
+export const createAppTheme = (): Theme => {
   return createTheme({
     palette: {
-      mode,
+      mode: 'dark',
       primary: {
         main: tokens.ColorBrandPrimary,
         contrastText: tokens.ColorTextPrimary,
@@ -22,20 +19,20 @@ export const createAppTheme = (mode: 'light' | 'dark' = 'dark'): Theme => {
         contrastText: tokens.ColorTextPrimary,
       },
       background: {
-        default: isDark ? tokens.ColorBackgroundDefault : '#ffffff',
-        paper: isDark ? tokens.ColorBackgroundSurface : '#fafafa',
+        default: tokens.ColorBackgroundDefault,
+        paper: tokens.ColorBackgroundSurface,
       },
       text: {
-        primary: isDark ? tokens.ColorTextPrimary : tokens.ColorTextInverse,
+        primary: tokens.ColorTextPrimary,
         secondary: tokens.ColorTextSecondary,
       },
     },
     typography: {
       fontFamily: tokens.FontFamilyPrimary,
       h1: {
-        fontSize: tokens.FontSizeH1,
+        fontSize: '56px',
         fontWeight: tokens.FontWeightBold,
-        lineHeight: tokens.FontLineheightHeading,
+        lineHeight: 1.05,
       },
       h2: {
         fontSize: tokens.FontSizeH2,
@@ -43,9 +40,14 @@ export const createAppTheme = (mode: 'light' | 'dark' = 'dark'): Theme => {
         lineHeight: tokens.FontLineheightHeading,
       },
       body1: {
-        fontSize: tokens.FontSizeBody,
+        fontSize: '18px',
         fontWeight: tokens.FontWeightRegular,
         lineHeight: tokens.FontLineheightBody,
+      },
+      button: {
+        fontWeight: tokens.FontWeightMedium,
+        letterSpacing: '0.2px',
+        textTransform: 'none',
       },
       caption: {
         fontSize: tokens.FontSizeCaption,
@@ -56,9 +58,7 @@ export const createAppTheme = (mode: 'light' | 'dark' = 'dark'): Theme => {
     shape: {
       borderRadius: parseInt(tokens.SizeRadiiMd.toString(), 10),
     },
-    // Use the xs spacing value (4px) as base multiplier for MUI spacing helper
-    spacing: parseInt(tokens.SizeSpacingXs.toString(), 10),
-    // Provide a minimal shadows array derived from elevation tokens
+    spacing: 8,
     shadows: [
       'none',
       tokens.Elevation1,

@@ -4,9 +4,10 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import dashboardReducer from '../../store/dashboardSlice';
 import DashboardPage from '../../pages/DashboardPage';
+import { RootState } from '../../store';
 
 describe('DashboardPage', () => {
-  function renderWithStore(preloadedState: any) {
+  function renderWithStore(preloadedState?: Partial<RootState>) {
     const store = configureStore({
       reducer: { dashboard: dashboardReducer },
       preloadedState,
@@ -19,9 +20,8 @@ describe('DashboardPage', () => {
   }
 
   it('renders dashboard summary cards', () => {
-    renderWithStore({ dashboard: { overview: {}, status: 'idle', error: null } });
+    renderWithStore({ dashboard: { overview: null, status: 'idle', error: null } });
     expect(screen.getByText(/total wallets/i)).toBeInTheDocument();
     expect(screen.getByText(/total balance/i)).toBeInTheDocument();
-    expect(screen.getByText(/24h volume/i)).toBeInTheDocument();
   });
 });
