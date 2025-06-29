@@ -14,13 +14,14 @@ import ErrorBoundary from './components/ErrorBoundary';
 import DeFiDashboardPage from './pages/DeFiDashboardPage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components/Layout/Layout';
+import LoginRegisterPage from './pages/LoginRegisterPage';
 
 const queryClient = new QueryClient();
 
 // Navbar component: hidden on landing page
 const NavBar: React.FC = () => {
   const location = useLocation();
-  if (location.pathname === '/') return null;
+  if (location.pathname === '/' || location.pathname === '/login-register') return null;
   return (
     <AppBar position="static">
       <Toolbar>
@@ -61,6 +62,7 @@ const App: React.FC = () => {
               <Routes>
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/login-register" element={<LoginRegisterPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/defi" element={<DeFiDashboardPage />} />
                 <Route path="/wallets" element={<WalletList />} />
