@@ -24,6 +24,7 @@ import {
 import { TimelineChart } from '../components/Charts/TimelineChart';
 import { mapSnapshotsToChartData } from '../utils/timelineAdapter';
 import TablePagination from '@mui/material/TablePagination';
+import { useTheme, useMediaQuery } from '@mui/material';
 
 const DeFiDashboardPage: React.FC = () => {
   const {
@@ -99,6 +100,10 @@ const DeFiDashboardPage: React.FC = () => {
     return `rgb(${r}, ${g}, 80)`;
   };
 
+  // Responsive helpers
+  const theme = useTheme();
+  const isSmDown = useMediaQuery(theme.breakpoints.down('sm'));
+
   if (kpiLoading || protocolsLoading || timelineLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
@@ -150,7 +155,7 @@ const DeFiDashboardPage: React.FC = () => {
           Performance Timeline
         </Typography>
         <Box
-          height={300}
+          height={isSmDown ? 200 : 300}
           display="flex"
           alignItems="center"
           justifyContent="center"
@@ -167,7 +172,7 @@ const DeFiDashboardPage: React.FC = () => {
       </Box>
 
       {/* Protocol Breakdown Table */}
-      <Box mt={4}>
+      <Box mt={4} sx={{ overflowX: isSmDown ? 'auto' : 'visible' }}>
         <Typography variant="h6" gutterBottom>
           Protocol Breakdown
         </Typography>
