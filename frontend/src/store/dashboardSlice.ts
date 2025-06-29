@@ -1,11 +1,18 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import apiClient from '../services/api';
 
+interface Wallet {
+  id: string;
+  name: string;
+  balance: number;
+}
+
 interface Overview {
   totalWallets: number;
   totalBalance: number;
   dailyVolume: number;
   chart: Array<{ date: string; balance: number }>;
+  portfolioDistribution: Wallet[];
 }
 
 interface DashboardState {

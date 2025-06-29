@@ -1,29 +1,33 @@
-// @ts-nocheck
 import { http, HttpResponse } from 'msw';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
 const handlers = [
-  http.get('/timeline', (req, res, ctx) => {
-    return res(ctx.status(200), ctx.json({ data: [] }));
+  http.get(`${API_URL}/timeline`, () => {
+    return HttpResponse.json({ data: [] });
   }),
-  http.get('/dashboard/overview', (req, res, ctx) => {
-    return res(
-      ctx.status(200),
-      ctx.json({
-        totalWallets: 12,
-        totalBalance: 45230,
-        dailyVolume: 3210,
-        chart: [
-          { date: '2024-06-18', balance: 42000 },
-          { date: '2024-06-19', balance: 43000 },
-          { date: '2024-06-20', balance: 44000 },
-          { date: '2024-06-21', balance: 44500 },
-          { date: '2024-06-22', balance: 45230 },
-        ],
-      })
-    );
+  http.get(`${API_URL}/dashboard/overview`, () => {
+    return HttpResponse.json({
+      totalWallets: 12,
+      totalBalance: 46230,
+      chart: [
+        { date: '2024-06-18', balance: 42000 },
+        { date: '2024-06-19', balance: 43000 },
+        { date: '2024-06-20', balance: 44000 },
+        { date: '2024-06-21', balance: 44500 },
+        { date: '2024-06-22', balance: 46230 },
+      ],
+      portfolioDistribution: [
+        { id: 'btc', name: 'BTC', balance: 20000 },
+        { id: 'eth', name: 'ETH', balance: 15000 },
+        { id: 'usdc', name: 'USDC', balance: 5000 },
+        { id: 'bnb', name: 'BNB', balance: 3000 },
+        { id: 'sol', name: 'SOL', balance: 1230 },
+      ],
+    });
   }),
-  http.get('/wallets', (req, res, ctx) => {
-    const url = new URL(req.url);
+  http.get(`${API_URL}/wallets`, ({ request }) => {
+    const url = new URL(request.url);
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = parseInt(url.searchParams.get('limit') || '10');
     const search = url.searchParams.get('search') || '';
@@ -31,7 +35,7 @@ const handlers = [
     const mockWallets = [
       {
         id: '1',
-        name: 'Main Wallet',
+        name: 'Main Wallet (ETH)',
         address: '0x1234...5678',
         balance: 15000,
         currency: 'USD',
@@ -39,7 +43,7 @@ const handlers = [
       },
       {
         id: '2',
-        name: 'Trading Wallet',
+        name: 'Trading Wallet (BTC)',
         address: '0x8765...4321',
         balance: 8500,
         currency: 'USD',
@@ -47,7 +51,7 @@ const handlers = [
       },
       {
         id: '3',
-        name: 'Savings Wallet',
+        name: 'Savings (Stable)',
         address: '0xabcd...efgh',
         balance: 22000,
         currency: 'USD',
@@ -63,18 +67,15 @@ const handlers = [
     const end = start + limit;
     const paginatedWallets = filteredWallets.slice(start, end);
 
-    return res(
-      ctx.status(200),
-      ctx.json({
-        wallets: paginatedWallets,
-        total: filteredWallets.length,
-        page,
-        limit,
-      })
-    );
+    return HttpResponse.json({
+      wallets: paginatedWallets,
+      total: filteredWallets.length,
+      page,
+      limit,
+    });
   }),
-  http.get('/wallets/:id', (req, res, ctx) => {
-    const { id } = req.params as { id: string };
+  http.get(`${API_URL}/wallets/:id`, ({ params }) => {
+    const { id } = params as { id: string };
     const wallet = {
       id,
       name: id === '1' ? 'Main Wallet' : id === '2' ? 'Trading Wallet' : 'Savings Wallet',
@@ -90,10 +91,10 @@ const handlers = [
         { date: '2024-06-22', balance: id === '1' ? 15000 : id === '2' ? 8500 : 22000 },
       ],
     };
-    return res(ctx.status(200), ctx.json(wallet));
+    return HttpResponse.json(wallet);
   }),
-  http.get('/wallets/:id/transactions', (req, res, ctx) => {
-    const { id } = req.params as { id: string };
+  http.get(`${API_URL}/wallets/:id/transactions`, ({ params }) => {
+    const { id } = params as { id: string };
     const transactions = [
       {
         id: `${id}-t1`,
@@ -120,7 +121,7 @@ const handlers = [
         balanceAfter: 14700,
       },
     ];
-    return res(ctx.status(200), ctx.json(transactions));
+    return HttpResponse.json(transactions);
   }),
 ];
 

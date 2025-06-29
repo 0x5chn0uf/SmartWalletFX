@@ -1,5 +1,5 @@
 import React from 'react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
@@ -29,19 +29,28 @@ import { useTheme, useMediaQuery } from '@mui/material';
 const DeFiDashboardPage: React.FC = () => {
   const {
     data: kpi,
-    isLoading: kpiLoading,
+    isPending: kpiLoading,
     error: kpiError,
-  } = useQuery<DefiKPI>('defiKPI', getDefiKPI);
+  } = useQuery<DefiKPI>({
+    queryKey: ['defiKPI'],
+    queryFn: getDefiKPI,
+  });
   const {
     data: protocols,
-    isLoading: protocolsLoading,
+    isPending: protocolsLoading,
     error: protocolsError,
-  } = useQuery<ProtocolBreakdown[]>('protocolBreakdown', getProtocolBreakdown);
+  } = useQuery<ProtocolBreakdown[]>({
+    queryKey: ['protocolBreakdown'],
+    queryFn: getProtocolBreakdown,
+  });
   const {
     data: timeline,
-    isLoading: timelineLoading,
+    isPending: timelineLoading,
     error: timelineError,
-  } = useQuery('portfolioTimeline', () => getPortfolioTimeline());
+  } = useQuery({
+    queryKey: ['portfolioTimeline'],
+    queryFn: () => getPortfolioTimeline(),
+  });
 
   // Sorting state for protocol table
   const [orderBy, setOrderBy] = React.useState<'tvl' | 'apy' | 'positions'>('tvl');

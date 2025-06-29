@@ -1,10 +1,46 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import WalletListPage from '../../pages/WalletListPage';
+import { Provider } from 'react-redux';
+import { configureStore } from '@reduxjs/toolkit';
+import walletsReducer from '../../store/walletsSlice';
+import WalletList from '../../pages/WalletList';
 
-describe('WalletListPage', () => {
+describe('WalletList Page', () => {
+  function renderWithStore(preloadedState: any) {
+    const store = configureStore({
+      reducer: { wallets: walletsReducer } as any,
+      preloadedState,
+    });
+
+    return render(
+      <Provider store={store}>
+        <WalletList />
+      </Provider>
+    );
+  }
+
   it('renders wallet list page', () => {
-    render(<WalletListPage />);
-    expect(screen.getByText(/wallet/i)).toBeInTheDocument();
+    renderWithStore({
+      wallets: {
+        wallets: [
+          {
+            id: '1',
+            name: 'Test Wallet',
+            balance: 1000,
+            address: '0x123',
+            currency: 'USD',
+            lastUpdated: '2024-01-01',
+          },
+        ],
+        total: 1,
+        page: 1,
+        limit: 10,
+        search: '',
+        status: 'succeeded',
+        error: null,
+      },
+    });
+
+    expect(screen.getByText(/wallets/i)).toBeInTheDocument();
   });
 });

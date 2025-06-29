@@ -1,11 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Container, Typography, TextField, Box, CircularProgress, Alert } from '@mui/material';
+import {
+  Container,
+  Typography,
+  TextField,
+  Box,
+  CircularProgress,
+  Alert,
+  Grid,
+} from '@mui/material';
 import { RootState, AppDispatch } from '../store';
 import { fetchWallets, setSearch, setPage } from '../store/walletsSlice';
 import WalletTable from '../components/WalletTable';
 import Pagination from '../components/Pagination';
 import useNotification from '../hooks/useNotification';
+import StatsCards from '../components/StatsCards';
+import PortfolioDistributionChart from '../components/PortfolioDistributionChart';
+import WalletConnectCTA from '../components/home/WalletConnectCTA';
 
 const WalletList: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -47,8 +58,11 @@ const WalletList: React.FC = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
       <Typography variant="h4" gutterBottom>
-        Wallet List
+        Wallets
       </Typography>
+
+      {/* Quick statistics */}
+      <StatsCards wallets={wallets} />
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -67,9 +81,20 @@ const WalletList: React.FC = () => {
         />
       </Box>
 
-      <WalletTable wallets={wallets} />
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={8}>
+          <WalletTable wallets={wallets} />
+          <Pagination page={page} total={total} limit={limit} onPageChange={handlePageChange} />
+        </Grid>
+        <Grid item xs={12} md={4}>
+          <PortfolioDistributionChart data={wallets} />
+        </Grid>
+      </Grid>
 
-      <Pagination page={page} total={total} limit={limit} onPageChange={handlePageChange} />
+      {/* Call-to-action */}
+      <Box mt={6}>
+        <WalletConnectCTA />
+      </Box>
     </Container>
   );
 };
