@@ -23,6 +23,7 @@ import {
 } from '../services/defi';
 import { TimelineChart } from '../components/Charts/TimelineChart';
 import { mapSnapshotsToChartData } from '../utils/timelineAdapter';
+import TablePagination from '@mui/material/TablePagination';
 
 const DeFiDashboardPage: React.FC = () => {
   const {
@@ -61,6 +62,24 @@ const DeFiDashboardPage: React.FC = () => {
       return 0;
     });
   }, [order, orderBy, protocols]);
+
+  // Pagination state
+  const [page, setPage] = React.useState(0);
+  const [rowsPerPage, setRowsPerPage] = React.useState(5);
+
+  const handleChangePage = (_event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const pagedProtocols = React.useMemo(() => {
+    const start = page * rowsPerPage;
+    return sortedProtocols.slice(start, start + rowsPerPage);
+  }, [sortedProtocols, page, rowsPerPage]);
 
   // Colour helpers
   const tvlColor = (value: number) => {
@@ -191,7 +210,7 @@ const DeFiDashboardPage: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {sortedProtocols.map(p => (
+            {pagedProtocols.map(p => (
               <TableRow key={p.name}>
                 <TableCell>{p.name}</TableCell>
                 <TableCell sx={{ color: tvlColor(p.tvl) }}>${p.tvl.toLocaleString()}</TableCell>
@@ -201,6 +220,15 @@ const DeFiDashboardPage: React.FC = () => {
             ))}
           </TableBody>
         </Table>
+        <TablePagination
+          component="div"
+          count={sortedProtocols.length}
+          page={page}
+          onPageChange={handleChangePage}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          rowsPerPageOptions={[5, 10, 25]}
+        />
       </Box>
     </Box>
   );
