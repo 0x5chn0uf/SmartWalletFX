@@ -28,8 +28,21 @@ describe('walletDetailSlice', () => {
   });
 
   it('should handle fetchWalletDetail.fulfilled', () => {
-    const prevState: WalletDetailState = { wallet: null, transactions: [], status: 'idle', error: null };
-    const wallet: WalletDetail = { id: '1', name: 'Test Wallet', address: '', balance: 1000, currency: 'USD', lastUpdated: '', trend: [] };
+    const prevState: WalletDetailState = {
+      wallet: null,
+      transactions: [],
+      status: 'idle',
+      error: null,
+    };
+    const wallet: WalletDetail = {
+      id: '1',
+      name: 'Test Wallet',
+      address: '',
+      balance: 1000,
+      currency: 'USD',
+      lastUpdated: '',
+      trend: [],
+    };
     const nextState = walletDetailReducer(prevState, {
       type: 'walletDetail/fetchWalletDetail/fulfilled',
       payload: wallet,
@@ -38,4 +51,4 @@ describe('walletDetailSlice', () => {
     expect(nextState.status).toBe('succeeded');
     expect(nextState.error).toBeNull();
   });
-}); 
+});

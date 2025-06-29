@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 
 # -----------------------------------------------------------------------------
 # End-to-End Test Compose File for Backup/Restore Testing
@@ -31,7 +31,7 @@ services:
       POSTGRES_PASSWORD: testpass
       POSTGRES_DB: testdb
     ports:
-      - "5434:5432"  # Different port to avoid conflicts
+      - "5434:5432" # Different port to avoid conflicts
     volumes:
       - ./backend/tests/fixtures/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
@@ -51,7 +51,7 @@ services:
       POSTGRES_PASSWORD: testpass
       POSTGRES_DB: largedb
     ports:
-      - "5435:5432"  # Different port to avoid conflicts
+      - "5435:5432" # Different port to avoid conflicts
     volumes:
       - ./backend/tests/fixtures/large_dataset.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
@@ -71,7 +71,7 @@ services:
       POSTGRES_PASSWORD: testpass
       POSTGRES_DB: testdb16
     ports:
-      - "5436:5432"  # Different port to avoid conflicts
+      - "5436:5432" # Different port to avoid conflicts
     volumes:
       - ./backend/tests/fixtures/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
@@ -87,7 +87,7 @@ services:
   redis-e2e:
     image: redis:7-alpine
     ports:
-      - "6381:6379"  # Different port to avoid conflicts
+      - "6381:6379" # Different port to avoid conflicts
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -104,7 +104,7 @@ services:
       POSTGRES_PASSWORD: testpass
       POSTGRES_DB: restoredb
     ports:
-      - "5437:5432"  # Different port to avoid conflicts
+      - "5437:5432" # Different port to avoid conflicts
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U testuser -d restoredb"]
       interval: 5s
@@ -116,4 +116,4 @@ services:
 
 networks:
   e2e-network:
-    driver: bridge 
+    driver: bridge

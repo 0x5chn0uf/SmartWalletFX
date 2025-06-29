@@ -38,4 +38,4 @@ describe('dashboardSlice', () => {
     expect(nextState.status).toBe('succeeded');
     expect(nextState.error).toBeNull();
   });
-}); 
+});

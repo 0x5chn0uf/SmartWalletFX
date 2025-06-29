@@ -1,5 +1,14 @@
 import React from 'react';
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip } from '@mui/material';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Chip,
+} from '@mui/material';
 import { Transaction } from '../store/walletDetailSlice';
 
 const formatCurrency = (amount: number, currency: string): string => {
@@ -22,11 +31,17 @@ const TransactionTable: React.FC<TransactionTableProps> = ({ transactions }) => 
         </TableRow>
       </TableHead>
       <TableBody>
-        {transactions.map((tx) => (
+        {transactions.map(tx => (
           <TableRow key={tx.id} hover>
             <TableCell>{new Date(tx.date).toLocaleString()}</TableCell>
             <TableCell>
-              <Chip label={tx.type} color={tx.type === 'deposit' ? 'success' : tx.type === 'withdraw' ? 'error' : 'info'} size="small" />
+              <Chip
+                label={tx.type}
+                color={
+                  tx.type === 'deposit' ? 'success' : tx.type === 'withdraw' ? 'error' : 'info'
+                }
+                size="small"
+              />
             </TableCell>
             <TableCell align="right">{formatCurrency(tx.amount, tx.currency)}</TableCell>
             <TableCell align="right">{formatCurrency(tx.balanceAfter, tx.currency)}</TableCell>
@@ -37,4 +52,4 @@ const TransactionTable: React.FC<TransactionTableProps> = ({ transactions }) => 
   </TableContainer>
 );
 
-export default TransactionTable; 
+export default TransactionTable;

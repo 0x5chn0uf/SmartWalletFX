@@ -2,10 +2,10 @@
 import { http, HttpResponse } from 'msw';
 
 const handlers = [
-  http.get('/api/v1/timeline', (req, res, ctx) => {
+  http.get('/timeline', (req, res, ctx) => {
     return res(ctx.status(200), ctx.json({ data: [] }));
   }),
-  http.get('/api/v1/dashboard/overview', (req, res, ctx) => {
+  http.get('/dashboard/overview', (req, res, ctx) => {
     return res(
       ctx.status(200),
       ctx.json({
@@ -22,19 +22,40 @@ const handlers = [
       })
     );
   }),
-  http.get('/api/v1/wallets', (req, res, ctx) => {
+  http.get('/wallets', (req, res, ctx) => {
     const url = new URL(req.url);
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = parseInt(url.searchParams.get('limit') || '10');
     const search = url.searchParams.get('search') || '';
 
     const mockWallets = [
-      { id: '1', name: 'Main Wallet', address: '0x1234...5678', balance: 15000, currency: 'USD', lastUpdated: '2024-06-22T10:30:00Z' },
-      { id: '2', name: 'Trading Wallet', address: '0x8765...4321', balance: 8500, currency: 'USD', lastUpdated: '2024-06-22T09:15:00Z' },
-      { id: '3', name: 'Savings Wallet', address: '0xabcd...efgh', balance: 22000, currency: 'USD', lastUpdated: '2024-06-22T11:45:00Z' },
+      {
+        id: '1',
+        name: 'Main Wallet',
+        address: '0x1234...5678',
+        balance: 15000,
+        currency: 'USD',
+        lastUpdated: '2024-06-22T10:30:00Z',
+      },
+      {
+        id: '2',
+        name: 'Trading Wallet',
+        address: '0x8765...4321',
+        balance: 8500,
+        currency: 'USD',
+        lastUpdated: '2024-06-22T09:15:00Z',
+      },
+      {
+        id: '3',
+        name: 'Savings Wallet',
+        address: '0xabcd...efgh',
+        balance: 22000,
+        currency: 'USD',
+        lastUpdated: '2024-06-22T11:45:00Z',
+      },
     ];
 
-    const filteredWallets = search 
+    const filteredWallets = search
       ? mockWallets.filter(w => w.name.toLowerCase().includes(search.toLowerCase()))
       : mockWallets;
 
@@ -52,7 +73,7 @@ const handlers = [
       })
     );
   }),
-  http.get('/api/v1/wallets/:id', (req, res, ctx) => {
+  http.get('/wallets/:id', (req, res, ctx) => {
     const { id } = req.params as { id: string };
     const wallet = {
       id,
@@ -71,7 +92,7 @@ const handlers = [
     };
     return res(ctx.status(200), ctx.json(wallet));
   }),
-  http.get('/api/v1/wallets/:id/transactions', (req, res, ctx) => {
+  http.get('/wallets/:id/transactions', (req, res, ctx) => {
     const { id } = req.params as { id: string };
     const transactions = [
       {

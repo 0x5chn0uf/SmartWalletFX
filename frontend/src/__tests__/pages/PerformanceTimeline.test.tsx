@@ -7,4 +7,4 @@ describe('PerformanceTimeline', () => {
     render(<PerformanceTimeline />);
     expect(screen.getByText(/performance/i)).toBeInTheDocument();
   });
-}); 
+});

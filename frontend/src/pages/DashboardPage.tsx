@@ -9,12 +9,12 @@ import useNotification from '../hooks/useNotification';
 
 const DashboardPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { overview, status, error } = useSelector((state: RootState) => state.dashboard);
+  const { overview, status, error: _error } = useSelector((state: RootState) => state.dashboard);
   const { showError } = useNotification();
 
   useEffect(() => {
     if (status === 'idle') {
-      dispatch(fetchDashboardOverview()).catch((err) => {
+      dispatch(fetchDashboardOverview()).catch(() => {
         showError('Failed to load dashboard data. Please try again.');
       });
     }
@@ -30,18 +30,14 @@ const DashboardPage: React.FC = () => {
     <div className="p-4 space-y-4">
       {/* Summary cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {cards.map((c) => (
+        {cards.map(c => (
           <SummaryCard key={c.title} title={c.title} value={c.value} />
         ))}
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {overview ? (
-          <BalanceAreaChart data={overview.chart} />
-        ) : (
-          <ChartPlaceholder />
-        )}
+        {overview ? <BalanceAreaChart data={overview.chart} /> : <ChartPlaceholder />}
         <ChartPlaceholder />
       </div>
     </div>

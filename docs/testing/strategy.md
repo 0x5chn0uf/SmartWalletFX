@@ -14,17 +14,17 @@ This document defines the overarching principles, layers, and processes that gov
 
 ## Test Layers & Tooling
 
-| Layer | Purpose | Tools | Target Coverage / KPI |
-|-------|---------|-------|------------------------|
-| Unit (Backend) | Exercise isolated functions, services, adapters | `pytest`, `pytest-asyncio`, `pytest-cov`, `hypothesis` | ≥ 90 % statements |
-| Integration (Backend) | Validate DB, Celery, 3rd-party protocol clients | `pytest` w/ Docker fixtures, `alembic` test migrations | Critical paths fully exercised |
-| Property-Based | Explore edge-cases & invariants for financial maths | `hypothesis` strategies | At least 1 property test per core math module |
-| Unit (Frontend) | Pure component logic & hooks | `Jest`, `RTL` | ≥ 75 % statements |
-| Component / Snapshot | Visual regressions & DOM structure | `Storybook`, `@storybook/testing-library` | Baseline snapshots for all charts/cards |
-| Integration (Frontend) | User flows decoupled from network | `RTL` + **msw** | All pages have API-mocked tests |
-| E2E | Full stack verification incl. auth flows | `Cypress` | Desktop (1366×768) & Mobile (375×667) green |
-| Performance | Time-to-first-byte, Lighthouse scores | `pytest-bench`, `lhci` | Lighthouse PWA score ≥ 90 |
-| Security | Static & dependency scanning | `Bandit`, `Safety` | 0 critical issues |
+| Layer                  | Purpose                                             | Tools                                                  | Target Coverage / KPI                         |
+| ---------------------- | --------------------------------------------------- | ------------------------------------------------------ | --------------------------------------------- |
+| Unit (Backend)         | Exercise isolated functions, services, adapters     | `pytest`, `pytest-asyncio`, `pytest-cov`, `hypothesis` | ≥ 90 % statements                             |
+| Integration (Backend)  | Validate DB, Celery, 3rd-party protocol clients     | `pytest` w/ Docker fixtures, `alembic` test migrations | Critical paths fully exercised                |
+| Property-Based         | Explore edge-cases & invariants for financial maths | `hypothesis` strategies                                | At least 1 property test per core math module |
+| Unit (Frontend)        | Pure component logic & hooks                        | `Jest`, `RTL`                                          | ≥ 75 % statements                             |
+| Component / Snapshot   | Visual regressions & DOM structure                  | `Storybook`, `@storybook/testing-library`              | Baseline snapshots for all charts/cards       |
+| Integration (Frontend) | User flows decoupled from network                   | `RTL` + **msw**                                        | All pages have API-mocked tests               |
+| E2E                    | Full stack verification incl. auth flows            | `Cypress`                                              | Desktop (1366×768) & Mobile (375×667) green   |
+| Performance            | Time-to-first-byte, Lighthouse scores               | `pytest-bench`, `lhci`                                 | Lighthouse PWA score ≥ 90                     |
+| Security               | Static & dependency scanning                        | `Bandit`, `Safety`                                     | 0 critical issues                             |
 
 ## CI Pipeline Overview
 
@@ -52,11 +52,11 @@ flowchart LR
 
 ## Roadmap & Follow-Ups
 
-* Raise frontend coverage to 75 % (currently 58 %) via additional hooks & chart tests.
-* Add Lighthouse-CI GitHub Action and budget file.
-* Implement Cypress visual diff plugin for screenshot regression.
-* Automate Hypothesis select strategies generation for numeric invariants.
+- Raise frontend coverage to 75 % (currently 58 %) via additional hooks & chart tests.
+- Add Lighthouse-CI GitHub Action and budget file.
+- Implement Cypress visual diff plugin for screenshot regression.
+- Automate Hypothesis select strategies generation for numeric invariants.
 
 ---
 
-*Document generated automatically by Task Master agent on 2025-06-15. Keep up-to-date with evolving architecture.* 
+_Document generated automatically by Task Master agent on 2025-06-15. Keep up-to-date with evolving architecture._

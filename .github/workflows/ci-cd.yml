@@ -5,15 +5,15 @@ on:
     branches:
       - main
     paths-ignore:
-      - 'README.md'
+      - "README.md"
   pull_request:
     branches:
       - main
     paths-ignore:
-      - 'README.md'
+      - "README.md"
 
 env:
-  PYTHON_VERSION: '3.12'
+  PYTHON_VERSION: "3.12"
 
 jobs:
   setup:
@@ -393,7 +393,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
@@ -418,7 +418,7 @@ jobs:
         run: |
           # Run design token contrast validation
           npm test -- --watchAll=false --no-watchman --ci --testPathPattern="accessibility" --passWithNoTests
-          
+
           # Run Python contrast checker
           cd .. && python scripts/contrast_check.py --strict
 
@@ -484,13 +484,13 @@ jobs:
             const run_link = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
             const status = "${{ steps.check.outputs.status }}";
             const icon = "${{ steps.check.outputs.icon }}";
-            
+
             const message = `${icon} Workflow ${context.workflow} ${status}\n
             Branch: ${context.ref}
             Commit: ${context.sha}
             Author: ${context.actor}
             Details: ${run_link}`;
-            
+
             await github.rest.issues.createComment({
               owner: owner,
               repo: repo,
@@ -548,7 +548,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install Cypress dependencies
@@ -586,4 +586,4 @@ jobs:
 
       - name: Shutdown docker-compose
         if: always()
-        run: docker compose -f docker-compose.ci.yml down 
+        run: docker compose -f docker-compose.ci.yml down

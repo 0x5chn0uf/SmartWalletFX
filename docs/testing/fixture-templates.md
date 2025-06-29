@@ -7,6 +7,7 @@ This document provides documentation and usage examples for the reusable test te
 File: `backend/tests/examples/templates/api_test_template.py`
 
 Usage:
+
 ```python
 from tests.examples.templates.api_test_template import APITestConfig, get_api_fixtures
 
@@ -24,6 +25,7 @@ async def test_my_endpoint():
 File: `backend/tests/examples/templates/database_test_template.py`
 
 Usage:
+
 ```python
 from tests.examples.templates.database_test_template import DBTestConfig, get_database_fixtures
 
@@ -41,6 +43,7 @@ def test_database_operation():
 File: `backend/tests/examples/templates/integration_test_template.py`
 
 Usage:
+
 ```python
 from tests.examples.templates.integration_test_template import IntegrationTestConfig, get_integration_fixtures
 
@@ -51,4 +54,4 @@ fixtures = get_integration_fixtures(config)
 async def test_full_workflow():
     # Test implementation
     pass
-``` 
+```

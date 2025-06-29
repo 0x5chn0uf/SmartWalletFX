@@ -24,4 +24,4 @@ describe('mapSnapshotsToChartData', () => {
       { ts: '2024-06-19', collateral: 200, borrowings: 100, health_score: null },
     ]);
   });
-}); 
+});

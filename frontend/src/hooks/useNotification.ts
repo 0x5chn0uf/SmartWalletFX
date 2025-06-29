@@ -11,10 +11,7 @@ interface NotificationOptions {
 const useNotification = () => {
   const dispatch = useDispatch<AppDispatch>();
 
-  const showNotification = (
-    message: string,
-    options: NotificationOptions = {}
-  ) => {
+  const showNotification = (message: string, options: NotificationOptions = {}) => {
     const { severity = 'info', autoHideDuration = 6000 } = options;
     dispatch(addNotification({ message, severity, autoHideDuration }));
   };
@@ -44,4 +41,4 @@ const useNotification = () => {
   };
 };
 
-export default useNotification; 
+export default useNotification;

@@ -7,6 +7,7 @@ This document outlines the monitoring and observability strategy for the trading
 ## 1. Overview
 
 The platform implements comprehensive monitoring across multiple layers:
+
 - **Application Metrics**: Prometheus metrics for performance and business logic
 - **Audit Logging**: Structured JSON logs for security and compliance
 - **Alerting**: Slack webhook integration for critical failures
@@ -18,14 +19,15 @@ The platform implements comprehensive monitoring across multiple layers:
 
 ### 2.1 Database Backup Metrics
 
-| Metric Name | Type | Description | Labels |
-|-------------|------|-------------|--------|
-| `db_backup_total` | Counter | Total number of backup attempts | `env` |
-| `db_backup_failed_total` | Counter | Number of failed backup attempts | `env` |
-| `db_backup_duration_seconds` | Histogram | Duration of backup operations in seconds | `env` |
-| `db_backup_size_bytes` | Histogram | Size of backup files in bytes | `env` |
+| Metric Name                  | Type      | Description                              | Labels |
+| ---------------------------- | --------- | ---------------------------------------- | ------ |
+| `db_backup_total`            | Counter   | Total number of backup attempts          | `env`  |
+| `db_backup_failed_total`     | Counter   | Number of failed backup attempts         | `env`  |
+| `db_backup_duration_seconds` | Histogram | Duration of backup operations in seconds | `env`  |
+| `db_backup_size_bytes`       | Histogram | Size of backup files in bytes            | `env`  |
 
 **Example Queries:**
+
 ```promql
 # Backup success rate
 (rate(db_backup_total[1h]) - rate(db_backup_failed_total[1h])) / rate(db_backup_total[1h]) * 100
@@ -39,20 +41,20 @@ rate(db_backup_size_bytes_sum[1h]) / rate(db_backup_size_bytes_count[1h])
 
 ### 2.2 JWT Rotation Metrics (Task 112)
 
-| Metric Name | Type | Description | Labels |
-|-------------|------|-------------|--------|
-| `jwt_key_rotation_total` | Counter | Total key rotation attempts | `env`, `operation` |
-| `jwt_key_rotation_duration_seconds` | Histogram | Duration of key rotation operations | `env` |
-| `jwt_active_keys_total` | Gauge | Number of currently active JWT keys | `env` |
+| Metric Name                         | Type      | Description                         | Labels             |
+| ----------------------------------- | --------- | ----------------------------------- | ------------------ |
+| `jwt_key_rotation_total`            | Counter   | Total key rotation attempts         | `env`, `operation` |
+| `jwt_key_rotation_duration_seconds` | Histogram | Duration of key rotation operations | `env`              |
+| `jwt_active_keys_total`             | Gauge     | Number of currently active JWT keys | `env`              |
 
 ### 2.3 Application Metrics
 
-| Metric Name | Type | Description | Labels |
-|-------------|------|-------------|--------|
-| `http_requests_total` | Counter | Total HTTP requests | `method`, `endpoint`, `status` |
-| `http_request_duration_seconds` | Histogram | HTTP request duration | `method`, `endpoint` |
-| `celery_task_total` | Counter | Total Celery task executions | `task_name`, `status` |
-| `celery_task_duration_seconds` | Histogram | Celery task execution duration | `task_name` |
+| Metric Name                     | Type      | Description                    | Labels                         |
+| ------------------------------- | --------- | ------------------------------ | ------------------------------ |
+| `http_requests_total`           | Counter   | Total HTTP requests            | `method`, `endpoint`, `status` |
+| `http_request_duration_seconds` | Histogram | HTTP request duration          | `method`, `endpoint`           |
+| `celery_task_total`             | Counter   | Total Celery task executions   | `task_name`, `status`          |
+| `celery_task_duration_seconds`  | Histogram | Celery task execution duration | `task_name`                    |
 
 ---
 
@@ -60,30 +62,34 @@ rate(db_backup_size_bytes_sum[1h]) / rate(db_backup_size_bytes_count[1h])
 
 ### 3.1 Log Categories
 
-| Logger | Purpose | Format |
-|--------|---------|--------|
-| `app` | Application diagnostics | JSON via structlog |
-| `audit` | Security & compliance events | JSON (schema-validated) |
-| `uvicorn.access` | HTTP access logs | Plain text |
+| Logger           | Purpose                      | Format                  |
+| ---------------- | ---------------------------- | ----------------------- |
+| `app`            | Application diagnostics      | JSON via structlog      |
+| `audit`          | Security & compliance events | JSON (schema-validated) |
+| `uvicorn.access` | HTTP access logs             | Plain text              |
 
 ### 3.2 Audit Event Types
 
 **Authentication Events:**
+
 - `user_login_success` / `user_login_failed`
 - `token_refresh_success` / `token_refresh_failed`
 - `jwt_key_rotated` / `jwt_key_rotation_failed`
 
 **Database Events:**
+
 - `db_backup_started` / `db_backup_succeeded` / `db_backup_failed`
 - `db_restore_started` / `db_restore_succeeded` / `db_restore_failed`
 
 **API Events:**
+
 - `admin_endpoint_accessed`
 - `sensitive_operation_performed`
 
 ### 3.3 Log Aggregation
 
 **Local Development:**
+
 ```bash
 # View audit logs
 tail -f logs/audit.log | jq .
@@ -93,6 +99,7 @@ grep '"action":"db_backup"' logs/audit.log | jq .
 ```
 
 **Production:**
+
 - Logs are shipped to centralized logging (ELK/Loki)
 - Audit logs are indexed for compliance queries
 - Retention: 90 days for audit logs, 30 days for application logs
@@ -106,17 +113,20 @@ grep '"action":"db_backup"' logs/audit.log | jq .
 Critical failures trigger Slack alerts via webhook integration:
 
 **Configuration:**
+
 ```bash
 SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
 ```
 
 **Alert Types:**
+
 - Database backup/restore failures
 - JWT key rotation failures
 - Application startup/shutdown events
 - Critical error thresholds exceeded
 
 **Alert Format:**
+
 ```
 🚨 [ENVIRONMENT] Event Description
 Error: detailed error message
@@ -165,9 +175,10 @@ groups:
 
 ### 5.1 Application Health
 
-**Endpoint:** `GET /api/v1/health`
+**Endpoint:** `GET /health`
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -184,16 +195,19 @@ groups:
 ### 5.2 Monitoring Health Checks
 
 **Database Connectivity:**
+
 ```promql
 up{job="postgres"} == 1
 ```
 
 **Redis Connectivity:**
+
 ```promql
 redis_up == 1
 ```
 
 **Celery Workers:**
+
 ```promql
 celery_workers_active > 0
 ```
@@ -205,12 +219,14 @@ celery_workers_active > 0
 ### 6.1 Grafana Dashboard Recommendations
 
 **System Overview Dashboard:**
+
 - Application uptime and response times
 - Database connection pool status
 - Celery queue lengths and worker status
 - Error rate trends
 
 **Backup Operations Dashboard:**
+
 - Backup success rate over time
 - Backup duration trends
 - Backup size growth
@@ -218,6 +234,7 @@ celery_workers_active > 0
 - Storage utilization
 
 **Security Dashboard:**
+
 - Authentication success/failure rates
 - JWT key rotation status
 - Audit event frequency
@@ -225,13 +242,13 @@ celery_workers_active > 0
 
 ### 6.2 Key Performance Indicators (KPIs)
 
-| Metric | Target | Critical Threshold |
-|--------|--------|--------------------|
-| Application Uptime | 99.9% | < 99.5% |
-| API Response Time (95th percentile) | < 200ms | > 500ms |
-| Backup Success Rate | 100% | < 95% |
-| Error Rate | < 0.1% | > 1% |
-| JWT Key Rotation Success | 100% | < 100% |
+| Metric                              | Target  | Critical Threshold |
+| ----------------------------------- | ------- | ------------------ |
+| Application Uptime                  | 99.9%   | < 99.5%            |
+| API Response Time (95th percentile) | < 200ms | > 500ms            |
+| Backup Success Rate                 | 100%    | < 95%              |
+| Error Rate                          | < 0.1%  | > 1%               |
+| JWT Key Rotation Success            | 100%    | < 100%             |
 
 ---
 
@@ -240,17 +257,20 @@ celery_workers_active > 0
 ### 7.1 Common Issues
 
 **High Backup Duration:**
+
 1. Check database size growth: `histogram_quantile(0.95, rate(db_backup_size_bytes_bucket[24h]))`
 2. Verify disk I/O performance
 3. Consider compression settings
 
 **Backup Failures:**
+
 1. Check audit logs: `grep '"action":"db_backup_failed"' /var/log/audit.log`
 2. Verify database connectivity
 3. Check disk space availability
 4. Review PostgreSQL logs
 
 **Missing Metrics:**
+
 1. Verify Prometheus scraping configuration
 2. Check application `/metrics` endpoint
 3. Ensure metrics are properly labeled
@@ -258,6 +278,7 @@ celery_workers_active > 0
 ### 7.2 Log Analysis
 
 **Find Recent Backup Operations:**
+
 ```bash
 # Last 24 hours of backup events
 grep '"action":"db_backup"' /var/log/audit.log | \
@@ -265,6 +286,7 @@ grep '"action":"db_backup"' /var/log/audit.log | \
 ```
 
 **Analyze Backup Performance:**
+
 ```bash
 # Extract backup durations from audit logs
 grep '"action":"db_backup_succeeded"' /var/log/audit.log | \
@@ -279,16 +301,19 @@ grep '"action":"db_backup_succeeded"' /var/log/audit.log | \
 ### 8.1 Regular Tasks
 
 **Weekly:**
+
 - Review dashboard for anomalies
 - Check alert rule effectiveness
 - Verify log retention policies
 
 **Monthly:**
+
 - Update monitoring thresholds based on trends
 - Review and rotate monitoring credentials
 - Audit monitoring coverage for new features
 
 **Quarterly:**
+
 - Capacity planning based on growth trends
 - Monitoring tool updates and security patches
 - Review and update alerting escalation procedures
@@ -296,6 +321,7 @@ grep '"action":"db_backup_succeeded"' /var/log/audit.log | \
 ### 8.2 Monitoring the Monitors
 
 **Prometheus Self-Monitoring:**
+
 ```promql
 # Prometheus targets down
 up == 0
@@ -306,6 +332,7 @@ _series > 1000000
 ```
 
 **Alertmanager Health:**
+
 ```promql
 # Alertmanager instances down
 up{job="alertmanager"} == 0
@@ -316,11 +343,12 @@ alertmanager_notifications_failed_total > 0
 
 ---
 
-© 2025 Trading-Bot SMC – Infrastructure & DevOps Team 
-------------
+## © 2025 Trading-Bot SMC – Infrastructure & DevOps Team
+
 # Monitoring & Alerting – JWT Key Rotation
 
 ## Overview
+
 This document describes how to configure, operate, and verify monitoring and alerting for the automated JWT key rotation system. It covers Prometheus metrics setup, Slack alerting configuration, operational checks, and troubleshooting.
 
 ---
@@ -328,6 +356,7 @@ This document describes how to configure, operate, and verify monitoring and ale
 ## 1. Prometheus Metrics Setup
 
 ### Enabling Metrics
+
 - The backend exposes Prometheus metrics for JWT key rotation, including:
   - `jwt_key_rotations_total`: Number of times a new JWT signing key has been promoted.
   - `jwt_key_retirements_total`: Number of JWT signing keys retired.
@@ -336,6 +365,7 @@ This document describes how to configure, operate, and verify monitoring and ale
 - Centralized Prometheus setup is in `app/monitoring/prometheus.py`.
 
 ### Metrics Endpoint
+
 - By default, metrics can be exposed via a FastAPI route or a dedicated HTTP server.
 - **Recommended:** Add a `/metrics` endpoint to your FastAPI app:
 
@@ -359,11 +389,13 @@ start_metrics_server(port=9090, addr="0.0.0.0")
 ```
 
 ### Configuration
+
 - Metrics settings are in `core/config.py`:
   - `PROMETHEUS_ENABLED`: Enable/disable metrics (default: True)
   - `PROMETHEUS_PORT`, `PROMETHEUS_HOST`: Server binding
 
 ### Verification
+
 - Visit `http://localhost:9090/metrics` (or your configured endpoint) to verify metrics are exposed.
 - Use `curl` or Prometheus server to scrape metrics.
 
@@ -372,10 +404,12 @@ start_metrics_server(port=9090, addr="0.0.0.0")
 ## 2. Slack Alerting Setup
 
 ### Enabling Alerting
+
 - Slack alerting is implemented in `app/utils/alerting.py`.
 - Alerts are sent on JWT rotation failures, with severity and rate limiting.
 
 ### Configuration
+
 - Set the following environment variables or update `.env`:
   - `SLACK_WEBHOOK_URL`: Slack webhook URL for alerts
   - `SLACK_ALERTING_ENABLED`: Set to `true` to enable alerting
@@ -385,11 +419,13 @@ start_metrics_server(port=9090, addr="0.0.0.0")
   - `JWT_ROTATION_ALERT_ON_RETRY`: Set to `true` to alert on retries
 
 ### Operational Playbook
+
 - On rotation failure, an alert is sent to the configured Slack channel.
 - Alerts include severity, error message, and context fields.
 - Rate limiting prevents alert spam.
 
 ### Verification
+
 - Trigger a test alert (e.g., by forcing a rotation error) and confirm receipt in Slack.
 - Check logs for `Slack alert sent successfully` or error messages.
 
@@ -398,6 +434,7 @@ start_metrics_server(port=9090, addr="0.0.0.0")
 ## 3. JWT Key Rotation Specific Monitoring
 
 ### Key Rotation Metrics
+
 The JWT key rotation system exposes specific metrics that should be monitored:
 
 ```bash
@@ -412,18 +449,23 @@ curl -s http://localhost:9090/metrics | grep jwt_key_rotation_errors_total
 ```
 
 ### Expected Behavior
+
 - **Normal Operation**: `jwt_key_rotations_total` should increment periodically (every 5 minutes by default)
 - **Key Lifecycle**: `jwt_key_retirements_total` should increment when keys are retired
 - **Error-Free**: `jwt_key_rotation_errors_total` should remain at 0 or very low
 
 ### Alerting Thresholds
+
 Configure alerts for the following conditions:
+
 - **No rotation activity**: `jwt_key_rotations_total` hasn't increased in 15 minutes
 - **High error rate**: `jwt_key_rotation_errors_total` > 5 in 1 hour
 - **Lock contention**: Multiple rotation attempts failing due to Redis lock
 
 ### Grafana Dashboard
+
 Create a dashboard with the following panels:
+
 1. **Rotation Activity**: Line chart of `jwt_key_rotations_total` over time
 2. **Retirement Activity**: Line chart of `jwt_key_retirements_total` over time
 3. **Error Rate**: Line chart of `jwt_key_rotation_errors_total` over time
@@ -434,20 +476,24 @@ Create a dashboard with the following panels:
 ## 4. Operational Checks & Troubleshooting
 
 ### Verifying Monitoring
+
 - Ensure `/metrics` endpoint is reachable and metrics are updating.
 - Check Prometheus server targets and scrape status.
 
 ### Verifying Alerting
+
 - Confirm Slack alerts are received for test and real failures.
 - Check backend logs for alerting errors or rate limiting warnings.
 
 ### JWT Rotation Specific Checks
+
 - **Celery Beat Scheduler**: Verify the rotation task is scheduled correctly
 - **Redis Lock**: Check that the distributed lock is working properly
 - **Key Configuration**: Ensure `JWT_KEYS` and `ACTIVE_JWT_KID` are properly set
 - **Grace Period**: Verify grace period settings align with token TTL
 
 ### Common Issues
+
 - **No metrics exposed:**
   - Ensure `prometheus_client` is installed and enabled in config.
   - Check for import errors in logs.
@@ -462,6 +508,7 @@ Create a dashboard with the following panels:
   - Confirm key configuration is valid
 
 ### Security
+
 - Never log or expose webhook URLs or API keys.
 - Store all secrets in environment variables or secure vaults.
 
@@ -470,16 +517,19 @@ Create a dashboard with the following panels:
 ## 5. Integration with Existing Monitoring
 
 ### Prometheus Integration
+
 - The JWT rotation metrics integrate seamlessly with existing Prometheus infrastructure
 - Use existing alerting rules and notification channels
 - Leverage existing Grafana dashboards and visualization
 
 ### Log Aggregation
+
 - JWT rotation audit events are structured JSON logs
 - Integrate with existing log aggregation systems (ELK, Splunk, etc.)
 - Use correlation IDs to trace rotation activities across systems
 
 ### Incident Response
+
 - JWT rotation failures should trigger existing incident response procedures
 - Integrate with existing on-call schedules and escalation policies
 - Use existing communication channels for incident coordination
@@ -487,6 +537,7 @@ Create a dashboard with the following panels:
 ---
 
 ## 6. References
+
 - [Prometheus Python Client](https://github.com/prometheus/client_python)
 - [Slack Incoming Webhooks](https://api.slack.com/messaging/webhooks)
 - [FastAPI Docs](https://fastapi.tiangolo.com/)
@@ -494,4 +545,4 @@ Create a dashboard with the following panels:
 
 ---
 
-_Last updated: 2025-06-22_ 
+_Last updated: 2025-06-22_

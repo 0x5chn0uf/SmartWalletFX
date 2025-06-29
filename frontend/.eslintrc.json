@@ -6,12 +6,7 @@
     "plugin:react-hooks/recommended",
     "plugin:prettier/recommended"
   ],
-  "plugins": [
-    "@typescript-eslint",
-    "react",
-    "react-hooks",
-    "prettier"
-  ],
+  "plugins": ["@typescript-eslint", "react", "react-hooks", "prettier"],
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "ecmaVersion": 2021,
@@ -28,13 +23,19 @@
   "rules": {
     "react/react-in-jsx-scope": "off",
     "@typescript-eslint/explicit-module-boundary-types": "off",
-    "@typescript-eslint/no-unused-vars": ["error", {
-      "argsIgnorePattern": "^_",
-      "varsIgnorePattern": "^_"
-    }],
-    "no-console": ["warn", {
-      "allow": ["warn", "error"]
-    }]
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ],
+    "no-console": [
+      "warn",
+      {
+        "allow": ["warn", "error"]
+      }
+    ]
   },
   "env": {
     "browser": true,
@@ -42,10 +43,5 @@
     "node": true,
     "jest": true
   },
-  "ignorePatterns": [
-    "node_modules",
-    "build",
-    "dist",
-    "coverage"
-  ]
-} 
+  "ignorePatterns": ["node_modules", "build", "dist", "coverage"]
+}

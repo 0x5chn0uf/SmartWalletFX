@@ -54,16 +54,16 @@ const walletDetailSlice = createSlice({
   name: 'walletDetail',
   initialState,
   reducers: {
-    clearWalletDetail: (state) => {
+    clearWalletDetail: state => {
       state.wallet = null;
       state.transactions = [];
       state.status = 'idle';
       state.error = null;
     },
   },
-  extraReducers: (builder) => {
+  extraReducers: builder => {
     builder
-      .addCase(fetchWalletDetail.pending, (state) => {
+      .addCase(fetchWalletDetail.pending, state => {
         state.status = 'loading';
       })
       .addCase(fetchWalletDetail.fulfilled, (state, action) => {
@@ -74,7 +74,7 @@ const walletDetailSlice = createSlice({
         state.status = 'failed';
         state.error = action.error.message || 'Failed to fetch wallet details';
       })
-      .addCase(fetchWalletTransactions.pending, (state) => {
+      .addCase(fetchWalletTransactions.pending, state => {
         state.status = 'loading';
       })
       .addCase(fetchWalletTransactions.fulfilled, (state, action) => {
@@ -89,4 +89,4 @@ const walletDetailSlice = createSlice({
 });
 
 export const { clearWalletDetail } = walletDetailSlice.actions;
-export default walletDetailSlice.reducer; 
+export default walletDetailSlice.reducer;

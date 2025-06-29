@@ -8,4 +8,4 @@ describe('SummaryCard', () => {
     expect(screen.getByText('Total Balance')).toBeInTheDocument();
     expect(screen.getByText('1000')).toBeInTheDocument();
   });
-}); 
+});
