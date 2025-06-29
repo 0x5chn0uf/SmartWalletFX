@@ -57,11 +57,72 @@ export async function getTimeline(
   return response.data;
 }
 
+// Add mock timeline data for the dashboard (matching TimelineResponse type)
+const MOCK_PORTFOLIO_TIMELINE = {
+  snapshots: [
+    {
+      user_address: '0xMOCK',
+      timestamp: 1719446400,
+      total_collateral: 1200000,
+      total_borrowings: 0,
+      aggregate_health_score: null,
+    },
+    {
+      user_address: '0xMOCK',
+      timestamp: 1719532800,
+      total_collateral: 1225000,
+      total_borrowings: 0,
+      aggregate_health_score: null,
+    },
+    {
+      user_address: '0xMOCK',
+      timestamp: 1719619200,
+      total_collateral: 1210000,
+      total_borrowings: 0,
+      aggregate_health_score: null,
+    },
+    {
+      user_address: '0xMOCK',
+      timestamp: 1719705600,
+      total_collateral: 1240000,
+      total_borrowings: 0,
+      aggregate_health_score: null,
+    },
+    {
+      user_address: '0xMOCK',
+      timestamp: 1719792000,
+      total_collateral: 1230000,
+      total_borrowings: 0,
+      aggregate_health_score: null,
+    },
+    {
+      user_address: '0xMOCK',
+      timestamp: 1719878400,
+      total_collateral: 1250000,
+      total_borrowings: 0,
+      aggregate_health_score: null,
+    },
+    {
+      user_address: '0xMOCK',
+      timestamp: 1719964800,
+      total_collateral: 1254321,
+      total_borrowings: 0,
+      aggregate_health_score: null,
+    },
+  ],
+  interval: '1d',
+  limit: 7,
+  offset: 0,
+  total: 7,
+};
+
 export async function getPortfolioTimeline(
   params: TimelineQueryParams = {}
 ): Promise<TimelineResponse> {
-  const response = await api.get<TimelineResponse>('/defi/portfolio/timeline', { params });
-  return response.data;
+  return withMockFallback(async () => {
+    const response = await api.get<TimelineResponse>('/defi/portfolio/timeline', { params });
+    return response.data;
+  }, MOCK_PORTFOLIO_TIMELINE);
 }
 
 export async function getPortfolioSnapshot(): Promise<PortfolioSnapshot> {
