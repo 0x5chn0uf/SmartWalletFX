@@ -9,7 +9,6 @@ for _module in [
     "admin_db",
     "auth",
     "defi",
-    "defi_dashboard",
     "health",
     "jwks",
     "users",

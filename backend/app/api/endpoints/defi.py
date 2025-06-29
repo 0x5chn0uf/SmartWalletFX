@@ -40,6 +40,36 @@ MOCK_PROTOCOLS: List[ProtocolBreakdown] = [
     ProtocolBreakdown(name="Radiant", tvl=407224.89, apy=20.2, positions=5),
 ]
 
+MOCK_PORTFOLIO_TIMELINE = {
+    "snapshots": [
+        {
+            "user_address": "0xMOCK",
+            "timestamp": 1719446400,
+            "total_collateral": 1200000,
+            "total_borrowings": 0,
+            "aggregate_health_score": None,
+        },
+        {
+            "user_address": "0xMOCK",
+            "timestamp": 1719532800,
+            "total_collateral": 1225000,
+            "total_borrowings": 0,
+            "aggregate_health_score": None,
+        },
+        {
+            "user_address": "0xMOCK",
+            "timestamp": 1719619200,
+            "total_collateral": 1210000,
+            "total_borrowings": 0,
+            "aggregate_health_score": None,
+        },
+    ],
+    "interval": "1d",
+    "limit": 3,
+    "offset": 0,
+    "total": 3,
+}
+
 
 @router.get("/defi/portfolio/kpi", response_model=DefiKPI, tags=["DeFi"])
 async def get_defi_kpi():
@@ -175,37 +205,6 @@ async def get_portfolio_snapshot_usecase(
 ) -> PortfolioSnapshotUsecase:
     repository = PortfolioSnapshotRepository(db)
     return PortfolioSnapshotUsecase(repository)
-
-
-MOCK_PORTFOLIO_TIMELINE = {
-    "snapshots": [
-        {
-            "user_address": "0xMOCK",
-            "timestamp": 1719446400,
-            "total_collateral": 1200000,
-            "total_borrowings": 0,
-            "aggregate_health_score": None,
-        },
-        {
-            "user_address": "0xMOCK",
-            "timestamp": 1719532800,
-            "total_collateral": 1225000,
-            "total_borrowings": 0,
-            "aggregate_health_score": None,
-        },
-        {
-            "user_address": "0xMOCK",
-            "timestamp": 1719619200,
-            "total_collateral": 1210000,
-            "total_borrowings": 0,
-            "aggregate_health_score": None,
-        },
-    ],
-    "interval": "1d",
-    "limit": 3,
-    "offset": 0,
-    "total": 3,
-}
 
 
 @router.get(

@@ -5,7 +5,7 @@ The DeFi Tracker API provides endpoints for retrieving real-time user data from 
 ## Base Path
 
 ```
-/api/v1
+/
 ```
 
 ---
