@@ -7,21 +7,22 @@ import WalletDetailPage from './pages/WalletDetailPage';
 import { ColorModeToggle } from './components/ColorModeToggle/ColorModeToggle';
 import WalletList from './pages/WalletList';
 import { Provider } from 'react-redux';
-import { ThemeProvider as CustomThemeProvider } from './providers/ThemeProvider';
+import { ThemeProvider } from './providers/ThemeProvider';
 import { store } from './store';
 import { Navigate } from 'react-router-dom';
 import NotificationManager from './components/NotificationManager';
 import ErrorBoundary from './components/ErrorBoundary';
 import DeFiDashboardPage from './pages/DeFiDashboardPage';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+const queryClient = new QueryClient();
 
 function App() {
-  const queryClient = React.useMemo(() => new QueryClient(), []);
   return (
-    <Provider store={store}>
-      <QueryClientProvider client={queryClient}>
-        <CustomThemeProvider>
-          <ErrorBoundary>
+    <ErrorBoundary>
+      <Provider store={store}>
+        <ThemeProvider>
+          <QueryClientProvider client={queryClient}>
             <Router>
               <AppBar position="static">
                 <Toolbar>
@@ -49,7 +50,7 @@ function App() {
                 </Toolbar>
               </AppBar>
               <Routes>
-                <Route path="/login" element={<LoginPage />} />
+                <Route path="/" element={<LoginPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/defi" element={<DeFiDashboardPage />} />
                 <Route path="/wallets" element={<WalletList />} />
@@ -58,10 +59,10 @@ function App() {
               </Routes>
             </Router>
             <NotificationManager />
-          </ErrorBoundary>
-        </CustomThemeProvider>
-      </QueryClientProvider>
-    </Provider>
+          </QueryClientProvider>
+        </ThemeProvider>
+      </Provider>
+    </ErrorBoundary>
   );
 }
 
