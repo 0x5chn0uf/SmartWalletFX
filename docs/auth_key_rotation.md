@@ -3,6 +3,7 @@
 _Last updated: 2025-06-22_
 
 ## Overview
+
 The trading-bot backend now features **fully automated JWT key rotation** that eliminates manual maintenance while ensuring zero-downtime authentication. This system automatically promotes new signing keys and retires old ones based on configurable grace periods, with comprehensive monitoring and alerting.
 
 ## System Architecture
@@ -21,18 +22,18 @@ graph TD
         H --> I[Update Metrics]
         I --> J[Release Lock]
     end
-    
+
     subgraph "Monitoring & Alerting"
         K[Prometheus Metrics] --> L[Grafana Dashboards]
         M[Slack Alerts] --> N[Incident Response]
         O[Structured Logs] --> P[Audit Trail]
     end
-    
+
     subgraph "Configuration"
         Q[Environment Variables] --> R[Settings]
         R --> S[Key Management]
     end
-    
+
     C -.->|On Failure| M
     I -.->|Metrics| K
     H -.->|Events| O
@@ -41,60 +42,68 @@ graph TD
 ## Configuration
 
 ### Core JWT Settings
-| Setting | Description | Default | Environment Variable |
-|---------|-------------|---------|---------------------|
-| `JWT_KEYS` | Mapping of `kid` → secret/public key | `{}` | `JWT_KEYS` |
-| `ACTIVE_JWT_KID` | Current signing key identifier | `"default"` | `ACTIVE_JWT_KID` |
-| `JWT_ROTATION_GRACE_PERIOD_SECONDS` | Grace period for retired keys | `300` | `JWT_ROTATION_GRACE_PERIOD_SECONDS` |
+
+| Setting                             | Description                          | Default     | Environment Variable                |
+| ----------------------------------- | ------------------------------------ | ----------- | ----------------------------------- |
+| `JWT_KEYS`                          | Mapping of `kid` → secret/public key | `{}`        | `JWT_KEYS`                          |
+| `ACTIVE_JWT_KID`                    | Current signing key identifier       | `"default"` | `ACTIVE_JWT_KID`                    |
+| `JWT_ROTATION_GRACE_PERIOD_SECONDS` | Grace period for retired keys        | `300`       | `JWT_ROTATION_GRACE_PERIOD_SECONDS` |
 
 ### Automation Settings
-| Setting | Description | Default | Environment Variable |
-|---------|-------------|---------|---------------------|
+
+| Setting                      | Description                       | Default         | Environment Variable         |
+| ---------------------------- | --------------------------------- | --------------- | ---------------------------- |
 | `JWT_ROTATION_SCHEDULE_CRON` | Cron expression for rotation task | `"*/5 * * * *"` | `JWT_ROTATION_SCHEDULE_CRON` |
-| `JWT_ROTATION_LOCK_TTL_SEC` | Redis lock TTL (seconds) | `600` | `JWT_ROTATION_LOCK_TTL_SEC` |
+| `JWT_ROTATION_LOCK_TTL_SEC`  | Redis lock TTL (seconds)          | `600`           | `JWT_ROTATION_LOCK_TTL_SEC`  |
 
 ### Monitoring Settings
-| Setting | Description | Default | Environment Variable |
-|---------|-------------|---------|---------------------|
-| `PROMETHEUS_ENABLED` | Enable Prometheus metrics | `True` | `PROMETHEUS_ENABLED` |
-| `PROMETHEUS_PORT` | Metrics server port | `9090` | `PROMETHEUS_PORT` |
-| `PROMETHEUS_HOST` | Metrics server host | `"0.0.0.0"` | `PROMETHEUS_HOST` |
+
+| Setting              | Description               | Default     | Environment Variable |
+| -------------------- | ------------------------- | ----------- | -------------------- |
+| `PROMETHEUS_ENABLED` | Enable Prometheus metrics | `True`      | `PROMETHEUS_ENABLED` |
+| `PROMETHEUS_PORT`    | Metrics server port       | `9090`      | `PROMETHEUS_PORT`    |
+| `PROMETHEUS_HOST`    | Metrics server host       | `"0.0.0.0"` | `PROMETHEUS_HOST`    |
 
 ### Alerting Settings
-| Setting | Description | Default | Environment Variable |
-|---------|-------------|---------|---------------------|
-| `SLACK_WEBHOOK_URL` | Slack webhook URL | `None` | `SLACK_WEBHOOK_URL` |
-| `SLACK_ALERTING_ENABLED` | Enable Slack alerting | `False` | `SLACK_ALERTING_ENABLED` |
-| `SLACK_MAX_ALERTS_PER_HOUR` | Rate limiting | `10` | `SLACK_MAX_ALERTS_PER_HOUR` |
-| `JWT_ROTATION_ALERT_ON_ERROR` | Alert on rotation errors | `True` | `JWT_ROTATION_ALERT_ON_ERROR` |
-| `JWT_ROTATION_ALERT_ON_RETRY` | Alert on retries | `False` | `JWT_ROTATION_ALERT_ON_RETRY` |
+
+| Setting                       | Description              | Default | Environment Variable          |
+| ----------------------------- | ------------------------ | ------- | ----------------------------- |
+| `SLACK_WEBHOOK_URL`           | Slack webhook URL        | `None`  | `SLACK_WEBHOOK_URL`           |
+| `SLACK_ALERTING_ENABLED`      | Enable Slack alerting    | `False` | `SLACK_ALERTING_ENABLED`      |
+| `SLACK_MAX_ALERTS_PER_HOUR`   | Rate limiting            | `10`    | `SLACK_MAX_ALERTS_PER_HOUR`   |
+| `JWT_ROTATION_ALERT_ON_ERROR` | Alert on rotation errors | `True`  | `JWT_ROTATION_ALERT_ON_ERROR` |
+| `JWT_ROTATION_ALERT_ON_RETRY` | Alert on retries         | `False` | `JWT_ROTATION_ALERT_ON_RETRY` |
 
 ## Automated Rotation Workflow
 
 ### 1. Scheduled Execution
+
 - **Frequency**: Every 5 minutes (configurable via `JWT_ROTATION_SCHEDULE_CRON`)
 - **Locking**: Redis-based distributed lock ensures single-worker execution
 - **Idempotency**: Safe to run multiple times; exits gracefully if lock contended
 
 ### 2. Key Lifecycle Management
+
 ```mermaid
 stateDiagram-v2
     [*] --> Active: Key promoted
     Active --> Grace: New key promoted
     Grace --> Retired: Grace period expires
     Retired --> [*]: Key removed
-    
+
     note right of Active: Signing new tokens
     note right of Grace: Validating old tokens
     note right of Retired: No longer trusted
 ```
 
 ### 3. Promotion Logic
+
 - **Trigger**: When active key's grace period expires
 - **Action**: Promote `NEXT_JWT_KID` to `ACTIVE_JWT_KID`
 - **Safety**: Atomic operation with rollback on failure
 
 ### 4. Retirement Logic
+
 - **Trigger**: When any key's grace period expires
 - **Action**: Remove key from memory and settings
 - **Audit**: Emit `JWT_KEY_RETIRED` event with key metadata
@@ -102,6 +111,7 @@ stateDiagram-v2
 ## Monitoring & Observability
 
 ### Prometheus Metrics
+
 The system exposes the following metrics at `/metrics`:
 
 - `jwt_key_rotations_total`: Counter of successful key promotions
@@ -109,6 +119,7 @@ The system exposes the following metrics at `/metrics`:
 - `jwt_key_rotation_errors_total`: Counter of rotation failures
 
 ### Audit Events
+
 Structured JSON logs are emitted for all rotation activities:
 
 ```json
@@ -126,7 +137,9 @@ Structured JSON logs are emitted for all rotation activities:
 ```
 
 ### Slack Alerting
+
 Configured alerts are sent for:
+
 - **Rotation failures**: When the task encounters errors
 - **Retry attempts**: When exponential backoff is triggered (optional)
 - **Lock contention**: When multiple workers attempt rotation
@@ -136,6 +149,7 @@ Configured alerts are sent for:
 ### Initial Setup
 
 1. **Configure Key Set**:
+
    ```bash
    export JWT_KEYS='{"key_A": "secret_A", "key_B": "secret_B"}'
    export ACTIVE_JWT_KID="key_A"
@@ -143,6 +157,7 @@ Configured alerts are sent for:
    ```
 
 2. **Enable Monitoring**:
+
    ```bash
    export PROMETHEUS_ENABLED=true
    export SLACK_ALERTING_ENABLED=true
@@ -175,19 +190,21 @@ Configured alerts are sent for:
 ### Incident Response
 
 #### Rotation Failure Alert
+
 1. **Immediate Actions**:
    - Check Celery worker logs for error details
    - Verify Redis connectivity and lock status
    - Review recent audit events for context
 
 2. **Diagnostic Steps**:
+
    ```bash
    # Check Celery task status
    celery -A app.celery_app inspect active
-   
+
    # Verify Redis lock
    redis-cli GET "jwt_key_rotation_lock"
-   
+
    # Check metrics endpoint
    curl http://localhost:9090/metrics | grep jwt_key
    ```
@@ -198,6 +215,7 @@ Configured alerts are sent for:
    - **Worker Issues**: Restart Celery workers and beat scheduler
 
 #### Manual Key Rotation
+
 If automated rotation is disabled, manual rotation is still supported:
 
 ```python
@@ -211,12 +229,12 @@ rotate_signing_key("new_key_id", "new_key_secret")
 
 ## Client-Side Integration: The JWKS Endpoint
 
-While the Celery task handles the automated rotation of signing keys on the backend, clients and resource servers need a way to dynamically fetch the corresponding *public* keys to verify JWT signatures. This is achieved via the standard **JSON Web Key Set (JWKS)** endpoint.
+While the Celery task handles the automated rotation of signing keys on the backend, clients and resource servers need a way to dynamically fetch the corresponding _public_ keys to verify JWT signatures. This is achieved via the standard **JSON Web Key Set (JWKS)** endpoint.
 
 ### How it Works
 
 1.  **Public Endpoint**: The application exposes a public, unauthenticated endpoint at `/.well-known/jwks.json`.
-2.  **Key Publication**: This endpoint returns a JSON object containing a list of all *currently active* public keys. Each key is formatted according to RFC 7517 and includes its Key ID (`kid`), algorithm, and public key material (`n`, `e`).
+2.  **Key Publication**: This endpoint returns a JSON object containing a list of all _currently active_ public keys. Each key is formatted according to RFC 7517 and includes its Key ID (`kid`), algorithm, and public key material (`n`, `e`).
 3.  **Client-Side Verification**: When a client receives a JWT, it inspects the token's header to find the `kid`. It then fetches the JWKS from the endpoint, finds the matching key by `kid`, and uses that public key to verify the token's signature.
 
 ### Caching and Zero-Downtime Invalidation
@@ -225,11 +243,13 @@ To ensure high performance, the JWKS endpoint response is aggressively cached in
 
 To solve this, the key rotation task is directly integrated with the cache:
 
--   **Immediate Invalidation**: After a key is successfully promoted or retired, the `promote_and_retire_keys` task immediately calls `invalidate_jwks_cache_sync()`.
--   **Guaranteed Freshness**: This action deletes the JWKS from Redis. The very next request to the endpoint will result in a cache miss, forcing it to generate a fresh key set and cache the new response. This ensures zero-downtime for clients.
+- **Immediate Invalidation**: After a key is successfully promoted or retired, the `promote_and_retire_keys` task immediately calls `invalidate_jwks_cache_sync()`.
+- **Guaranteed Freshness**: This action deletes the JWKS from Redis. The very next request to the endpoint will result in a cache miss, forcing it to generate a fresh key set and cache the new response. This ensures zero-downtime for clients.
 
 ### New Audit & Monitoring for JWKS
+
 This integration adds new events and metrics to the system:
+
 - **Audit Events**: `JWKS_REQUESTED` (with `cache_hit` status), `JWKS_CACHE_INVALIDATED`, and `JWKS_CACHE_INVALIDATION_FAILED`.
 - **Metrics**: `jwt_jwks_cache_invalidations_total` and `jwt_jwks_cache_invalidation_errors_total`.
 
@@ -239,13 +259,13 @@ This provides complete observability into the entire lifecycle, from server-side
 
 ### Common Issues
 
-| Issue | Symptoms | Resolution |
-|-------|----------|------------|
-| **No rotation activity** | Metrics not incrementing, no audit events | Check Celery beat scheduler, verify cron expression |
-| **Lock contention** | Task exits immediately, no rotation | Verify Redis connectivity, check lock TTL settings |
-| **Key promotion fails** | `JWT_ROTATION_FAILED` events | Verify `NEXT_JWT_KID` exists in `JWT_KEYS` |
-| **Grace period violations** | Users get 401 errors | Increase `JWT_ROTATION_GRACE_PERIOD_SECONDS` |
-| **Slack alerts not working** | No alerts received | Verify webhook URL, check rate limiting settings |
+| Issue                        | Symptoms                                  | Resolution                                          |
+| ---------------------------- | ----------------------------------------- | --------------------------------------------------- |
+| **No rotation activity**     | Metrics not incrementing, no audit events | Check Celery beat scheduler, verify cron expression |
+| **Lock contention**          | Task exits immediately, no rotation       | Verify Redis connectivity, check lock TTL settings  |
+| **Key promotion fails**      | `JWT_ROTATION_FAILED` events              | Verify `NEXT_JWT_KID` exists in `JWT_KEYS`          |
+| **Grace period violations**  | Users get 401 errors                      | Increase `JWT_ROTATION_GRACE_PERIOD_SECONDS`        |
+| **Slack alerts not working** | No alerts received                        | Verify webhook URL, check rate limiting settings    |
 
 ### Diagnostic Commands
 
@@ -272,17 +292,20 @@ grep "JWT_KEY" /var/log/app/audit.log | tail -10
 ## Security Considerations
 
 ### Key Management
+
 - **Key Generation**: Use cryptographically secure random generation
 - **Key Storage**: Store keys in environment variables or secure vaults
 - **Key Rotation**: Rotate keys regularly (recommended: every 30-90 days)
 - **Compromise Response**: Set grace period to 0 and rotate immediately
 
 ### Audit Trail
+
 - **Event Logging**: All rotation activities are logged with correlation IDs
 - **Key Metadata**: Only key IDs (`kid`) are logged, never the actual keys
 - **Compliance**: Audit events support compliance requirements (SOC2, ISO27001)
 
 ### Access Control
+
 - **Admin Access**: Only authorized personnel can modify key configuration
 - **Monitoring Access**: Metrics and logs accessible to operations team
 - **Alert Access**: Slack alerts sent to designated security channel
@@ -290,12 +313,14 @@ grep "JWT_KEY" /var/log/app/audit.log | tail -10
 ## Integration Points
 
 ### Existing Systems
+
 - **Celery**: Uses existing Celery infrastructure for task scheduling
 - **Redis**: Leverages Redis for distributed locking and caching
 - **Prometheus**: Integrates with existing monitoring stack
 - **Slack**: Uses configured webhook for incident alerting
 
 ### Future Enhancements
+
 - **JWKS Endpoint**: Planned for Task 113 (JWKS endpoint for zero-downtime rotation)
 - **Admin API**: Planned for Task 114 (admin endpoints for key management)
 - **SIEM Integration**: Enhanced logging for security information management
@@ -303,11 +328,13 @@ grep "JWT_KEY" /var/log/app/audit.log | tail -10
 ## Testing
 
 ### Automated Tests
+
 - **Unit Tests**: `backend/tests/unit/jwt_rotation/` - Core logic validation
 - **Integration Tests**: `backend/tests/integration/jwt_rotation/` - End-to-end workflows
 - **Property Tests**: `backend/tests/property/jwt_rotation/` - Invariant validation
 
 ### Manual Testing
+
 ```bash
 # Test rotation logic
 pytest backend/tests/unit/jwt_rotation/
@@ -328,4 +355,4 @@ pytest backend/tests/property/jwt_rotation/
 
 ---
 
-© 2025 Trading-Bot Platform – Security Engineering 
+© 2025 Trading-Bot Platform – Security Engineering

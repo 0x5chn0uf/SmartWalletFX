@@ -4,15 +4,11 @@ import type { Preview, Decorator } from '@storybook/react';
 
 const preview: Preview = {
   decorators: [
-    ((Story) =>
-      React.createElement(
-        ThemeProvider,
-        null,
-        React.createElement(Story, null),
-      )) as Decorator,
+    (Story =>
+      React.createElement(ThemeProvider, null, React.createElement(Story, null))) as Decorator,
   ],
   parameters: {
-    actions: { argTypesRegex: "^on[A-Z].*" },
+    actions: { argTypesRegex: '^on[A-Z].*' },
     controls: {
       matchers: {
         color: /(background|color)$/i,
@@ -76,4 +72,4 @@ const preview: Preview = {
   },
 };
 
-export default preview; 
+export default preview;

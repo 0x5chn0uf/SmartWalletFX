@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 
 # -----------------------------------------------------------------------------
 # This compose file is **not required** for normal local development because the
@@ -52,4 +52,4 @@ services:
 
 volumes:
   postgres-dev-data:
-  postgres-test-data: 
+  postgres-test-data:

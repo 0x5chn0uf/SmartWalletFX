@@ -3,12 +3,12 @@ name: Nightly Property Tests
 on:
   schedule:
     # Runs at 02:00 UTC every day
-    - cron: '0 2 * * *'
+    - cron: "0 2 * * *"
 
   workflow_dispatch:
 
 env:
-  PYTHON_VERSION: '3.12'
+  PYTHON_VERSION: "3.12"
 
 jobs:
   nightly-property-tests:
@@ -43,4 +43,4 @@ jobs:
         with:
           file: ./backend/coverage.xml
           flags: nightly
-          name: nightly-property-coverage 
+          name: nightly-property-coverage
