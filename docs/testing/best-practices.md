@@ -28,4 +28,4 @@ This document summarizes best practices and common anti-patterns for using fixtu
 
 - [Pytest Fixture Documentation](https://docs.pytest.org/en/stable/explanation/fixtures.html)
 - [Pytest-Asyncio Documentation](https://pytest-asyncio.readthedocs.io/)
-- [FastAPI Testing Guide](https://fastapi.tiangolo.com/tutorial/testing/) 
+- [FastAPI Testing Guide](https://fastapi.tiangolo.com/tutorial/testing/)

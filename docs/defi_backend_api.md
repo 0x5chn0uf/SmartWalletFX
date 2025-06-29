@@ -1,9 +1,11 @@
 # DeFi Backend API Documentation
 
 ## Overview
+
 This backend provides a unified API for fetching DeFi account data across multiple protocols (Radiant, Aave, Compound). It aggregates user positions (collateral, borrowings, health score, etc.) into a common data model, making it easy to build dashboards, analytics, or portfolio tools.
 
 ## Supported Protocols
+
 - **Radiant** (Arbitrum)
   - Data Source: Direct smart contract calls using web3.py.
   - See [radiant_arbitrum_contracts.md](./radiant_arbitrum_contracts.md) for contract addresses, ABI, and config instructions.
@@ -13,39 +15,49 @@ This backend provides a unified API for fetching DeFi account data across multip
   - Data Source: On-chain smart contract calls via web3.py. Key contracts: `CompoundLens` `0xd513d22422a3062bd342ae374b4b9c20e3a666c1`, `Comptroller` `0x3d9819210A31B4961b30EF54bE2aeD79B9c9Cd3B`.
 
 ## API Endpoints
+
 All endpoints return a `DeFiAccountSnapshot` for a given wallet address.
 
 ### Radiant
+
 ```
 GET /defi/radiant/{address}
 ```
+
 - **Success:** 200 OK, returns DeFiAccountSnapshot
 - **Not Found:** 404 if user not found on-chain
 - **Note:** Data is fetched live from Radiant contracts on Arbitrum using web3.py. Requires `ARBITRUM_RPC_URL` to be set in config. See [radiant_arbitrum_contracts.md](./radiant_arbitrum_contracts.md) for details on updating contract addresses, ABI files, and config.
 
 ### Aave
+
 ```
 GET /defi/aave/{address}
 ```
+
 - **Success:** 200 OK, returns DeFiAccountSnapshot
 - **Not Found:** 404 if user not found on-chain
 
 ### Compound
+
 ```
 GET /defi/compound/{address}
 ```
+
 - **Success:** 200 OK, returns DeFiAccountSnapshot
 - **Not Found:** 404 if user not found on-chain
 
 ### Portfolio Aggregation (Live)
+
 ```
 GET /defi/portfolio/{address}
 ```
+
 - Fetches live data from all supported protocols and returns an on-the-fly aggregated `PortfolioMetrics` view.
 - **Success:** 200 OK, returns PortfolioMetrics
 - **Not Found:** 200 OK with zeroed fields if user not found on any protocol
 
 ### Performance Timeline (Historical)
+
 ```
 GET /defi/timeline/{address}
 ```
@@ -54,14 +66,14 @@ Returns the historical portfolio **timeline** for a wallet address. Data comes f
 
 #### Query Parameters
 
-| Name       | Type   | Default | Description |
-|------------|--------|---------|-------------|
-| `from_ts`  | int    | **required** | Unix timestamp (inclusive) marking the **start** of the range |
-| `to_ts`    | int    | **required** | Unix timestamp (inclusive) marking the **end** of the range |
-| `limit`    | int    | `100`   | Max number of snapshots to return (capped at `1000`) |
-| `offset`   | int    | `0`     | Number of snapshots to skip (basic pagination) |
-| `interval` | enum   | `none`  | Aggregation interval (`none`, `daily`, `weekly`) |
-| `raw`      | bool   | `false` | If **true**, returns a plain `PortfolioSnapshot[]` list for backwards compatibility. |
+| Name       | Type | Default      | Description                                                                          |
+| ---------- | ---- | ------------ | ------------------------------------------------------------------------------------ |
+| `from_ts`  | int  | **required** | Unix timestamp (inclusive) marking the **start** of the range                        |
+| `to_ts`    | int  | **required** | Unix timestamp (inclusive) marking the **end** of the range                          |
+| `limit`    | int  | `100`        | Max number of snapshots to return (capped at `1000`)                                 |
+| `offset`   | int  | `0`          | Number of snapshots to skip (basic pagination)                                       |
+| `interval` | enum | `none`       | Aggregation interval (`none`, `daily`, `weekly`)                                     |
+| `raw`      | bool | `false`      | If **true**, returns a plain `PortfolioSnapshot[]` list for backwards compatibility. |
 
 #### Default Response (`raw=false`)
 
@@ -83,13 +95,13 @@ The default response is wrapped in a `TimelineResponse` object that includes use
       "borrowings": [],
       "staked_positions": [],
       "health_scores": [],
-      "protocol_breakdown": {}
-    }
+      "protocol_breakdown": {},
+    },
   ],
   "interval": "none",
   "limit": 100,
   "offset": 0,
-  "total": 1
+  "total": 1,
 }
 ```
 
@@ -106,9 +118,11 @@ Setting `raw=true` returns the legacy plain list with no metadata:
 This flag exists to avoid breaking older consumers while new clients migrate to the richer `TimelineResponse` wrapper.
 
 ### Admin: Trigger Snapshot
+
 ```
 POST /defi/admin/trigger-snapshot
 ```
+
 - Manually triggers the Celery background task to collect and store a portfolio snapshot for all tracked wallets.
 - This is an admin-only endpoint and requires appropriate authentication.
 - **Success:** 202 Accepted, returns the Celery task ID.
@@ -120,6 +134,7 @@ POST /defi/admin/trigger-snapshot
   ```
 
 #### Example Response
+
 ```json
 {
   "user_address": "0x123...",
@@ -185,6 +200,7 @@ POST /defi/admin/trigger-snapshot
 ```
 
 #### Model Fields (PortfolioMetrics)
+
 - `user_address`: Wallet address
 - `total_collateral`: Sum of all collateral amounts across protocols
 - `total_borrowings`: Sum of all borrowings across protocols
@@ -198,6 +214,7 @@ POST /defi/admin/trigger-snapshot
 - `timestamp`: ISO8601 UTC timestamp of aggregation
 
 #### ProtocolBreakdown Model
+
 - `protocol`: Protocol name (e.g., "aave")
 - `total_collateral`, `total_borrowings`: Sums for this protocol
 - `aggregate_health_score`, `aggregate_apy`: Protocol-specific metrics
@@ -208,7 +225,9 @@ POST /defi/admin/trigger-snapshot
 - `PortfolioSnapshot`: A full portfolio snapshot stored in the database, including all metrics and breakdowns for a specific point in time.
 
 ## Data Model
+
 See `backend/app/schemas/defi.py` for full details. Key models:
+
 - `Collateral`: protocol, asset, amount, usd_value
 - `Borrowing`: protocol, asset, amount, usd_value, interest_rate
 - `StakedPosition`: protocol, asset, amount, usd_value, apy
@@ -218,13 +237,16 @@ See `backend/app/schemas/defi.py` for full details. Key models:
 - `ProtocolBreakdown`: Per-protocol breakdown (see above)
 
 ## Extending
+
 To add a new protocol:
+
 1. Create a new usecase in `backend/app/usecase/` to fetch and map data.
 2. Add an endpoint in `backend/app/api/endpoints/defi.py`.
 3. Add unit/integration tests.
 4. Update this documentation.
 
 ## Testing & Linting
+
 - Run all tests:
   ```
   cd backend
@@ -236,6 +258,7 @@ To add a new protocol:
   ```
 
 ## Known Limitations
+
 - `usd_value` is always 0 (no price oracle integration yet)
 - `timestamp` is always 0 (not set to block or system time)
 - No rate limiting or advanced error handling
@@ -245,12 +268,14 @@ To add a new protocol:
 - `timestamp` is set to system UTC time, not block time
 
 ## Quickstart for Developers
+
 1. Clone the repo and set up the Python environment
 2. Install dependencies in `backend/`
 3. Run the FastAPI server and visit `/docs` for OpenAPI
-4. Use the endpoints above to fetch DeFi data 
+4. Use the endpoints above to fetch DeFi data
 
 ## Database Migrations (Alembic)
+
 This project uses Alembic to manage database schema changes.
 
 - **To generate a new migration after changing a model:**
@@ -263,11 +288,11 @@ This project uses Alembic to manage database schema changes.
   alembic upgrade head
   ```
 
-All schema changes, such as adding the `PortfolioSnapshot` table, must be handled through Alembic migrations. 
+All schema changes, such as adding the `PortfolioSnapshot` table, must be handled through Alembic migrations.
 
 ## Dynamic Protocol Adapters & Aggregation (2025-02-18)
 
-The `/defi/timeline` endpoint (and portfolio metrics endpoints) no longer rely on a hard-coded list of on-chain protocols.  A new pluggable architecture allows adding or removing protocols by simply registering a subclass of `ProtocolAdapter`:
+The `/defi/timeline` endpoint (and portfolio metrics endpoints) no longer rely on a hard-coded list of on-chain protocols. A new pluggable architecture allows adding or removing protocols by simply registering a subclass of `ProtocolAdapter`:
 
 ```python
 from app.adapters.protocols.base import ProtocolAdapter
@@ -282,9 +307,10 @@ class MyProtocolAdapter(ProtocolAdapter):
 All registered adapters are injected into the **dynamic aggregator** (`aggregate_portfolio_metrics_from_adapters`) which merges snapshots into a single `PortfolioMetrics` object consumed by `SnapshotAggregationService`.
 
 Key points:
+
 1. **Adapters live in** `app.adapters.protocols.*`  
    Current adapters: `AaveContractAdapter`, `CompoundContractAdapter`, `RadiantContractAdapter`.
 2. **Dependency Injection** – `app.di.get_snapshot_service_sync` & FastAPI dependency override build the adapter list and aggregator at runtime.
 3. **Testing** – `tests/integration/test_timeline_dynamic_aggregator.py` overrides the FastAPI dependency to inject a dummy aggregator, proving `/defi/timeline/{address}` works end-to-end with the new architecture.
 
-No API contract changes: existing consumers can continue to hit `/defi/timeline` with the same query parameters.  New protocols appear automatically in the `protocol_breakdown` field of responses once their adapters are implemented. 
+No API contract changes: existing consumers can continue to hit `/defi/timeline` with the same query parameters. New protocols appear automatically in the `protocol_breakdown` field of responses once their adapters are implemented.

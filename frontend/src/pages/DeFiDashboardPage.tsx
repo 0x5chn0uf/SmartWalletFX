@@ -12,7 +12,15 @@ import TableRow from '@mui/material/TableRow';
 import TableCell from '@mui/material/TableCell';
 import TableBody from '@mui/material/TableBody';
 import Box from '@mui/material/Box';
-import { getDefiKPI, getProtocolBreakdown, DefiKPI, ProtocolBreakdown } from '../services/defi';
+import {
+  getDefiKPI,
+  getProtocolBreakdown,
+  DefiKPI,
+  ProtocolBreakdown,
+  getPortfolioTimeline,
+} from '../services/defi';
+import { TimelineChart } from '../components/Charts/TimelineChart';
+import { mapSnapshotsToChartData } from '../utils/timelineAdapter';
 
 const DeFiDashboardPage: React.FC = () => {
   const {
@@ -25,8 +33,13 @@ const DeFiDashboardPage: React.FC = () => {
     isLoading: protocolsLoading,
     error: protocolsError,
   } = useQuery<ProtocolBreakdown[]>('protocolBreakdown', getProtocolBreakdown);
+  const {
+    data: timeline,
+    isLoading: timelineLoading,
+    error: timelineError,
+  } = useQuery('portfolioTimeline', () => getPortfolioTimeline());
 
-  if (kpiLoading || protocolsLoading) {
+  if (kpiLoading || protocolsLoading || timelineLoading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
         <CircularProgress />
@@ -34,7 +47,7 @@ const DeFiDashboardPage: React.FC = () => {
     );
   }
 
-  if (kpiError || protocolsError) {
+  if (kpiError || protocolsError || timelineError) {
     return <Alert severity="error">Failed to load DeFi data. Please try again later.</Alert>;
   }
 
@@ -71,12 +84,11 @@ const DeFiDashboardPage: React.FC = () => {
         </Grid>
       </Grid>
 
-      {/* Timeline Chart Placeholder */}
+      {/* Timeline Chart Integration */}
       <Box mt={4}>
         <Typography variant="h6" gutterBottom>
           Performance Timeline
         </Typography>
-        {/* TODO: Integrate TimelineChart with real data */}
         <Box
           height={300}
           display="flex"
@@ -86,7 +98,11 @@ const DeFiDashboardPage: React.FC = () => {
           borderRadius={2}
           color="#fff"
         >
-          Timeline Chart Coming Soon
+          {timeline && timeline.snapshots.length > 0 ? (
+            <TimelineChart data={mapSnapshotsToChartData(timeline.snapshots)} metric="collateral" />
+          ) : (
+            'No timeline data available'
+          )}
         </Box>
       </Box>
 

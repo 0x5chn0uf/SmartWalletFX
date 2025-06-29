@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 
 # -----------------------------------------------------------------------------
 # Test Compose File for End-to-End Backup/Restore Testing
@@ -26,7 +26,7 @@ services:
       POSTGRES_PASSWORD: testpass
       POSTGRES_DB: testdb
     ports:
-      - "5433:5432"  # Different port to avoid conflicts with development
+      - "5433:5432" # Different port to avoid conflicts with development
     volumes:
       - ./backend/tests/fixtures/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
@@ -42,7 +42,7 @@ services:
   redis-test:
     image: redis:7-alpine
     ports:
-      - "6380:6379"  # Different port to avoid conflicts
+      - "6380:6379" # Different port to avoid conflicts
     networks:
       - test-network
 

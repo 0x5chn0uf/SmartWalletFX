@@ -6,4 +6,4 @@ This directory contains advanced examples for testing complete workflows and sys
 - `performance_example.py`: Testing performance and load using `pytest-benchmark` or similar
 - `error_cases.py`: Handling complex error scenarios and cleanup with fixtures
 
-These examples showcase integration testing patterns, fixture layering, and real-world use cases. 
+These examples showcase integration testing patterns, fixture layering, and real-world use cases.
