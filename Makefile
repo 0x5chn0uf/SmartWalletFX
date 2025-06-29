@@ -72,7 +72,7 @@ run-backend: ## Start FastAPI locally with health-check helper
 	$(MAKE) -C $(BACKEND_DIR) serve
 
 run-frontend: ## Start React dev server
-	cd $(FRONTEND_DIR) && npm start
+	cd $(FRONTEND_DIR) && npm run dev
 
 # -----------------------------------------------------------------------------
 # Tokens

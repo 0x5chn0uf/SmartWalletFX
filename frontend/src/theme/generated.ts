@@ -1,16 +1,17 @@
 // Generated design tokens - placeholder for development
 // In production, this would be auto-generated from design system tokens
 
-export const ColorBrandPrimary = '#6366f1';
-export const ColorBrandSecondary = '#8b5cf6';
+export const ColorBrandPrimary = '#4fd1c7';
+export const ColorBrandSecondary = '#6366f1';
 export const ColorTextPrimary = '#ffffff';
 export const ColorTextSecondary = '#9ca3af';
 export const ColorTextInverse = '#1f2937';
-export const ColorBackgroundDefault = '#111827';
-export const ColorBackgroundSurface = '#1f2937';
-export const ColorBackgroundElevated = '#374151';
+export const ColorBackgroundDefault = '#1a1f2e';
+export const ColorBackgroundSurface = '#242937';
+export const ColorBackgroundElevated = '#2d3548';
 
-export const FontFamilyPrimary = '"Inter", "Roboto", "Helvetica", "Arial", sans-serif';
+export const FontFamilyPrimary =
+  "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
 export const FontSizeDisplay = '3rem';
 export const FontSizeH1 = '2.5rem';
 export const FontSizeH2 = '2rem';
@@ -25,8 +26,8 @@ export const FontLineheightDisplay = 1.1;
 export const FontLineheightHeading = 1.2;
 export const FontLineheightBody = 1.5;
 
-export const SizeRadiiSm = '0.25rem';
-export const SizeRadiiMd = '0.375rem';
+export const SizeRadiiSm = '8px';
+export const SizeRadiiMd = '8px';
 export const SizeRadiiLg = '0.5rem';
 export const SizeSpacingXs = 4;
 export const SizeSpacingSm = 8;
