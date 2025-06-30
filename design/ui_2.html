@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cobalt DeFi Dashboard - Alt 2</title>
+  <link href="https://fonts.googleapis.com/css?family=Inter:400,600,700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-bg: #1a1f2e;
+      --surface: #242937;
+      --surface-elevated: #2d3548;
+      --accent: #4fd1c7;
+      --accent-secondary: #6366f1;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --text-primary: #fff;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+      --text-inverse: #1f2937;
+      --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --card-radius: 12px;
+      --card-padding: 24px;
+      --card-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      --header-height: 80px;
+      --grid-gap: 24px;
+    }
+    body {
+      background: var(--primary-bg);
+      color: var(--text-primary);
+      font-family: var(--font-primary);
+      margin: 0;
+      min-height: 100vh;
+    }
+    .navbar {
+      height: var(--header-height);
+      background: var(--surface);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+    }
+    .navbar .logo {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--accent);
+    }
+    .navbar .nav-links {
+      display: flex;
+      gap: 24px;
+    }
+    .navbar .nav-link {
+      color: var(--text-secondary);
+      font-size: 1rem;
+      font-weight: 500;
+      text-decoration: none;
+      padding: 12px 16px;
+      border-radius: 8px;
+      transition: background 0.2s;
+    }
+    .navbar .nav-link.active, .navbar .nav-link:hover {
+      background: var(--accent);
+      color: var(--text-inverse);
+    }
+    .dashboard-container {
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 0 24px;
+    }
+    .metrics-row {
+      display: flex;
+      gap: var(--grid-gap);
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+    .metric-card, .net-section {
+      background: var(--surface);
+      border-radius: var(--card-radius);
+      padding: var(--card-padding);
+      box-shadow: var(--card-shadow);
+      min-width: 220px;
+      flex: 1 1 320px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .metric-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+    .metric-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1.2;
+    }
+    .metric-divider {
+      width: 100%;
+      height: 1px;
+      background: rgba(255,255,255,0.08);
+      margin: 16px 0 12px 0;
+      border: none;
+    }
+    .variation {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-top: 6px;
+      color: var(--success);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .perf-main {
+      display: flex;
+      align-items: baseline;
+      gap: 2px;
+    }
+    .variation .perf-value {
+      color: var(--success);
+      font-weight: 600;
+      font-size: 0.8rem;
+      margin-left: 2px;
+    }
+    .timeline-wallet-card {
+      background: var(--surface-elevated);
+      border-radius: var(--card-radius);
+      padding: var(--card-padding);
+      box-shadow: var(--card-shadow);
+      margin-bottom: 32px;
+      position: relative;
+      min-width: 0;
+    }
+    .timeline-metric {
+      position: absolute;
+      top: 24px;
+      right: 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      z-index: 2;
+      min-width: 160px;
+      background: none;
+      border-radius: 0;
+      box-shadow: none;
+      padding: 0;
+    }
+    .timeline-section {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+    .chart-title-row {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+    .chart-title {
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+      margin-bottom: 0;
+    }
+    .timeline-buttons-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+      margin-bottom: 0;
+      margin-top: 8px;
+    }
+    .timeline-btn {
+      background: none;
+      color: var(--text-secondary);
+      border: none;
+      border-radius: 0;
+      padding: 0 8px 2px 8px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: color 0.2s, border-bottom 0.2s;
+      box-shadow: none;
+      outline: none;
+      border-bottom: 2px solid transparent;
+    }
+    .timeline-btn.active, .timeline-btn:focus {
+      color: var(--accent);
+      border-bottom: 2px solid var(--accent);
+      background: none;
+    }
+    .timeline-changes-row {
+      display: flex;
+      gap: 32px;
+      margin-top: 16px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .change-metric {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1rem;
+      color: var(--text-secondary);
+      background: none;
+      border-radius: 0;
+      box-shadow: none;
+      padding: 0;
+    }
+    .change-value {
+      font-weight: 600;
+      color: var(--success);
+      font-size: 1.1rem;
+    }
+    .sparkline {
+      width: 48px;
+      height: 20px;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .yield-title {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .yield-bars {
+      display: flex;
+      gap: 24px;
+      align-items: flex-end;
+      margin-top: 8px;
+    }
+    .yield-bar {
+      width: 60px;
+      border-radius: 8px 8px 0 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      background: linear-gradient(135deg, #10b981 0%, #4fd1c7 100%);
+      color: #fff;
+      font-weight: 600;
+      font-size: 1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+      margin-bottom: 0;
+    }
+    .yield-bar.projected {
+      background: linear-gradient(135deg, #6366f1 0%, #4fd1c7 100%);
+    }
+    .yield-bar-label {
+      margin-top: 8px;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      text-shadow: 0 2px 8px #1a1f2e;
+    }
+    .net-title {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .net-value {
+      text-align: center;
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: var(--success);
+    }
+    .net-value.negative {
+      color: var(--error);
+    }
+    .net-bars {
+      display: flex;
+      gap: 24px;
+      align-items: flex-end;
+      margin-top: 8px;
+    }
+    .net-bar {
+      width: 60px;
+      border-radius: 8px 8px 0 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      background: linear-gradient(135deg, #4fd1c7 0%, #3b82f6 100%);
+      color: #fff;
+      font-weight: 600;
+      font-size: 1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+      margin-bottom: 0;
+    }
+    .net-bar.withdrawal {
+      background: linear-gradient(135deg, #ef4444 0%, #f59e0b 100%);
+    }
+    .net-bar-label {
+      margin-top: 8px;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      text-shadow: 0 2px 8px #1a1f2e;
+    }
+    .breakdown-section {
+      background: var(--surface);
+      border-radius: var(--card-radius);
+      padding: 24px;
+      box-shadow: var(--card-shadow);
+    }
+    .breakdown-title {
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      color: var(--text-primary);
+    }
+    th, td {
+      padding: 12px 8px;
+      text-align: left;
+    }
+    th {
+      color: var(--text-secondary);
+      font-weight: 600;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    tr:not(:last-child) td {
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    @media (max-width: 900px) {
+      .metrics-row {
+        flex-direction: column;
+        gap: 12px;
+      }
+      .metric-card, .net-section {
+        min-width: 0;
+        width: 100%;
+      }
+      .timeline-changes-row {
+        gap: 16px;
+      }
+      .net-bars, .yield-bars {
+        gap: 12px;
+      }
+    }
+    @media (max-width: 768px) {
+      .dashboard-container {
+        margin: 24px 0;
+        padding: 0 8px;
+      }
+      .timeline-wallet-card {
+        padding: 12px;
+      }
+      .timeline-metric {
+        position: static;
+        margin-bottom: 8px;
+        align-items: flex-end;
+        width: 100%;
+        background: none;
+        box-shadow: none;
+        padding: 0;
+      }
+      .breakdown-section, .net-section, .yield-section {
+        padding: 12px;
+      }
+      .chart-title-row {
+        gap: 2px;
+      }
+    }
+    .metric-value-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .apy-projected {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      font-weight: 500;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="logo">Cobalt</div>
+    <div class="nav-links">
+      <a href="#" class="nav-link active">Dashboard</a>
+      <a href="#" class="nav-link">Portfolio</a>
+      <a href="#" class="nav-link">Settings</a>
+    </div>
+  </nav>
+  <div class="dashboard-container">
+    <div class="timeline-wallet-card">
+      <div class="timeline-metric">
+        <div class="metric-label">Total Value of Wallet</div>
+        <div class="metric-value">$42,500</div>
+        <div class="variation">
+          <span class="perf-main">+2.3% <span class="perf-value">(+&#36;950)</span></span>
+          <span style="font-size:1.2em;">&#9650;</span>
+          <span style="color:var(--text-secondary);font-weight:400;font-size:0.95em;">(24h)</span>
+        </div>
+      </div>
+      <div class="timeline-section">
+        <div class="chart-title-row">
+          <div class="chart-title">Performance Timeline</div>
+          <div class="timeline-buttons-row">
+            <button class="timeline-btn active">24h</button>
+            <button class="timeline-btn">7d</button>
+            <button class="timeline-btn">30d</button>
+          </div>
+        </div>
+        <svg width="100%" height="220" viewBox="0 0 600 220" style="background:transparent;">
+          <defs>
+            <linearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#4fd1c7"/>
+              <stop offset="100%" stop-color="#3b82f6"/>
+            </linearGradient>
+            <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#4fd1c7" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#4fd1c7" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <!-- Gradient area fill below the line -->
+          <polygon points="0,180 60,160 120,120 180,100 240,80 300,90 360,70 420,100 480,60 540,40 600,60 600,220 0,220" fill="url(#areaGradient)"/>
+          <!-- Chart line -->
+          <polyline fill="none" stroke="url(#lineGradient)" stroke-width="4" points="0,180 60,160 120,120 180,100 240,80 300,90 360,70 420,100 480,60 540,40 600,60"/>
+          <!-- Dots -->
+          <circle cx="0" cy="180" r="5" fill="#4fd1c7"/>
+          <circle cx="60" cy="160" r="5" fill="#4fd1c7"/>
+          <circle cx="120" cy="120" r="5" fill="#4fd1c7"/>
+          <circle cx="180" cy="100" r="5" fill="#4fd1c7"/>
+          <circle cx="240" cy="80" r="5" fill="#4fd1c7"/>
+          <circle cx="300" cy="90" r="5" fill="#4fd1c7"/>
+          <circle cx="360" cy="70" r="5" fill="#4fd1c7"/>
+          <circle cx="420" cy="100" r="5" fill="#4fd1c7"/>
+          <circle cx="480" cy="60" r="5" fill="#4fd1c7"/>
+          <circle cx="540" cy="40" r="5" fill="#4fd1c7"/>
+          <circle cx="600" cy="60" r="5" fill="#4fd1c7"/>
+          <!-- X axis labels -->
+          <text x="0" y="200" fill="#9ca3af" font-size="12">Jan</text>
+          <text x="120" y="200" fill="#9ca3af" font-size="12">Mar</text>
+          <text x="240" y="200" fill="#9ca3af" font-size="12">May</text>
+          <text x="360" y="200" fill="#9ca3af" font-size="12">Jul</text>
+          <text x="480" y="200" fill="#9ca3af" font-size="12">Sep</text>
+          <text x="600" y="200" fill="#9ca3af" font-size="12">Nov</text>
+        </svg>
+        <div class="timeline-changes-row">
+          <div class="change-metric">
+            <span>24h</span>
+            <span class="change-value">+2.3%</span>
+            <svg class="sparkline" viewBox="0 0 48 20"><polyline fill="none" stroke="#10b981" stroke-width="2" points="0,15 8,12 16,10 24,8 32,12 40,6 48,8"/></svg>
+          </div>
+          <div class="change-metric">
+            <span>7d</span>
+            <span class="change-value">+5.8%</span>
+            <svg class="sparkline" viewBox="0 0 48 20"><polyline fill="none" stroke="#6366f1" stroke-width="2" points="0,18 8,14 16,10 24,6 32,8 40,10 48,6"/></svg>
+          </div>
+          <div class="change-metric">
+            <span>30d</span>
+            <span class="change-value">+12.1%</span>
+            <svg class="sparkline" viewBox="0 0 48 20"><polyline fill="none" stroke="#f59e0b" stroke-width="2" points="0,19 8,16 16,12 24,8 32,10 40,8 48,4"/></svg>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-label">Average APY</div>
+        <div class="metric-value-row">
+          <span class="metric-value">7.25%</span>
+          <span class="apy-projected">($3,800 projected)</span>
+        </div>
+        <hr class="metric-divider" />
+        <div class="yield-title">Realized vs Projected Yield</div>
+        <div class="yield-bars">
+          <div class="yield-bar" style="height: 80px;">
+            $2,400
+            <div class="yield-bar-label">Realized</div>
+          </div>
+          <div class="yield-bar projected" style="height: 120px;">
+            $3,800
+            <div class="yield-bar-label">Projected</div>
+          </div>
+        </div>
+      </div>
+      <div class="net-section">
+        <div class="net-title">Net Deposits vs Net Withdrawals</div>
+        <div class="net-value">Net: +$11,000</div>
+        <div class="net-bars">
+          <div class="net-bar" style="height: 120px;">
+            $18k
+            <div class="net-bar-label">Deposits</div>
+          </div>
+          <div class="net-bar withdrawal" style="height: 60px;">
+            $7k
+            <div class="net-bar-label">Withdrawals</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="breakdown-section">
+      <div class="breakdown-title">Position Breakdown</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Asset</th>
+            <th>Protocol</th>
+            <th>Value</th>
+            <th>APY</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>ETH</td>
+            <td>Aave</td>
+            <td>$12,000</td>
+            <td>5.2%</td>
+          </tr>
+          <tr>
+            <td>USDC</td>
+            <td>Compound</td>
+            <td>$8,500</td>
+            <td>3.8%</td>
+          </tr>
+          <tr>
+            <td>WBTC</td>
+            <td>Yearn</td>
+            <td>$22,000</td>
+            <td>9.1%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html> 

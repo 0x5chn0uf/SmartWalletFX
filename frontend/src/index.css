@@ -5,6 +5,9 @@
   --color-primary: #4fd1c7;
   --text-primary: #ffffff;
   --text-secondary: #9ca3af;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --accent-secondary: #6366f1;
   --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --spacing-sm: 8px;
   --spacing-md: 16px;
