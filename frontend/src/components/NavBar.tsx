@@ -2,78 +2,70 @@ import React from 'react';
 import styled from '@emotion/styled';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 
-const Header = styled.header`
+const Navbar = styled.nav`
+  height: 80px;
+  background: var(--color-surface);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 16px 32px;
-  background: rgba(26, 31, 46, 0.8);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  justify-content: space-between;
+  padding: 0 24px;
   position: sticky;
   top: 0;
   z-index: 10;
-
-  @media (max-width: 768px) {
-    padding: 16px;
-    flex-direction: column;
-    gap: 16px;
-  }
 `;
 
 const Logo = styled(RouterLink)`
-  color: #4fd1c7;
-  text-decoration: none;
-  font-weight: 800;
-  font-size: 24px;
+  font-size: 2rem;
+  font-weight: 700;
   letter-spacing: -0.02em;
-  text-shadow: 0 2px 8px rgba(79, 209, 199, 0.2);
+  color: var(--color-primary);
+  text-decoration: none;
+  margin-left: 0;
 `;
 
-const Nav = styled.nav`
+const NavLinks = styled.div`
   display: flex;
-  gap: 32px;
-  align-items: center;
+  gap: 24px;
 `;
 
-const NavLink = styled(RouterLink)`
-  color: #9ca3af;
+const NavLink = styled(RouterLink)<{ $active?: boolean }>`
+  color: var(--text-secondary);
+  font-size: 1rem;
+  font-weight: 500;
   text-decoration: none;
-  font-weight: 600;
-  font-size: 16px;
-  transition: color 0.2s;
-  cursor: pointer;
-
+  padding: 12px 16px;
+  border-radius: 8px;
+  transition:
+    background 0.2s,
+    color 0.2s;
+  background: ${({ $active }) => ($active ? 'var(--color-primary)' : 'none')};
+  color: ${({ $active }) => ($active ? 'var(--color-bg)' : 'var(--text-secondary)')};
   &:hover {
-    color: #4fd1c7;
-  }
-`;
-
-const LoginLink = styled(RouterLink)`
-  color: #9ca3af;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 16px;
-  transition: color 0.2s;
-
-  &:hover {
-    color: #4fd1c7;
+    background: var(--color-primary);
+    color: var(--color-bg);
   }
 `;
 
 const NavBar: React.FC = () => {
   const location = useLocation();
+  // Hide navbar on landing/login page if needed
   if (location.pathname === '/' || location.pathname === '/login-register') return null;
   return (
-    <Header>
+    <Navbar>
       <Logo to="/">SmartWalletFX</Logo>
-      <Nav>
-        <NavLink to="/dashboard">Dashboard</NavLink>
-        <NavLink to="/defi">DeFi Tracker</NavLink>
-        <NavLink to="/wallets">Wallets</NavLink>
-        <LoginLink to="/login-register">Login</LoginLink>
-      </Nav>
-    </Header>
+      <NavLinks>
+        <NavLink to="/dashboard" $active={location.pathname.startsWith('/dashboard')}>
+          Dashboard
+        </NavLink>
+        <NavLink to="/defi" $active={location.pathname.startsWith('/portfolio')}>
+          Portfolio
+        </NavLink>
+        <NavLink to="/settings" $active={location.pathname.startsWith('/settings')}>
+          Settings
+        </NavLink>
+      </NavLinks>
+    </Navbar>
   );
 };
 
