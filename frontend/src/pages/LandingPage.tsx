@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styled from '@emotion/styled';
 import { keyframes } from '@emotion/react';
-import { Link as RouterLink } from 'react-router-dom';
 import { FiLink, FiBarChart2, FiZap } from 'react-icons/fi';
+import { Link as RouterLink } from 'react-router-dom';
+import WalletPreview from '../components/WalletPreview';
 
 const fadeIn = keyframes`
   from {
@@ -115,7 +116,7 @@ const HeroHalo = styled.div`
 
 const HeroSection = styled.section`
   text-align: center;
-  padding: 100px 24px;
+  padding: 100px 24px 48px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -150,7 +151,7 @@ const HeroSubtitle = styled.p`
   line-height: 1.6;
 `;
 
-const CallToActionButton = styled(RouterLink)`
+const CallToActionButton = styled(RouterLink)<{ $dimmed?: boolean }>`
   background: linear-gradient(90deg, #4fd1c7 0%, #6366f1 100%);
   color: #1f2937;
   border: none;
@@ -161,18 +162,26 @@ const CallToActionButton = styled(RouterLink)`
   cursor: pointer;
   text-decoration: none;
   box-shadow: 0 2px 8px rgba(79, 209, 199, 0.15);
+  opacity: ${({ $dimmed }) => ($dimmed ? 0.4 : 1)};
   transition:
+    opacity 0.3s,
     transform 0.18s,
     box-shadow 0.18s;
 
   &:hover {
     transform: scale(1.05);
     box-shadow: 0 4px 16px rgba(99, 102, 241, 0.18);
+    opacity: 1;
   }
 `;
 
+const WalletPreviewCardWrapper = styled.div<{ $lifted?: boolean }>`
+  transition: margin-top 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-top: ${({ $lifted }) => ($lifted ? '-64px' : '0')};
+`;
+
 const FeaturesSection = styled.section`
-  padding: 80px 24px;
+  padding: 0 24px 80px;
   background: #151a28;
 `;
 
@@ -350,6 +359,8 @@ const StepIcon = styled.div<{ color: string }>`
 `;
 
 const LandingPage: React.FC = () => {
+  const [walletInputFocused, setWalletInputFocused] = useState(false);
+
   return (
     <Container>
       <Header>
@@ -368,8 +379,16 @@ const LandingPage: React.FC = () => {
           <HeroSubtitle>
             All-in-one portfolio management for crypto and traditional assets.
           </HeroSubtitle>
-          <CallToActionButton to="/login-register">Start Tracking</CallToActionButton>
+          <CallToActionButton to="/login-register" $dimmed={walletInputFocused}>
+            Start Tracking
+          </CallToActionButton>
         </HeroSection>
+        <WalletPreviewCardWrapper $lifted={walletInputFocused}>
+          <WalletPreview
+            onInputFocus={() => setWalletInputFocused(true)}
+            onInputBlur={() => setWalletInputFocused(false)}
+          />
+        </WalletPreviewCardWrapper>
 
         <FeaturesSection id="features">
           <FeaturesGrid>

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cobalt DeFi Dashboard - Alt 3</title>
+  <link href="https://fonts.googleapis.com/css?family=Inter:400,600,700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary-bg: #1a1f2e;
+      --surface: #242937;
+      --surface-elevated: #2d3548;
+      --accent: #4fd1c7;
+      --accent-secondary: #6366f1;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --text-primary: #fff;
+      --text-secondary: #9ca3af;
+      --text-muted: #6b7280;
+      --text-inverse: #1f2937;
+      --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --card-radius: 12px;
+      --card-padding: 24px;
+      --card-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      --sidebar-width: 220px;
+      --header-height: 80px;
+      --grid-gap: 24px;
+    }
+    body {
+      background: var(--primary-bg);
+      color: var(--text-primary);
+      font-family: var(--font-primary);
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+    }
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--surface);
+      height: 100vh;
+      position: fixed;
+      left: 0;
+      top: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 32px 0 0 0;
+      border-right: 1px solid rgba(255,255,255,0.08);
+      z-index: 10;
+    }
+    .sidebar .logo {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-left: 32px;
+      margin-bottom: 40px;
+    }
+    .sidebar .nav-links {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      gap: 8px;
+    }
+    .sidebar .nav-link {
+      color: var(--text-secondary);
+      font-size: 1rem;
+      font-weight: 500;
+      text-decoration: none;
+      padding: 12px 32px;
+      border-radius: 8px 0 0 8px;
+      transition: background 0.2s;
+      width: 100%;
+      display: block;
+    }
+    .sidebar .nav-link.active, .sidebar .nav-link:hover {
+      background: var(--accent);
+      color: var(--text-inverse);
+    }
+    .main-content {
+      margin-left: var(--sidebar-width);
+      width: 100%;
+      padding: 40px 32px;
+      max-width: 1400px;
+    }
+    .metrics-row {
+      display: flex;
+      gap: var(--grid-gap);
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+    .metric-card {
+      background: var(--surface);
+      border-radius: var(--card-radius);
+      padding: var(--card-padding);
+      box-shadow: var(--card-shadow);
+      min-width: 220px;
+      flex: 1 1 220px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .metric-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+    .metric-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+      line-height: 1.2;
+    }
+    .chart-section {
+      background: var(--surface-elevated);
+      border-radius: var(--card-radius);
+      padding: 24px;
+      margin-bottom: 32px;
+      min-height: 320px;
+      box-shadow: var(--card-shadow);
+    }
+    .chart-title {
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+    .bar-chart {
+      display: flex;
+      align-items: flex-end;
+      height: 180px;
+      width: 100%;
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .bar {
+      width: 36px;
+      border-radius: 8px 8px 0 0;
+      background: linear-gradient(135deg, #4fd1c7 0%, #3b82f6 100%);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      position: relative;
+      transition: height 0.3s;
+    }
+    .bar-label {
+      position: absolute;
+      bottom: -24px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #9ca3af;
+      font-size: 12px;
+      text-align: center;
+      width: 100%;
+    }
+    .bar-value {
+      position: absolute;
+      top: -24px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      text-shadow: 0 2px 8px #1a1f2e;
+    }
+    .breakdown-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: var(--grid-gap);
+    }
+    .breakdown-card {
+      background: var(--surface);
+      border-radius: var(--card-radius);
+      padding: 20px 24px;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .breakdown-asset {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .breakdown-protocol {
+      color: var(--text-secondary);
+      font-size: 1rem;
+    }
+    .breakdown-value {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .breakdown-apy {
+      color: var(--success);
+      font-size: 1rem;
+      font-weight: 500;
+    }
+    @media (max-width: 900px) {
+      .main-content {
+        padding: 24px 8px;
+      }
+      .metrics-row {
+        flex-direction: column;
+        gap: 12px;
+      }
+      .metric-card {
+        min-width: 0;
+        width: 100%;
+      }
+      .breakdown-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (max-width: 768px) {
+      .sidebar {
+        display: none;
+      }
+      .main-content {
+        margin-left: 0;
+        padding: 16px 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="logo">Cobalt</div>
+    <div class="nav-links">
+      <a href="#" class="nav-link active">Dashboard</a>
+      <a href="#" class="nav-link">Portfolio</a>
+      <a href="#" class="nav-link">Settings</a>
+    </div>
+  </aside>
+  <main class="main-content">
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="metric-label">Average APY</div>
+        <div class="metric-value">7.25%</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Total Value of Wallet</div>
+        <div class="metric-value">$42,500</div>
+      </div>
+    </div>
+    <div class="chart-section">
+      <div class="chart-title">Performance Timeline</div>
+      <div class="bar-chart">
+        <div class="bar" style="height: 60px;">
+          <span class="bar-value">$10k</span>
+          <span class="bar-label">Jan</span>
+        </div>
+        <div class="bar" style="height: 90px;">
+          <span class="bar-value">$15k</span>
+          <span class="bar-label">Feb</span>
+        </div>
+        <div class="bar" style="height: 120px;">
+          <span class="bar-value">$20k</span>
+          <span class="bar-label">Mar</span>
+        </div>
+        <div class="bar" style="height: 150px;">
+          <span class="bar-value">$25k</span>
+          <span class="bar-label">Apr</span>
+        </div>
+        <div class="bar" style="height: 180px;">
+          <span class="bar-value">$30k</span>
+          <span class="bar-label">May</span>
+        </div>
+        <div class="bar" style="height: 160px;">
+          <span class="bar-value">$28k</span>
+          <span class="bar-label">Jun</span>
+        </div>
+        <div class="bar" style="height: 140px;">
+          <span class="bar-value">$24k</span>
+          <span class="bar-label">Jul</span>
+        </div>
+        <div class="bar" style="height: 170px;">
+          <span class="bar-value">$29k</span>
+          <span class="bar-label">Aug</span>
+        </div>
+        <div class="bar" style="height: 200px;">
+          <span class="bar-value">$35k</span>
+          <span class="bar-label">Sep</span>
+        </div>
+        <div class="bar" style="height: 220px;">
+          <span class="bar-value">$38k</span>
+          <span class="bar-label">Oct</span>
+        </div>
+      </div>
+    </div>
+    <div class="breakdown-grid">
+      <div class="breakdown-card">
+        <div class="breakdown-asset">ETH</div>
+        <div class="breakdown-protocol">Aave</div>
+        <div class="breakdown-value">$12,000</div>
+        <div class="breakdown-apy">5.2% APY</div>
+      </div>
+      <div class="breakdown-card">
+        <div class="breakdown-asset">USDC</div>
+        <div class="breakdown-protocol">Compound</div>
+        <div class="breakdown-value">$8,500</div>
+        <div class="breakdown-apy">3.8% APY</div>
+      </div>
+      <div class="breakdown-card">
+        <div class="breakdown-asset">WBTC</div>
+        <div class="breakdown-protocol">Yearn</div>
+        <div class="breakdown-value">$22,000</div>
+        <div class="breakdown-apy">9.1% APY</div>
+      </div>
+    </div>
+  </main>
+</body>
+</html> 
