@@ -3,7 +3,7 @@ import pytest
 from tests.fixtures import client
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_user_registration_and_token(client):
     payload = {
         "username": "alice",

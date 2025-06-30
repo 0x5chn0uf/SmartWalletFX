@@ -6,9 +6,8 @@ from app.domain.errors import InvalidCredentialsError
 from app.schemas.user import UserCreate
 from app.services.auth_service import AuthService
 
-pytestmark = pytest.mark.anyio
 
-
+@pytest.mark.asyncio
 async def test_authenticate_success(db_session):
     svc = AuthService(db_session)
     username = f"alice-{uuid.uuid4().hex[:8]}"
@@ -25,6 +24,7 @@ async def test_authenticate_success(db_session):
     assert tokens.token_type == "bearer"
 
 
+@pytest.mark.asyncio
 async def test_authenticate_bad_password(db_session):
     svc = AuthService(db_session)
     user_payload = UserCreate(
@@ -38,6 +38,7 @@ async def test_authenticate_bad_password(db_session):
         await svc.authenticate("bob", "wrongpass")
 
 
+@pytest.mark.asyncio
 async def test_authenticate_unknown_user(db_session):
     svc = AuthService(db_session)
     with pytest.raises(InvalidCredentialsError):
