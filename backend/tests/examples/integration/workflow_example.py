@@ -3,7 +3,7 @@ import pytest
 from tests.fixtures import async_client
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_user_end_to_end_flow(async_client):
     # Register user
     payload = {

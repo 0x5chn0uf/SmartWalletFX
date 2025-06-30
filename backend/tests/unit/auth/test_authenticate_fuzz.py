@@ -8,7 +8,7 @@ from app.domain.errors import InvalidCredentialsError
 from app.schemas.user import UserCreate
 from app.services.auth_service import AuthService, DuplicateError
 
-pytestmark = pytest.mark.anyio
+pytestmark = pytest.mark.asyncio
 
 char_set = st.characters(
     min_codepoint=33, max_codepoint=126

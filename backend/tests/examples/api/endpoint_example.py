@@ -3,7 +3,7 @@ import pytest
 from tests.fixtures import async_client
 
 
-@pytest.mark.anyio
+@pytest.mark.asyncio
 async def test_protected_route_requires_auth(async_client):
     # Attempt to access protected route without token
     resp = await async_client.get("/users/me")

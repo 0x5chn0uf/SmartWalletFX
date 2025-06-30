@@ -39,12 +39,6 @@ def override_get_db(db_session):
     app.dependency_overrides.pop(get_db, None)
 
 
-@pytest.fixture(scope="session")
-def anyio_backend():
-    """Force AnyIO to use only the asyncio backend during tests."""
-    return "asyncio"
-
-
 # --------------------------------------------------------------------
 # Hypothesis global configuration – keep tests fast & consistent
 # --------------------------------------------------------------------
