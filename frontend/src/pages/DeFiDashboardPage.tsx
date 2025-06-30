@@ -57,7 +57,7 @@ const TimelineButton: React.FC<TimelineButtonProps> = ({
       color: active ? '#4fd1c7' : 'var(--text-secondary)',
       fontWeight: 500,
       fontSize: '15.2px',
-      padding: '0 12px 2px 12px',
+      padding: '0 8px 2px 8px',
       gap: 8,
       cursor: 'pointer',
       borderBottom: active ? '2px solid #4fd1c7' : '2px solid transparent',
@@ -92,10 +92,7 @@ const DeFiDashboardPage: React.FC = () => {
   };
 
   return (
-    <Box
-      className="dashboard-container"
-      sx={{ maxWidth: 1200, mx: 'auto', my: 5, px: isSmDown ? 1 : 3 }}
-    >
+    <Box className="dashboard-container" sx={{ maxWidth: 1200, mx: 'auto', my: 5 }}>
       {/* Portfolio Performance Card (Timeline Wallet Card) */}
       <Box
         className="timeline-wallet-card"
@@ -365,7 +362,7 @@ const DeFiDashboardPage: React.FC = () => {
           />
           <Typography
             className="yield-title"
-            sx={{ color: 'var(--text-secondary)', fontSize: 16, fontWeight: 600, mb: 1 }}
+            sx={{ color: 'var(--text-secondary)', fontSize: '1.1rem', fontWeight: 600, mb: 1 }}
           >
             Realized vs Projected Yield
           </Typography>
@@ -454,14 +451,13 @@ const DeFiDashboardPage: React.FC = () => {
         >
           <Typography
             className="net-title"
-            sx={{ color: 'var(--text-secondary)', fontSize: 16, fontWeight: 600, mb: 1 }}
+            sx={{ color: 'var(--text-secondary)', fontSize: '1.1rem', fontWeight: 600, mb: 1 }}
           >
             Net Deposits vs Net Withdrawals
           </Typography>
           <Typography
             className="net-value"
             sx={{
-              textAlign: 'center',
               fontSize: 20,
               fontWeight: 700,
               mb: 0.5,
@@ -554,32 +550,30 @@ const DeFiDashboardPage: React.FC = () => {
       >
         <Typography
           className="breakdown-title"
-          sx={{ color: 'var(--text-secondary)', fontSize: 18, mb: 2 }}
+          sx={{ color: 'var(--text-secondary)', fontSize: '1.2rem', mb: 2 }}
         >
           Position Breakdown
         </Typography>
-        <Table size="small" sx={{ color: 'var(--text-primary)' }}>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Asset</TableCell>
-              <TableCell sx={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
-                Protocol
-              </TableCell>
-              <TableCell sx={{ color: 'var(--text-secondary)', fontWeight: 600 }}>Value</TableCell>
-              <TableCell sx={{ color: 'var(--text-secondary)', fontWeight: 600 }}>APY</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+        <table className="position-table">
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Protocol</th>
+              <th>Value</th>
+              <th>APY</th>
+            </tr>
+          </thead>
+          <tbody>
             {MOCK.positions.map(row => (
-              <TableRow key={row.asset + row.protocol}>
-                <TableCell>{row.asset}</TableCell>
-                <TableCell>{row.protocol}</TableCell>
-                <TableCell>${row.value.toLocaleString()}</TableCell>
-                <TableCell>{row.apy}%</TableCell>
-              </TableRow>
+              <tr key={row.asset + row.protocol}>
+                <td>{row.asset}</td>
+                <td>{row.protocol}</td>
+                <td>${row.value.toLocaleString()}</td>
+                <td>{row.apy}%</td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </Box>
     </Box>
   );
