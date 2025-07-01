@@ -90,8 +90,8 @@ async def authenticated_client(test_app, test_user, db_session):
     )
     headers = {"Authorization": f"Bearer {access_token}"}
 
-    client = TestClient(test_app, headers=headers)
-    yield client
+    async with AsyncClient(app=test_app, base_url="http://test", headers=headers) as ac:
+        yield ac
 
     # Clean up dependency override
     test_app.dependency_overrides.pop(get_db, None)
