@@ -16,13 +16,9 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.security.roles import ROLE_PERMISSIONS_MAP, UserRole
 from app.models.user import User
-
-# DeFi-tracker infrastructure
 from app.repositories.aggregate_metrics_repository import (
     AggregateMetricsRepository,
 )
-
-# Services
 from app.services.defi_aggregation_service import DeFiAggregationService
 from app.services.snapshot_aggregation import SnapshotAggregationService
 from app.usecase.defi_aave_usecase import AaveUsecase
@@ -59,10 +55,6 @@ class DBDeps:  # noqa: D101 – small wrapper for DB related deps
 
         return SnapshotAggregationService(db, _build_aggregator_async())
 
-    # ------------------------------------------------------------------
-    # DeFi tracker repository / service providers
-    # ------------------------------------------------------------------
-
     def get_aggregate_metrics_repo(
         self, db: AsyncSession = Depends(get_db)
     ) -> AggregateMetricsRepository:  # noqa: D401 – factory
@@ -72,11 +64,6 @@ class DBDeps:  # noqa: D101 – small wrapper for DB related deps
 
 
 db_deps = DBDeps()
-
-
-# ---------------------------------------------------------------------------
-# Blockchain-related dependencies
-# ---------------------------------------------------------------------------
 
 
 class BlockchainDeps:
@@ -106,11 +93,6 @@ class BlockchainDeps:
 
 
 blockchain_deps = BlockchainDeps()
-
-
-# ---------------------------------------------------------------------------
-# Auth / security dependencies
-# ---------------------------------------------------------------------------
 
 
 class AuthDeps:
@@ -175,15 +157,21 @@ class AuthDeps:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        # Extract role and attribute information from JWT claims for RBAC/ABAC
-        # This provides backward compatibility for tokens without role claims
-        token_roles = payload.get("roles", [UserRole.INDIVIDUAL_INVESTOR.value])
+        # Extract role/attribute information from JWT claims (RBAC/ABAC)
+        if "roles" not in payload:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token missing required 'roles' claim",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        token_roles = payload["roles"]
         token_attributes = payload.get("attributes", {})
 
         # Add extracted claims as runtime attributes (not persisted)
         # Authorization deps rely on these runtime props for RBAC/ABAC checks
-        user._current_roles = token_roles
-        user._current_attributes = token_attributes
+        user._current_roles = token_roles  # type: ignore[attr-defined]
+        user._current_attributes = token_attributes  # type: ignore[attr-defined]
 
         return user
 
@@ -360,10 +348,6 @@ class AuthorizationDeps:  # noqa: D101
 
 
 authz_deps = AuthorizationDeps()
-
-# ---------------------------------------------------------------------------
-# Expose helpers at module level for backward compatibility
-# ---------------------------------------------------------------------------
 
 require_roles = authz_deps.require_roles
 require_attributes = authz_deps.require_attributes

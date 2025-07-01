@@ -159,20 +159,6 @@ class TestRequireRoles:
         result = role_dep(mock_user)
         assert result == mock_user
 
-    def test_require_roles_no_roles(self):
-        """Test role check when user has no roles (should default)."""
-        # Mock user that simulates getattr behavior with default
-        mock_user = Mock()
-        # Simulate getattr returning the default value
-        mock_user._current_roles = [UserRole.INDIVIDUAL_INVESTOR.value]
-
-        # Create dependency
-        role_dep = require_roles(["individual_investor"])
-
-        # Should not raise exception (default role matches)
-        result = role_dep(mock_user)
-        assert result == mock_user
-
 
 class TestRequireAttributes:
     """Test attribute-based access control dependencies."""
@@ -267,41 +253,6 @@ class TestRequirePermission:
         # Should raise HTTPException
         with pytest.raises(HTTPException) as exc_info:
             perm_dep(mock_user)
-
-        assert exc_info.value.status_code == 403
-        assert "Access denied" in exc_info.value.detail
-
-
-class TestBackwardCompatibility:
-    """Test backward compatibility for users without role information."""
-
-    def test_user_without_roles_defaults_to_basic(self):
-        """Test that users without roles default to individual_investor."""
-        # Mock user that simulates getattr behavior with default
-        mock_user = Mock()
-        # Simulate getattr returning the default value
-        mock_user._current_roles = [UserRole.INDIVIDUAL_INVESTOR.value]
-
-        # Create dependency requiring individual_investor role
-        role_dep = require_roles(["individual_investor"])
-
-        # Should not raise exception (default role should be individual_investor)
-        result = role_dep(mock_user)
-        assert result == mock_user
-
-    def test_user_without_attributes_handled_gracefully(self):
-        """Test that users without attributes are handled gracefully."""
-        # Mock user that simulates getattr behavior with default
-        mock_user = Mock()
-        # Simulate getattr returning the default value (empty dict)
-        mock_user._current_attributes = {}
-
-        # Create dependency requiring attributes
-        attr_dep = require_attributes({"geography": "US"})
-
-        # Should raise HTTPException (no attributes means requirements not met)
-        with pytest.raises(HTTPException) as exc_info:
-            attr_dep(mock_user)
 
         assert exc_info.value.status_code == 403
         assert "Access denied" in exc_info.value.detail

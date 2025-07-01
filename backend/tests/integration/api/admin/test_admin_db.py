@@ -34,6 +34,7 @@ def test_backup_authenticated_admin(mock_task):
         email=f"admin-{uuid.uuid4().hex[:8]}@test.com",
     )
     mock_user.roles = ["admin"]
+    mock_user._current_roles = ["admin"]
 
     # Override the dependency for this test
     def override_get_current_user():
@@ -75,6 +76,7 @@ def test_restore_authenticated_admin(mock_task):
         email=f"admin-{uuid.uuid4().hex[:8]}@test.com",
     )
     mock_user.roles = ["admin"]
+    mock_user._current_roles = ["admin"]
 
     # Override the dependency for this test
     def override_get_current_user():
@@ -118,6 +120,7 @@ def test_restore_invalid_file_type(mock_task):
         email=f"admin-{uuid.uuid4().hex[:8]}@test.com",
     )
     mock_user.roles = ["admin"]
+    mock_user._current_roles = ["admin"]
 
     # Override the dependency for this test
     def override_get_current_user():
@@ -152,6 +155,7 @@ def test_restore_missing_file(mock_task):
         email=f"admin-{uuid.uuid4().hex[:8]}@test.com",
     )
     mock_user.roles = ["admin"]
+    mock_user._current_roles = ["admin"]
 
     # Override the dependency for this test
     def override_get_current_user():
