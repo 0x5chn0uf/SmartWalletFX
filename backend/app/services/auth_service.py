@@ -183,3 +183,57 @@ class AuthService:
             token_type="bearer",
             expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
+
+    async def refresh(self, refresh_token: str) -> TokenResponse:
+        """Validate *refresh_token* and issue a new access token.
+
+        The refresh token itself remains valid (rotate-at-will pattern).
+        Additional role/attribute claims are injected in the new access token
+        to mirror the latest user state.
+        """
+
+        from hashlib import sha256
+
+        from app.domain.errors import InvalidCredentialsError
+
+        try:
+            payload = JWTUtils.decode_token(refresh_token)
+        except Exception as exc:  # noqa: BLE001
+            raise InvalidCredentialsError() from exc
+
+        if payload.get("type") != "refresh":
+            raise InvalidCredentialsError()
+
+        user_id = payload.get("sub")
+        jti = payload.get("jti")
+        if not user_id or not jti:
+            raise InvalidCredentialsError()
+
+        # Verify token exists and not revoked/expired in DB
+        rt_repo = RefreshTokenRepository(self._repo._session)
+        jti_hash = sha256(jti.encode()).hexdigest()
+        token_obj = await rt_repo.get_by_jti_hash(jti_hash)
+
+        if token_obj is None or token_obj.revoked:
+            raise InvalidCredentialsError()
+
+        # Fetch user
+        user = await self._repo.get_by_id(user_id)
+        if user is None:
+            raise InvalidCredentialsError()
+
+        # Build additional claims
+        user_roles = user.roles or [UserRole.INDIVIDUAL_INVESTOR.value]
+        user_attributes = user.attributes or {}
+
+        access_token = JWTUtils.create_access_token(
+            str(user.id),
+            additional_claims={"roles": user_roles, "attributes": user_attributes},
+        )
+
+        return TokenResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,  # Same refresh token returned
+            token_type="bearer",
+            expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        )
