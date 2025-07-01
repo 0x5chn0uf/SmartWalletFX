@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.api.endpoints import admin as admin_rbac
 from app.api.endpoints import (
     admin_db,
     auth,
@@ -20,3 +21,4 @@ api_router.include_router(jwks.router, tags=["jwks"])
 api_router.include_router(
     admin_db.router, prefix="/admin/db", tags=["admin", "database"]
 )
+api_router.include_router(admin_rbac.router, prefix="/admin", tags=["admin"])
