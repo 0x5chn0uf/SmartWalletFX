@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.security.roles import UserRole
 from app.models.user import User
 from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.repositories.user_repository import UserRepository
@@ -76,6 +77,9 @@ class AuthService:
             username=payload.username,
             email=payload.email,
             hashed_password=hashed_pw,
+            # Default role for new users
+            roles=[UserRole.INDIVIDUAL_INVESTOR.value],
+            attributes={},
         )
 
         try:
@@ -141,8 +145,21 @@ class AuthService:
             audit("AUTH_FAILURE", reason="invalid_credentials", user_id=str(user.id))
             raise InvalidCredentialsError()
 
-        # Issue tokens
-        access_token = JWTUtils.create_access_token(str(user.id))
+        # Prepare additional claims for RBAC/ABAC
+        additional_claims = {}
+
+        # Add user roles (with backward compatibility fallback)
+        user_roles = user.roles if user.roles else [UserRole.INDIVIDUAL_INVESTOR.value]
+        additional_claims["roles"] = user_roles
+
+        # Add user attributes (with backward compatibility fallback)
+        user_attributes = user.attributes if user.attributes else {}
+        additional_claims["attributes"] = user_attributes
+
+        # Issue tokens with role/attribute claims
+        access_token = JWTUtils.create_access_token(
+            str(user.id), additional_claims=additional_claims
+        )
         refresh_token = JWTUtils.create_refresh_token(str(user.id))
 
         # Persist refresh token JTI hash
@@ -155,8 +172,10 @@ class AuthService:
         rt_repo = RefreshTokenRepository(self._repo._session)
         await rt_repo.create_from_jti(jti, user.id, ttl)
 
-        audit("user_login_success", user_id=str(user.id), jti=jti)
-        _LOGGER.info("user_login_success", extra={"user_id": str(user.id)})
+        audit("user_login_success", user_id=str(user.id), jti=jti, roles=user_roles)
+        _LOGGER.info(
+            "user_login_success", extra={"user_id": str(user.id), "roles": user_roles}
+        )
 
         return TokenResponse(
             access_token=access_token,
