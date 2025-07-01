@@ -111,7 +111,12 @@ async def authenticated_client(db_session: AsyncSession, test_app, test_user: Us
     test_app.dependency_overrides[get_db] = _override_get_db
 
     access_token = JWTUtils.create_access_token(
-        str(test_user.id), additional_claims={"email": test_user.email}
+        str(test_user.id),
+        additional_claims={
+            "email": test_user.email,
+            "roles": ["individual_investor"],
+            "attributes": {},
+        },
     )
     headers = {"Authorization": f"Bearer {access_token}"}
 
@@ -138,7 +143,11 @@ async def admin_authenticated_client(
 
     access_token = JWTUtils.create_access_token(
         str(admin_user.id),
-        additional_claims={"email": admin_user.email, "is_admin": True},
+        additional_claims={
+            "email": admin_user.email,
+            "roles": ["admin"],
+            "attributes": {},
+        },
     )
     headers = {"Authorization": f"Bearer {access_token}"}
 
