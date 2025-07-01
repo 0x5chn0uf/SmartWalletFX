@@ -100,7 +100,11 @@ async def test_get_current_user_success(monkeypatch):
     """A valid token with an existing user returns the user instance."""
 
     user = DummyUser()
-    monkeypatch.setattr(deps_mod.JWTUtils, "decode_token", lambda token: {"sub": "42"})
+    monkeypatch.setattr(
+        deps_mod.JWTUtils,
+        "decode_token",
+        lambda token: {"sub": "42", "roles": ["user"]},
+    )
     session = DummySession(user)
 
     result = await auth_deps.get_current_user(token="token", db=session)

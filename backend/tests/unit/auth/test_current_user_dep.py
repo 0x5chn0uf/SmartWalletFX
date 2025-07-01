@@ -29,7 +29,7 @@ async def test_get_current_user_success(monkeypatch):
     )
 
     def _dummy_decode(token: str):  # noqa: D401
-        return {"sub": "1"}
+        return {"sub": "1", "roles": ["user"]}
 
     monkeypatch.setattr(JWTUtils, "decode_token", staticmethod(_dummy_decode))
     dummy_db = DummySession(user)

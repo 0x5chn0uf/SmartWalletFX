@@ -8,6 +8,7 @@ project's hexagonal architecture where repositories are infrastructure
 concerns injected into the domain/application layers.
 """
 
+import uuid
 from typing import Optional
 
 from sqlalchemy.exc import IntegrityError
@@ -49,6 +50,22 @@ class UserRepository:
             stmt = stmt.filter_by(email=email)
         result = await self._session.execute(stmt.limit(1))
         return result.scalar_one_or_none() is not None
+
+    async def get_by_id(self, user_id):  # type: ignore[override]
+        """Return the :class:`User` identified by *user_id* or **None**.
+
+        Accepts *str* or :class:`uuid.UUID` for convenience so callers can
+        safely pass the **sub** claim from a JWT without manual casting.
+        """
+
+        if isinstance(user_id, str):
+            try:
+                user_id = uuid.UUID(user_id)
+            except ValueError:
+                # Leave as string for DBs that store UUIDs as TEXT
+                pass
+
+        return await self._session.get(User, user_id)
 
     # ---------------------------------------------------------------------
     # Persistence helpers

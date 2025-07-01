@@ -42,6 +42,12 @@ class InMemoryRateLimiter:
 
         self._hits.clear()
 
+    def reset(self, key: str) -> None:  # pragma: no cover – helper
+        """Clear stored hits for *key* without affecting others."""
+
+        if key in self._hits:
+            self._hits[key].clear()
+
 
 # ----------------------------------------------------------------------
 # Singleton instance configured from settings

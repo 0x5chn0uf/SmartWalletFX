@@ -162,7 +162,12 @@ class AuthService:
         )
         refresh_token = JWTUtils.create_refresh_token(str(user.id))
 
-        # Persist refresh token JTI hash
+        # Persist refresh token JTI hash *before* we access any attributes that
+        # may expire on commit.  We therefore **stash** the primary-key value
+        # so that subsequent logging does not trigger a lazy-load which would
+        # perform I/O in the synchronous response thread (leading to the
+        # dreaded ``MissingGreenlet`` error seen in the failing test).
+
         from jose import jwt as jose_jwt  # local import to defer heavy dep
 
         payload = jose_jwt.get_unverified_claims(refresh_token)
@@ -170,11 +175,13 @@ class AuthService:
         ttl = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
 
         rt_repo = RefreshTokenRepository(self._repo._session)
-        await rt_repo.create_from_jti(jti, user.id, ttl)
+        user_pk = user.id  # capture before commit/expiration
+        await rt_repo.create_from_jti(jti, user_pk, ttl)
 
-        audit("user_login_success", user_id=str(user.id), jti=jti, roles=user_roles)
+        user_pk_str = str(user_pk)
+        audit("user_login_success", user_id=user_pk_str, jti=jti, roles=user_roles)
         _LOGGER.info(
-            "user_login_success", extra={"user_id": str(user.id), "roles": user_roles}
+            "user_login_success", extra={"user_id": user_pk_str, "roles": user_roles}
         )
 
         return TokenResponse(

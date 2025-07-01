@@ -106,6 +106,7 @@ class AuthDeps:
         """Throttle excessive login attempts per client IP (in-memory)."""
 
         identifier = request.client.host or "unknown"
+
         if not login_rate_limiter.allow(identifier):
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
