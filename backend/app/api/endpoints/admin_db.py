@@ -3,7 +3,7 @@ import tempfile
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
-from app.api.dependencies import auth_deps
+from app.api.dependencies import auth_deps, require_roles
 from app.models.user import User
 
 router = APIRouter()
@@ -16,6 +16,7 @@ router = APIRouter()
 )
 async def trigger_backup(
     current_user: User = Depends(auth_deps.get_current_user),
+    _role_check: User = Depends(require_roles(["admin"])),
 ):
     """Trigger an asynchronous database backup via Celery.
 
@@ -23,11 +24,7 @@ async def trigger_backup(
     Returns a Celery task identifier so the caller can poll for status.
     """
 
-    # Admin check -------------------------------------------------------
-    if not hasattr(current_user, "roles") or "admin" not in current_user.roles:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required"
-        )
+    # Role enforcement is handled by the **require_roles** dependency above.
 
     # Import inside function to avoid circular dependencies at import time
     from app.tasks.backups import create_backup_task  # pragma: no cover
@@ -44,6 +41,7 @@ async def trigger_backup(
 async def trigger_restore(
     file: UploadFile = File(...),
     current_user: User = Depends(auth_deps.get_current_user),
+    _role_check: User = Depends(require_roles(["admin"])),
 ):
     """Trigger an asynchronous database restore via Celery.
 
@@ -52,11 +50,7 @@ async def trigger_restore(
     Returns a Celery task identifier so the caller can poll for status.
     """
 
-    # Admin check -------------------------------------------------------
-    if not hasattr(current_user, "roles") or "admin" not in current_user.roles:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required"
-        )
+    # Role enforcement handled by **require_roles** dependency.
 
     # Validate file type
     if not file.filename or not file.filename.endswith(".sql.gz"):
