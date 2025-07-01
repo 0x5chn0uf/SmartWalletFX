@@ -2,13 +2,13 @@ from __future__ import annotations
 
 """Authentication endpoints"""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_401_UNAUTHORIZED
 
-from app.api.dependencies import auth_deps
+import app.api.dependencies as deps_mod
 from app.core.database import get_db
 from app.domain.errors import InactiveUserError, InvalidCredentialsError
 from app.schemas.auth_token import TokenResponse
@@ -20,8 +20,6 @@ from app.services.auth_service import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-oauth2_scheme = auth_deps.oauth2_scheme
 
 
 @router.post(
@@ -62,17 +60,28 @@ async def register_user(
     response_model=TokenResponse,
 )
 async def login_for_access_token(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db),
-    _rate_limit: None = Depends(auth_deps.rate_limit_auth_token),
 ) -> TokenResponse:  # type: ignore[valid-type]
     """OAuth2 Password grant – return access & refresh tokens."""
+
+    identifier = request.client.host or "unknown"
+    limiter = deps_mod.login_rate_limiter
 
     service = AuthService(db)
     try:
         tokens = await service.authenticate(form_data.username, form_data.password)
+        # Successful login → reset any accumulated failures for this IP
+        limiter.reset(identifier)
         return tokens
     except InvalidCredentialsError:
+        # Failed credentials → consume one hit and maybe block further attempts
+        if not limiter.allow(identifier):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many login attempts, please try again later.",
+            )
         raise HTTPException(
             status_code=HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password",
@@ -82,13 +91,6 @@ async def login_for_access_token(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive or disabled user account",
         )
-
-
-# Re-export for convenience in other modules
-__all__ = ["router", "oauth2_scheme", "auth_deps"]
-
-
-# ---------------------------- Refresh endpoint ----------------------------
 
 
 class _RefreshRequest(BaseModel):
