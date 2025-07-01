@@ -5,8 +5,6 @@ from jose import jwt
 from app.core.config import settings
 from app.utils.jwt import JWTUtils
 
-pytestmark = pytest.mark.usefixtures("client_with_db")
-
 
 def _register_and_login(client: TestClient):
     username = "refreshuser"
@@ -31,10 +29,10 @@ def _register_and_login(client: TestClient):
     return body["access_token"], body["refresh_token"]
 
 
-def test_refresh_success(client_with_db: TestClient):
-    _, refresh_token = _register_and_login(client_with_db)
+def test_refresh_success(client: TestClient):
+    _, refresh_token = _register_and_login(client)
 
-    res = client_with_db.post("/auth/refresh", json={"refresh_token": refresh_token})
+    res = client.post("/auth/refresh", json={"refresh_token": refresh_token})
     assert res.status_code == 200
     body = res.json()
 
@@ -48,7 +46,7 @@ def test_refresh_success(client_with_db: TestClient):
     assert "roles" in payload and payload["roles"]
 
 
-def test_refresh_invalid_token(client_with_db: TestClient):
+def test_refresh_invalid_token(client: TestClient):
     invalid_token = JWTUtils.create_access_token("123")  # not a refresh token
-    res = client_with_db.post("/auth/refresh", json={"refresh_token": invalid_token})
+    res = client.post("/auth/refresh", json={"refresh_token": invalid_token})
     assert res.status_code == 401
