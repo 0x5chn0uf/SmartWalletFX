@@ -1,13 +1,14 @@
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 from jose import jwt
 
-from app.core.config import settings
 from app.utils.jwt import JWTUtils
 
 
 def _register_and_login(client: TestClient):
-    username = "refreshuser"
+    username = f"refreshuser_{uuid.uuid4().hex[:8]}"
     password = "Str0ngP@ssw0rd!"
     email = f"{username}@example.com"
 
