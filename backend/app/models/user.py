@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import Column, DateTime, String
+from sqlalchemy import JSON, Column, DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -21,6 +21,12 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=True)
 
+    # Role-based access control fields
+    roles = Column(JSON, nullable=True, doc="List of user roles for RBAC")
+    attributes = Column(
+        JSON, nullable=True, doc="User attributes for ABAC (geo, portfolio_value, etc.)"
+    )
+
     created_at = Column(
         DateTime, default=datetime.utcnow, nullable=False, doc="Creation timestamp."
     )
@@ -38,4 +44,4 @@ class User(Base):
         """
         Return a string representation of the user instance.
         """
-        return f"<User username={self.username} email={self.email}>"
+        return f"<User username={self.username} email={self.email} roles={self.roles}>"
