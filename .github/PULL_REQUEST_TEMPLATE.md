@@ -6,9 +6,9 @@
 
 ## Related Issues/Tasks
 
-<!-- Link to relevant GitHub issues or Task Master task IDs -->
+<!-- Link to relevant GitHub issues -->
 - Closes #<!-- issue number -->
-- Task Master ID: #<!-- task number -->
+- Related to #<!-- issue number -->
 
 ## Type of Change
 
@@ -45,7 +45,7 @@ Please check the type of change your PR introduces:
 - [ ] Documentation is updated as needed
 - [ ] API documentation updated (if API changes)
 - [ ] CHANGELOG.md updated (if applicable)
-- [ ] Linked to relevant issues/tasks
+- [ ] Linked to relevant issues
 - [ ] Screenshots/demos included (for UI changes)
 
 ### Dependencies & Infrastructure
