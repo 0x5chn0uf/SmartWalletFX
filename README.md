@@ -2,220 +2,239 @@
 
 [![Coverage Status](https://coveralls.io/repos/github/0x5chn0uf/SmartWalletFX/badge.svg?branch=main)](https://coveralls.io/github/0x5chn0uf/SmartWalletFX?branch=main)
 ![Frontend Coverage](https://img.shields.io/badge/Coverage_Frontend-58%25-yellow)
-![Backup Tests](https://img.shields.io/badge/backup%20tests-passing-brightgreen)
+![Backend Tests](https://img.shields.io/badge/backend%20tests-passing-brightgreen)
 ![E2E Tests](https://img.shields.io/badge/E2E%20tests-passing-brightgreen)
 ![Performance Tests](https://img.shields.io/badge/performance%20tests-passing-brightgreen)
 
-A powerful crypto portfolio tracker providing a centralized overview of all your crypto and DeFi positions, with integrated Smart Money Concepts (SMC) analysis tools.
+A comprehensive DeFi portfolio tracker and analytics platform that provides real-time insights into your cryptocurrency positions across multiple protocols. Track your investments, analyze performance, and make informed decisions with institutional-grade tools designed for the modern crypto investor.
 
 ---
 
-## 🌟 Features
+## 🌟 What SmartWalletFX Does
 
-### 📊 Portfolio Overview
+SmartWalletFX eliminates the complexity of managing DeFi positions across multiple protocols by providing a unified dashboard that aggregates your entire portfolio in real-time. Whether you're lending on Aave, borrowing on Compound, or participating in liquidity pools on Radiant, SmartWalletFX gives you complete visibility into your financial positions.
 
-- **Wallet Tracking:** Monitor EVM wallet balances and transactions.
-- **DeFi Integration:** Track positions across Aave, Compound, and Radiant using both direct smart contract calls.
-- **Performance Timeline:** View historical portfolio performance (collateral, borrows, health score) with data collected by scheduled background jobs.
-- **Visual Analytics:** TradingView-style charts with custom indicators.
+### 📊 **Portfolio Management**
+- **Multi-Protocol Support**: Automatically tracks positions across Aave, Compound, and Radiant Capital
+- **Real-Time Updates**: Live balance tracking and position monitoring
+- **Historical Analytics**: Comprehensive timeline showing portfolio performance over time
+- **Health Monitoring**: Track collateral ratios, borrowing capacity, and liquidation risks
+- **USD Valuation**: All positions converted to USD for easy comparison and analysis
 
-### 🎯 Smart Money Zone (SMC)
+### 💹 **Performance Analytics**
+- **Portfolio Timeline**: Visualize your portfolio's growth and changes over time
+- **Risk Assessment**: Monitor health scores and leverage ratios across protocols
+- **APY Tracking**: See current yields and borrowing costs for all positions
+- **Protocol Breakdown**: Understand how your portfolio is distributed across different platforms
 
-- **Technical Indicators:** Fair Value Gaps (FVG), Order Blocks (OB), Breaker Blocks (BB)
-- **Multi-timeframe Analysis:** Higher timeframe levels visible on lower timeframes
-- **Assets:** BTC and ETH (initial support)
+### 🔐 **Security & Privacy**
+- **Read-Only Access**: No wallet connection required - just enter your address
+- **Private & Secure**: Your data stays private with robust authentication
+- **Multi-User Support**: Secure user accounts with role-based permissions
+- **Enterprise Grade**: Built with production-ready security standards
 
-### ⚡ Real-time Alerts
-
-- Price alerts, candle close notifications, market structure events, volatility spikes
-- Telegram integration
-
-### 🎨 User Interface
-
-- Dark mode with emerald green accents
-- Customizable dashboard, responsive design, intuitive navigation
-
-### 💾 Database Backup & Restore
-
-- **Automated Daily Backups:** Scheduled PostgreSQL backups with 7-day retention
-- **CLI & API Access:** Manual backup/restore via CLI commands and admin API endpoints
-- **Performance Optimized:** < 30s backup, < 60s restore for 1GB datasets
-- **Comprehensive Testing:** E2E tests with ephemeral PostgreSQL containers
-- **Monitoring & Alerting:** Prometheus metrics, Slack alerts, structured audit logging
-- **Optional Encryption:** GPG encryption and S3 off-site storage support
-
-### Performance Timeline
-
-The new **Performance Timeline** gives historical insight into collateral, borrowings and health score for a wallet.
-
-1. Start backend & frontend (`docker compose up -d backend frontend`).
-2. Navigate to `http://localhost:3000/timeline` or click _Timeline_ in the navbar.
-3. Use the metric selector, interval toggle and date-range picker to explore data.
-
-![Timeline Screenshot](docs/assets/timeline_demo.png)
+### 🎨 **Modern Interface**
+- **Intuitive Dashboard**: Clean, responsive design optimized for both desktop and mobile
+- **Interactive Charts**: TradingView-style visualizations with multiple timeframes
+- **Dark Mode**: Professional dark theme with emerald accents
+- **Real-Time Updates**: Live data with intelligent caching for optimal performance
 
 ---
 
-## 🛠 Tech Stack
+## � Key Features
 
-### Backend
+### Portfolio Tracking
+- **Automated Discovery**: Simply enter your wallet address to see all DeFi positions
+- **Multi-Chain Support**: Currently supports Ethereum mainnet and Arbitrum
+- **Position Types**: Tracks lending, borrowing, staking, and LP positions
+- **Historical Data**: Performance tracking with customizable time ranges
 
-- **Python (FastAPI)** — Modular, hexagonal architecture
-- **web3.py** — Direct smart contract calls
-- **CoinGecko API** — Live price oracle for USD values
-- **Pydantic** — Data validation and serialization
-- **SQLite (via SQLAlchemy)** — Default embedded database for local development (PostgreSQL planned).
-- **Celery & Redis** — Asynchronous task queue for background jobs (e.g., periodic portfolio snapshots).
-- **Task Master** — AI-powered task and roadmap management
-- **Testing:** Pytest, coverage, extensive unit/integration tests, mocking for web3 and price oracles
-- **Code Quality:** Black, isort, flake8, mypy, Bandit, Safety, pre-commit hooks
-- **CI/CD:** GitHub Actions (lint, test, security, build, deploy)
+### Analytics & Insights
+- **Risk Metrics**: Health factors, liquidation thresholds, and safety margins
+- **Performance Metrics**: ROI calculations, yield comparisons, and trend analysis
+- **Market Context**: Position values in real-time USD with market data integration
+- **Export Capabilities**: Download portfolio data for external analysis
 
-### Frontend
+### User Management
+- **Secure Authentication**: JWT-based authentication with automatic token rotation
+- **Multi-Wallet Support**: Track multiple wallets under a single account
+- **Access Control**: Role-based permissions for individual and institutional users
+- **Audit Logging**: Comprehensive logging for security and compliance
 
-- **React**
-- **TradingView charting library**
-- **Dark mode UI components**
+### Data & Reliability
+- **Direct Blockchain Integration**: Real-time data from smart contracts, not third-party APIs
+- **Automated Backups**: Daily database backups with disaster recovery procedures
+- **High Availability**: Production-ready architecture with comprehensive monitoring
+- **Data Integrity**: Extensive testing ensures accurate portfolio calculations
 
 ---
 
-## 🚀 Getting Started
+## 🛠 Technology Stack
 
-### Prerequisites
+**Backend Infrastructure**
+- FastAPI with async/await for high-performance API endpoints
+- Direct blockchain integration via web3.py for real-time data
+- PostgreSQL with automated backup and restore capabilities
+- Redis for intelligent caching and background job processing
+- Comprehensive test suite with >95% code coverage
 
-- Python 3.12+
-- Node.js & npm
-- Git
-- Docker & Docker Compose
+**Frontend Experience**
+- Modern React application with responsive design
+- Professional charting powered by TradingView libraries
+- Real-time updates with optimistic UI patterns
+- Progressive Web App capabilities for mobile users
 
-### Installation
+**Security & Operations**
+- JWT authentication with automated key rotation
+- Role-based access control (RBAC) for enterprise users
+- Prometheus metrics and monitoring
+- CI/CD pipeline with automated security scanning
 
-1. **Clone the repository**
+---
 
+## � Getting Started
+
+### Quick Setup
+
+1. **Clone and Configure**
    ```bash
    git clone https://github.com/0x5chn0uf/smartwalletfx.git
    cd smartwalletfx
    ```
 
-2. **Configure environment variables**
-
-   ```bash
-   cd backend
-   cp env.example .env
-   # Edit .env with your API keys (Alchemy, CoinGecko, etc.)
-   ```
-
-3. **Set up backend**
-
+2. **Backend Setup**
    ```bash
    cd backend
    python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   pip install -e .           # Uses pyproject.toml (editable mode)
-
-   # SQLite requires no services; simply run migrations if needed (optional)
-   alembic upgrade head
+   source .venv/bin/activate
+   pip install -e .
    ```
 
-4. **Set up frontend**
-
+3. **Frontend Setup**
    ```bash
    cd frontend
    npm install
-   ```
-
-5. **Run the application**
-
-   > **Note:** By default the backend uses SQLite files (`smartwallet_dev.db`, `smartwallet_test.db`) and therefore **no database container is required**. Redis remains optional for background tasks. A Postgres compose file is included for future migration.
-
-   ```bash
-   # Terminal 1 (Backend)
-   cd backend
-   uvicorn app.main:app
-
-   # Terminal 2 (Celery Worker for background tasks)
-   cd backend
-   source .venv/bin/activate
-   celery -A app.celery_app.celery worker -l info
-
-   # Terminal 3 (Frontend)
-   cd frontend
    npm start
    ```
 
-### Running Property Tests
+4. **Start Tracking**
+   - Navigate to `http://localhost:3000`
+   - Create your account
+   - Add your wallet address
+   - Start monitoring your DeFi positions!
 
-The reusable property-based templates live under `backend/tests/templates/`.
-Run them locally with:
+### Environment Configuration
 
-```bash
-pytest -m property  # executes only property templates
-```
+Copy `backend/.env.example` to `backend/.env` and configure:
+- **Blockchain RPC URLs**: For real-time data fetching
+- **CoinGecko API**: For USD price conversions
+- **Database Settings**: PostgreSQL connection details
+- **JWT Secrets**: For secure authentication
 
-CI executes the same suite in the _property-tests_ job.
+> **Note**: The application works out-of-the-box with SQLite for development. PostgreSQL is recommended for production deployments.
 
 ---
 
-## 📝 Development Status
+## 💡 Use Cases
 
-### Current Version
+### **Individual Investors**
+- Track DeFi investments across multiple protocols
+- Monitor portfolio health and liquidation risks
+- Analyze historical performance and trends
+- Optimize yield strategies with APY comparisons
 
-- **Modular Backend:** Production-ready FastAPI backend with a hexagonal architecture.
-- **DeFi Integration:** Supports Aave, Compound, and Radiant using both smart contract calls.
-- **Performance Timeline:** Includes a Celery-based background scheduler to periodically capture and store portfolio snapshots in a PostgreSQL database.
-- **Price Oracles:** Live USD values fetched from CoinGecko with caching.
-- **Testing:** High test coverage (>95%) across unit, integration, and E2E tests.
-- **Project Management:** All tasks, enhancements, and technical debt are tracked via Task Master.
-- **Code Quality:** CI/CD pipeline enforces strict code quality, linting, and security checks.
+### **Professional Traders**
+- Manage complex multi-protocol positions
+- Real-time risk assessment and position sizing
+- Historical analysis for strategy development
+- Portfolio reporting and performance attribution
 
-### Roadmap & Future Improvements
+### **Fund Managers**
+- Multi-wallet portfolio management
+- Client reporting with professional visualizations
+- Risk monitoring and compliance reporting
+- Automated data exports for external systems
 
-- Multi-oracle support, batch contract calls, advanced protocol abstraction
-- Historical data, multi-wallet, CEX integration, cloud hosting
-- Advanced SMC indicators, user authentication, improved UI/UX
-- See Task Master tasks and docs for details
+### **DeFi Protocols**
+- Integration testing with real user positions
+- Market research and user behavior analysis
+- Risk assessment tooling for new features
+- Customer support with position visibility
+
+---
+
+## � Current Status
+
+### ✅ **Production Ready Features**
+- Multi-protocol DeFi position tracking (Aave, Compound, Radiant)
+- Real-time portfolio analytics and performance tracking
+- Secure user authentication and multi-wallet management
+- Professional frontend with interactive charts and dashboards
+- Comprehensive test coverage and CI/CD pipeline
+- Database backup/restore and operational monitoring
+
+### 🚧 **Active Development**
+- Smart Money Concepts (SMC) technical analysis integration
+- Advanced risk metrics and liquidation alerts
+- Mobile application development
+- Additional protocol integrations (Uniswap, Curve, etc.)
+- Enhanced portfolio optimization suggestions
+
+### 🔮 **Planned Features**
+- Multi-chain expansion (Polygon, BSC, Avalanche)
+- CEX integration for complete portfolio view
+- Advanced alerting and notification system
+- Portfolio sharing and social features
+- API access for third-party integrations
 
 ---
 
 ## 🤝 Contributing
 
-- Please open issues for feature requests or bug reports.
-- All code must pass Black, isort, flake8, and tests before PRs are accepted.
-- See `.github/CONTRIBUTING.md` for guidelines.
+We welcome contributions from the community! Whether you're fixing bugs, adding features, or improving documentation, your help makes SmartWalletFX better for everyone.
+
+- **Bug Reports**: Open an issue with detailed reproduction steps
+- **Feature Requests**: Describe your use case and proposed solution
+- **Code Contributions**: Fork, create a feature branch, and submit a PR
+- **Documentation**: Help improve our guides and API documentation
+
+Please see our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
 
 ---
 
 ## 📜 License
 
-This project is private and not open for public use or distribution at this time.
+This project is currently private and not available for public use or distribution.
 
 ---
 
 ## 🔒 Security
 
-- No MetaMask connection required
-- Read-only wallet tracking
-- Local data storage
-- API keys required for external services (never commit secrets)
-- Robust error handling and security checks (Bandit, Safety)
+Security is our top priority. SmartWalletFX is designed with multiple layers of protection:
+
+- **No Private Keys**: Read-only tracking means your funds stay secure
+- **Encrypted Data**: All sensitive information is encrypted at rest and in transit
+- **Regular Audits**: Automated security scanning and manual code reviews
+- **Secure Infrastructure**: Production-grade hosting with monitoring and backups
+
+If you discover a security vulnerability, please report it responsibly to our security team.
 
 ---
 
 ## 📞 Support
 
-For questions or support, please open an issue in the repository.
+- **Documentation**: Comprehensive guides and API documentation in the `/docs` folder
+- **Issues**: Report bugs or request features via GitHub Issues
+- **Community**: Join our community for discussions and updates
 
 ---
 
-## 📚 Documentation
+## 🎯 Vision
 
-- [System Architecture](docs/defi_architecture.md)
-- [API Contracts](docs/defi_api_contracts.md)
-- [Testing & QA Guide](docs/defi_testing_guide.md)
-- [Property Testing Templates](docs/property_testing_templates.md)
-- [Knowledge Transfer Slide Deck](docs/defi_knowledge_transfer.md)
-- [Database Backup & Restore](docs/admin_db.md) - Complete operational runbook for backup/restore operations
+SmartWalletFX aims to become the definitive platform for DeFi portfolio management, providing institutional-grade tools that are accessible to everyone. We're building the infrastructure that will power the next generation of decentralized finance, making it easier and safer for users to participate in the DeFi ecosystem.
+
+Our mission is to democratize access to sophisticated financial tools while maintaining the highest standards of security and user experience.
 
 ---
 
-Built with ❤️ for crypto traders who value technical analysis and portfolio management.
+**Built with ❤️ for the DeFi community**
