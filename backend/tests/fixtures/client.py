@@ -27,8 +27,8 @@ async def async_client(test_app):
         yield ac
 
 
-@pytest_asyncio.fixture
-async def client_with_db(test_app, db_session):
+@pytest.fixture
+def client_with_db(test_app, db_session):
     """
     Test client with database session dependency override.
     Useful for testing endpoints that require database access.
@@ -39,10 +39,9 @@ async def client_with_db(test_app, db_session):
 
     test_app.dependency_overrides[get_db] = _override_get_db
 
-    client = TestClient(test_app)
-    yield client
+    with TestClient(test_app) as client:
+        yield client
 
-    # Clean up dependency override
     test_app.dependency_overrides.pop(get_db, None)
 
 
