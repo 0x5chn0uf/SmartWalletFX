@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_401_UNAUTHORIZED
 
@@ -85,3 +86,35 @@ async def login_for_access_token(
 
 # Re-export for convenience in other modules
 __all__ = ["router", "oauth2_scheme", "auth_deps"]
+
+
+# ---------------------------- Refresh endpoint ----------------------------
+
+
+class _RefreshRequest(BaseModel):
+    refresh_token: str = Field(..., description="Valid JWT refresh token")
+
+
+@router.post(
+    "/refresh",
+    summary="Refresh access token using refresh JWT",
+    response_model=TokenResponse,
+)
+async def refresh_access_token(
+    payload: _RefreshRequest,
+    db: AsyncSession = Depends(get_db),
+) -> TokenResponse:  # type: ignore[valid-type]
+    """Exchange *refresh_token* for a new access token.
+
+    The new access token contains the latest roles/attributes claims.
+    """
+
+    service = AuthService(db)
+    try:
+        tokens = await service.refresh(payload.refresh_token)
+        return tokens
+    except Exception:  # noqa: BLE001
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+        )
