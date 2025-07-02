@@ -361,7 +361,7 @@ This document describes how to configure, operate, and verify monitoring and ale
   - `jwt_key_rotations_total`: Number of times a new JWT signing key has been promoted.
   - `jwt_key_retirements_total`: Number of JWT signing keys retired.
   - `jwt_key_rotation_errors_total`: Number of errors encountered during key rotation.
-- Metrics are collected using the `prometheus_client` library (required in `requirements/base.txt`).
+- Metrics are collected using the `prometheus_client` library (specified in `pyproject.toml`).
 - Centralized Prometheus setup is in `app/monitoring/prometheus.py`.
 
 ### Metrics Endpoint

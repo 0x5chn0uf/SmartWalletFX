@@ -19,7 +19,7 @@ class S3StorageAdapter(StorageAdapter):
     """Storage adapter that uploads files to Amazon S3 (or compatible API).
 
     This adapter **only** depends on *boto3* which is declared as an optional
-    dependency (see ``backend/requirements/s3.txt``).  If boto3 is missing at
+    dependency (see ``pyproject.toml`` dependencies).  If boto3 is missing at
     runtime and this adapter is selected, an ``ImportError`` will surface
     immediately, making the mis-configuration obvious.
     """

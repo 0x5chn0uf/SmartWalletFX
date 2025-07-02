@@ -14,61 +14,91 @@ authors = [
     {name = "0x5chn0uf", email = "0x5chn0u@protonmail.com"},
 ]
 dependencies = [
-    "fastapi==0.115.12",
-    "uvicorn==0.24.0",
-    "sqlalchemy==2.0.41",
-    "pydantic==2.9.2",
-    "pydantic-settings==2.9.1",
-    "python-dotenv==1.0.0",
-    "requests==2.31.0",
-    "web3==7.12.0",
-    "aiohttp==3.12.12",
-    "celery[redis]==5.5.3",
-    "redis==5.2.1",
-    "alembic==1.16.1",
-    "psycopg2-binary==2.9.10",
-    "python-jose[cryptography]==3.3.0",
-    "passlib[bcrypt]==1.7.4",
-    "python-multipart==0.0.6",
-    "ccxt==4.1.13",
-    "email-validator==2.1.1",
-    "prometheus_client==0.20.0",
-    "boto3==1.34.135",
-    "python-gnupg==0.5.2",
+    # Core Framework
+    "fastapi==0.115.12",        # API framework
+    "uvicorn==0.24.0",          # ASGI server
+    
+    # Database
+    "sqlalchemy==2.0.41",      # ORM
+    "alembic==1.16.1",         # Database migrations
+    "psycopg2-binary==2.9.10", # PostgreSQL adapter (sync)
+    "asyncpg==0.29.0",         # PostgreSQL async adapter
+    "aiosqlite==0.20.0",       # SQLite async adapter
+    
+    # Data Validation & Settings
+    "pydantic==2.9.2",         # Data validation
+    "pydantic-settings==2.9.1", # Settings management with Pydantic
+    "email-validator==2.1.1",  # For EmailStr validation in Pydantic
+    
+    # Security
+    "python-jose[cryptography]==3.3.0", # JWT tokens
+    "passlib[bcrypt]==1.7.4",           # Password hashing
+    "python-multipart==0.0.6",          # Form data parsing
+    
+    # HTTP & Utilities
+    "python-dotenv==1.0.0",    # Environment management
+    "requests==2.31.0",        # HTTP client for external APIs
+    "aiohttp==3.12.12",        # Async HTTP client
+    
+    # Task Queue & Cache
+    "celery[redis]==5.5.3",    # Task queue
+    "redis==5.2.1",            # Cache and message broker
+    
+    # Blockchain & Crypto
+    "web3==7.12.0",            # Web3 library
+    "ccxt==4.1.13",            # Cryptocurrency exchange library
+    
+    # Monitoring & Storage
+    "prometheus_client==0.20.0", # Prometheus metrics collection
+    "boto3==1.34.135",         # AWS SDK
+    "python-gnupg==0.5.2",     # GPG encryption
 ]
 
 [project.optional-dependencies]
 dev = [
-    "aiosqlite==0.21.0",
-    "pytest==8.0.0",
-    "pytest-cov==4.1.0",
-    "pytest-asyncio==0.21.1",
-    "pytest-env==1.1.1",
-    "pytest-mock==3.12.0",
-    "httpx==0.25.1",
-    "build==0.10.0",
-    "ruff==0.1.5",
-    "mypy==1.7.0",
-    "black==23.11.0",
-    "isort==5.12.0",
-    "flake8==7.2.0",
-    "types-requests==2.31.0.10",
-    "types-python-jose==3.3.4.8",
-    "types-passlib==1.7.7.13",
-    "bandit==1.7.5",
-    "safety==3.2.11",
-    "detect-secrets==1.4.0",
-    "pip-audit==2.6.1",
-    "mkdocs==1.5.3",
-    "mkdocs-material==9.4.8",
-    "pre-commit==3.5.0",
-    "debugpy==1.8.0",
-    "respx==0.22.0",
-    "hypothesis==6.135.10",
-    "pytest-benchmark==4.0.0",
-    "freezegun==1.4.0",
-    "structlog==24.2.0",
-    "coveralls==3.3.1"
+    # Testing Framework
+    "pytest==8.0.0",            # Testing framework
+    "pytest-cov==4.1.0",        # Coverage reports
+    "pytest-asyncio==0.21.1",   # Async testing support
+    "pytest-env==1.1.1",        # Environment variables for tests
+    "pytest-mock==3.12.0",      # Mock objects for tests
+    "pytest-benchmark==4.0.0",  # Performance benchmarking
+    "httpx==0.25.1",            # HTTP client for testing
+    "coverage==7.3.2",          # Coverage measurement
+    "hypothesis==6.135.10",     # Property-based testing
+    "trio==0.25.0",             # Async testing backend
+    "respx==0.22.0",            # HTTP mocking
+    "freezegun==1.4.0",         # Time freezing for tests
+    
+    # Code Quality & Linting
+    "ruff==0.1.5",              # Fast Python linter
+    "mypy==1.7.0",              # Static type checker
+    "black==23.11.0",           # Code formatter
+    "isort==5.12.0",            # Import sorter
+    "flake8==7.2.0",            # Code linter
+    "pre-commit==3.5.0",        # Git pre-commit hooks
+    
+    # Type Stubs
+    "types-requests==2.31.0.10",    # Type stubs for requests
+    "types-python-jose==3.3.4.8",  # Type stubs for python-jose
+    "types-passlib==1.7.7.13",     # Type stubs for passlib
+    
+    # Security Analysis
+    "bandit==1.7.5",            # Security linter
+    "safety==3.2.11",           # Vulnerability scanner
+    "detect-secrets==1.4.0",    # Secrets detection
+    "pip-audit==2.6.1",         # Package vulnerability scanner
+    
+    # Documentation
+    "mkdocs==1.5.3",            # Documentation generator
+    "mkdocs-material==9.4.8",   # Material theme for MkDocs
+    
+    # Development Tools
+    "build==0.10.0",            # Build tool
+    "debugpy==1.8.0",           # Debugging support
+    "structlog==24.2.0",        # Structured logging
+    "coveralls>=4.0.0",         # Coverage reporting service (compatible with coverage 7.x)
+    "docker==7.1.0",            # Docker API client
 ]
 
 [tool.pytest.ini_options]

@@ -15,7 +15,9 @@ class Settings(BaseSettings):
     ]  # React default port
 
     # Database
-    DATABASE_URL: str = "sqlite:///./smartwallet_dev.db"
+    DATABASE_URL: str = (
+        "postgresql+asyncpg://devuser:devpass@postgres-dev:5432/smartwallet_dev"
+    )
 
     # External APIs
     ALCHEMY_API_KEY: Optional[str] = None
