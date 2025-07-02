@@ -299,7 +299,7 @@ jobs:
           pytest -m "not nightly and not security" -v --hypothesis-show-statistics
 
   performance-tests:
-    needs: [changes]
+    needs: [isort, black, flake8, changes]
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     env:
