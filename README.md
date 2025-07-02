@@ -41,31 +41,42 @@ SmartWalletFX eliminates the complexity of managing DeFi positions across multip
 
 ---
 
-## � Key Features
+## 🚀 Quickstart with Docker Compose
 
-### Portfolio Tracking
-- **Automated Discovery**: Simply enter your wallet address to see all DeFi positions
-- **Multi-Chain Support**: Currently supports Ethereum mainnet and Arbitrum
-- **Position Types**: Tracks lending, borrowing, staking, and LP positions
-- **Historical Data**: Performance tracking with customizable time ranges
+The fastest way to spin up the **entire** SmartWalletFX stack (backend, frontend, PostgreSQL & Redis) is via Docker Compose:
 
-### Analytics & Insights
-- **Risk Metrics**: Health factors, liquidation thresholds, and safety margins
-- **Performance Metrics**: ROI calculations, yield comparisons, and trend analysis
-- **Market Context**: Position values in real-time USD with market data integration
-- **Export Capabilities**: Download portfolio data for external analysis
+```bash
+# 1. Clone & enter the repo
+ git clone https://github.com/0x5chn0uf/smartwalletfx.git
+ cd smartwalletfx
 
-### User Management
-- **Secure Authentication**: JWT-based authentication with automatic token rotation
-- **Multi-Wallet Support**: Track multiple wallets under a single account
-- **Access Control**: Role-based permissions for individual and institutional users
-- **Audit Logging**: Comprehensive logging for security and compliance
+# 2. Copy environment variables (edit if you need to)
+ cp .env.example .env
 
-### Data & Reliability
-- **Direct Blockchain Integration**: Real-time data from smart contracts, not third-party APIs
-- **Automated Backups**: Daily database backups with disaster recovery procedures
-- **High Availability**: Production-ready architecture with comprehensive monitoring
-- **Data Integrity**: Extensive testing ensures accurate portfolio calculations
+# 3. Launch the stack – one command 🔥
+ ./scripts/start.sh           # builds images & starts containers in the background
+
+# Tail logs (optional)
+ STACK_LOGS=1 ./scripts/start.sh
+```
+
+When the health-checks pass you'll have:
+
+| Service   | URL                           |
+|-----------|------------------------------|
+| Frontend  | http://localhost:3000         |
+| Backend   | http://localhost:8000/docs     |
+| Postgres  | localhost:5432 (devuser/devpass) |
+| Redis     | localhost:6379                |
+
+Stop the stack at any time:
+
+```bash
+./scripts/stop.sh        # stop containers, keep DB volume
+PURGE=1 ./scripts/stop.sh  # also remove volumes for a clean slate
+```
+
+> **Tip:** The Compose file mounts your source code, so changes to the backend or frontend hot-reload automatically.
 
 ---
 
@@ -92,7 +103,7 @@ SmartWalletFX eliminates the complexity of managing DeFi positions across multip
 
 ---
 
-## � Getting Started
+## 🛠 Getting Started
 
 ### Quick Setup
 
@@ -163,7 +174,7 @@ Copy `backend/.env.example` to `backend/.env` and configure:
 
 ---
 
-## � Current Status
+## 🛠 Current Status
 
 ### ✅ **Production Ready Features**
 - Multi-protocol DeFi position tracking (Aave, Compound, Radiant)
