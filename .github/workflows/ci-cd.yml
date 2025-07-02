@@ -299,7 +299,7 @@ jobs:
           pytest -m "not nightly and not security" -v --hypothesis-show-statistics
 
   performance-tests:
-    needs: [test-backend, changes]
+    needs: [changes]
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     env:
@@ -332,7 +332,7 @@ jobs:
         working-directory: ./backend
         run: |
           source .venv/bin/activate
-          pytest -m performance -v -o addopts=""
+          pytest -m performance -v -o addopts="" --ignore=tests/e2e
 
       - name: Run pytest benchmarks (no assertions, save results)
         working-directory: ./backend
