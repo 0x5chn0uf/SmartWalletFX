@@ -24,7 +24,7 @@ High-cost cryptographic primitives (bcrypt) and security middleware (JWT validat
 | **pytest-benchmark**              | Micro-benchmarks for Python call-sites (bcrypt hash/verify, JWT encode/decode). Autosaves JSON + histogram. | `backend/tests/performance/*`             |
 | **Security Test Framework (STF)** | Statistical helpers for constant-time assertions (<https://link/to/doc>)                                    | `backend/tests/utils/security_testing.py` |
 
-All dependencies are pinned in `backend/requirements/perf.txt` and installed via `make install-perf` locally or automatically in CI.
+All dependencies are pinned in `pyproject.toml` and installed via `pip install -e .[dev]` locally or automatically in CI.
 
 ---
 

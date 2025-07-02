@@ -27,13 +27,11 @@ help: ## Show this help
 # Installation / setup
 # -----------------------------------------------------------------------------
 install: ## Install runtime dependencies
-	$(PIP) install -r requirements/base.txt
+	$(PIP) install -e .
 
 install-dev: ## Install dev & test dependencies
-	$(PIP) install -r requirements/dev.txt
+	$(PIP) install -e ".[dev]"
 
-install-s3: ## Install optional S3 & GPG deps
-	$(PIP) install -r requirements/s3.txt
 
 # -----------------------------------------------------------------------------
 # Linting & formatting
