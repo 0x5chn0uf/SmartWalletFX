@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = 5432
     POSTGRES_DB: str = "smartwallet_dev"
 
+    # Connection pool settings (only relevant for sync engines or for async
+    # pooling via SQLAlchemy – keep defaults modest for dev/tests).
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
+
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
     def _assemble_db_connection(cls, v: str | None, info):  # noqa: D401
