@@ -11,7 +11,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "0008_add_rbac_abac_fields"
-down_revision = "0007_add_created_at_and_updated_at_to_"
+down_revision = "0007_created_at_and_updated_at"
 branch_labels = None
 depends_on = None
 

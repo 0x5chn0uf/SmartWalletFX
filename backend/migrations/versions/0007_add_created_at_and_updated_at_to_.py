@@ -1,7 +1,7 @@
 """
 Add created_at and updated_at to portfolio_snapshot_cache
 
-Revision ID: 016dd821654a
+Revision ID: 0007_created_at_and_updated_at
 Revises: 0006_add_aggregate_metrics_table
 Create Date: 2025-06-25 09:39:16.662635
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "0007_add_created_at_and_updated_at_to_"
+revision = "0007_created_at_and_updated_at"
 down_revision = "0006_add_aggregate_metrics_table"
 branch_labels = None
 depends_on = None
@@ -172,8 +172,8 @@ def upgrade():
         batch_op.drop_column("extra_metadata")
         batch_op.drop_column("to_address")
         batch_op.drop_column("from_address")
-        batch_op.drop_index(op.f("ix_transactions_from_address"))
-        batch_op.drop_index(op.f("ix_transactions_to_address"))
+    op.execute("DROP INDEX IF EXISTS ix_transactions_from_address")
+    op.execute("DROP INDEX IF EXISTS ix_transactions_to_address")
 
     with op.batch_alter_table("users", schema=None) as batch_op:
         batch_op.alter_column(
