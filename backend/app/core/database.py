@@ -18,15 +18,11 @@ elif db_url.startswith("postgresql://") and "+asyncpg" not in db_url:
     db_url = db_url.replace("postgresql://", "postgresql+asyncpg://")
 SQLALCHEMY_DATABASE_URL = db_url
 
-# Create async engine with appropriate connection args
-connect_args = {}
-if "sqlite" in SQLALCHEMY_DATABASE_URL:
-    connect_args = {"check_same_thread": False}
+# Create async engine. For SQLite we need special 'check_same_thread' arg,
+# for Postgres the dict is empty – SQLAlchemy ignores unknown params.
+connect_args = {"check_same_thread": False} if "sqlite" in SQLALCHEMY_DATABASE_URL else {}
 
-engine = create_async_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args=connect_args,
-)
+engine = create_async_engine(SQLALCHEMY_DATABASE_URL, connect_args=connect_args)
 SessionLocal = async_sessionmaker(
     autocommit=False, autoflush=False, bind=engine, class_=AsyncSession
 )
