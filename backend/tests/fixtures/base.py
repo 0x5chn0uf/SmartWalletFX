@@ -34,7 +34,7 @@ def _make_test_db(tmp_path_factory: pytest.TempPathFactory) -> tuple[str, str]:
 
     import os
     import uuid
-    from sqlalchemy.engine.url import make_url, URL
+    from sqlalchemy.engine.url import make_url, URL  # type: ignore
 
     env_url = os.getenv("TEST_DB_URL")
 
@@ -109,7 +109,33 @@ async def async_engine(tmp_path_factory: pytest.TempPathFactory):
     try:
         yield engine
     finally:
+        # Dispose connections first so Postgres allows DROP DATABASE
         await engine.dispose()
+
+        # Automatic cleanup for PostgreSQL databases created in _make_test_db
+        env_url = os.getenv("TEST_DB_URL")
+
+        if env_url and env_url.startswith("postgresql"):
+            from sqlalchemy.engine.url import make_url, URL  # type: ignore
+
+            url_obj = make_url(env_url)
+            test_db_name = url_obj.database
+
+            # Connect to admin database to DROP the temporary one
+            admin_url: URL = url_obj.set(database="postgres")
+            admin_engine = create_engine(
+                admin_url.render_as_string(hide_password=False)
+            )
+
+            with admin_engine.connect().execution_options(
+                isolation_level="AUTOCOMMIT"
+            ) as conn:
+                try:
+                    conn.execute(_sa.text(f"DROP DATABASE IF EXISTS {test_db_name} WITH (FORCE)"))
+                except Exception:  # pragma: no cover – best-effort cleanup
+                    pass
+
+            admin_engine.dispose()
 
 
 @pytest_asyncio.fixture(scope="session")
