@@ -11,7 +11,7 @@ set -euo pipefail
 # -----------------------------------------------------------------------------
 
 # Define helper to check if a command exists
-command -v docker-compose >/dev/null 2>&1 || {
+command -v docker compose >/dev/null 2>&1 || {
     echo >&2 "docker-compose is required but not installed. Aborting."; exit 1;
 }
 
