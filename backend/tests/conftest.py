@@ -1,9 +1,7 @@
 # flake8: noqa
 
 import asyncio
-import datetime
 import pathlib
-import uuid
 from datetime import timedelta
 
 import pytest
@@ -11,8 +9,6 @@ from fastapi.testclient import TestClient
 from hypothesis import settings
 
 from app.core.database import get_db
-from app.usecase.portfolio_aggregation_usecase import PortfolioMetrics
-from app.utils import security
 
 from .fixtures.auth import *
 from .fixtures.base import *
@@ -22,6 +18,7 @@ from .fixtures.mocks import *
 from .fixtures.portfolio_metrics import *
 from .fixtures.services import *
 from .fixtures.test_data import *
+from .fixtures.usecase import *
 
 ALEMBIC_CONFIG_PATH = str(pathlib.Path(__file__).parent.parent / "alembic.ini")
 
