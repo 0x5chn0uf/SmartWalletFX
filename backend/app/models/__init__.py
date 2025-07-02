@@ -1,6 +1,7 @@
 from app.core.database import Base
 
 from .aggregate_metrics import AggregateMetricsModel
+from .audit_log import AuditLog
 from .group import Group
 from .historical_balance import HistoricalBalance
 from .portfolio_snapshot import PortfolioSnapshot
@@ -29,4 +30,5 @@ __all__ = [
     "Base",
     "RefreshToken",
     "AggregateMetricsModel",
+    "AuditLog",
 ]

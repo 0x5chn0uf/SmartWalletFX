@@ -54,7 +54,7 @@ class PasswordHasher:  # noqa: D101 – simple utility wrapper
 # Password strength validation helpers (unchanged)
 # ---------------------------------------------------------------------------
 
-_PASSWORD_REGEX = re.compile(r"^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*()_+=\-]).{8,100}$")
+_PASSWORD_REGEX = re.compile(r"^(?=.*[A-Za-z])(?=.*\d).{8,100}$")
 
 
 def get_password_hash(password: str) -> str:  # pragma: no cover — legacy alias
