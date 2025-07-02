@@ -1,25 +1,39 @@
 version: "3.9"
 
 # -----------------------------------------------------------------------------
-# CI Compose File
-# ----------------
-# This lightweight compose file builds the backend and frontend images for the
-# GitHub Actions pipeline. It intentionally omits Postgres and Redis because CI
-# tests use SQLite by default and Redis isn't needed for unit/integration
-# suites. If the pipeline later requires external services they can be added as
-# separate jobs or test containers.
+# CI Compose – extends the main docker-compose.yml for parity while applying
+# CI-specific overrides (no live-reload volumes, deterministic build commands).
 # -----------------------------------------------------------------------------
 
 services:
   backend:
-    build:
-      context: ./backend
+    extends:
+      file: docker-compose.yml
+      service: backend
+    # Disable bind mounts, use image built from context for reproducibility
+    volumes: []
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.ci
-    depends_on:
-      - backend
-    ports:
-      - "3000:80"
+    extends:
+      file: docker-compose.yml
+      service: frontend
+    volumes: []
+    # Build static artefacts then serve via the same container for smoke tests
+    command: >-
+      sh -c "npm ci --no-audit --fund=false \
+             && npm run build \
+             && npx serve -s build -l 3000"
+
+  postgres-dev:
+    extends:
+      file: docker-compose.yml
+      service: postgres-dev
+
+  redis:
+    extends:
+      file: docker-compose.yml
+      service: redis
+
+volumes:
+  postgres-dev-data:
