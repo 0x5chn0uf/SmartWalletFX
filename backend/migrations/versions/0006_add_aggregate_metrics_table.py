@@ -19,7 +19,7 @@ depends_on = None
 def upgrade():
     op.create_table(
         "aggregate_metrics",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column("id", sa.UUID(), primary_key=True),
         sa.Column("wallet_id", sa.String(length=64), nullable=False),
         sa.Column("as_of", sa.DateTime(timezone=True), nullable=False),
         sa.Column("tvl", sa.Float(), nullable=False),
