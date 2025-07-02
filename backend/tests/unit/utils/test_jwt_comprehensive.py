@@ -391,9 +391,10 @@ class TestJWTUtils:
         }
         mock_encode.return_value = "header.payload.differentSig"
 
-        result = JWTUtils.decode_token("valid_token.but.wrong.signature")
-
-        assert result["sub"] == "user123"
+        # With the stricter integrity guard in ``JWTUtils.decode_token`` a
+        # mismatched signature must raise ``JWTError``.
+        with pytest.raises(JWTError, match="Signature verification failed"):
+            JWTUtils.decode_token("valid_token.but.wrong.signature")
 
     @patch("app.utils.jwt.settings")
     @patch("app.utils.jwt.jwt.decode")
