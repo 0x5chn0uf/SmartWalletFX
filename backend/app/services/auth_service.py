@@ -95,12 +95,7 @@ class AuthService:
             payload = UserCreate(username=username, email=email, password=password)
 
         # At this point we have a *UserCreate* instance
-
-        # Validate password strength early (defensive programming) — extra
-        # guard even though *UserCreate* validator should have already caught
-        # it.  Keep for paranoia / non-pydantic call-sites.
-        if not security.validate_password_strength(payload.password):
-            raise WeakPasswordError()
+        # Password strength validation is handled by UserCreate's field validator
 
         # Duplicate checks
         if await self._repo.exists(username=payload.username):

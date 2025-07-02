@@ -37,10 +37,10 @@ def log_structured_audit_event(event: AuditEventBase) -> None:
 
     # Add trace_id from context if available and not already set
     try:
-        from structlog.contextvars import get_context
+        from structlog.contextvars import get_contextvars
 
-        ctx = get_context()
-        if ctx and "trace_id" in ctx and not payload.get("trace_id"):
+        ctx = get_contextvars()
+        if ctx and "trace_id" in ctx and payload.get("trace_id") is None:
             payload["trace_id"] = ctx["trace_id"]
     except Exception:  # pragma: no cover
         pass
@@ -73,9 +73,9 @@ def audit(event: str, **extra: Any) -> None:
         **extra,
     }
     try:
-        from structlog.contextvars import get_context
+        from structlog.contextvars import get_contextvars
 
-        ctx = get_context()
+        ctx = get_contextvars()
         if ctx and "trace_id" in ctx:
             payload["trace_id"] = ctx["trace_id"]
     except Exception:  # pragma: no cover – structlog may not be configured
