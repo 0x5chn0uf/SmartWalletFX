@@ -32,3 +32,28 @@ def test_validate_audit_event_rejects_invalid(monkeypatch):
     }
     with pytest.raises(audit_utils.AuditValidationError):
         audit_utils.validate_audit_event(event)
+
+
+def test_validate_audit_event_warn_mode(monkeypatch):
+    monkeypatch.setenv("AUDIT_VALIDATION", "warn")
+    importlib.reload(audit_utils)
+
+    # Invalid event should only warn, not raise
+    event = {
+        "action": "user_login",  # Missing timestamp
+        "result": "success",
+    }
+    with pytest.warns(UserWarning):
+        audit_utils.validate_audit_event(event)
+
+
+def test_validate_audit_event_off_mode(monkeypatch):
+    monkeypatch.setenv("AUDIT_VALIDATION", "off")
+    importlib.reload(audit_utils)
+
+    # Invalid event should not raise or warn
+    event = {
+        "action": "user_login",  # Missing timestamp
+        "result": "success",
+    }
+    audit_utils.validate_audit_event(event)  # Should not raise or warn

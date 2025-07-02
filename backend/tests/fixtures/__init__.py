@@ -33,11 +33,14 @@ Usage:
 from .auth import (
     admin_authenticated_client,
     admin_user,
+    auth_service,
     authenticated_client,
     create_multiple_users,
     create_user_and_wallet,
     create_user_with_tokens,
     inactive_user,
+    mock_refresh_token_repo,
+    mock_user_repo,
     test_user,
     test_user_with_wallet,
 )
@@ -95,7 +98,12 @@ from .test_data import (
     sample_wallet,
     sample_wallet_data,
 )
-from .usecase import historical_balance_usecase, sample_historical_balance_data
+from .usecase import (
+    audit_log_usecase,
+    historical_balance_usecase,
+    mock_audit_repo,
+    sample_historical_balance_data,
+)
 
 __all__ = [
     # Base fixtures
@@ -118,6 +126,9 @@ __all__ = [
     "create_user_and_wallet",
     "create_multiple_users",
     "create_user_with_tokens",
+    "mock_user_repo",
+    "mock_refresh_token_repo",
+    "auth_service",
     # Client fixtures
     "client",
     "async_client",
@@ -155,6 +166,8 @@ __all__ = [
     "historical_balance_usecase",
     "mock_db_session",
     "sample_historical_balance_data",
+    "audit_log_usecase",
+    "mock_audit_repo",
     # Service fixtures
     "portfolio_service",
     "blockchain_service",

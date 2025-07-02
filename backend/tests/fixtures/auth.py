@@ -244,3 +244,45 @@ async def create_user_with_tokens(db_session: AsyncSession):
         return user, wallets
 
     return _factory
+
+
+# Auth service specific fixtures
+@pytest_asyncio.fixture
+def mock_user_repo():
+    """Mock user repository for auth service testing."""
+    from unittest.mock import AsyncMock, Mock
+
+    from app.repositories.user_repository import UserRepository
+
+    repo = Mock(spec=UserRepository)
+    repo.exists = AsyncMock()
+    repo.save = AsyncMock()
+    repo.get_by_username = AsyncMock()
+    repo.get_by_email = AsyncMock()
+    repo._session = AsyncMock()
+    return repo
+
+
+@pytest_asyncio.fixture
+def mock_refresh_token_repo():
+    """Mock refresh token repository for auth service testing."""
+    from unittest.mock import AsyncMock, Mock
+
+    from app.repositories.refresh_token_repository import (
+        RefreshTokenRepository,
+    )
+
+    repo = Mock(spec=RefreshTokenRepository)
+    repo.create_from_jti = AsyncMock()
+    return repo
+
+
+@pytest_asyncio.fixture
+def auth_service(mock_user_repo):
+    """Auth service instance for testing."""
+    from app.services.auth_service import AuthService
+
+    # Create service and manually inject the mock repo
+    service = AuthService(mock_user_repo._session)
+    service._repo = mock_user_repo
+    return service

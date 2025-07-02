@@ -94,7 +94,7 @@ class Policy(BaseModel):
         default=None, description="Attribute name for condition evaluation"
     )
     operator_type: Optional[str] = Field(
-        default=None, description="Operator type (eq, gt, lt, in, exists)"
+        default=None, description="Operator type (eq, gt, lt, gte, lte, in, exists)"
     )
     value: Optional[Any] = Field(default=None, description="Value to compare against")
 
@@ -110,7 +110,7 @@ class Policy(BaseModel):
     def validate_operator_type(cls, v):
         """Validate operator type for conditions."""
         if v is not None:
-            valid_types = ["eq", "gt", "lt", "in", "exists"]
+            valid_types = ["eq", "gt", "lt", "gte", "lte", "in", "exists"]
             if v not in valid_types:
                 raise ValueError(
                     f"Invalid operator type: {v}. Must be one of {valid_types}"

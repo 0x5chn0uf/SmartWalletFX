@@ -6,15 +6,24 @@ import json
 import logging
 import sys
 import types
+from datetime import datetime, timezone
 from io import StringIO
+from unittest.mock import Mock, patch
+from uuid import UUID
 
+import pytest
+from structlog.contextvars import bind_contextvars, clear_contextvars
+
+from app.schemas.audit_log import AuditEventBase
 from app.utils import logging as audit_logging
+from app.utils.audit import AuditValidationError
+from app.utils.logging import audit, log_structured_audit_event
 
 
 def test_audit_logging_includes_trace_id(monkeypatch):
     """Ensure audit() attaches trace_id from structlog contextvars when present."""
 
-    fake_ctx_module = types.SimpleNamespace(get_context=lambda: {"trace_id": "abc"})
+    fake_ctx_module = types.SimpleNamespace(get_contextvars=lambda: {"trace_id": "abc"})
     monkeypatch.setitem(sys.modules, "structlog.contextvars", fake_ctx_module)
 
     stream = StringIO()
@@ -31,3 +40,125 @@ def test_audit_logging_includes_trace_id(monkeypatch):
     assert log_json["action"] == "unit_test"
     assert log_json["trace_id"] == "abc"
     assert log_json["foo"] == 1
+
+
+class TestStructuredAuditLogging:
+    def test_log_structured_audit_event_basic(self, caplog):
+        """Test basic structured audit logging."""
+        caplog.set_level(logging.INFO, logger="audit")
+
+        event = AuditEventBase(
+            id="123", timestamp=datetime.now(timezone.utc), action="test_event"
+        )
+        log_structured_audit_event(event)
+
+        assert len(caplog.records) == 1
+        record = caplog.records[0]
+        assert record.levelname == "INFO"
+        assert record.name == "audit"
+
+        # Verify JSON structure
+        payload = json.loads(record.message)
+        assert payload["id"] == "123"
+        assert payload["action"] == "test_event"
+        assert "timestamp" in payload
+
+    def test_log_structured_audit_event_with_trace_id(self, caplog):
+        """Test structured audit logging with trace ID from context."""
+        caplog.set_level(logging.INFO, logger="audit")
+
+        # Set up trace ID in context
+        bind_contextvars(trace_id="test-trace-123")
+
+        try:
+            # Don't set trace_id in the model to let the logging function pick it up from context
+            event = AuditEventBase(
+                id="123",
+                timestamp=datetime.now(timezone.utc),
+                action="test_event"
+                # trace_id is not set here, should be picked up from context
+            )
+            log_structured_audit_event(event)
+
+            assert len(caplog.records) == 1
+            payload = json.loads(caplog.records[0].message)
+            assert payload["trace_id"] == "test-trace-123"
+        finally:
+            clear_contextvars()
+
+    def test_log_structured_audit_event_validation_failure(self, caplog):
+        """Test handling of validation failures in structured audit logging."""
+        caplog.set_level(logging.INFO, logger="audit")
+
+        # Create an invalid event (missing required fields)
+        with pytest.raises(Exception):
+            # This should fail validation during model creation
+            AuditEventBase(
+                id="123",
+                timestamp=None,  # type: ignore # This will cause validation to fail
+                action="",  # This will cause validation to fail
+            )
+
+
+class TestAuditLogging:
+    def test_audit_basic(self, caplog):
+        """Test basic audit logging."""
+        caplog.set_level(logging.INFO, logger="audit")
+
+        audit("user_action", user_id="123", action_type="login")
+
+        assert len(caplog.records) == 1
+        record = caplog.records[0]
+        assert record.levelname == "INFO"
+        assert record.name == "audit"
+
+        # Verify JSON structure
+        payload = json.loads(record.message)
+        assert payload["action"] == "user_action"
+        assert payload["user_id"] == "123"
+        assert payload["action_type"] == "login"
+        assert "id" in payload
+        assert "timestamp" in payload
+
+        # Verify UUID format
+        UUID(payload["id"])  # Should not raise
+
+    def test_audit_with_trace_id(self, caplog):
+        """Test audit logging with trace ID from context."""
+        caplog.set_level(logging.INFO, logger="audit")
+
+        # Set up trace ID in context
+        bind_contextvars(trace_id="test-trace-123")
+
+        try:
+            audit("test_event")
+
+            assert len(caplog.records) == 1
+            payload = json.loads(caplog.records[0].message)
+            assert payload["trace_id"] == "test-trace-123"
+        finally:
+            clear_contextvars()
+
+    def test_audit_with_validation_failure(self, caplog, monkeypatch):
+        """Test handling of validation failures in audit logging."""
+        caplog.set_level(logging.INFO, logger="audit")
+
+        mock_validate = Mock(side_effect=AuditValidationError("Test validation error"))
+        monkeypatch.setattr("app.utils.logging.validate_audit_event", mock_validate)
+
+        # Create an event that will fail validation
+        with pytest.raises(AuditValidationError):
+            audit("test_event")
+
+    @patch("structlog.contextvars.get_contextvars")
+    def test_audit_with_context_error(self, mock_get_contextvars, caplog):
+        """Test audit logging when context access fails."""
+        caplog.set_level(logging.INFO, logger="audit")
+        mock_get_contextvars.side_effect = Exception("Context error")
+
+        # Should still log without trace ID
+        audit("test_event")
+
+        assert len(caplog.records) == 1
+        payload = json.loads(caplog.records[0].message)
+        assert "trace_id" not in payload
