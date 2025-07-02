@@ -1,26 +1,26 @@
 import uuid
 
 import pytest
-from fastapi.testclient import TestClient
+from httpx import AsyncClient
 from jose import jwt
 
 from app.utils.jwt import JWTUtils
 
 
-def _register_and_login(client: TestClient):
+async def _register_and_login(client: AsyncClient):
     username = f"refreshuser_{uuid.uuid4().hex[:8]}"
     password = "Str0ngP@ssw0rd!"
     email = f"{username}@example.com"
 
     # Register
-    res = client.post(
+    res = await client.post(
         "/auth/register",
         json={"username": username, "email": email, "password": password},
     )
     assert res.status_code == 201
 
     # Login – obtain tokens
-    res = client.post(
+    res = await client.post(
         "/auth/token",
         data={"username": username, "password": password},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
@@ -30,10 +30,13 @@ def _register_and_login(client: TestClient):
     return body["access_token"], body["refresh_token"]
 
 
-def test_refresh_success(client: TestClient):
-    _, refresh_token = _register_and_login(client)
+@pytest.mark.asyncio
+async def test_refresh_success(async_client_with_db: AsyncClient):
+    _, refresh_token = await _register_and_login(async_client_with_db)
 
-    res = client.post("/auth/refresh", json={"refresh_token": refresh_token})
+    res = await async_client_with_db.post(
+        "/auth/refresh", json={"refresh_token": refresh_token}
+    )
     assert res.status_code == 200
     body = res.json()
 
@@ -47,7 +50,10 @@ def test_refresh_success(client: TestClient):
     assert "roles" in payload and payload["roles"]
 
 
-def test_refresh_invalid_token(client: TestClient):
+@pytest.mark.asyncio
+async def test_refresh_invalid_token(async_client_with_db: AsyncClient):
     invalid_token = JWTUtils.create_access_token("123")  # not a refresh token
-    res = client.post("/auth/refresh", json={"refresh_token": invalid_token})
+    res = await async_client_with_db.post(
+        "/auth/refresh", json={"refresh_token": invalid_token}
+    )
     assert res.status_code == 401

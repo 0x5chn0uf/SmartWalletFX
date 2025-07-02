@@ -12,7 +12,7 @@ from __future__ import annotations
 import asyncio
 import time
 from statistics import mean, stdev
-from typing import Any, Callable, Iterable
+from typing import Any, Awaitable, Callable, Iterable
 
 __all__ = [
     "measure_operation_timing",
@@ -39,6 +39,29 @@ class TimingAttackAssertionError(AssertionError):
     """Raised when a timing-based security assertion fails."""
 
 
+async def measure_operation_timing_async(
+    func: Callable[..., Awaitable[Any]],
+    inputs: Iterable[Any],
+    *,
+    iterations: int = 100,
+) -> list[int]:
+    """Return a list of *iterations*×len(inputs) timing measurements in **nanoseconds**.
+
+    The helper executes *func* for each *inputs* value *iterations* times and records
+    the execution time via :pyfunc:`time.perf_counter_ns`.
+    """
+    timings: list[int] = []
+
+    for _ in range(iterations):
+        for value in inputs:
+            start = time.perf_counter_ns()
+            await func(value)
+            end = time.perf_counter_ns()
+            timings.append(end - start)
+
+    return timings
+
+
 def measure_operation_timing(
     func: Callable[..., Any],
     inputs: Iterable[Any],
@@ -50,31 +73,21 @@ def measure_operation_timing(
     The helper executes *func* for each *inputs* value *iterations* times and records
     the execution time via :pyfunc:`time.perf_counter_ns`.
 
-    Both synchronous functions and coroutine functions are supported.  For coroutines
-    we create a dedicated event-loop per measurement to avoid interference.
+    Both synchronous functions and coroutine functions are supported.
     """
+    if asyncio.iscoroutinefunction(func):
+        loop = asyncio.get_event_loop()
+        return loop.run_until_complete(
+            measure_operation_timing_async(func, inputs, iterations=iterations)
+        )
 
     timings: list[int] = []
-    loop = None
-    is_async = asyncio.iscoroutinefunction(func)
-
-    if is_async:
-        # Lazily import asyncio event loop policy once to avoid overhead.
-        loop = asyncio.new_event_loop()
-
-    try:
-        for _ in range(iterations):
-            for value in inputs:
-                start = time.perf_counter_ns()
-                if is_async:
-                    loop.run_until_complete(func(value))
-                else:
-                    func(value)
-                end = time.perf_counter_ns()
-                timings.append(end - start)
-    finally:
-        if loop is not None:
-            loop.close()
+    for _ in range(iterations):
+        for value in inputs:
+            start = time.perf_counter_ns()
+            func(value)
+            end = time.perf_counter_ns()
+            timings.append(end - start)
 
     return timings
 
@@ -180,8 +193,8 @@ def assert_generic_error_response(
         )
 
 
-def assert_no_user_enumeration(
-    auth_func: Callable[[str, str], Any],
+async def assert_no_user_enumeration(
+    auth_func: Callable[[str, str], Awaitable[Any]],
     *,
     valid_user: tuple[str, str],
     invalid_users: Iterable[tuple[str, str]],
@@ -190,28 +203,25 @@ def assert_no_user_enumeration(
 ) -> None:
     """Ensure auth function doesn't leak enumeration info via timing or messages."""
 
-    def _invoke(creds: tuple[str, str]):
+    async def _invoke(creds: tuple[str, str]):
         username, pw = creds
-        res = auth_func(username, pw)
-        if asyncio.iscoroutine(res):
-            return asyncio.get_event_loop().run_until_complete(res)
-        return res
+        return await auth_func(username, pw)
 
     # Check generic error for invalid creds where response-like object
     for creds in invalid_users:
-        resp = _invoke(creds)
+        resp = await _invoke(creds)
         if hasattr(resp, "status_code"):
             assert_generic_error_response(resp, 401, generic_substring="invalid")
 
     valid_time = mean(
-        measure_operation_timing(
+        await measure_operation_timing_async(
             lambda _=None: _invoke(valid_user), [None], iterations=iterations
         )
     )
 
     for creds in invalid_users:
         inval_time = mean(
-            measure_operation_timing(
+            await measure_operation_timing_async(
                 lambda _=None: _invoke(creds), [None], iterations=iterations
             )
         )

@@ -5,6 +5,7 @@ import pathlib
 
 import pytest
 import pytest_asyncio
+import sqlalchemy as _sa
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -12,7 +13,6 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import sessionmaker
-import sqlalchemy as _sa
 
 import app.core.database as db_mod
 from app.models import Base
@@ -56,7 +56,9 @@ def _make_test_db(tmp_path_factory: pytest.TempPathFactory) -> tuple[str, str]:
         # Use sync engine for DDL operations (CREATE DATABASE)
         admin_engine = create_engine(admin_url.render_as_string(hide_password=False))
 
-        with admin_engine.connect().execution_options(isolation_level="AUTOCOMMIT") as conn:
+        with admin_engine.connect().execution_options(
+            isolation_level="AUTOCOMMIT"
+        ) as conn:
             try:
                 conn.execute(_sa.text(f"CREATE DATABASE {test_db_name}"))
             except Exception:  # pragma: no cover – DB already exists or race
@@ -65,7 +67,9 @@ def _make_test_db(tmp_path_factory: pytest.TempPathFactory) -> tuple[str, str]:
         admin_engine.dispose()
 
         # Build async & sync URLs pointing to the *new* database
-        async_url = url_obj.set(database=test_db_name).render_as_string(hide_password=False)
+        async_url = url_obj.set(database=test_db_name).render_as_string(
+            hide_password=False
+        )
 
         if "+asyncpg" not in async_url:
             async_url = async_url.replace("postgresql://", "postgresql+asyncpg://")
@@ -166,6 +170,13 @@ async def test_app(async_engine):
     )
 
     # Reuse existing app instance instead of creating a new one each time
+    # Ensure other modules that imported `engine` directly (e.g., init_db)
+    # use the *patched* engine as well.  Those modules performed
+    # `from app.core.database import engine` at import-time and therefore hold
+    # a separate reference that needs to be updated manually.
+    import app.core.init_db as _init_db_mod
     from app.main import app as _app
+
+    _init_db_mod.engine = db_mod.engine
 
     yield _app
