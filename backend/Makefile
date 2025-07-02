@@ -9,8 +9,12 @@
 #  • Targets are organised by domain (setup, quality, tests, db, runtime, etc.).
 # -----------------------------------------------------------------------------
 
-# Directories / files
-COMPOSE_FILE := ../docker-compose.db.yml
+# -----------------------------------------------------------------------------
+# Docker Compose files – separated for dev & test stacks
+# -----------------------------------------------------------------------------
+
+COMPOSE_FILE_DEV  ?= ../docker-compose.yml
+COMPOSE_FILE_TEST ?= ../docker-compose.test.yml
 
 # Tools & env
 PYTHON := python
@@ -100,14 +104,17 @@ celery-beat: ## Start Celery beat scheduler
 # -----------------------------------------------------------------------------
 # Alembic / database targets
 # -----------------------------------------------------------------------------
+# Development database stack (postgres-dev + redis)
 db-start: ## Start Postgres dev & Redis containers
-	docker compose -f $(COMPOSE_FILE) up -d postgres-dev redis
+	docker compose -f $(COMPOSE_FILE_DEV) up -d postgres-dev redis
 
+# Test database stack (postgres-test + redis)
 db-test: ## Start Postgres test container
-	docker compose -f $(COMPOSE_FILE) up -d postgres-test
+	docker compose -f $(COMPOSE_FILE_TEST) up -d postgres-test redis
 
 db-down: ## Stop & remove DB containers & volumes
-	docker compose -f $(COMPOSE_FILE) down -v
+	docker compose -f $(COMPOSE_FILE_DEV) down -v
+	docker compose -f $(COMPOSE_FILE_TEST) down -v || true
 
 alembic-upgrade: ## Upgrade DB to latest Alembic head
 	PYTHONPATH=. alembic upgrade head

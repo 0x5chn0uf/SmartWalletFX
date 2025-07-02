@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import time
+import asyncio
 from typing import Any
 
 import pytest
@@ -41,20 +41,21 @@ def test_generic_error_response_fails_on_status() -> None:
 
 
 @pytest.mark.security
-def test_no_user_enumeration_passes() -> None:
+@pytest.mark.asyncio
+async def test_no_user_enumeration_passes() -> None:
     """Auth func with constant time and generic error should pass."""
 
     valid_user = ("alice", "correct")
 
-    def auth(username: str, password: str):
+    async def auth(username: str, password: str):
         # constant timing 1ms
-        time.sleep(0.001)
+        await asyncio.sleep(0.001)
         if (username, password) == valid_user:
             return {"token": "ok"}
         return FakeResponse(401, "Invalid credentials")
 
     invalids = [("alice", "wrong"), ("bob", "whatever")]
-    assert_no_user_enumeration(
+    await assert_no_user_enumeration(
         auth_func=auth,
         valid_user=valid_user,
         invalid_users=invalids,
@@ -64,21 +65,22 @@ def test_no_user_enumeration_passes() -> None:
 
 
 @pytest.mark.security
-def test_no_user_enumeration_detects_timing_diff() -> None:
+@pytest.mark.asyncio
+async def test_no_user_enumeration_detects_timing_diff() -> None:
     valid_user = ("alice", "ok")
 
-    def auth(username: str, password: str):
+    async def auth(username: str, password: str):
         # Variable timing: fail fast for invalid users
         if (username, password) == valid_user:
-            time.sleep(0.005)
+            await asyncio.sleep(0.005)
             return {"token": "ok"}
         # shorter
-        time.sleep(0.0001)
+        await asyncio.sleep(0.0001)
         return FakeResponse(401, "Invalid credentials")
 
     invalids = [("alice", "bad")]
     with pytest.raises(TimingAttackAssertionError):
-        assert_no_user_enumeration(
+        await assert_no_user_enumeration(
             auth_func=auth,
             valid_user=valid_user,
             invalid_users=invalids,

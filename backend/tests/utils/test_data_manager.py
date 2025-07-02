@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Literal
 
 import psycopg2
@@ -20,11 +21,16 @@ class TestDataManager:
         """
         Create tables, indexes, and optionally triggers/views for the test DB.
         """
+        # Find the backend directory and construct path from there
+        current_dir = Path(__file__).parent
+        backend_dir = current_dir.parent.parent  # Go up from tests/utils to backend
+
         schema_file = (
-            "backend/tests/fixtures/init.sql"
+            backend_dir / "tests" / "fixtures" / "init.sql"
             if size == "small"
-            else "backend/tests/fixtures/large_dataset.sql"
+            else backend_dir / "tests" / "fixtures" / "large_dataset.sql"
         )
+
         with open(schema_file, "r") as f:
             sql = f.read()
         with psycopg2.connect(db_url) as conn:

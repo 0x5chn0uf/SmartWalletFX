@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "0004_add_refresh_tokens_table"
-down_revision: Union[str, None] = "0003_rename_password_hash_to_hashed_password"
+down_revision: Union[str, None] = "0003_hashed_password"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

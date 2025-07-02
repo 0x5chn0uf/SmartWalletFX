@@ -34,12 +34,45 @@ target_metadata = Base.metadata  # Set to Base.metadata for autogenerate
 
 
 def get_url():
+    """Return a *synchronous* SQLAlchemy URL for Alembic.
+
+    The resolution order is:
+
+    1. ``DATABASE_URL`` env var
+    2. ``TEST_DB_URL`` env var (used by pytest/docker-compose.test.yml)
+    3. Assemble from Postgres component env vars with sensible defaults.
+
+    The function also **normalises** the value so it is *sync-driver* friendly –
+    meaning any ``+asyncpg`` or ``+aiosqlite`` suffixes are stripped, because
+    Alembic's synchronous engine creation paths cannot work with async
+    dialects.
+    """
+
     import os
 
-    return os.environ.get(
-        "TEST_DB_URL",
-        "postgresql+asyncpg://devuser:devpass@postgres-dev:5432/smartwallet_dev",
-    )
+    url: str | None = os.getenv("DATABASE_URL") or os.getenv("TEST_DB_URL")
+
+    if not url:
+        # Assemble from individual env vars (defaults mirror .env.example)
+        user = os.getenv("POSTGRES_USER", "devuser")
+        password = os.getenv("POSTGRES_PASSWORD", "devpass")
+        server = os.getenv("POSTGRES_SERVER", "postgres-dev")
+        port = os.getenv("POSTGRES_PORT", "5432")
+        db = os.getenv("POSTGRES_DB", "smartwallet_dev")
+
+        url = f"postgresql://{user}:{password}@{server}:{port}/{db}"
+
+    # ------------------------------------------------------------------
+    # Normalise: Alembic uses synchronous SQLAlchemy engines; strip async
+    # driver markers so psycopg2 / default SQLite drivers are used.
+    # ------------------------------------------------------------------
+
+    if "+asyncpg" in url:
+        url = url.replace("+asyncpg", "")
+    if "+aiosqlite" in url:
+        url = url.replace("+aiosqlite", "")
+
+    return url
 
 
 def run_migrations_offline() -> None:

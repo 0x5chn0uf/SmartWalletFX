@@ -12,10 +12,29 @@ def test_config():
     Session-scoped test configuration.
     Provides centralized configuration for all test fixtures.
     """
+    # ------------------------------------------------------------------
+    # Database configuration – allow overriding via TEST_DB_URL so the
+    # test-suite can seamlessly switch between the default in-memory
+    # SQLite database and an external Postgres instance when running
+    # inside Docker / CI.  We derive the *sync* URL from the async one
+    # by stripping the async driver suffix ("+asyncpg" or "+aiosqlite").
+    # ------------------------------------------------------------------
+
+    async_db_url = os.environ.get("TEST_DB_URL", "sqlite+aiosqlite:///:memory:")
+
+    if "+asyncpg" in async_db_url:
+        sync_db_url = async_db_url.replace("+asyncpg", "")
+    elif "+aiosqlite" in async_db_url:
+        sync_db_url = async_db_url.replace("+aiosqlite", "")
+    else:
+        # Fallback – best-effort conversion; for Postgres this yields a
+        # psycopg2 connection string, for SQLite it is identical.
+        sync_db_url = async_db_url
+
     return {
         "database": {
-            "url": "sqlite+aiosqlite:///:memory:",
-            "sync_url": "sqlite:///:memory:",
+            "url": async_db_url,
+            "sync_url": sync_db_url,
             "echo": False,
         },
         "auth": {
@@ -46,6 +65,9 @@ def mock_settings(monkeypatch, test_config):
     # Mock database settings
     monkeypatch.setenv("DATABASE_URL", test_config["database"]["url"])
     monkeypatch.setenv("SYNC_DATABASE_URL", test_config["database"]["sync_url"])
+    # Expose the async URL via TEST_DB_URL which is consumed by Alembic
+    # (see backend/migrations/env.py) and some fixtures.
+    monkeypatch.setenv("TEST_DB_URL", test_config["database"]["url"])
 
     # Mock authentication settings
     monkeypatch.setenv("JWT_SECRET_KEY", test_config["auth"]["jwt_secret"])
