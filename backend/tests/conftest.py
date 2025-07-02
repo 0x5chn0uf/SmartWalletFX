@@ -16,6 +16,7 @@ from app.utils import security
 
 from .fixtures.auth import *
 from .fixtures.base import *
+from .fixtures.client import *
 from .fixtures.database import *
 from .fixtures.mocks import *
 from .fixtures.portfolio_metrics import *
@@ -103,3 +104,37 @@ def client(db_session: "AsyncSession", test_app):  # type: ignore[name-defined]
 
     # Clean up to avoid cross-test interference.
     test_app.dependency_overrides.pop(get_db, None)
+
+
+# --------------------------------------------------------------------
+# SQLite compatibility patches
+# --------------------------------------------------------------------
+
+# Our Alembic migrations define `server_default=sa.text("timezone('utc', now())")`
+# for timestamp columns. When the unit-test suite runs against an **in-memory**
+# SQLite database the `timezone` SQL function obviously does not exist which
+# leads to ``OperationalError: unknown function: timezone`` at INSERT time.
+#
+# We register a *no-op* implementation so that SQLite simply returns the
+# supplied timestamp unmodified.
+
+import sqlalchemy as _sa
+
+
+@_sa.event.listens_for(_sa.engine.Engine, "connect")
+def _register_sqlite_timezone_function(dbapi_conn, connection_record):  # noqa: D401
+    """Create a stub ``timezone(text, datetime)`` function for SQLite."""
+
+    try:
+        import sqlite3
+
+        import aiosqlite
+
+        if isinstance(dbapi_conn, sqlite3.Connection):
+            dbapi_conn.create_function("timezone", 2, lambda tz, ts: ts)
+        elif isinstance(dbapi_conn, aiosqlite.Connection):  # type: ignore[attr-defined]
+            dbapi_conn.create_function("timezone", 2, lambda tz, ts: ts)
+    except Exception:  # pragma: no cover – defensive safeguard
+        # Fail silently – the function is best-effort; tests relying on
+        # Postgres semantics should use a dedicated database fixture.
+        pass

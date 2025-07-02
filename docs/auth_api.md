@@ -276,4 +276,82 @@ Tokens issued by the authentication service now include a `kid` header
 identifying the signing key. No client changes are required—verification is
 handled server-side. Operational details: see `docs/auth_key_rotation.md`.
 
+## Audit Logs – `GET /audit-logs`
+
+The platform records **every create / update / delete** operation on
+persistent entities (users, wallets, tokens, …) in a dedicated
+`audit_logs` table. A lightweight SQLAlchemy _after-flush_ listener
+(`app.utils.audit.on_after_flush`) captures the change-set
+server-side – there is **no** need for individual services to call the
+repository manually.
+
+### Automatic DB Listener
+
+- Trigger: SQLAlchemy `Session.after_flush` event (executed once per
+  transaction).
+- Behaviour: For each INSERT / UPDATE / DELETE the listener extracts
+  the **entity type**, **primary-key**, the **operation** and the
+  JSON-serialised **changes** (diff of dirty columns). The entry is
+  inserted in the same transaction so the audit log is **atomic**
+  with the business change.
+- Attribution: The listener attempts to resolve the _current user_; if
+  unavailable the event is attributed to the special `"system"`
+  principal. For user-CRUD the entry is self-referential (user ID =
+  entity ID).
+
+### Endpoint
+
+| Method | Path          | Auth           | Description                         |
+| ------ | ------------- | -------------- | ----------------------------------- |
+| `GET`  | `/audit-logs` | Bearer (admin) | Paginated list of audit log entries |
+
+#### Query Parameters
+
+| Name        | Type   | Default | Description                            |
+| ----------- | ------ | ------- | -------------------------------------- |
+| `limit`     | int    | `50`    | Max number of entries to return        |
+| `offset`    | int    | `0`     | Cursor for pagination                  |
+| `entity_id` | UUID   | –       | Filter on a specific entity instance   |
+| `user_id`   | UUID   | –       | Filter by actor (who performed change) |
+| `op`        | string | –       | `create` / `update` / `delete`         |
+
+#### Success Response – 200 OK
+
+`application/json`
+
+```json
+{
+  "data": [
+    {
+      "id": "58f38d34-8c5f-4b46-9d73-cc2950d7e7d7",
+      "timestamp": "2025-07-02T09:12:34.567Z",
+      "entity_type": "users",
+      "entity_id": "c36afcb8-7074-49dd-b046-979fbc73b280",
+      "operation": "update",
+      "user_id": "c36afcb8-7074-49dd-b046-979fbc73b280",
+      "changes": { "email": ["old@example.com", "new@example.com"] }
+    }
+  ],
+  "next_offset": 50
+}
+```
+
+### RBAC & Security
+
+- **Admins only** – Access is restricted to users with `admin` role. All
+  other roles receive **403 Forbidden**.
+- **Read-only** – The endpoint allows **listing** only; no mutating
+  operations are exposed.
+- **PII** – Audit records may include sensitive data (email addresses,
+  wallet addresses). Handle with care & never expose publicly.
+
+### Data Retention
+
+Audit logs are retained for **90 days** in production. A daily Celery
+cleanup task purges records older than this threshold. The period can
+be changed via `AUDIT_LOG_RETENTION_DAYS` env-var.
+
+> ℹ️ Regulatory requirements may dictate longer retention periods –
+> configure accordingly in regulated environments.
+
 ---
