@@ -60,9 +60,7 @@ class Settings(BaseSettings):
         port = values.get("POSTGRES_PORT")
         db = values.get("POSTGRES_DB")
 
-        return (
-            f"postgresql+asyncpg://{user}:{password}@{server}:{port}/{db}"
-        )
+        return f"postgresql+asyncpg://{user}:{password}@{server}:{port}/{db}"
 
     # External APIs
     ALCHEMY_API_KEY: Optional[str] = None

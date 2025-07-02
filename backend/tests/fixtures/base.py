@@ -34,7 +34,8 @@ def _make_test_db(tmp_path_factory: pytest.TempPathFactory) -> tuple[str, str]:
 
     import os
     import uuid
-    from sqlalchemy.engine.url import make_url, URL  # type: ignore
+
+    from sqlalchemy.engine.url import URL, make_url  # type: ignore
 
     env_url = os.getenv("TEST_DB_URL")
 
@@ -120,7 +121,7 @@ async def async_engine(tmp_path_factory: pytest.TempPathFactory):
         env_url = os.getenv("TEST_DB_URL")
 
         if env_url and env_url.startswith("postgresql"):
-            from sqlalchemy.engine.url import make_url, URL  # type: ignore
+            from sqlalchemy.engine.url import URL, make_url  # type: ignore
 
             url_obj = make_url(env_url)
             test_db_name = url_obj.database
@@ -135,7 +136,9 @@ async def async_engine(tmp_path_factory: pytest.TempPathFactory):
                 isolation_level="AUTOCOMMIT"
             ) as conn:
                 try:
-                    conn.execute(_sa.text(f"DROP DATABASE IF EXISTS {test_db_name} WITH (FORCE)"))
+                    conn.execute(
+                        _sa.text(f"DROP DATABASE IF EXISTS {test_db_name} WITH (FORCE)")
+                    )
                 except Exception:  # pragma: no cover – best-effort cleanup
                     pass
 

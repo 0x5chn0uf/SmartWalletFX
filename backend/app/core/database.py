@@ -20,7 +20,9 @@ SQLALCHEMY_DATABASE_URL = db_url
 
 # Create async engine. For SQLite we need special 'check_same_thread' arg,
 # for Postgres the dict is empty – SQLAlchemy ignores unknown params.
-connect_args = {"check_same_thread": False} if "sqlite" in SQLALCHEMY_DATABASE_URL else {}
+connect_args = (
+    {"check_same_thread": False} if "sqlite" in SQLALCHEMY_DATABASE_URL else {}
+)
 
 # For Postgres we tune the pool size based on settings; SQLite keeps default.
 pool_kwargs = {}

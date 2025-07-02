@@ -2,9 +2,9 @@
 
 import pytest
 import pytest_asyncio
+import sqlalchemy as _sa
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import sessionmaker
-import sqlalchemy as _sa
 
 
 @pytest_asyncio.fixture
