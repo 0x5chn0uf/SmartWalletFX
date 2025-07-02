@@ -18,15 +18,17 @@ The helper ``assert_no_user_enumeration`` verifies that:
 from __future__ import annotations
 
 import pytest
-from fastapi.testclient import TestClient
+from httpx import AsyncClient
 
 from tests.utils.security_testing import assert_no_user_enumeration
 
 pytestmark = [pytest.mark.security]
 
 
-@pytest.mark.usefixtures("client")
-def test_auth_token_endpoint_no_user_enumeration(client: TestClient) -> None:  # type: ignore[override]
+@pytest.mark.asyncio
+async def test_auth_token_endpoint_no_user_enumeration(
+    async_client_with_db: AsyncClient,
+) -> None:
     """Register a user and assert /auth/token resists enumeration leaks."""
 
     username = "timing_user"
@@ -34,7 +36,7 @@ def test_auth_token_endpoint_no_user_enumeration(client: TestClient) -> None:  #
     email = f"{username}@example.com"
 
     # 1️⃣  Register valid user
-    res = client.post(
+    res = await async_client_with_db.post(
         "/auth/register",
         json={"username": username, "email": email, "password": password},
     )
@@ -45,9 +47,9 @@ def test_auth_token_endpoint_no_user_enumeration(client: TestClient) -> None:  #
 
     login_rate_limiter.max_attempts = 1000  # Fixture will restore afterward
 
-    # 2️⃣  Helper that calls /auth/token synchronously (TestClient is sync) and returns the Response
-    def _auth_call(user: str, pwd: str):
-        return client.post(
+    # 2️⃣  Helper that calls /auth/token asynchronously
+    async def _auth_call(user: str, pwd: str):
+        return await async_client_with_db.post(
             "/auth/token",
             data={"username": user, "password": pwd},
             headers={"Content-Type": "application/x-www-form-urlencoded"},
@@ -62,7 +64,7 @@ def test_auth_token_endpoint_no_user_enumeration(client: TestClient) -> None:  #
 
     # 4️⃣  Run timing/assertion helper (lower iterations for CI speed, relaxed threshold)
     #     The helper will raise TimingAttackAssertionError if a leak is detected.
-    assert_no_user_enumeration(
+    await assert_no_user_enumeration(
         _auth_call,
         valid_user=valid_creds,
         invalid_users=invalid_creds,

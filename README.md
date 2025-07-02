@@ -142,7 +142,7 @@ Copy `backend/.env.example` to `backend/.env` and configure:
 - **Database Settings**: PostgreSQL connection details
 - **JWT Secrets**: For secure authentication
 
-> **Note**: The application works out-of-the-box with SQLite for development. PostgreSQL is recommended for production deployments.
+> **Note**: SmartWalletFX now defaults to **PostgreSQL** for both local development and tests. SQLite is only used as an emergency fallback when Postgres isn't available.
 
 ---
 
@@ -249,3 +249,13 @@ Our mission is to democratize access to sophisticated financial tools while main
 ---
 
 **Built with ❤️ for the DeFi community**
+
+### One-liner Dev Setup (hot-reload)
+
+Want code-reload on every save? Use the Makefile helper which spawns Postgres & Redis via Docker **once** then starts the backend & frontend in watch-mode:
+
+```bash
+make start      # or ./scripts/start_dev.sh
+```
+
+Open http://localhost:3000 and start hacking – any change in `backend/` or `frontend/` will instantly reload.

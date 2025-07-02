@@ -14,10 +14,53 @@ class Settings(BaseSettings):
         "http://localhost:3000",
     ]  # React default port
 
-    # Database
-    DATABASE_URL: str = (
-        "postgresql+asyncpg://devuser:devpass@postgres-dev:5432/smartwallet_dev"
-    )
+    # ------------------------------------------------------------------
+    # Database – assemble DATABASE_URL from individual parts when not
+    # provided explicitly.  This mirrors the pattern recommended by the
+    # FastAPI SQLAlchemy guides and makes it trivial for developers to
+    # override *either* the complete connection string (e.g. via a cloud
+    # secret) *or* individual bits such as user/password while retaining
+    # sensible defaults for local development.
+    # ------------------------------------------------------------------
+
+    # Full connection string takes precedence if defined in the environment
+    DATABASE_URL: str | None = None
+
+    # Individual components (used when DATABASE_URL is missing)
+    POSTGRES_USER: str = "devuser"
+    POSTGRES_PASSWORD: str = "devpass"
+    POSTGRES_SERVER: str = "postgres-dev"  # host name in docker-compose
+    POSTGRES_PORT: int = 5432
+    POSTGRES_DB: str = "smartwallet_dev"
+
+    # Connection pool settings (only relevant for sync engines or for async
+    # pooling via SQLAlchemy – keep defaults modest for dev/tests).
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def _assemble_db_connection(cls, v: str | None, info):  # noqa: D401
+        """Return a fully qualified SQLAlchemy *async* URL.
+
+        The value precedence is:
+
+        1. Explicit ``DATABASE_URL`` env var / .env (if *truthy*)
+        2. Assemble from individual POSTGRES_* components.
+        """
+
+        if v:  # explicit full DSN wins
+            return v
+
+        values = info.data  # current field values collected by Pydantic
+
+        user = values.get("POSTGRES_USER")
+        password = values.get("POSTGRES_PASSWORD")
+        server = values.get("POSTGRES_SERVER")
+        port = values.get("POSTGRES_PORT")
+        db = values.get("POSTGRES_DB")
+
+        return f"postgresql+asyncpg://{user}:{password}@{server}:{port}/{db}"
 
     # External APIs
     ALCHEMY_API_KEY: Optional[str] = None

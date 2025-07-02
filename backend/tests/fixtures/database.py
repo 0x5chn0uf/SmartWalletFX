@@ -2,6 +2,7 @@
 
 import pytest
 import pytest_asyncio
+import sqlalchemy as _sa
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import sessionmaker
 
@@ -98,8 +99,9 @@ async def clean_db_session():
         await session.begin()
 
         # Clean up any existing data
-        for table in reversed(engine.table_names()):
-            await session.execute(f"DELETE FROM {table}")
+        insp = _sa.inspect(engine)
+        for table in reversed(insp.get_table_names()):
+            await session.execute(_sa.text(f"DELETE FROM {table}"))
 
         try:
             yield session
@@ -120,8 +122,9 @@ def clean_sync_session():
     transaction = session.begin()
 
     # Clean up any existing data
-    for table in reversed(sync_engine.table_names()):
-        session.execute(f"DELETE FROM {table}")
+    insp_sync = _sa.inspect(sync_engine)
+    for table in reversed(insp_sync.get_table_names()):
+        session.execute(_sa.text(f"DELETE FROM {table}"))
 
     try:
         yield session

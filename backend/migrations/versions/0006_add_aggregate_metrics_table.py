@@ -2,12 +2,11 @@
 
 Revision ID: 0006_add_aggregate_metrics_table
 Revises: 0005_wallet_schema_updates
-Create Date: 2025-06-24
-"""
+Create Date: 2024-03-19 10:00:00.000000
 
+"""
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = "0006_add_aggregate_metrics_table"
@@ -16,22 +15,25 @@ branch_labels = None
 depends_on = None
 
 
-def upgrade():
+def upgrade() -> None:
     op.create_table(
         "aggregate_metrics",
         sa.Column("id", sa.UUID(), primary_key=True),
-        sa.Column("wallet_id", sa.String(length=64), nullable=False),
-        sa.Column("as_of", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("tvl", sa.Float(), nullable=False),
-        sa.Column("total_borrowings", sa.Float(), nullable=False),
-        sa.Column("aggregate_apy", sa.Float(), nullable=True),
-        sa.Column("positions", sa.JSON(), nullable=False),
+        sa.Column("wallet_id", sa.UUID(), nullable=False),
+        sa.Column("metric_type", sa.String(length=50), nullable=False),
+        sa.Column("value", sa.Float(), nullable=False),
+        sa.Column("timestamp", sa.DateTime(), nullable=False),
+        sa.Column("metadata", sa.JSON(), nullable=True),
     )
+
     op.create_index(
-        "ix_aggregate_metrics_wallet_id", "aggregate_metrics", ["wallet_id"]
+        op.f("ix_aggregate_metrics_wallet_id"),
+        "aggregate_metrics",
+        ["wallet_id"],
+        unique=False,
     )
 
 
-def downgrade():
-    op.drop_index("ix_aggregate_metrics_wallet_id", table_name="aggregate_metrics")
+def downgrade() -> None:
+    op.execute("DROP INDEX IF EXISTS ix_aggregate_metrics_wallet_id")
     op.drop_table("aggregate_metrics")

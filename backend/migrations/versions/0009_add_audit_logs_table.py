@@ -21,12 +21,12 @@ def upgrade() -> None:  # noqa: D401
 
     op.create_table(
         "audit_logs",
-        sa.Column("id", sa.BigInteger(), primary_key=True, autoincrement=True),
+        sa.Column("id", sa.UUID(), primary_key=True),
         sa.Column("entity_type", sa.String(length=50), nullable=False),
-        sa.Column("entity_id", postgresql.UUID(), nullable=False),
+        sa.Column("entity_id", sa.UUID(), nullable=False),
         sa.Column("operation", sa.String(length=20), nullable=False),
-        sa.Column("user_id", postgresql.UUID(), nullable=False),
-        sa.Column("changes", sa.JSON(), nullable=True),
+        sa.Column("user_id", sa.UUID(), nullable=False),
+        sa.Column("changes", postgresql.JSONB(), nullable=True),
         sa.Column("metadata", sa.JSON(), nullable=True),
         sa.Column(
             "timestamp",
@@ -52,9 +52,9 @@ def upgrade() -> None:  # noqa: D401
 def downgrade() -> None:  # noqa: D401
     """Drop audit_logs table and indexes."""
 
-    op.drop_index("idx_audit_logs_changes_gin", table_name="audit_logs")
-    op.drop_index("idx_audit_logs_operation", table_name="audit_logs")
-    op.drop_index("idx_audit_logs_timestamp", table_name="audit_logs")
-    op.drop_index("idx_audit_logs_user", table_name="audit_logs")
-    op.drop_index("idx_audit_logs_entity", table_name="audit_logs")
+    op.execute("DROP INDEX IF EXISTS idx_audit_logs_changes_gin")
+    op.execute("DROP INDEX IF EXISTS idx_audit_logs_operation")
+    op.execute("DROP INDEX IF EXISTS idx_audit_logs_timestamp")
+    op.execute("DROP INDEX IF EXISTS idx_audit_logs_user")
+    op.execute("DROP INDEX IF EXISTS idx_audit_logs_entity")
     op.drop_table("audit_logs")

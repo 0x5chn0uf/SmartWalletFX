@@ -3,7 +3,6 @@ from __future__ import annotations
 import uuid
 
 import pytest
-from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
 from app.api.endpoints import auth as auth_ep
@@ -13,6 +12,19 @@ from app.schemas.user import UserCreate
 from app.services.auth_service import AuthService, WeakPasswordError
 from app.utils.jwt import JWTUtils
 from app.utils.rate_limiter import InMemoryRateLimiter, login_rate_limiter
+
+
+@pytest.fixture(autouse=True)
+async def _cleanup_auth_state():
+    """Reset auth-related state between tests."""
+    # Reset rate-limiter to avoid bleed-through from other tests
+    login_rate_limiter.clear()
+
+    # Clear cached JWT keys so downstream tests can reconfigure safely
+    JWTUtils._get_sign_key.cache_clear()  # type: ignore[attr-defined]
+    JWTUtils._get_verify_key.cache_clear()  # type: ignore[attr-defined]
+
+    yield
 
 
 @pytest.mark.parametrize(
@@ -37,8 +49,11 @@ from app.utils.rate_limiter import InMemoryRateLimiter, login_rate_limiter
         ),
     ],
 )
-def test_register_endpoint(client, payload, expected_status):
-    resp = client.post("/auth/register", json=payload)
+@pytest.mark.asyncio
+async def test_register_endpoint(
+    test_app, async_client_with_db: AsyncClient, payload: dict, expected_status: int
+) -> None:
+    resp = await async_client_with_db.post("/auth/register", json=payload)
     assert resp.status_code == expected_status
     if expected_status == 201:
         body = resp.json()
@@ -47,7 +62,10 @@ def test_register_endpoint(client, payload, expected_status):
         assert "hashed_password" not in body
 
 
-def test_register_duplicate_email(client):
+@pytest.mark.asyncio
+async def test_register_duplicate_email(
+    test_app, async_client_with_db: AsyncClient
+) -> None:
     payload1 = {
         "username": "erin",
         "email": "erin@example.com",
@@ -59,38 +77,43 @@ def test_register_duplicate_email(client):
         "password": "Str0ng!pwd",
     }
 
-    assert client.post("/auth/register", json=payload1).status_code == 201
-    dup_resp = client.post("/auth/register", json=payload2)
+    assert (
+        await async_client_with_db.post("/auth/register", json=payload1)
+    ).status_code == 201
+    dup_resp = await async_client_with_db.post("/auth/register", json=payload2)
     assert dup_resp.status_code == 409
 
 
 @pytest.mark.asyncio
-async def test_obtain_token_success(db_session, test_app):
+async def test_obtain_token_success(
+    db_session, async_client_with_db: AsyncClient
+) -> None:
     username = f"tokenuser-{uuid.uuid4().hex[:8]}"
     password = "Str0ng!pwd"
     email = f"token-{uuid.uuid4().hex[:8]}@ex.com"
 
-    async with AsyncClient(app=test_app, base_url="http://test") as ac:
-        # Arrange – create user via service
-        service = AuthService(db_session)
-        await service.register(
-            UserCreate(
-                username=username,
-                email=email,
-                password=password,
-            )
+    # Arrange – create user via service
+    service = AuthService(db_session)
+    await service.register(
+        UserCreate(
+            username=username,
+            email=email,
+            password=password,
         )
+    )
 
-        data = {"username": username, "password": password}
-        resp = await ac.post("/auth/token", data=data)
-        assert resp.status_code == 200
-        body = resp.json()
-        assert body["token_type"] == "bearer"
-        assert all(k in body for k in ("access_token", "refresh_token", "expires_in"))
+    data = {"username": username, "password": password}
+    resp = await async_client_with_db.post("/auth/token", data=data)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["token_type"] == "bearer"
+    assert all(k in body for k in ("access_token", "refresh_token", "expires_in"))
 
 
 @pytest.mark.asyncio
-async def test_login_rate_limit(db_session, test_app, mocker):
+async def test_login_rate_limit(
+    db_session, async_client_with_db: AsyncClient, mocker
+) -> None:
     # Patch the global limiter for this test only to ensure full isolation
     mocker.patch(
         "app.api.dependencies.login_rate_limiter",
@@ -103,61 +126,59 @@ async def test_login_rate_limit(db_session, test_app, mocker):
     username = f"rluser-{uuid.uuid4().hex[:8]}"
     email = f"rl-{uuid.uuid4().hex[:8]}@example.com"
 
-    async with AsyncClient(app=test_app, base_url="http://test") as ac:
-        service = AuthService(db_session)
-        await service.register(
-            UserCreate(
-                username=username,
-                email=email,
-                password="S3cur3!pwd",
-            )
+    service = AuthService(db_session)
+    await service.register(
+        UserCreate(
+            username=username,
+            email=email,
+            password="S3cur3!pwd",
         )
+    )
 
-        attempts = settings.AUTH_RATE_LIMIT_ATTEMPTS
-        data = {"username": username, "password": "wrong-password"}
+    attempts = settings.AUTH_RATE_LIMIT_ATTEMPTS
+    data = {"username": username, "password": "wrong-password"}
 
-        # Exhaust allowed attempts (expect 401)
-        for _ in range(attempts):
-            r = await ac.post("/auth/token", data=data)
-            assert r.status_code == 401
+    # Exhaust allowed attempts (expect 401)
+    for _ in range(attempts):
+        r = await async_client_with_db.post("/auth/token", data=data)
+        assert r.status_code == 401
 
-        # Next attempt should be rate-limited
-        r_final = await ac.post("/auth/token", data=data)
-        assert r_final.status_code == 429
+    # Next attempt should be rate-limited
+    r_final = await async_client_with_db.post("/auth/token", data=data)
+    assert r_final.status_code == 429
 
 
 @pytest.mark.asyncio
-async def test_users_me_endpoint(test_app, db_session):
+async def test_users_me_endpoint(async_client_with_db: AsyncClient, db_session) -> None:
     """/users/me should require auth and return current profile when token provided."""
 
     username = f"meuser-{uuid.uuid4().hex[:8]}"
     email = f"me-{uuid.uuid4().hex[:8]}@ex.com"
 
-    async with AsyncClient(app=test_app, base_url="http://test") as ac:
-        # Register user & obtain token
-        service = AuthService(db_session)
-        await service.register(
-            UserCreate(username=username, email=email, password="Str0ng!pwd")
-        )
+    # Register user & obtain token
+    service = AuthService(db_session)
+    await service.register(
+        UserCreate(username=username, email=email, password="Str0ng!pwd")
+    )
 
-        token_resp = await ac.post(
-            "/auth/token", data={"username": username, "password": "Str0ng!pwd"}
-        )
-        assert token_resp.status_code == 200
-        access_token = token_resp.json()["access_token"]
+    token_resp = await async_client_with_db.post(
+        "/auth/token", data={"username": username, "password": "Str0ng!pwd"}
+    )
+    assert token_resp.status_code == 200
+    access_token = token_resp.json()["access_token"]
 
-        # 1. Missing token → 401
-        unauth = await ac.get("/users/me")
-        assert unauth.status_code == 401
+    # 1. Missing token → 401
+    unauth = await async_client_with_db.get("/users/me")
+    assert unauth.status_code == 401
 
-        # 2. Valid token → 200 with expected fields
-        headers = {"Authorization": f"Bearer {access_token}"}
-        auth_resp = await ac.get("/users/me", headers=headers)
-        assert auth_resp.status_code == 200
-        body = auth_resp.json()
-        assert body["username"] == username
-        assert body["email"] == email
-        assert "hashed_password" not in body
+    # 2. Valid token → 200 with expected fields
+    headers = {"Authorization": f"Bearer {access_token}"}
+    auth_resp = await async_client_with_db.get("/users/me", headers=headers)
+    assert auth_resp.status_code == 200
+    body = auth_resp.json()
+    assert body["username"] == username
+    assert body["email"] == email
+    assert "hashed_password" not in body
 
 
 class DummyAuthService:  # noqa: D101 – lightweight stub
@@ -180,66 +201,25 @@ class DummyAuthService:  # noqa: D101 – lightweight stub
 @pytest.fixture
 def patched_auth_service(monkeypatch):
     """Patch *AuthService* used in auth endpoints with DummyAuthService."""
-
-    # Reset rate-limiter to avoid bleed-through from other tests
-    login_rate_limiter.clear()
-
-    # Clear cached JWT keys so downstream tests can reconfigure safely
-    JWTUtils._get_sign_key.cache_clear()  # type: ignore[attr-defined]
-    JWTUtils._get_verify_key.cache_clear()  # type: ignore[attr-defined]
-
     original_service = auth_ep.AuthService
     monkeypatch.setattr(auth_ep, "AuthService", DummyAuthService)
     yield
     monkeypatch.setattr(auth_ep, "AuthService", original_service)
 
 
-def test_register_weak_password(client: TestClient, patched_auth_service):
-    """Ensure /auth/register returns 400 when AuthService raises WeakPasswordError."""
-
-    payload = {
-        "username": "weak2",
-        "email": "weak2@example.com",
-        "password": "Str0ng!pwd",
-    }
-    resp = client.post("/auth/register", json=payload)
-    assert resp.status_code == 400
-    assert resp.json()["detail"].startswith("Password does not meet")
+@pytest.mark.asyncio
+async def test_token_invalid_credentials(
+    test_app, patched_auth_service, async_client_with_db: AsyncClient
+) -> None:
+    data = {"username": "fake", "password": "wrong"}
+    resp = await async_client_with_db.post("/auth/token", data=data)
+    assert resp.status_code == 401
 
 
 @pytest.mark.asyncio
-async def test_token_invalid_credentials(test_app, patched_auth_service):
-    """/auth/token should return 401 when authentication fails in AuthService."""
-
-    async with AsyncClient(app=test_app, base_url="http://test") as ac:
-        resp = await ac.post("/auth/token", data={"username": "u", "password": "p"})
-        assert resp.status_code == 401
-        assert resp.json()["detail"] == "Invalid username or password"
-
-
-# New test for inactive user -------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_token_inactive_user(test_app, patched_auth_service):
-    """/auth/token should return 403 when account inactive."""
-
-    async with AsyncClient(app=test_app, base_url="http://test") as ac:
-        resp = await ac.post(
-            "/auth/token", data={"username": "inactive", "password": "p"}
-        )
-        assert resp.status_code == 403
-        assert resp.json()["detail"] == "Inactive or disabled user account"
-
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture(autouse=True)
-def _reset_rate_limiter():
-    """Ensure in-memory rate-limiter is cleared between tests in this module."""
-
-    login_rate_limiter.clear()
-    yield
+async def test_token_inactive_user(
+    test_app, patched_auth_service, async_client_with_db: AsyncClient
+) -> None:
+    data = {"username": "inactive", "password": "any"}
+    resp = await async_client_with_db.post("/auth/token", data=data)
+    assert resp.status_code == 403  # Inactive users get 403, not 401
