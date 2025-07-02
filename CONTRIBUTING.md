@@ -70,9 +70,9 @@ Automated tests require a **clean** database instance every run. Our pytest fixt
 ```bash
 docker compose -f docker-compose.db.yml up -d postgres-test
 
-# run the tests (uses TEST_DATABASE_URL)
+# run the tests (uses TEST_DB_URL)
 cd backend
-TEST_DATABASE_URL=postgresql://testuser:testpass@localhost:55432/smartwallet_test make test
+TEST_DB_URL=postgresql://testuser:testpass@localhost:55432/smartwallet_test make test
 ```
 
 The key fixture lives in `backend/tests/conftest.py` and creates a new temporary database schema before each test session, ensuring tests remain idempotent.
@@ -80,7 +80,7 @@ The key fixture lives in `backend/tests/conftest.py` and creates a new temporary
 Environment variable:
 
 ```
-TEST_DATABASE_URL=postgresql://testuser:testpass@localhost:55432/smartwallet_test
+TEST_DB_URL=postgresql://testuser:testpass@localhost:55432/smartwallet_test
 ```
 
 ### Automatic Teardown
@@ -111,7 +111,7 @@ make db-migrate
 Apply migrations to the **test** database (rarely needed manually):
 
 ```bash
-TEST_DATABASE_URL=postgresql://testuser:testpass@localhost:55432/smartwallet_test alembic upgrade head
+TEST_DB_URL=postgresql://testuser:testpass@localhost:55432/smartwallet_test alembic upgrade head
 ```
 
 ---
@@ -123,7 +123,7 @@ TEST_DATABASE_URL=postgresql://testuser:testpass@localhost:55432/smartwallet_tes
 | Start dev services        | `docker compose -f docker-compose.db.yml up -d postgres-dev redis` |
 | Stop dev DB               | `docker compose -f docker-compose.db.yml stop postgres-dev`        |
 | Start test DB             | `docker compose -f docker-compose.db.yml up -d postgres-test`      |
-| Run tests                 | `TEST_DATABASE_URL=… make test`                                    |
+| Run tests                 | `TEST_DB_URL=… make test`                                          |
 | Create migration          | `alembic revision --autogenerate -m "msg"`                         |
 | Apply migrations          | `make db-migrate`                                                  |
 | Destroy all DB containers | `docker compose -f docker-compose.db.yml down -v`                  |

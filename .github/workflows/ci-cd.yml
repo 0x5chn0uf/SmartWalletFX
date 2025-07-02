@@ -148,7 +148,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ARBITRUM_RPC_URL: "http://localhost:8545"
-      TEST_DB_URL: "postgresql+asyncpg://testuser:testpass@localhost:55432/smartwallet_test"
+      DATABASE_URL: "postgresql+asyncpg://testuser:testpass@localhost:55432/smartwallet_test"
+      POSTGRES_USER: "testuser"
+      POSTGRES_PASSWORD: "testpass"
+      POSTGRES_SERVER: "localhost"
+      POSTGRES_PORT: "55432"
+      POSTGRES_DB: "smartwallet_test"
       BCRYPT_ROUNDS: 4
       ACCESS_TOKEN_EXPIRE_MINUTES: 15
       REFRESH_TOKEN_EXPIRE_DAYS: 7
@@ -224,6 +229,7 @@ jobs:
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     env:
+      DATABASE_URL: "sqlite+aiosqlite:///./test.db"
       BCRYPT_ROUNDS: 4
     steps:
       - name: Checkout code
@@ -260,6 +266,7 @@ jobs:
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     env:
+      DATABASE_URL: "sqlite+aiosqlite:///./test.db"
       BCRYPT_ROUNDS: 4
     steps:
       - name: Checkout code
@@ -296,6 +303,7 @@ jobs:
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     env:
+      DATABASE_URL: "sqlite+aiosqlite:///./test.db"
       BCRYPT_ROUNDS: 4
     steps:
       - name: Checkout code
