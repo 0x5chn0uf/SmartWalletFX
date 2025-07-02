@@ -112,7 +112,14 @@ clean: clean-backend ## Remove temporary files & caches
 clean-backend:
 	$(MAKE) -C $(BACKEND_DIR) clean
 
+# -----------------------------------------------------------------------------
+# Full-stack helper
+# -----------------------------------------------------------------------------
+
+start: ## Start full dev stack (DB + backend + frontend)
+	bash scripts/start_dev.sh
+
 .PHONY: help setup setup-backend setup-frontend lint lint-backend lint-frontend \
 	format format-backend test test-backend test-frontend coverage-backend \
 	run-backend run-frontend db-start db-test db-down clean clean-backend \
-	db-backup db-restore 
+	db-backup db-restore start 
