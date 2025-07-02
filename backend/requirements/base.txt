@@ -13,6 +13,7 @@ passlib[bcrypt]==1.7.4           # Password hashing
 python-multipart==0.0.6          # Form data parsing
 
 # Utilities
+bcrypt>=4.0.0
 pydantic==2.9.2    # Data validation
 email-validator==2.1.1  # For EmailStr validation in Pydantic
 python-dotenv==1.0.0  # Environment management

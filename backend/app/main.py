@@ -10,6 +10,7 @@ from app.core.init_db import init_db
 # --- New imports for structured logging & error handling ---
 from app.core.logging import setup_logging  # noqa: F401 – side-effect import
 from app.core.middleware import CorrelationIdMiddleware
+from app.utils import audit  # noqa: F401
 
 
 def create_app() -> FastAPI:

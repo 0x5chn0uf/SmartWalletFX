@@ -47,21 +47,58 @@ class AuthService:
     def __init__(self, session: AsyncSession):
         self._repo = UserRepository(session)
 
-    async def register(self, payload: UserCreate) -> User:
+    async def register(
+        self,
+        payload: UserCreate | None = None,
+        /,
+        **data,
+    ) -> User:  # noqa: D401 – business method
         """Register a new user.
 
+        The method is *dual-purpose* to preserve backward-compatibility with
+        legacy test helpers that still call the service with explicit keyword
+        arguments (``email=…`` & ``password=…``).  Newer call-sites should pass
+        a :class:`app.schemas.user.UserCreate` instance via the *payload*
+        positional argument which offers full pydantic validation.  If *payload*
+        is omitted we build it from the supplied kwargs.
+
         Args:
-            payload: Incoming user-supplied data.
+            payload: Optional :class:`UserCreate` schema (preferred).
+            **data: Fallback keyword arguments – expected keys are *email*,
+                *password* and optionally *username*.
 
         Returns:
-            Newly-created :class:`app.models.user.User` instance.
+            Newly-persisted :class:`app.models.user.User` object.
 
         Raises:
-            DuplicateError: If *username* or *email* already exists.
-            WeakPasswordError: If password fails strength policy.
+            DuplicateError: If provided *username* or *email* already exists.
+            WeakPasswordError: If *password* does not meet strength policy.
+            ValueError: If mandatory arguments are missing when *payload* is
+                not supplied.
         """
 
-        # Validate password strength early (defensive programming)
+        # ------------------------------------------------------------------
+        # Normalise input – support both (*payload*) and (**kwargs**) styles.
+        # ------------------------------------------------------------------
+        if payload is None:
+            email: str | None = data.get("email")
+            password: str | None = data.get("password")
+            username: str | None = data.get("username")
+
+            if email is None or password is None:
+                raise ValueError("'email' and 'password' are required")
+
+            # Derive *username* from the email if not provided (legacy tests)
+            if username is None:
+                username = email.split("@", 1)[0]
+
+            payload = UserCreate(username=username, email=email, password=password)
+
+        # At this point we have a *UserCreate* instance
+
+        # Validate password strength early (defensive programming) — extra
+        # guard even though *UserCreate* validator should have already caught
+        # it.  Keep for paranoia / non-pydantic call-sites.
         if not security.validate_password_strength(payload.password):
             raise WeakPasswordError()
 

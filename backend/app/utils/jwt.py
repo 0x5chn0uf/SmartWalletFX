@@ -316,9 +316,18 @@ class JWTUtils:
             )
             if recomputed.split(".")[2] != token.split(".")[2]:
                 raise JWTError("Signature verification failed")
-        except Exception:
-            # If re-encoding fails due to jose edge-case, skip extra check
-            pass
+        except Exception as exc:
+            # If re-encoding fails due to python-jose edge-cases (e.g. when
+            # the secret cannot be represented in the alternate form) we can
+            # safely ignore *encoding* errors **BUT** we must surface
+            # signature verification problems so that tampering is detected
+            # by calling code and relevant security tests (see
+            # ``tests/unit/auth/test_jwt_utils.py::test_jwt_invalid_token``).
+
+            if isinstance(exc, JWTError):
+                raise
+            # Any non-JWT related exception (mostly encode errors) is deemed
+            # non-critical for verification purposes and can be ignored.
 
         return payload
 

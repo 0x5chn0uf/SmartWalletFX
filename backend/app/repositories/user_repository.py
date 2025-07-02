@@ -11,10 +11,12 @@ concerns injected into the domain/application layers.
 import uuid
 from typing import Optional
 
+from sqlalchemy import delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
+from app.models.refresh_token import RefreshToken
 from app.models.user import User
 
 
@@ -67,10 +69,6 @@ class UserRepository:
 
         return await self._session.get(User, user_id)
 
-    # ---------------------------------------------------------------------
-    # Persistence helpers
-    # ---------------------------------------------------------------------
-
     async def save(self, user: User) -> User:
         """Persist *user* instance and commit the transaction."""
 
@@ -82,3 +80,39 @@ class UserRepository:
             raise
         await self._session.refresh(user)
         return user
+
+    async def update(self, user: User, **kwargs) -> User:
+        """Update *user* with provided fields and commit changes.
+
+        Parameters
+        ----------
+        user:
+            The managed :class:`~app.models.user.User` instance to update.
+        **kwargs:
+            Attribute-value pairs to update. Keys that do not correspond to
+            columns on the model are silently ignored to avoid runtime errors
+            from e.g. PATCH-like payloads including unrelated metadata.
+        """
+
+        for field, value in kwargs.items():
+            if hasattr(user, field):
+                setattr(user, field, value)
+
+        try:
+            await self._session.commit()
+        except IntegrityError:
+            await self._session.rollback()
+            raise
+
+        await self._session.refresh(user)
+        return user
+
+    async def delete(self, user: User) -> None:
+        """Delete *user* from the database and commit."""
+
+        await self._session.execute(  # type: ignore[arg-type]
+            delete(RefreshToken).where(RefreshToken.user_id == user.id)
+        )
+
+        await self._session.delete(user)
+        await self._session.commit()
