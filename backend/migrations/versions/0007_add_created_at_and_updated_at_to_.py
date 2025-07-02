@@ -8,7 +8,6 @@ Create Date: 2025-06-25 09:39:16.662635
 """
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects import sqlite
 
 # revision identifiers, used by Alembic.
 revision = "0007_add_created_at_and_updated_at_to_"
@@ -279,7 +278,7 @@ def downgrade():
         batch_op.add_column(
             sa.Column("to_address", sa.VARCHAR(length=255), nullable=True)
         )
-        batch_op.add_column(sa.Column("extra_metadata", sqlite.JSON(), nullable=True))
+        batch_op.add_column(sa.Column("extra_metadata", sa.JSON(), nullable=True))
         batch_op.add_column(sa.Column("created_at", sa.DATETIME(), nullable=False))
         batch_op.alter_column(
             "token_id",
@@ -309,7 +308,7 @@ def downgrade():
         )
 
     with op.batch_alter_table("tokens", schema=None) as batch_op:
-        batch_op.add_column(sa.Column("extra_metadata", sqlite.JSON(), nullable=True))
+        batch_op.add_column(sa.Column("extra_metadata", sa.JSON(), nullable=True))
         batch_op.add_column(sa.Column("updated_at", sa.DATETIME(), nullable=False))
         batch_op.add_column(sa.Column("created_at", sa.DATETIME(), nullable=False))
         batch_op.add_column(sa.Column("chain", sa.VARCHAR(), nullable=True))
