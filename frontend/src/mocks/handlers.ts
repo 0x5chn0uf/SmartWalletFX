@@ -125,6 +125,9 @@ const handlers = [
     ];
     return HttpResponse.json(transactions);
   }),
+  http.get('/health', () => {
+    return new HttpResponse(null, { status: 200 });
+  }),
 ];
 
 export default handlers;
