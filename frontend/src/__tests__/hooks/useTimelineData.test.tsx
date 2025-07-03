@@ -10,11 +10,11 @@ describe('useTimelineData', () => {
   );
 
   beforeAll(() => {
-    jest.spyOn(defi, 'getTimeline').mockResolvedValue([]);
+    vi.spyOn(defi, 'getTimeline').mockResolvedValue([]);
   });
 
   afterAll(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('returns query object and initial state', async () => {

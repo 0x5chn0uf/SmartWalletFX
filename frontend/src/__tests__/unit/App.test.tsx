@@ -6,12 +6,14 @@ import { ThemeProvider } from '../../providers/ThemeProvider';
 
 describe('App Component', () => {
   it('renders navigation', () => {
+    window.history.pushState({}, '', '/dashboard');
     render(
       <ThemeProvider>
         <App />
       </ThemeProvider>
     );
-    expect(screen.getByText(/Dashboard/i)).toBeInTheDocument();
-    expect(screen.getByText(/Wallets/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /portfolio/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /settings/i })).toBeInTheDocument();
   });
 });
