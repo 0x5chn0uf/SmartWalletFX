@@ -62,7 +62,7 @@ def get_user(session: Session) -> User | None:
 
 
 @event.listens_for(Session, "after_flush")
-def on_after_flush(session: Session, flush_context: Any) -> None:
+def on_after_flush(session: Session, _flush_context: Any) -> None:
     """Listen for flush events and record changes in the audit log."""
     # Note: "after_flush" is used instead of individual after_insert/update
     # events to handle all changes in a single, efficient pass.
