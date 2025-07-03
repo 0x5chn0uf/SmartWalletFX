@@ -10,6 +10,7 @@ reliably.
 import json
 import logging
 import sys
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict
 from uuid import uuid4
@@ -23,6 +24,21 @@ if not _AUDIT_LOGGER.handlers:
     _handler.setFormatter(logging.Formatter("%(message)s"))
     _AUDIT_LOGGER.addHandler(_handler)
     _AUDIT_LOGGER.setLevel(logging.INFO)
+
+
+def _json_safe(obj):
+    """Recursively convert UUID and datetime objects
+    in a dict/list to strings for JSON serialization."""
+    if isinstance(obj, dict):
+        return {k: _json_safe(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_json_safe(v) for v in obj]
+    elif isinstance(obj, uuid.UUID):
+        return str(obj)
+    elif isinstance(obj, datetime):
+        return obj.isoformat()
+    else:
+        return obj
 
 
 def log_structured_audit_event(event: AuditEventBase) -> None:
@@ -80,7 +96,7 @@ def audit(event: str, **extra: Any) -> None:
             payload["trace_id"] = ctx["trace_id"]
     except Exception:  # pragma: no cover – structlog may not be configured
         pass
-    _AUDIT_LOGGER.info(json.dumps(payload, separators=(",", ":")))
+    _AUDIT_LOGGER.info(json.dumps(_json_safe(payload), separators=(",", ":")))
 
     # ------------------------------------------------------------------
     # Validate payload (optional hard/warn/off behaviour is configured via
