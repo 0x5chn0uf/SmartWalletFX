@@ -5,6 +5,15 @@ import { configureStore } from '@reduxjs/toolkit';
 import dashboardReducer from '../../store/dashboardSlice';
 import DashboardPage from '../../pages/DashboardPage';
 import { RootState } from '../../store';
+import { vi } from 'vitest';
+
+beforeAll(() => {
+  global.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as any;
+});
 
 describe('DashboardPage', () => {
   function renderWithStore(preloadedState?: Partial<RootState>) {
@@ -20,7 +29,19 @@ describe('DashboardPage', () => {
   }
 
   it('renders dashboard summary cards', () => {
-    renderWithStore({ dashboard: { overview: null, status: 'idle', error: null } });
+    renderWithStore({
+      dashboard: {
+        overview: {
+          totalWallets: 0,
+          totalBalance: 0,
+          dailyVolume: 0,
+          chart: [],
+          portfolioDistribution: [],
+        },
+        status: 'succeeded',
+        error: null,
+      },
+    });
     expect(screen.getByText(/total wallets/i)).toBeInTheDocument();
     expect(screen.getByText(/total balance/i)).toBeInTheDocument();
   });

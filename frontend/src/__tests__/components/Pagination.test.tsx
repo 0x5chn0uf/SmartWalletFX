@@ -13,7 +13,7 @@ describe('Pagination', () => {
   });
 
   it('calls onPageChange when a page is clicked', async () => {
-    const onPageChange = jest.fn();
+    const onPageChange = vi.fn();
     render(<Pagination page={1} total={30} limit={10} onPageChange={onPageChange} />);
     await userEvent.click(screen.getByRole('button', { name: 'Go to page 2' }));
     expect(onPageChange).toHaveBeenCalledWith(2);
