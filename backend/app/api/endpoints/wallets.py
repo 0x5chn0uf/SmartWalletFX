@@ -1,6 +1,8 @@
+import time
 from typing import List
 
-from fastapi import APIRouter, Depends, status
+import structlog
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Dependency imports
@@ -24,6 +26,9 @@ from app.usecase.token_balance_usecase import TokenBalanceUsecase
 from app.usecase.token_price_usecase import TokenPriceUsecase
 from app.usecase.token_usecase import TokenUsecase
 from app.usecase.wallet_usecase import WalletUsecase
+from app.utils.logging import audit
+
+logger = structlog.get_logger(__name__)
 
 
 class WalletView:
@@ -42,6 +47,7 @@ class WalletView:
             status_code=status.HTTP_201_CREATED,
         )
         async def create_wallet(
+            request: Request,
             wallet: WalletCreate,
             db: AsyncSession = Depends(get_db),
             current_user=Depends(auth_deps.get_current_user),
@@ -55,14 +61,63 @@ class WalletView:
             Returns:
                 WalletResponse: The created wallet response object.
             """
-            usecase = WalletUsecase(db, current_user)
-            return await usecase.create_wallet(wallet)
+            start_time = time.time()
+            client_ip = request.client.host or "unknown"
+
+            # Cache user_id early to avoid greenlet issues in exception handling
+            user_id = current_user.id
+
+            logger.info(
+                "Wallet creation started",
+                user_id=user_id,
+                wallet_address=wallet.address,
+                wallet_name=wallet.name,
+                client_ip=client_ip,
+            )
+
+            try:
+                usecase = WalletUsecase(db, current_user)
+                result = await usecase.create_wallet(wallet)
+
+                duration = int((time.time() - start_time) * 1000)
+                logger.info(
+                    "Wallet created successfully",
+                    user_id=user_id,
+                    wallet_id=str(result.id),
+                    wallet_address=wallet.address,
+                    wallet_name=wallet.name,
+                    duration_ms=duration,
+                )
+
+                audit(
+                    "wallet_created",
+                    user_id=str(user_id),
+                    wallet_id=str(result.id),
+                    wallet_address=wallet.address,
+                    wallet_name=wallet.name,
+                    client_ip=client_ip,
+                )
+
+                return result
+            except Exception as exc:
+                duration = int((time.time() - start_time) * 1000)
+                logger.error(
+                    "Wallet creation failed",
+                    user_id=user_id,
+                    wallet_address=wallet.address,
+                    wallet_name=wallet.name,
+                    duration_ms=duration,
+                    error=str(exc),
+                    exc_info=True,
+                )
+                raise
 
         @self.router.get(
             "/wallets",
             response_model=List[WalletResponse],
         )
         async def list_wallets(
+            request: Request,
             db: AsyncSession = Depends(get_db),
             current_user=Depends(auth_deps.get_current_user),
         ):
@@ -74,14 +129,44 @@ class WalletView:
             Returns:
                 List[WalletResponse]: List of wallet response objects.
             """
-            usecase = WalletUsecase(db, current_user)
-            return await usecase.list_wallets()
+            start_time = time.time()
+            client_ip = request.client.host or "unknown"
+
+            # Cache user_id early to avoid greenlet issues in exception handling
+            user_id = current_user.id
+
+            logger.info("Wallet listing started", user_id=user_id, client_ip=client_ip)
+
+            try:
+                usecase = WalletUsecase(db, current_user)
+                result = await usecase.list_wallets()
+
+                duration = int((time.time() - start_time) * 1000)
+                logger.info(
+                    "Wallet listing completed",
+                    user_id=str(user_id),
+                    wallet_count=len(result),
+                    duration_ms=duration,
+                )
+
+                return result
+            except Exception as exc:
+                duration = int((time.time() - start_time) * 1000)
+                logger.error(
+                    "Wallet listing failed",
+                    user_id=str(user_id),
+                    duration_ms=duration,
+                    error=str(exc),
+                    exc_info=True,
+                )
+                raise
 
         @self.router.delete(
             "/wallets/{address}",
             status_code=status.HTTP_204_NO_CONTENT,
         )
         async def delete_wallet(
+            request: Request,
             address: str,
             db: AsyncSession = Depends(get_db),
             current_user=Depends(auth_deps.get_current_user),
@@ -95,9 +180,50 @@ class WalletView:
             Returns:
                 None
             """
-            usecase = WalletUsecase(db, current_user)
-            await usecase.delete_wallet(address)
-            return None
+            start_time = time.time()
+            client_ip = request.client.host or "unknown"
+
+            # Cache user_id early to avoid greenlet issues in exception handling
+            user_id = current_user.id
+
+            logger.info(
+                "Wallet deletion started",
+                user_id=str(user_id),
+                wallet_address=address,
+                client_ip=client_ip,
+            )
+
+            try:
+                usecase = WalletUsecase(db, current_user)
+                await usecase.delete_wallet(address)
+
+                duration = int((time.time() - start_time) * 1000)
+                logger.info(
+                    "Wallet deleted successfully",
+                    user_id=str(user_id),
+                    wallet_address=address,
+                    duration_ms=duration,
+                )
+
+                audit(
+                    "wallet_deleted",
+                    user_id=str(user_id),
+                    wallet_address=address,
+                    client_ip=client_ip,
+                )
+
+                return None
+            except Exception as exc:
+                duration = int((time.time() - start_time) * 1000)
+                logger.error(
+                    "Wallet deletion failed",
+                    user_id=str(user_id),
+                    wallet_address=address,
+                    duration_ms=duration,
+                    error=str(exc),
+                    exc_info=True,
+                )
+                raise
 
         @self.router.post(
             "/tokens",
