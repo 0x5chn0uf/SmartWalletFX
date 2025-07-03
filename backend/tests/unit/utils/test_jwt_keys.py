@@ -119,3 +119,12 @@ def _generate_rsa_pem() -> str:
         format=serialization.PublicFormat.SubjectPublicKeyInfo,
     )
     return pem.decode("utf-8")
+
+
+def test_b64url_uint_various_values():
+    """_b64url_uint should correctly encode integers."""
+    from app.utils.jwt_keys import _b64url_uint
+
+    assert _b64url_uint(0) == ""
+    assert _b64url_uint(1) == "AQ"
+    assert _b64url_uint(65537) == "AQAB"
