@@ -1,11 +1,13 @@
 # flake8: noqa
 
 import re
+import time
 from datetime import datetime
 from enum import Enum
 from typing import List, Union
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import structlog
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import auth_deps
@@ -28,6 +30,8 @@ from app.usecase.portfolio_aggregation_usecase import (
     PortfolioMetrics,
 )
 from app.usecase.portfolio_snapshot_usecase import PortfolioSnapshotUsecase
+
+logger = structlog.get_logger(__name__)
 
 router = APIRouter()
 
@@ -121,20 +125,59 @@ class IntervalEnum(str, Enum):
     tags=["DeFi"],
 )
 async def get_radiant_user_data(
-    address: str, usecase: RadiantUsecase = Depends(deps.get_radiant_usecase)
+    request: Request,
+    address: str,
+    usecase: RadiantUsecase = Depends(deps.get_radiant_usecase),
 ):
     """
     Get Radiant user data for a given wallet address (Arbitrum network).
     Returns the user's DeFi account snapshot (collateral, borrowings,
     health score, etc.) by querying the Radiant smart contract directly.
     """
-    snapshot = await usecase.get_user_snapshot(address)
-    if snapshot is None:
-        raise HTTPException(
-            status_code=404,
-            detail=("User data not found on Radiant smart contract."),
+    start_time = time.time()
+    client_ip = request.client.host or "unknown"
+
+    logger.info(
+        "Radiant user data request started", address=address, client_ip=client_ip
+    )
+
+    try:
+        snapshot = await usecase.get_user_snapshot(address)
+        if snapshot is None:
+            duration = int((time.time() - start_time) * 1000)
+            logger.warning(
+                "Radiant user data not found",
+                address=address,
+                client_ip=client_ip,
+                duration_ms=duration,
+            )
+            raise HTTPException(
+                status_code=404,
+                detail=("User data not found on Radiant smart contract."),
+            )
+
+        duration = int((time.time() - start_time) * 1000)
+        logger.info(
+            "Radiant user data retrieved successfully",
+            address=address,
+            client_ip=client_ip,
+            duration_ms=duration,
         )
-    return snapshot
+
+        return snapshot
+    except HTTPException:
+        raise
+    except Exception as exc:
+        duration = int((time.time() - start_time) * 1000)
+        logger.error(
+            "Radiant user data request failed",
+            address=address,
+            client_ip=client_ip,
+            duration_ms=duration,
+            error=str(exc),
+            exc_info=True,
+        )
+        raise
 
 
 @router.get(
@@ -143,17 +186,54 @@ async def get_radiant_user_data(
     tags=["DeFi"],
 )
 async def get_aave_user_data(
-    address: str, usecase: AaveUsecase = Depends(deps.get_aave_usecase)
+    request: Request,
+    address: str,
+    usecase: AaveUsecase = Depends(deps.get_aave_usecase),
 ):
     """
     Get Aave user data for a given wallet address (Ethereum mainnet).
     Returns the user's DeFi account snapshot (collateral, borrowings,
     health score, etc.).
     """
-    snapshot = await usecase.get_user_snapshot(address)
-    if snapshot is None:
-        raise HTTPException(status_code=404, detail="User data not found on Aave.")
-    return snapshot
+    start_time = time.time()
+    client_ip = request.client.host or "unknown"
+
+    logger.info("Aave user data request started", address=address, client_ip=client_ip)
+
+    try:
+        snapshot = await usecase.get_user_snapshot(address)
+        if snapshot is None:
+            duration = int((time.time() - start_time) * 1000)
+            logger.warning(
+                "Aave user data not found",
+                address=address,
+                client_ip=client_ip,
+                duration_ms=duration,
+            )
+            raise HTTPException(status_code=404, detail="User data not found on Aave.")
+
+        duration = int((time.time() - start_time) * 1000)
+        logger.info(
+            "Aave user data retrieved successfully",
+            address=address,
+            client_ip=client_ip,
+            duration_ms=duration,
+        )
+
+        return snapshot
+    except HTTPException:
+        raise
+    except Exception as exc:
+        duration = int((time.time() - start_time) * 1000)
+        logger.error(
+            "Aave user data request failed",
+            address=address,
+            client_ip=client_ip,
+            duration_ms=duration,
+            error=str(exc),
+            exc_info=True,
+        )
+        raise
 
 
 @router.get(
