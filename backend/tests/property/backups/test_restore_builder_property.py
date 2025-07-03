@@ -19,7 +19,9 @@ hyp_settings.load_profile("fast")
     )
 )
 @hyp_settings(suppress_health_check=(HealthCheck.function_scoped_fixture,))
-def test_build_pg_restore_cmd_injection_safe(tmp_path_factory, monkeypatch, filename: str):
+def test_build_pg_restore_cmd_injection_safe(
+    tmp_path_factory, monkeypatch, filename: str
+):
     monkeypatch.setenv("DATABASE_URL", "postgresql://localhost/testdb")
 
     dump_dir = tmp_path_factory.mktemp("props")
