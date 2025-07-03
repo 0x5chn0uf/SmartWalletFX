@@ -1,6 +1,6 @@
 # 🧠 SmartWalletFX
 
-[![Coverage Status](https://coveralls.io/repos/github/0x5chn0uf/SmartWalletFX/badge.svg?branch=main)](https://coveralls.io/github/0x5chn0uf/SmartWalletFX?branch=main)
+[![Backend Coverage](https://img.shields.io/coveralls/github/0x5chn0uf/SmartWalletFX?label=Backend%20Coverage)](https://coveralls.io/github/0x5chn0uf/SmartWalletFX?branch=main)
 ![Frontend Coverage](https://img.shields.io/badge/Coverage_Frontend-58%25-yellow)
 ![Backend Tests](https://img.shields.io/badge/backend%20tests-passing-brightgreen)
 ![E2E Tests](https://img.shields.io/badge/E2E%20tests-passing-brightgreen)
