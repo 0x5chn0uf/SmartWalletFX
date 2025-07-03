@@ -1,24 +1,20 @@
 """Database backup & restore helpers.
 
-This module provides a thin, framework-agnostic wrapper around `pg_dump` and
-`pg_restore` for creating and restoring PostgreSQL logical backups.
+Provides a framework-agnostic interface around ``pg_dump`` and
+``pg_restore`` for creating and restoring PostgreSQL logical dumps.
+Backups can be compressed, hashed, optionally encrypted and uploaded to
+remote storage. Structured audit logs and Prometheus metrics accompany
+each operation.
 
-Sub-task 8.1.1 – *Draft module skeleton with TODOs & domain errors*
-------------------------------------------------------------------
+Exported API:
 
-The implementation is intentionally minimal at this stage.  Subsequent build
-steps (8.1.2 – 8.1.8) will fill in the command-builder logic, gzip/sha256
-integrity handling, structured audit logging, tests, and settings integration.
-
-Exported public API (work-in-progress):
-
-* `create_dump(...) -> pathlib.Path`
-* `restore_dump(...) -> None`
+* ``create_dump(...) -> pathlib.Path``
+* ``restore_dump(...) -> None``
 
 Domain-level exceptions:
 
-* `BackupError`
-* `RestoreError`
+* ``BackupError``
+* ``RestoreError``
 """
 from __future__ import annotations
 
