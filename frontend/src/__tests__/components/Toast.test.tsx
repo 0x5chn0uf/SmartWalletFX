@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import Toast from '../../components/Toast';
 
 describe('Toast', () => {
-  const mockOnClose = jest.fn();
+  const mockOnClose = vi.fn();
 
   beforeEach(() => {
     mockOnClose.mockClear();

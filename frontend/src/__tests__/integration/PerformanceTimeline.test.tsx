@@ -3,8 +3,16 @@ import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import PerformanceTimeline from '../../pages/PerformanceTimeline';
 
+beforeAll(() => {
+  global.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as any;
+});
+
 // Mock the hook to return sample data instantly
-jest.mock('../../hooks/useTimelineData', () => {
+vi.mock('../../hooks/useTimelineData', () => {
   const snapshots = [
     {
       user_address: '0xdead',
