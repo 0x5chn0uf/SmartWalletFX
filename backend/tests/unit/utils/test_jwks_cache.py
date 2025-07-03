@@ -185,3 +185,43 @@ class TestRedisClientBuilder:
         _build_redis_client()
 
         mock_redis_class.from_url.assert_called_once_with("redis://localhost:6379/0")
+
+
+class TestInvalidateJwksCacheSync:
+    """Tests for the synchronous cache invalidation wrapper."""
+
+    def test_sync_invalidation_success(self, monkeypatch):
+        redis_client = AsyncMock()
+        monkeypatch.setattr(
+            "app.utils.jwks_cache._build_redis_client", lambda: redis_client
+        )
+        calls = []
+
+        def fake_run(coro):
+            calls.append(coro)
+            return True if len(calls) == 1 else None
+
+        monkeypatch.setattr("app.utils.jwks_cache.asyncio.run", fake_run)
+
+        monkeypatch.setattr(
+            "app.utils.jwks_cache.invalidate_jwks_cache", AsyncMock(return_value=True)
+        )
+
+        from app.utils.jwks_cache import invalidate_jwks_cache_sync
+
+        assert invalidate_jwks_cache_sync() is True
+        assert len(calls) == 2
+
+    def test_sync_invalidation_failure(self, monkeypatch):
+        monkeypatch.setattr(
+            "app.utils.jwks_cache._build_redis_client", lambda: AsyncMock()
+        )
+
+        def fake_run(_):
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr("app.utils.jwks_cache.asyncio.run", fake_run)
+
+        from app.utils.jwks_cache import invalidate_jwks_cache_sync
+
+        assert invalidate_jwks_cache_sync() is False
