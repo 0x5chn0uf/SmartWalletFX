@@ -60,7 +60,7 @@ test-backend: ## Run backend pytest suite
 # Frontend tests (Jest)
 
 test-frontend: ## Run frontend Jest suite
-	cd $(FRONTEND_DIR) && npm test -- --watchAll=false --no-watchman --ci
+	cd $(FRONTEND_DIR) && npm test
 
 coverage-backend: ## Generate backend coverage HTML
 	$(MAKE) -C $(BACKEND_DIR) coverage
