@@ -3,6 +3,7 @@
 // expect(element).toHaveTextContent(/react/i)
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
+import { vi } from 'vitest';
 
 // Mock IntersectionObserver
 global.IntersectionObserver = class IntersectionObserver {
@@ -12,18 +13,20 @@ global.IntersectionObserver = class IntersectionObserver {
 
   constructor(
     private callback: IntersectionObserverCallback,
-    private options?: IntersectionObserverInit
+    private options: IntersectionObserverInit = {}
   ) {
-    this.root = options?.root || null;
-    this.rootMargin = options?.rootMargin || '0px';
-    this.thresholds = options?.thresholds || [0];
+    this.root = options.root instanceof Element ? options.root : null;
+    this.rootMargin = options.rootMargin || '0px';
+    this.thresholds = Array.isArray(options.threshold)
+      ? options.threshold
+      : [options.threshold ?? 0];
   }
 
-  observe() {
+  observe(target: Element) {
     // You can trigger the callback with mock entries here if needed
   }
 
-  unobserve() {}
+  unobserve(target: Element) {}
   disconnect() {}
   takeRecords(): IntersectionObserverEntry[] {
     return [];
@@ -35,17 +38,17 @@ window.matchMedia =
   window.matchMedia ||
   function () {
     return {
-      removeListener: jest.fn(), // deprecated
-      addEventListener: jest.fn(),
-      removeEventListener: jest.fn(),
-      dispatchEvent: jest.fn(),
+      removeListener: vi.fn(), // deprecated
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
     };
   };
 
 // Polyfill ResizeObserver used by Recharts in tests
 class ResizeObserver {
-  observe() {}
-  unobserve() {}
+  observe(target: Element) {}
+  unobserve(target: Element) {}
   disconnect() {}
 }
 
@@ -53,13 +56,13 @@ class ResizeObserver {
 global.ResizeObserver = ResizeObserver;
 
 // Mock axios to avoid ESM parsing issues in tests
-jest.mock('axios', () => ({
+vi.mock('axios', () => ({
   __esModule: true,
   default: {
-    get: jest.fn(),
-    post: jest.fn(),
-    put: jest.fn(),
-    delete: jest.fn(),
+    get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
