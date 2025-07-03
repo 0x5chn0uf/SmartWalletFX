@@ -24,6 +24,7 @@ dependencies = [
     "psycopg2-binary==2.9.10", # PostgreSQL adapter (sync)
     "asyncpg==0.29.0",         # PostgreSQL async adapter
     "aiosqlite==0.20.0",       # SQLite async adapter
+    "aiofiles==24.1.0",        # Async file IO for tests
     
     # Data Validation & Settings
     "pydantic==2.9.2",         # Data validation
