@@ -28,7 +28,7 @@ class TestRoleUtilityFunctions:
         assert Permission.WALLET_READ.value in perms
         assert Permission.WALLET_WRITE.value in perms
         assert Permission.DEFI_READ.value in perms
-        assert not Permission.ADMIN_SYSTEM.value in perms
+        assert Permission.ADMIN_SYSTEM.value not in perms
 
     def test_get_permissions_for_roles_empty(self):
         """Test getting permissions for empty role list."""
