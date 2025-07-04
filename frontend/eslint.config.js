@@ -1,6 +1,7 @@
 /* eslint-env node */
 const js = require('@eslint/js');
-const tseslint = require('typescript-eslint');
+const tsPlugin = require('@typescript-eslint/eslint-plugin');
+const tsParser = require('@typescript-eslint/parser');
 const reactPlugin = require('eslint-plugin-react');
 const reactHooks = require('eslint-plugin-react-hooks');
 const prettier = require('eslint-plugin-prettier');
@@ -12,7 +13,7 @@ module.exports = [
   },
   // Base configs
   js.configs.recommended,
-  tseslint.configs.recommended,
+  tsPlugin.configs.recommended,
   reactPlugin.configs.recommended,
   reactHooks.configs.recommended,
   prettier.configs.recommended,
@@ -20,7 +21,7 @@ module.exports = [
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
     languageOptions: {
-      parser: tseslint.parser,
+      parser: tsParser,
       ecmaVersion: 'latest',
       sourceType: 'module',
       globals: { JSX: 'readonly' },
@@ -29,7 +30,7 @@ module.exports = [
       react: { version: 'detect' },
     },
     plugins: {
-      '@typescript-eslint': tseslint.plugin,
+      '@typescript-eslint': tsPlugin,
       react: reactPlugin,
       'react-hooks': reactHooks,
       prettier,
