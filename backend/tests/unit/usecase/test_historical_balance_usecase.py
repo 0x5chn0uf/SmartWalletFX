@@ -15,11 +15,6 @@ from app.schemas.historical_balance import (
     HistoricalBalanceResponse,
 )
 from app.usecase.historical_balance_usecase import HistoricalBalanceUsecase
-from tests.fixtures.usecase import (
-    historical_balance_usecase,
-    mock_db_session,
-    sample_historical_balance_data,
-)
 
 
 class TestHistoricalBalanceUsecase:

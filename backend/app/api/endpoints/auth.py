@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """Authentication endpoints"""
+
+from __future__ import annotations
 
 import time
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -120,6 +120,7 @@ async def register_user(
 )
 async def login_for_access_token(
     request: Request,
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:  # type: ignore[valid-type]
@@ -147,6 +148,20 @@ async def login_for_access_token(
         )
 
         audit("user_login_success", username=form_data.username, client_ip=identifier)
+
+        response.set_cookie(
+            "access_token",
+            tokens.access_token,
+            httponly=True,
+            samesite="lax",
+        )
+        response.set_cookie(
+            "refresh_token",
+            tokens.refresh_token,
+            httponly=True,
+            samesite="lax",
+            path="/auth/refresh",
+        )
 
         return tokens
     except InvalidCredentialsError:
@@ -222,6 +237,7 @@ class _RefreshRequest(BaseModel):
 )
 async def refresh_access_token(
     request: Request,
+    response: Response,
     payload: _RefreshRequest,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:  # type: ignore[valid-type]
@@ -241,6 +257,13 @@ async def refresh_access_token(
         duration = int((time.time() - start_time) * 1000)
         logger.info(
             "Token refresh successful", client_ip=client_ip, duration_ms=duration
+        )
+
+        response.set_cookie(
+            "access_token",
+            tokens.access_token,
+            httponly=True,
+            samesite="lax",
         )
 
         return tokens

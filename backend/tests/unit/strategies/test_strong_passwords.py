@@ -1,10 +1,10 @@
-from __future__ import annotations
-
 """Unit tests for the `strong_passwords` Hypothesis strategy.
 
 These tests intentionally fail until `strong_passwords` is fully implemented,
 serving as the RED stage for the TDD cycle in Subtask 4.17.
 """
+from __future__ import annotations
+
 
 import string
 

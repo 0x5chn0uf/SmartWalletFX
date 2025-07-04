@@ -1,9 +1,9 @@
-from __future__ import annotations
-
 """Property-based template tests for authentication user input.
 
 Ensures strategy helpers generate values that satisfy runtime validators.
 """
+from __future__ import annotations
+
 
 import re
 
