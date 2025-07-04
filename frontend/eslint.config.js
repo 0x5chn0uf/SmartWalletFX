@@ -1,40 +1,42 @@
 /* eslint-env node */
+const { FlatCompat } = require('@eslint/eslintrc');
 const js = require('@eslint/js');
-const tsPlugin = require('@typescript-eslint/eslint-plugin');
-const tsParser = require('@typescript-eslint/parser');
-const reactPlugin = require('eslint-plugin-react');
-const reactHooks = require('eslint-plugin-react-hooks');
-const prettier = require('eslint-plugin-prettier');
+const compat = new FlatCompat({
+  baseDirectory: __dirname,
+  recommendedConfig: js.configs.recommended,
+});
 
 module.exports = [
-  // Ignore globs replacing old .eslintignore
+  // globs to ignore
   {
     ignores: ['node_modules/**', 'build/**', 'dist/**', 'coverage/**'],
   },
-  // Base configs
-  js.configs.recommended,
-  tsPlugin.configs.recommended,
-  reactPlugin.configs.recommended,
-  reactHooks.configs.recommended,
-  prettier.configs.recommended,
-  // Project-specific overrides
-  {
-    files: ['**/*.{js,jsx,ts,tsx}'],
-    languageOptions: {
-      parser: tsParser,
-      ecmaVersion: 'latest',
+  // bring in the shareable configs we used to extend in .eslintrc.json
+  ...compat.config({
+    extends: [
+      'eslint:recommended',
+      'plugin:@typescript-eslint/recommended',
+      'plugin:react/recommended',
+      'plugin:react-hooks/recommended',
+    ],
+    parserOptions: {
+      ecmaVersion: 2021,
       sourceType: 'module',
-      globals: { JSX: 'readonly' },
+      ecmaFeatures: { jsx: true },
     },
     settings: {
       react: { version: 'detect' },
     },
-    plugins: {
-      '@typescript-eslint': tsPlugin,
-      react: reactPlugin,
-      'react-hooks': reactHooks,
-      prettier,
+    env: {
+      browser: true,
+      es2021: true,
+      node: true,
+      jest: true,
     },
+  }),
+  // project-specific rule tweaks & overrides
+  {
+    files: ['**/*.{js,jsx,ts,tsx}'],
     rules: {
       'react/react-in-jsx-scope': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
@@ -43,6 +45,15 @@ module.exports = [
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
       'no-console': ['warn', { allow: ['warn', 'error'] }],
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+  {
+    files: ['**/__tests__/**', '**/*.test.*', 'cypress/**', 'scripts/**'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
     },
   },
 ];
