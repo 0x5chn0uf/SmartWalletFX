@@ -1,7 +1,6 @@
 /* eslint-env node */
 const { FlatCompat } = require('@eslint/eslintrc');
 const js = require('@eslint/js');
-const prettierPlugin = require('eslint-plugin-prettier');
 const compat = new FlatCompat({
   baseDirectory: __dirname,
   recommendedConfig: js.configs.recommended,
@@ -34,11 +33,7 @@ module.exports = [
       node: true,
       jest: true,
     },
-    plugins: {
-      prettier: prettierPlugin,
-    },
     rules: {
-      'prettier/prettier': 'off',
       'react/react-in-jsx-scope': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-unused-vars': [
