@@ -30,14 +30,7 @@ const App: React.FC = () => {
               <Routes>
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/login-register" element={<LoginRegisterPage />} />
-                <Route
-                  path="/dashboard/:address"
-                  element={
-                    <ProtectedRoute>
-                      <DashboardPage />
-                    </ProtectedRoute>
-                  }
-                />
+                <Route path="/dashboard/:address" element={<DashboardPage />} />
                 <Route
                   path="/dashboard"
                   element={
