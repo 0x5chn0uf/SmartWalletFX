@@ -1,7 +1,6 @@
 """Base fixtures for the test suite."""
 
 import os
-import pathlib
 
 import pytest
 import pytest_asyncio
@@ -46,44 +45,48 @@ def _make_test_db(tmp_path_factory: pytest.TempPathFactory) -> tuple[str, str]:
     # ------------------------------------------------------------------
 
     if env_url and env_url.startswith("postgresql"):
-        url_obj = make_url(env_url)
+        try:
+            url_obj = make_url(env_url)
 
-        # Generate unique DB name to avoid collisions between concurrent runs
-        test_db_name = f"test_{uuid.uuid4().hex}"
+            # Generate unique DB name to avoid collisions between concurrent runs
+            test_db_name = f"test_{uuid.uuid4().hex}"
 
-        # Build *admin* connection URL (connects to 'postgres' default DB)
-        admin_url: URL = url_obj.set(database="postgres")
+            # Build *admin* connection URL (connects to 'postgres' default DB)
+            admin_url: URL = url_obj.set(database="postgres", drivername="postgresql")
 
-        # Use sync engine for DDL operations (CREATE DATABASE)
-        admin_engine = create_engine(admin_url.render_as_string(hide_password=False))
+            # Use sync engine for DDL operations (CREATE DATABASE)
+            admin_engine = create_engine(admin_url.render_as_string(hide_password=False))
 
-        with admin_engine.connect().execution_options(
-            isolation_level="AUTOCOMMIT"
-        ) as conn:
-            try:
-                conn.execute(_sa.text(f"CREATE DATABASE {test_db_name}"))
-            except Exception:  # pragma: no cover – DB already exists or race
-                pass
+            with admin_engine.connect().execution_options(
+                isolation_level="AUTOCOMMIT"
+            ) as conn:
+                try:
+                    conn.execute(_sa.text(f"CREATE DATABASE {test_db_name}"))
+                except Exception:  # pragma: no cover – DB already exists or race
+                    pass
 
-        admin_engine.dispose()
+            admin_engine.dispose()
 
-        # Build async & sync URLs pointing to the *new* database
-        async_url = url_obj.set(database=test_db_name).render_as_string(
-            hide_password=False
-        )
+            # Build async & sync URLs pointing to the *new* database
+            async_url = url_obj.set(database=test_db_name).render_as_string(
+                hide_password=False
+            )
 
-        if "+asyncpg" not in async_url:
-            async_url = async_url.replace("postgresql://", "postgresql+asyncpg://")
+            if "+asyncpg" not in async_url:
+                async_url = async_url.replace("postgresql://", "postgresql+asyncpg://")
 
-        sync_url = async_url.replace("+asyncpg", "")
+            sync_url = async_url.replace("+asyncpg", "")
 
-        # Create tables inside the new database so individual tests don't
-        # have to run migrations (keeps suite fast)
-        temp_sync_engine = create_engine(sync_url)
-        Base.metadata.create_all(bind=temp_sync_engine)
-        temp_sync_engine.dispose()
+            # Create tables inside the new database so individual tests don't
+            # have to run migrations (keeps suite fast)
+            temp_sync_engine = create_engine(sync_url)
+            Base.metadata.create_all(bind=temp_sync_engine)
+            temp_sync_engine.dispose()
 
-        return async_url, sync_url
+            return async_url, sync_url
+        except Exception:
+            # Failed to connect to Postgres; fall back to SQLite
+            pass
 
     # ------------------------------------------------------------------
     # Branch 2 – SQLite (fallback)
@@ -127,7 +130,7 @@ async def async_engine(tmp_path_factory: pytest.TempPathFactory):
             test_db_name = url_obj.database
 
             # Connect to admin database to DROP the temporary one
-            admin_url: URL = url_obj.set(database="postgres")
+            admin_url: URL = url_obj.set(database="postgres", drivername="postgresql")
             admin_engine = create_engine(
                 admin_url.render_as_string(hide_password=False)
             )

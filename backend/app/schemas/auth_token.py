@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Schemas related to authentication token issuance.
 
 These are **temporary stubs** added during the red phase of TDD for
@@ -7,6 +5,8 @@ Subtask 4.8.  They intentionally raise :class:`NotImplementedError` so
 that newly-scaffolded tests fail until the actual implementation is
 completed.
 """
+from __future__ import annotations
+
 
 from pydantic import BaseModel, Field
 

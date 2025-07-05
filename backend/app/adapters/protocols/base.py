@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Abstract base classes and types for DeFi protocol adapters.
 
 Each concrete adapter should implement :class:`ProtocolAdapter` and wrap
@@ -10,6 +8,8 @@ Adapters **MUST NOT** perform any heavy post-processing – they should focus
 on retrieving raw protocol-specific data and mapping it to the agnostic
 schema defined in :pymod:`app.schemas.defi`.
 """
+from __future__ import annotations
+
 
 from abc import ABC, abstractmethod
 from typing import Optional

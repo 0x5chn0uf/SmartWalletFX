@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """Rename users.password_hash to hashed_password
 
 Revision ID: 0003_hashed_password
 Revises: 0002_add_portfolio_snapshot_cache_table
 Create Date: 2025-06-17 12:00:00.000000
 """
+from __future__ import annotations
+
 
 import sqlalchemy as sa  # noqa: F401 — required by Alembic for context
 from alembic import op

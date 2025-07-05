@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
 import { keyframes, css } from '@emotion/react';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '../store';
+import { login, registerUser } from '../store/authSlice';
 
 const moveDots = keyframes`
   0% { background-position: 0 0, 20px 20px; }
@@ -215,6 +218,38 @@ const SwitchLink = styled('a')`
   }
 `;
 
+const InfoIcon = styled('span')`
+  margin-left: 6px;
+  color: #9ca3af;
+  cursor: pointer;
+  position: relative;
+  display: inline-block;
+  font-weight: 700;
+  &:hover span {
+    visibility: visible;
+    opacity: 1;
+  }
+`;
+
+const Tooltip = styled('span')`
+  visibility: hidden;
+  opacity: 0;
+  width: 220px;
+  background: #374151;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+  padding: 6px 8px;
+  position: absolute;
+  z-index: 20;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: opacity 0.2s;
+  font-size: 12px;
+  line-height: 1.3;
+`;
+
 const LoginRegisterPage: React.FC = () => {
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [loginEmail, setLoginEmail] = useState('');
@@ -224,28 +259,50 @@ const LoginRegisterPage: React.FC = () => {
   const [registerConfirm, setRegisterConfirm] = useState('');
   const [registerError, setRegisterError] = useState('');
   const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
 
   const handleTab = (t: 'login' | 'register') => {
     setTab(t);
     setRegisterError('');
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Integrate with your login logic
-    // Example: dispatch(login({ email: loginEmail, password: loginPassword }))
-    alert(`Login: ${loginEmail}`);
+    try {
+      await dispatch(login({ email: loginEmail, password: loginPassword })).unwrap();
+      navigate('/dashboard');
+    } catch (err: any) {
+      if (!err.response) {
+        setRegisterError('Unable to reach server');
+      } else if (err.response.status === 401) {
+        setRegisterError('Invalid email or password');
+      } else {
+        setRegisterError('Login failed');
+      }
+    }
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (registerPassword !== registerConfirm) {
       setRegisterError('Passwords do not match');
       return;
     }
     setRegisterError('');
-    // TODO: Integrate with your register logic
-    alert(`Register: ${registerEmail}`);
+    try {
+      await dispatch(registerUser({ email: registerEmail, password: registerPassword })).unwrap();
+      navigate('/dashboard');
+    } catch (err: any) {
+      if (!err.response) {
+        setRegisterError('Unable to reach server');
+      } else if (err.response.status === 400) {
+        setRegisterError('Password does not meet strength requirements');
+      } else if (err.response.status === 409) {
+        setRegisterError('Email already registered');
+      } else {
+        setRegisterError('Registration failed');
+      }
+    }
   };
 
   useEffect(() => {
@@ -316,7 +373,16 @@ const LoginRegisterPage: React.FC = () => {
               onChange={e => setRegisterEmail(e.target.value)}
               required
             />
-            <Label htmlFor="register-password">Password</Label>
+            <Label htmlFor="register-password">
+              Password
+              <InfoIcon aria-label="password requirements">
+                ⓘ
+                <Tooltip>
+                  Password must be at least 8 characters and include a number
+                  and symbol
+                </Tooltip>
+              </InfoIcon>
+            </Label>
             <Input
               type="password"
               id="register-password"

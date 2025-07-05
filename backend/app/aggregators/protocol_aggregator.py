@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Aggregator that converts individual protocol snapshots into unified metrics.
 
 This module mirrors the logic in :pymod:`app.usecase.portfolio_aggregation_usecase`
@@ -7,6 +5,8 @@ This module mirrors the logic in :pymod:`app.usecase.portfolio_aggregation_useca
  hard-coding the protocols.  This will allow new adapters to be registered
  without modifying the aggregator.
 """
+from __future__ import annotations
+
 
 import asyncio
 from datetime import datetime

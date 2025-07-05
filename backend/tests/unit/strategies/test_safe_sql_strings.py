@@ -1,6 +1,6 @@
+"""Unit tests for `safe_sql_strings` strategy."""
 from __future__ import annotations
 
-"""Unit tests for `safe_sql_strings` strategy."""
 
 from hypothesis import given
 

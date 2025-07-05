@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """Simple in-memory rate-limiter used for login brute-force protection.
 
 For production deployments a shared cache such as Redis **must** replace
 this implementation.  The current design is intentionally minimal to
 support CI tests and local development without external dependencies.
 """
+from __future__ import annotations
+
 
 from collections import defaultdict
 from time import time

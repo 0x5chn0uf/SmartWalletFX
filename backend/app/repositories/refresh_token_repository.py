@@ -1,6 +1,6 @@
+"""Repository layer for :class:`app.models.refresh_token.RefreshToken`."""
 from __future__ import annotations
 
-"""Repository layer for :class:`app.models.refresh_token.RefreshToken`."""
 
 import uuid
 from datetime import datetime, timedelta, timezone
