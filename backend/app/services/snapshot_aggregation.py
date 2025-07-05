@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """Snapshot aggregation service.
 
 Transforms aggregated portfolio metrics into PortfolioSnapshot ORM objects
 and optionally persists them. Designed for dependency-injection and reuse
 across FastAPI endpoints and Celery tasks.
 """
+from __future__ import annotations
+
 import asyncio
 from typing import Callable
 

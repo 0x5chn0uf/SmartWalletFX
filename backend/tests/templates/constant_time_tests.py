@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """Constant‐time security property tests.
 
 These leverage helpers from `tests.utils.security_testing` to ensure critical
 operations such as password verification execute in constant time irrespective
 of credential correctness.
 """
+from __future__ import annotations
+
 
 import pytest
 

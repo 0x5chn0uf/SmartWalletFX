@@ -11,14 +11,7 @@ from app.domain.errors import InactiveUserError, InvalidCredentialsError
 from app.models.user import User
 from app.schemas.user import UserCreate
 from app.services.auth_service import (
-    AuthService,
     DuplicateError,
-    WeakPasswordError,
-)
-from tests.fixtures import (
-    auth_service,
-    mock_refresh_token_repo,
-    mock_user_repo,
 )
 
 

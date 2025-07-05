@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Command-line interface for database backup utilities.
 
 This lightweight CLI exists primarily for developer ergonomics and Makefile
@@ -12,6 +10,8 @@ $ # Restore with explicit environment & force flag
 $ python -m app.cli.db_backup_cli restore ./backups/20250621_abcdef01.sql.gz \
 $     --env staging --force
 """
+from __future__ import annotations
+
 
 import argparse
 import sys

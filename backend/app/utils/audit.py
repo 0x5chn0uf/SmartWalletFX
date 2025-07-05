@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Audit-event validation helper.
 
 This utility is responsible for ensuring that runtime *audit* log payloads are
@@ -7,6 +5,8 @@ well-formed and comply with the canonical :pymod:`app.schemas.audit_log` models.
 It is lightweight so that it can be imported inside the hot path of
 :pyfunc:`app.utils.logging.audit` without noticeable overhead.
 """
+from __future__ import annotations
+
 
 import os
 import warnings

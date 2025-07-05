@@ -1,6 +1,6 @@
+"""Unit tests for the `jwt_tokens` Hypothesis strategy."""
 from __future__ import annotations
 
-"""Unit tests for the `jwt_tokens` Hypothesis strategy."""
 
 from hypothesis import given
 

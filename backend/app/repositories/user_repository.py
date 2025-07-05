@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Repository layer for User entity interactions.
 
 Provides a thin abstraction around the SQLAlchemy session to keep the
@@ -7,6 +5,8 @@ application/service layer free from ORM specifics. This aligns with the
 project's hexagonal architecture where repositories are infrastructure
 concerns injected into the domain/application layers.
 """
+from __future__ import annotations
+
 
 import uuid
 from typing import Optional

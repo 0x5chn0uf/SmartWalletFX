@@ -1,7 +1,7 @@
 """Comprehensive unit tests for JWT utilities."""
 
 from datetime import datetime, timedelta, timezone
-from unittest.mock import ANY, mock_open, patch
+from unittest.mock import mock_open, patch
 
 import pytest
 from jose import ExpiredSignatureError, JWSError, JWTError

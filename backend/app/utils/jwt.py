@@ -1,8 +1,8 @@
-from __future__ import annotations
-
 """
 JWT utility helpers leveraging python-jose.
 """
+from __future__ import annotations
+
 
 import uuid
 from datetime import datetime, timedelta, timezone

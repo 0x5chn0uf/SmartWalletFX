@@ -1,14 +1,23 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import apiClient from '../services/api';
 
+export interface UserProfile {
+  id: string;
+  username: string;
+  email: string;
+  role?: string;
+}
+
 interface AuthState {
-  token: string | null;
+  isAuthenticated: boolean;
+  user: UserProfile | null;
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
 }
 
 const initialState: AuthState = {
-  token: localStorage.getItem('token'),
+  isAuthenticated: false,
+  user: null,
   status: 'idle',
   error: null,
 };
@@ -16,8 +25,33 @@ const initialState: AuthState = {
 export const login = createAsyncThunk(
   'auth/login',
   async (credentials: { email: string; password: string }) => {
-    const response = await apiClient.post('/auth/login', credentials);
-    return response.data;
+    const form = new URLSearchParams();
+    form.append('username', credentials.email);
+    form.append('password', credentials.password);
+    await apiClient.post('/auth/token', form, { withCredentials: true });
+    const resp = await apiClient.get('/users/me', { withCredentials: true });
+    return resp.data as UserProfile;
+  }
+);
+
+export const registerUser = createAsyncThunk(
+  'auth/register',
+  async (payload: { email: string; password: string }) => {
+    await apiClient.post(
+      '/auth/register',
+      {
+        username: payload.email.split('@')[0],
+        email: payload.email,
+        password: payload.password,
+      },
+      { withCredentials: true }
+    );
+    const form = new URLSearchParams();
+    form.append('username', payload.email);
+    form.append('password', payload.password);
+    await apiClient.post('/auth/token', form, { withCredentials: true });
+    const resp = await apiClient.get('/users/me', { withCredentials: true });
+    return resp.data as UserProfile;
   }
 );
 
@@ -26,8 +60,8 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     logout: state => {
-      state.token = null;
-      localStorage.removeItem('token');
+      state.isAuthenticated = false;
+      state.user = null;
     },
   },
   extraReducers: builder => {
@@ -37,12 +71,21 @@ const authSlice = createSlice({
       })
       .addCase(login.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.token = action.payload.access_token;
-        localStorage.setItem('token', action.payload.access_token);
+        state.isAuthenticated = true;
+        state.user = action.payload;
       })
       .addCase(login.rejected, (state, action) => {
         state.status = 'failed';
-        state.error = action.error.message || 'Something went wrong';
+        state.error = action.error.message || 'Login failed';
+      })
+      .addCase(registerUser.fulfilled, (state, action) => {
+        state.isAuthenticated = true;
+        state.user = action.payload;
+        state.status = 'succeeded';
+      })
+      .addCase(registerUser.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.error.message || 'Registration failed';
       });
   },
 });
@@ -50,3 +93,4 @@ const authSlice = createSlice({
 export const { logout } = authSlice.actions;
 
 export default authSlice.reducer;
+

@@ -1,6 +1,5 @@
 import pytest
 
-from tests.fixtures import async_client, mock_httpx_client
 
 
 @pytest.mark.asyncio

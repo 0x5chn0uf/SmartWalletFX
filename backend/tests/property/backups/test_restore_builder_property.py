@@ -1,4 +1,3 @@
-from pathlib import Path
 
 import hypothesis.strategies as st
 from hypothesis import HealthCheck, given

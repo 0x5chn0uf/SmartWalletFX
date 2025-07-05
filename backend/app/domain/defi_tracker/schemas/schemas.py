@@ -1,10 +1,10 @@
-from __future__ import annotations
-
 """Pydantic schemas mirroring the DeFi Tracker domain entities.
 
 These are *shared* between the API adapter layer and other infrastructure
 (e.g. Celery tasks) but remain free of FastAPI-specific imports.
 """
+from __future__ import annotations
+
 
 from datetime import datetime
 from typing import List, Optional

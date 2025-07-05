@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Pytest plugin that sets up infrastructure for property-test templates.
 
 Responsibilities:
@@ -8,6 +6,8 @@ Responsibilities:
 2. Ensure Hypothesis runs with deterministic settings (seeded) when the
    ``CI`` environment variable is present.
 """
+from __future__ import annotations
+
 
 import os
 

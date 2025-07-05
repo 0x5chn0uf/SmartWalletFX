@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """Structured audit logging utility.
 
 Provides a simple helper to emit JSON-serialised audit events to standard
 output so that external log processors (e.g. Loki, Datadog) can parse them
 reliably.
 """
+from __future__ import annotations
+
 
 import json
 import logging
