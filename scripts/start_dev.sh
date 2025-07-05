@@ -17,6 +17,14 @@ command -v docker compose >/dev/null 2>&1 || {
 
 # 1. Start infrastructure services (runs in background, returns immediately)
 
+# Load environment variables from .env if present so backend running on host sees DATABASE_URL
+if [ -f .env ]; then
+  echo "▶ Loading environment variables from .env"
+  set -a
+  source .env
+  set +a
+fi
+
 echo "▶ Starting PostgreSQL & Redis containers…"
 docker compose up -d postgres-dev redis
 

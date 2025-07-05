@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 """Shared error response schema used across API endpoints."""
+from __future__ import annotations
 
 from pydantic import BaseModel, Field
 

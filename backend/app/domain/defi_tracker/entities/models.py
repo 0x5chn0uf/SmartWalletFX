@@ -1,11 +1,10 @@
-from __future__ import annotations
-
 """Domain entities for the DeFi Tracker.
 
 These entities are *pure Python* and do **not** depend on SQLAlchemy or
 any other infrastructure libraries. Persistence mappings live in the
 infrastructure layer (`app.repositories`).
 """
+from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime

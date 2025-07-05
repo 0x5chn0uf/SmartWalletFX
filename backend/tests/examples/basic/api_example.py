@@ -1,7 +1,5 @@
 import pytest
 
-from tests.fixtures import client
-
 
 @pytest.mark.asyncio
 def test_health_endpoint(client):

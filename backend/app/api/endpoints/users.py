@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 """User-related endpoints (protected routes)."""
+from __future__ import annotations
 
 import uuid
 

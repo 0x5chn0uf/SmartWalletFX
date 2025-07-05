@@ -1,11 +1,11 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { CssBaseline } from '@mui/material';
-import LoginPage from './pages/LoginPage';
 import LandingPage from './pages/LandingPage';
 import DashboardPage from './pages/DashboardPage';
 import WalletDetailPage from './pages/WalletDetailPage';
 import WalletList from './pages/WalletList';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 import { Provider } from 'react-redux';
 import { ThemeProvider } from './providers/ThemeProvider';
 import { store } from './store';
@@ -29,13 +29,47 @@ const App: React.FC = () => {
               <NavBar />
               <Routes>
                 <Route path="/" element={<LandingPage />} />
-                <Route path="/login" element={<LoginPage />} />
                 <Route path="/login-register" element={<LoginRegisterPage />} />
-                <Route path="/dashboard/:address" element={<DashboardPage />} />
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/defi" element={<DeFiDashboardPage />} />
-                <Route path="/wallets" element={<WalletList />} />
-                <Route path="/wallets/:id" element={<WalletDetailPage />} />
+                <Route
+                  path="/dashboard/:address"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/defi"
+                  element={
+                    <ProtectedRoute>
+                      <DeFiDashboardPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/wallets"
+                  element={
+                    <ProtectedRoute>
+                      <WalletList />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/wallets/:id"
+                  element={
+                    <ProtectedRoute>
+                      <WalletDetailPage />
+                    </ProtectedRoute>
+                  }
+                />
               </Routes>
             </Router>
             <NotificationManager />

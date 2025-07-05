@@ -3,7 +3,6 @@
 import uuid
 
 import pytest_asyncio
-from fastapi.testclient import TestClient
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 

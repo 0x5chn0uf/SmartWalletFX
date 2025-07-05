@@ -1,11 +1,10 @@
-from __future__ import annotations
-
 """SQLAlchemy model representing a persisted refresh token (JWT jti hash).
 
 A refresh token is a *rotatable* credential that can be revoked server-side.
 Only the SHA-256 hash of the token's ``jti`` is stored so that the raw token
 value is never persisted.
 """
+from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone

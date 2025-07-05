@@ -1,7 +1,6 @@
 """Base fixtures for the test suite."""
 
 import os
-import pathlib
 
 import pytest
 import pytest_asyncio
@@ -52,7 +51,7 @@ def _make_test_db(tmp_path_factory: pytest.TempPathFactory) -> tuple[str, str]:
         test_db_name = f"test_{uuid.uuid4().hex}"
 
         # Build *admin* connection URL (connects to 'postgres' default DB)
-        admin_url: URL = url_obj.set(database="postgres")
+        admin_url: URL = url_obj.set(database="postgres", drivername="postgresql")
 
         # Use sync engine for DDL operations (CREATE DATABASE)
         admin_engine = create_engine(admin_url.render_as_string(hide_password=False))
@@ -127,7 +126,7 @@ async def async_engine(tmp_path_factory: pytest.TempPathFactory):
             test_db_name = url_obj.database
 
             # Connect to admin database to DROP the temporary one
-            admin_url: URL = url_obj.set(database="postgres")
+            admin_url: URL = url_obj.set(database="postgres", drivername="postgresql")
             admin_engine = create_engine(
                 admin_url.render_as_string(hide_password=False)
             )

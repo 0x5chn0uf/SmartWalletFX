@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from app.models.audit_log import AuditLog
 from app.repositories.audit_log_repository import AuditLogRepository
 
 

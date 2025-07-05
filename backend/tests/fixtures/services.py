@@ -12,8 +12,6 @@ import pytest
 from app.services.blockchain_service import BlockchainService
 from app.services.portfolio_service import PortfolioCalculationService
 
-from .mocks import mock_db_session
-
 
 @pytest.fixture
 def portfolio_service(mock_db_session):

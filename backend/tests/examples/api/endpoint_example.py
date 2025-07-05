@@ -1,7 +1,5 @@
 import pytest
 
-from tests.fixtures import async_client
-
 
 @pytest.mark.asyncio
 async def test_protected_route_requires_auth(async_client):

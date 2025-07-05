@@ -13,8 +13,6 @@ from app.repositories.audit_log_repository import AuditLogRepository
 from app.usecase.audit_log_usecase import AuditLogUsecase
 from app.usecase.historical_balance_usecase import HistoricalBalanceUsecase
 
-from .mocks import mock_db_session
-
 
 @pytest.fixture
 def historical_balance_usecase(mock_db_session):

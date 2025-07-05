@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Application-layer authentication service.
 
 Encapsulates business rules for user registration and, in
@@ -7,6 +5,7 @@ future, login & token issuance.  Keeping logic here enables
 straightforward unit testing and maintains a clean separation between
 FastAPI adapters and domain/infrastructure layers.
 """
+from __future__ import annotations
 
 import logging
 from datetime import timedelta

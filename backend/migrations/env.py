@@ -1,9 +1,7 @@
+# ruff: noqa: F403, F405
 # Ensure project root on PYTHONPATH before importing app
 import pathlib
 import sys
-
-sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
-
 from logging.config import fileConfig
 
 from alembic import context
@@ -11,6 +9,8 @@ from sqlalchemy import engine_from_config, pool
 
 # Import Base and all models for Alembic autogenerate
 from app.models import *
+
+sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

@@ -1,7 +1,6 @@
 """Fixture configuration and settings for the test suite."""
 
 import os
-from typing import Any, Dict
 
 import pytest
 

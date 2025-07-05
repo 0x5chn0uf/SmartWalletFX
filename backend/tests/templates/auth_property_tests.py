@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Generic property-based tests applied to the authentication layer.
 
 These tests are collected once but intended to run in all environments.  They
@@ -7,6 +5,7 @@ exercise core security utilities (PasswordHasher) with randomly generated
 inputs from our Hypothesis strategies.  If external modules replace these
 utilities, the tests will still validate the fundamental invariants.
 """
+from __future__ import annotations
 
 import pytest
 from hypothesis import given, settings
