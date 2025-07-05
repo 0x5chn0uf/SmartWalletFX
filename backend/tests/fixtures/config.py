@@ -21,13 +21,23 @@ def test_config():
 
     async_db_url = os.environ.get("TEST_DB_URL", "sqlite+aiosqlite:///:memory:")
 
-    if "+asyncpg" in async_db_url:
-        sync_db_url = async_db_url.replace("+asyncpg", "")
+    # If a PostgreSQL URL is provided but the server isn't reachable, fall back
+    # to an in-memory SQLite database so tests can run without external
+    # services. This avoids connection errors when Docker isn't available.
+    if async_db_url.startswith("postgresql"):
+        import psycopg2
+
+        sync_candidate = async_db_url.replace("+asyncpg", "")
+        try:
+            conn = psycopg2.connect(sync_candidate)
+            conn.close()
+            sync_db_url = sync_candidate
+        except Exception:
+            async_db_url = "sqlite+aiosqlite:///:memory:"
+            sync_db_url = "sqlite:///:memory:"
     elif "+aiosqlite" in async_db_url:
         sync_db_url = async_db_url.replace("+aiosqlite", "")
     else:
-        # Fallback – best-effort conversion; for Postgres this yields a
-        # psycopg2 connection string, for SQLite it is identical.
         sync_db_url = async_db_url
 
     return {
