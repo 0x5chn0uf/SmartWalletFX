@@ -151,7 +151,6 @@ const HeroSubtitle = styled.p`
   line-height: 1.6;
 `;
 
-// eslint-disable-next-line react/display-name
 const CallToActionButton = styled(
   ({ $dimmed, ...rest }: { $dimmed?: boolean } & React.ComponentProps<typeof RouterLink>) => (
     <RouterLink {...rest} />

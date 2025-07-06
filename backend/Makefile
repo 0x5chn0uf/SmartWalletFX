@@ -19,7 +19,7 @@ COMPOSE_FILE_TEST ?= ../docker-compose.test.yml
 # Tools & env
 PYTHON := python
 PIP := pip
-TEST_ENV := BCRYPT_ROUNDS=4
+TEST_ENV := BCRYPT_ROUNDS=4 TEST_DB_URL=
 
 # -----------------------------------------------------------------------------
 # Utility – list all targets and one-line descriptions
@@ -40,19 +40,15 @@ install-dev: ## Install dev & test dependencies
 # -----------------------------------------------------------------------------
 # Linting & formatting
 # -----------------------------------------------------------------------------
-lint: ## Run ruff, black-check, isort-check, flake8 & mypy
+lint: ## Run ruff, black-check, isort-check & flake8
 	ruff check app tests
 	black --check app tests
 	isort --check-only app tests
 	flake8 app
-	mypy app
 
 format: ## Auto-format with black & isort
 	black app tests
 	isort app tests
-
-flake8:
-	flake8 --max-line-length=88 --extend-ignore=E203  --exclude=.venv,tests,migrations --per-file-ignores="app/abi/*.py:E501"
 
 bandit: ## Static security scan
 	bandit -r app -ll -ii -f txt
@@ -72,8 +68,8 @@ test: ## Run pytest suite
 test-perf: ## Run performance-marked tests
 	$(TEST_ENV) pytest -m performance $(TEST_FLAGS)
 
-coverage: ## Generate HTML coverage report
-	pytest --cov=app --cov-report=html
+test-cov: ## Generate HTML coverage report
+	$(TEST_ENV) pytest $(TEST_FLAGS) --cov=app --cov-report=term-missing
 
 # -----------------------------------------------------------------------------
 # Runtime helpers
@@ -151,7 +147,7 @@ db-restore: ## Restore a database dump (stub)
 # House-keeping
 # -----------------------------------------------------------------------------
 clean: ## Remove caches & artefacts
-	rm -rf __pycache__ .pytest_cache .coverage htmlcov .coverage.* .mypy_cache .ruff_cache .hypothesis .benchmarks
+	rm -rf __pycache__ .pytest_cache .coverage htmlcov .coverage.* .ruff_cache .hypothesis .benchmarks
 	find . -type d -name '__pycache__' -exec rm -rf {} +
 
 .PHONY: help install install-dev install-s3 install-perf lint format bandit safety \

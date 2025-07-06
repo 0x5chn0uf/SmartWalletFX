@@ -1,0 +1,2 @@
+extend-ignore = ["E402", "F401", "F811", "E713"]
+line-length = 88

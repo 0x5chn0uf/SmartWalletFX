@@ -1,0 +1,8 @@
+[flake8]
+exclude = venv,venv/*,.venv,.venv/*,.git,__pycache__,build,dist,tests/,migrations/
+max-line-length = 88
+extend-ignore = E203
+per-file-ignores =
+    app/abi/*.py:E501
+    migrations/env.py:E402,F403,F405
+    tests/**/*.py:F401,F811,E501
