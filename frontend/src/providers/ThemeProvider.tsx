@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import React, { ReactNode, useMemo } from 'react';
 import { ThemeProvider as MuiThemeProvider, CssBaseline } from '@mui/material';
 import { createAppTheme } from '../theme';

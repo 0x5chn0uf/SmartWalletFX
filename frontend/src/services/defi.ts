@@ -134,7 +134,6 @@ export async function getPortfolioSnapshot(): Promise<PortfolioSnapshot> {
 // Mock data helpers (used in development when backend is unavailable)
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 const USE_MOCK = ((import.meta as any).env.VITE_USE_MOCK ?? 'false') === 'true';
 
@@ -164,7 +163,6 @@ async function withMockFallback<T>(fn: () => Promise<T>, mock: T): Promise<T> {
   try {
     return await fn();
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.warn('[defi.ts] Falling back to mock data due to error:', err);
     return mock;
   }
