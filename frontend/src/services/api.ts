@@ -7,6 +7,12 @@ const apiClient = axios.create({
   withCredentials: true,
 });
 
+// Rehydrate access token from storage on page load
+const storedToken = localStorage.getItem('access_token');
+if (storedToken) {
+  apiClient.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+}
+
 // Flag to prevent refresh token loops
 let isRefreshing = false;
 
@@ -37,7 +43,13 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        await apiClient.post('/auth/refresh', {}, { withCredentials: true });
+        const refreshResp = await apiClient.post('/auth/refresh', {}, { withCredentials: true });
+
+        const newToken = refreshResp.data?.access_token as string | undefined;
+        if (newToken) {
+          apiClient.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+          localStorage.setItem('access_token', newToken);
+        }
         isRefreshing = false;
         return apiClient(originalRequest);
       } catch (err) {
@@ -46,8 +58,6 @@ apiClient.interceptors.response.use(
         window.location.href = '/login-register';
         return Promise.reject(err);
       }
-
-      isRefreshing = false;
     }
 
     return Promise.reject(error);

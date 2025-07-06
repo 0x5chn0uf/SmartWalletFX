@@ -16,6 +16,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import LoginRegisterPage from './pages/LoginRegisterPage';
 import NavBar from './components/NavBar';
 import { fetchCurrentUser } from './store/authSlice';
+import apiClient from './services/api';
 
 const queryClient = new QueryClient();
 
@@ -23,8 +24,28 @@ const App: React.FC = () => {
   const dispatch = useReduxDispatch<AppDispatch>();
 
   useEffect(() => {
-    if (localStorage.getItem('session_active') === '1') {
+    const storedToken = localStorage.getItem('access_token');
+
+    if (storedToken) {
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
       dispatch(fetchCurrentUser());
+    } else if (localStorage.getItem('session_active') === '1') {
+      // Attempt silent refresh using HttpOnly refresh token cookie
+      apiClient
+        .post('/auth/refresh', {}, { withCredentials: true })
+        .then(resp => {
+          const newToken = resp.data?.access_token as string | undefined;
+          if (newToken) {
+            apiClient.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+            localStorage.setItem('access_token', newToken);
+            dispatch(fetchCurrentUser());
+          } else {
+            localStorage.removeItem('session_active');
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem('session_active');
+        });
     }
   }, [dispatch]);
 

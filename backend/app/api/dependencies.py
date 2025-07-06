@@ -98,8 +98,8 @@ blockchain_deps = BlockchainDeps()
 class AuthDeps:
     """Rate-limit, OAuth2 scheme, and *current-user* helper."""
 
-    # Allow missing Authorization header so we can fall back to HttpOnly cookie.
-    oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token", auto_error=False)
+    # Standard OAuth2 bearer scheme – requires "Authorization: Bearer <token>" header.
+    oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
     async def rate_limit_auth_token(  # type: ignore[valid-type]
         self, request: Request
@@ -117,18 +117,13 @@ class AuthDeps:
 
     async def get_current_user(
         self,
-        request: Request,
+        request: Request | None = None,
         token: str | None = Depends(oauth2_scheme),
         db: AsyncSession = Depends(get_db),
     ) -> User:
         """Validate JWT *token* and return the associated :class:`User`."""
 
-        if not token:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Missing authentication token",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+        # FastAPI ensures *token* is provided (401 if missing)
 
         try:
             payload = JWTUtils.decode_token(token)

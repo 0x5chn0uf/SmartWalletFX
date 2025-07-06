@@ -39,6 +39,7 @@ export const login = createAsyncThunk(
     const accessToken = tokenResp.data?.access_token as string | undefined;
     if (accessToken) {
       apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+      localStorage.setItem('access_token', accessToken);
     }
     const resp = await apiClient.get('/users/me', { withCredentials: true });
     // mark session present
@@ -66,6 +67,7 @@ export const registerUser = createAsyncThunk(
     const accessToken = tokenResp.data?.access_token as string | undefined;
     if (accessToken) {
       apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+      localStorage.setItem('access_token', accessToken);
     }
     const resp = await apiClient.get('/users/me', { withCredentials: true });
     // mark session present
@@ -78,6 +80,7 @@ export const logoutUser = createAsyncThunk('auth/logout', async () => {
   await apiClient.post('/auth/logout', {}, { withCredentials: true });
   delete apiClient.defaults.headers.common['Authorization'];
   localStorage.removeItem('session_active');
+  localStorage.removeItem('access_token');
 });
 
 const authSlice = createSlice({

@@ -95,7 +95,12 @@ def _json_safe(obj):
     elif isinstance(obj, datetime):
         return obj.isoformat()
     else:
-        return obj
+        # Fallback to string representation for any non-serialisable types
+        try:
+            json.dumps(obj)  # type: ignore[arg-type]
+            return obj
+        except TypeError:
+            return str(obj)
 
 
 def log_structured_audit_event(event: AuditEventBase) -> None:
