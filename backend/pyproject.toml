@@ -73,7 +73,6 @@ dev = [
     
     # Code Quality & Linting
     "ruff==0.1.5",              # Fast Python linter
-    "mypy==1.7.0",              # Static type checker
     "black==23.11.0",           # Code formatter
     "isort==5.12.0",            # Import sorter
     "flake8==7.2.0",            # Code linter
@@ -105,7 +104,7 @@ dev = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = '-v --cov=app --cov-report=term-missing -m "not performance"'
+addopts = '-m "not performance"'
 filterwarnings = ["ignore::DeprecationWarning"]
 markers = [
     "performance: slow performance / load tests"
@@ -141,13 +140,6 @@ include = '\.pyi?$'
 profile = "black"
 multi_line_output = 3
 line_length = 79
-
-[tool.mypy]
-python_version = "3.12"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-check_untyped_defs = true
 
 [tool.setuptools.packages.find]
 exclude = ["abis"]

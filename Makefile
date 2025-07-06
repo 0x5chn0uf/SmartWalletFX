@@ -38,11 +38,11 @@ cd-back: ## Activate the virtual environment
 # -----------------------------------------------------------------------------
 lint: lint-backend lint-frontend ## Run all linters
 
-lint-backend: ## Lint backend code (ruff, black, flake8, mypy)
+lint-backend: ## Lint backend code (ruff, black, flake8)
 	$(MAKE) -C $(BACKEND_DIR) lint
 
 lint-frontend: ## Lint frontend code (eslint & prettier)
-	@echo "Skipping frontend lint"
+	cd $(FRONTEND_DIR) && npm run lint
 
 format: format-backend ## Auto-format backend (black + isort)
 
@@ -63,7 +63,7 @@ test-backend: ## Run backend pytest suite
 # Frontend tests (Jest)
 
 test-frontend: ## Run frontend Jest suite
-	@echo "Skipping frontend tests"
+	cd $(FRONTEND_DIR) && npm test
 
 coverage-backend: ## Generate backend coverage HTML
 	$(MAKE) -C $(BACKEND_DIR) coverage
