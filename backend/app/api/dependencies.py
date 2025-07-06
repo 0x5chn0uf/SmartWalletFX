@@ -123,15 +123,6 @@ class AuthDeps:
     ) -> User:
         """Validate JWT *token* and return the associated :class:`User`."""
 
-        # ------------------------------------------------------------------
-        # Support two token transports:
-        # 1. Standard "Authorization: Bearer <token>" header (preferred)
-        # 2. Fallback to secure HttpOnly cookie named *access_token* which the
-        #    frontend receives after successful login. This keeps JWTs out of
-        #    browser-accessible storage while still allowing API access from
-        #    same-site requests made by the SPA.
-        # ------------------------------------------------------------------
-
         if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

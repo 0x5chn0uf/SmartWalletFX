@@ -115,7 +115,7 @@ class AuthService:
             user = await self._repo.save(user)
         except IntegrityError as exc:  # pragma: no cover – safeguard
             # Handle race condition duplicates at DB level
-            Audit.warning("IntegrityError during register: %s", exc, exc_info=exc)
+            Audit.warning("user_register_integrity_error", error=str(exc.orig))
             if "users_email_key" in str(exc.orig):  # simplistic check
                 raise DuplicateError("email") from exc
             raise
