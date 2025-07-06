@@ -1,6 +1,6 @@
 # Accessibility Standards & Guidelines
 
-This document outlines the accessibility standards, tools, and development workflow for the trading bot application.
+This document outlines the accessibility standards, tools, and development workflow for the SmartWalletFX platform.
 
 ## WCAG Compliance Standards
 
