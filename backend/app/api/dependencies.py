@@ -133,9 +133,6 @@ class AuthDeps:
         # ------------------------------------------------------------------
 
         if not token:
-            token = request.cookies.get("access_token")
-
-        if not token:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Missing authentication token",
