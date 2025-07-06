@@ -123,8 +123,6 @@ class AuthDeps:
     ) -> User:
         """Validate JWT *token* and return the associated :class:`User`."""
 
-        # FastAPI ensures *token* is provided (401 if missing)
-
         try:
             payload = JWTUtils.decode_token(token)
         except Exception:  # noqa: BLE001 – translate

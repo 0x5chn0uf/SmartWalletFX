@@ -77,7 +77,7 @@ class UserRepository:
         except IntegrityError as e:  # safeguard against race-condition duplicates
             Audit.error("User already exists", error=e)
             await self._session.rollback()
-            raise IntegrityError("User already exists")
+            raise
 
         await self._session.refresh(user)
         return user
