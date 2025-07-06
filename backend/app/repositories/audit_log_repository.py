@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import Any, Optional, Sequence
 
 from sqlalchemy import and_, asc, desc, func, select
@@ -48,9 +49,17 @@ class AuditLogRepository:
         if entity_type:
             conditions.append(AuditLog.entity_type == entity_type)
         if entity_id:
-            conditions.append(AuditLog.entity_id == entity_id)
+            try:
+                _eid = uuid.UUID(entity_id) if isinstance(entity_id, str) else entity_id
+            except ValueError:
+                _eid = entity_id  # leave as-is if not valid UUID string
+            conditions.append(AuditLog.entity_id == _eid)
         if user_id:
-            conditions.append(AuditLog.user_id == user_id)
+            try:
+                _uid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+            except ValueError:
+                _uid = user_id
+            conditions.append(AuditLog.user_id == _uid)
         if start_date and end_date:
             conditions.append(
                 func.DATE(AuditLog.timestamp).between(start_date, end_date)
