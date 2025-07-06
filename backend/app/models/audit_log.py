@@ -21,11 +21,11 @@ class AuditLog(Base):
     )
     entity_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     entity_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True), nullable=False, index=True  # store UUID as text
+        UUID(as_uuid=False), nullable=False, index=True
     )
     operation: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
     user_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True), nullable=False, index=True  # store UUID as text
+        UUID(as_uuid=False), nullable=False, index=True
     )
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
