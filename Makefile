@@ -60,13 +60,13 @@ test: test-backend test-frontend ## Run all tests
 test-backend: ## Run backend pytest suite
 	$(MAKE) -C $(BACKEND_DIR) test
 
+coverage-backend: ## Generate backend coverage HTML
+	$(MAKE) -C $(BACKEND_DIR) coverage
+
 # Frontend tests (Jest)
 
 test-frontend: ## Run frontend Jest suite
-	cd $(FRONTEND_DIR) && npm test
-
-coverage-backend: ## Generate backend coverage HTML
-	$(MAKE) -C $(BACKEND_DIR) coverage
+	cd $(FRONTEND_DIR) && npx vitest run 
 
 # -----------------------------------------------------------------------------
 # Development servers
