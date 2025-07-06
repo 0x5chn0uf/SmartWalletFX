@@ -51,22 +51,29 @@ class TestStructuredAuditLogging:
         event = AuditEventBase(
             id="123", timestamp=datetime.now(timezone.utc), action="test_event"
         )
-        with caplog.at_level(logging.INFO, logger="audit"):
+        audit_logger = logging.getLogger("audit")
+        audit_logger.addHandler(
+            caplog.handler
+        )  # ensure records captured despite propagate=False
+
+        try:
             log_structured_audit_event(event)
 
-        # Ensure at least one audit log was emitted
-        assert (
-            caplog.records
-        ), "Expected at least one audit log record to be captured from 'audit' logger"
-        record = caplog.records[-1]
-        assert record.levelname == "INFO"
-        assert record.name == "audit"
+            # Ensure at least one audit log was emitted
+            assert (
+                caplog.records
+            ), "Expected at least one audit log record to be captured from 'audit' logger"
+            record = caplog.records[-1]
+            assert record.levelname == "INFO"
+            assert record.name == "audit"
 
-        # Verify JSON structure
-        payload = json.loads(record.message)
-        assert payload["id"] == "123"
-        assert payload["action"] == "test_event"
-        assert "timestamp" in payload
+            # Verify JSON structure
+            payload = json.loads(record.message)
+            assert payload["id"] == "123"
+            assert payload["action"] == "test_event"
+            assert "timestamp" in payload
+        finally:
+            audit_logger.removeHandler(caplog.handler)
 
     def test_log_structured_audit_event_with_trace_id(self, caplog):
         """Test structured audit logging with trace ID from context."""
@@ -75,19 +82,22 @@ class TestStructuredAuditLogging:
         # Set up trace ID in context
         bind_contextvars(trace_id="test-trace-123")
 
+        audit_logger = logging.getLogger("audit")
+        audit_logger.addHandler(caplog.handler)
+
         try:
             event = AuditEventBase(
                 id="123", timestamp=datetime.now(timezone.utc), action="test_event"
             )
 
-            with caplog.at_level(logging.INFO, logger="audit"):
-                log_structured_audit_event(event)
+            log_structured_audit_event(event)
 
             assert caplog.records, "Expected audit log record"
             payload = json.loads(caplog.records[-1].message)
             assert payload["trace_id"] == "test-trace-123"
         finally:
             clear_contextvars()
+            audit_logger.removeHandler(caplog.handler)
 
     def test_log_structured_audit_event_validation_failure(self, caplog):
         """Test handling of validation failures in structured audit logging."""
@@ -133,6 +143,9 @@ class TestAuditLogging:
         # Set up trace ID in context
         bind_contextvars(trace_id="test-trace-123")
 
+        audit_logger = logging.getLogger("audit")
+        audit_logger.addHandler(caplog.handler)
+
         try:
             audit("test_event")
 
@@ -141,6 +154,7 @@ class TestAuditLogging:
             assert payload["trace_id"] == "test-trace-123"
         finally:
             clear_contextvars()
+            audit_logger.removeHandler(caplog.handler)
 
     def test_audit_with_validation_failure(self, caplog, monkeypatch):
         """Test handling of validation failures in audit logging."""
