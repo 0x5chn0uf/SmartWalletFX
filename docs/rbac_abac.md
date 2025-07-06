@@ -1,6 +1,6 @@
 # RBAC & ABAC Authorization Guide
 
-This guide explains how the Role-Based Access Control (RBAC) and Attribute-Based Access Control (ABAC) system works in the Trading Bot SMC backend, how to use it in new endpoints, and how clients interact with the resulting authorisation model.
+This guide explains how the Role-Based Access Control (RBAC) and Attribute-Based Access Control (ABAC) system works in the SmartWalletFX backend, how to use it in new endpoints, and how clients interact with the resulting authorisation model.
 
 ---
 
