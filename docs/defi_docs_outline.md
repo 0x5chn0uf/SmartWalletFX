@@ -10,7 +10,7 @@
    2.2 Component Breakdown
    2.3 Data Flow & Event Model
 3. Backend
-   3.1 Tech Stack & Rationale (FastAPI, PostgreSQL/SQLite, Celery, Redis)
+   3.1 Tech Stack & Rationale (FastAPI, PostgreSQL (SQLite fallback), Celery, Redis)
    3.2 Domain Models & Services
    3.3 API Contract (OpenAPI)
    3.4 Snapshot Aggregation Service Details
@@ -46,7 +46,7 @@ SmartWalletFX's **DeFi Tracker** centralises on-chain positions from major lendi
 2. **Analytics Foundation** – raw timeline data powers future dashboards (PnL, risk) and alerting.
 3. **Extensibility** – modular hexagonal backend and chart-centric frontend facilitate rapid protocol expansion.
 
-The current MVP targets read-only wallet tracking (no Tx signing) with SQLite/PostgreSQL storage, scheduled snapshots and a React chart interface.
+The current MVP targets read-only wallet tracking (no Tx signing) with PostgreSQL (SQLite fallback) storage, scheduled snapshots and a React chart interface.
 
 ## 2. Architecture (summary)
 
@@ -103,4 +103,3 @@ Refer to [Testing & QA Guide](defi_testing_guide.md).
 - **Health Score** – risk metric from protocol (Aave, Radiant) indicating liquidation proximity.
 - **RPC** – Remote Procedure Call node for blockchain interaction (Alchemy, Infura).
 
-_(Further sections to be populated in subsequent steps.)_

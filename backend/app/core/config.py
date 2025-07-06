@@ -12,7 +12,8 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
-    ]  # React default port
+        "http://localhost:5173",  # Vite default port
+    ]  # Frontend development servers
 
     # ------------------------------------------------------------------
     # Database – assemble DATABASE_URL from individual parts when not

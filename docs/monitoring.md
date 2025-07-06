@@ -1,6 +1,6 @@
 # Monitoring & Observability
 
-This document outlines the monitoring and observability strategy for the trading-bot platform, including metrics, logging, and alerting.
+This document outlines the monitoring and observability strategy for the SmartWalletFX platform, including metrics, logging, and alerting.
 
 ---
 
@@ -343,7 +343,7 @@ alertmanager_notifications_failed_total > 0
 
 ---
 
-## © 2025 Trading-Bot SMC – Infrastructure & DevOps Team
+## © 2025 SmartWalletFX – Infrastructure & DevOps Team
 
 # Monitoring & Alerting – JWT Key Rotation
 

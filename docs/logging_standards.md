@@ -102,4 +102,4 @@ A sample Logstash filter is provided under `ops/logstash/audit_filter.conf`.
 
 ---
 
-© 2025 Trading-Bot SMC – Security & Compliance Team
+© 2025 SmartWalletFX – Security & Compliance Team

@@ -1,7 +1,5 @@
 import pytest
 
-from tests.fixtures import client
-
 
 @pytest.mark.parametrize(
     "username,password,expected_status",

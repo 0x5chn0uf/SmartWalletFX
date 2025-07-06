@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Unit tests for the `email_addresses` Hypothesis strategy.
 
 These quick checks ensure the strategy from `tests.strategies.security` yields
@@ -7,6 +5,7 @@ RFC-like addresses (contains exactly one '@' and non-empty parts).  Detailed
 validation is already provided by Hypothesis' built-in `emails()` strategy, so
 we only assert invariants that downstream code relies upon.
 """
+from __future__ import annotations
 
 from hypothesis import HealthCheck, assume, given, settings
 

@@ -1,7 +1,4 @@
-import pytest
-
 from app.models import User
-from tests.fixtures import sync_session
 
 
 def test_user_creation_in_db(sync_session):
