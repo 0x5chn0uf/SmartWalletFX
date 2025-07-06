@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from app.api.dependencies import auth_deps, get_db
 from app.repositories.user_repository import UserRepository
 from app.schemas.user import UserCreate, UserRead
-from app.utils.logging import audit
+from app.utils.logging import Audit
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -36,7 +36,7 @@ async def read_current_user(
         )
 
     # Structured audit log
-    audit(
+    Audit.info(
         "user_profile_view",
         user_id=str(getattr(current_user, "id", "unknown")),
         ip=request.client.host if request.client else "unknown",
