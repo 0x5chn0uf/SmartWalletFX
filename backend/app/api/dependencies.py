@@ -117,7 +117,7 @@ class AuthDeps:
 
     async def get_current_user(
         self,
-        request: Request | None = None,
+        request: Request = None,  # type: ignore[assignment]
         token: str | None = Depends(oauth2_scheme),
         db: AsyncSession = Depends(get_db),
     ) -> User:
