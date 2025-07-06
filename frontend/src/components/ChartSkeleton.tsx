@@ -12,7 +12,6 @@ const ChartSkeleton: React.FC<{ className?: string }> = ({ className = '' }) => 
     <div className="w-full px-4">
       {[...Array(5)].map((_, idx) => (
         <Skeleton
-          // eslint-disable-next-line react/no-array-index-key
           key={idx}
           variant="rectangular"
           height={16 + idx * 12}

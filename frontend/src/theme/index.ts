@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import { createTheme, Theme } from '@mui/material/styles';
 import * as tokens from './generated';
 

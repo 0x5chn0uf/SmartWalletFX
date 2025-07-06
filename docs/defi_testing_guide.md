@@ -35,12 +35,12 @@ frontend/src/__tests__/
 | Frontend – Integration         | `msw` for API mocks                  |
 | End-to-End                     | `Cypress` (Chrome / Mobile viewport) |
 | Security                       | `bandit`, `safety`, `detect-secrets` |
-| Linting                        | `ruff`, `mypy`, `eslint`, `prettier` |
+| Linting                        | `ruff`, `eslint`, `prettier`         |
 
 ## 4. CI Pipeline Stages
 
 1. **security** – bandit, safety, detect-secrets.
-2. **quality** – ruff, mypy, eslint.
+2. **quality** – ruff, eslint.
 3. **test** – pytest (`--cov`), jest (`--coverage`).
 4. **e2e** – Cypress Docker job.
 5. **deploy** – only if all above pass and branch=main.

@@ -5,6 +5,8 @@ import { createAppTheme } from '../../../theme';
 import LoginRegisterPage from '../../../pages/LoginRegisterPage';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
+import { Provider } from 'react-redux';
+import { store } from '../../../store';
 
 // Mock useNavigate to avoid actual navigation during tests
 vi.mock('react-router-dom', async () => {
@@ -23,11 +25,13 @@ describe('LoginRegisterPage', () => {
 
   const setup = () => {
     render(
-      <ThemeProvider theme={theme}>
-        <MemoryRouter>
-          <LoginRegisterPage />
-        </MemoryRouter>
-      </ThemeProvider>
+      <Provider store={store}>
+        <ThemeProvider theme={theme}>
+          <MemoryRouter>
+            <LoginRegisterPage />
+          </MemoryRouter>
+        </ThemeProvider>
+      </Provider>
     );
   };
 
@@ -46,10 +50,10 @@ describe('LoginRegisterPage', () => {
     fireEvent.change(screen.getByLabelText(/email/i), {
       target: { value: 'user@example.com' },
     });
-    fireEvent.change(screen.getByLabelText(/^password$/i), {
+    fireEvent.change(screen.getByPlaceholderText(/create a password/i), {
       target: { value: 'secret1' },
     });
-    fireEvent.change(screen.getByLabelText(/confirm password/i), {
+    fireEvent.change(screen.getByPlaceholderText(/confirm your password/i), {
       target: { value: 'secret2' },
     });
 
