@@ -2,18 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Final
-
-import structlog
 from fastapi import HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
 from app.schemas.error import ErrorResponse
-
-_LOGGER: Final = structlog.get_logger(__name__)
-
+from app.utils.logging import Audit
 
 # ---------------------------------------------------------------------------
 # Utility helpers
@@ -50,7 +45,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):  # type:
         status_code=exc.status_code,
         trace_id=trace_id,
     ).model_dump()
-    _LOGGER.info("http_exception", **payload)
+    Audit.error("http_exception", **payload)
     return JSONResponse(status_code=exc.status_code, content=payload)
 
 
@@ -62,13 +57,13 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         status_code=422,
         trace_id=trace_id,
     ).model_dump()
-    _LOGGER.info("validation_error", **payload)
+    Audit.info("validation_error", **payload)
     return JSONResponse(status_code=422, content=payload)
 
 
 async def generic_exception_handler(request: Request, exc: Exception):  # type: ignore[valid-type]  # noqa: E501
     trace_id = _get_trace_id(request)
-    _LOGGER.error("unhandled_exception", trace_id=trace_id, exc_info=exc)
+    Audit.error("unhandled_exception", trace_id=trace_id, exc_info=exc)
     payload = ErrorResponse(  # noqa: E501
         detail="Internal server error",
         code="SERVER_ERROR",
@@ -89,7 +84,7 @@ async def integrity_error_handler(request: Request, exc: IntegrityError):  # typ
         status_code=409,
         trace_id=trace_id,
     ).model_dump()
-    _LOGGER.info("db_conflict", **payload)
+    Audit.warning("db_conflict", **payload)
     return JSONResponse(status_code=409, content=payload)
 
 

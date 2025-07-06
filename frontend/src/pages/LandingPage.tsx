@@ -151,7 +151,12 @@ const HeroSubtitle = styled.p`
   line-height: 1.6;
 `;
 
-const CallToActionButton = styled(RouterLink)<{ $dimmed?: boolean }>`
+// eslint-disable-next-line react/display-name
+const CallToActionButton = styled(
+  ({ $dimmed, ...rest }: { $dimmed?: boolean } & React.ComponentProps<typeof RouterLink>) => (
+    <RouterLink {...rest} />
+  )
+)<{ $dimmed?: boolean }>`
   background: linear-gradient(90deg, #4fd1c7 0%, #6366f1 100%);
   color: #1f2937;
   border: none;

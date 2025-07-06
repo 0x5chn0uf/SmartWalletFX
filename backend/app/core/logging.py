@@ -7,6 +7,7 @@ modules log to ensure processor pipeline is configured.
 from __future__ import annotations
 
 import logging
+import sys
 
 import structlog
 
@@ -33,13 +34,27 @@ def _configure_structlog() -> None:
 
 
 def setup_logging() -> None:  # pragma: no cover – one-time bootstrapping
-    """Initialise the stdlib & structlog configuration."""
-
+    """
+    Initialise the stdlib & structlog configuration.
+    - Standard logging outputs to console in a human-readable format
+    (for legacy loggers)
+    - structlog outputs JSON for structured logs
+    """
     # Basic stdlib config (structlog will re-use root handlers)
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(message)s",
-    )
+    root_logger = logging.getLogger()
+    if not root_logger.hasHandlers():
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s [%(levelname)s] [%(name)s]: %(message)s",
+            stream=sys.stdout,
+        )
+    else:
+        # If handlers already exist, just set the level and formatter
+        for handler in root_logger.handlers:
+            handler.setLevel(logging.INFO)
+            handler.setFormatter(
+                logging.Formatter("%(asctime)s [%(levelname)s] [%(name)s]: %(message)s")
+            )
 
     _configure_structlog()
 

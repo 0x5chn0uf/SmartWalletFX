@@ -1,10 +1,9 @@
-from __future__ import annotations
-
 """Utility helpers for password hashing, verification and strength validation.
 
 Centralised here so that domain/application layers can depend on these helpers
 without importing FastAPI or other framework-specific code.
 """
+from __future__ import annotations
 
 import re
 
