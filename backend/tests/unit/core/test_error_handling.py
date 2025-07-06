@@ -61,11 +61,12 @@ async def test_validation_exception_handler_uses_generic_message():
 @pytest.mark.asyncio
 async def test_generic_exception_handler_catches_unexpected_error(caplog):
     req = _make_request()
-    with caplog.at_level(logging.ERROR):
+    # Capture logs from the dedicated "audit" logger instead of relying on propagation
+    with caplog.at_level(logging.ERROR, logger="audit"):
         resp = await eh.generic_exception_handler(req, RuntimeError("boom"))
     body = json.loads(resp.body)
     assert body["code"] == "SERVER_ERROR" and resp.status_code == 500
-    # Logger should contain the trace_id
+    # Ensure trace_id is present in emitted audit logs
     assert any("test-trace" in record.message for record in caplog.records)
 
 
