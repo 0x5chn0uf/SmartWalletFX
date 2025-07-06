@@ -24,7 +24,7 @@ describe('App Component', () => {
       </Provider>
     );
     expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /portfolio/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /defi/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /settings/i })).toBeInTheDocument();
   });
 });
