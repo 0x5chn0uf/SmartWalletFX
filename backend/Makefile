@@ -50,9 +50,6 @@ format: ## Auto-format with black & isort
 	black app tests
 	isort app tests
 
-flake8:
-	flake8 --max-line-length=88 --extend-ignore=E203  --exclude=.venv,tests,migrations --per-file-ignores="app/abi/*.py:E501"
-
 bandit: ## Static security scan
 	bandit -r app -ll -ii -f txt
 
