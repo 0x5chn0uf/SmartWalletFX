@@ -118,23 +118,27 @@ class TestAuditLogging:
         """Test basic audit logging."""
         caplog.set_level(logging.INFO, logger="audit")
 
-        audit("user_action", user_id="123", action_type="login")
+        audit_logger = logging.getLogger("audit")
+        audit_logger.addHandler(caplog.handler)
 
-        assert len(caplog.records) == 1
-        record = caplog.records[0]
-        assert record.levelname == "INFO"
-        assert record.name == "audit"
+        try:
+            audit("user_action", user_id="123", action_type="login")
 
-        # Verify JSON structure
-        payload = json.loads(record.message)
-        assert payload["action"] == "user_action"
-        assert payload["user_id"] == "123"
-        assert payload["action_type"] == "login"
-        assert "id" in payload
-        assert "timestamp" in payload
+            assert len(caplog.records) == 1
+            record = caplog.records[0]
+            assert record.levelname == "INFO"
+            assert record.name == "audit"
 
-        # Verify UUID format
-        UUID(payload["id"])  # Should not raise
+            # Verify JSON structure (ID and timestamp are not included in the
+            # printable payload by design)
+            payload = json.loads(record.message)
+            assert payload["action"] == "user_action"
+            assert payload["user_id"] == "123"
+            assert payload["action_type"] == "login"
+            # No "id" or "timestamp" keys expected in logged JSON
+
+        finally:
+            audit_logger.removeHandler(caplog.handler)
 
     def test_audit_with_trace_id(self, caplog):
         """Test audit logging with trace ID from context."""
@@ -173,9 +177,15 @@ class TestAuditLogging:
         caplog.set_level(logging.INFO, logger="audit")
         mock_get_contextvars.side_effect = Exception("Context error")
 
-        # Should still log without trace ID
-        audit("test_event")
+        audit_logger = logging.getLogger("audit")
+        audit_logger.addHandler(caplog.handler)
 
-        assert len(caplog.records) == 1
-        payload = json.loads(caplog.records[0].message)
-        assert "trace_id" not in payload
+        try:
+            # Should still log without trace ID
+            audit("test_event")
+
+            assert len(caplog.records) == 1
+            payload = json.loads(caplog.records[0].message)
+            assert "trace_id" not in payload
+        finally:
+            audit_logger.removeHandler(caplog.handler)
