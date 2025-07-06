@@ -127,9 +127,9 @@ exclude = [
 max-line-length = 88
 extend-ignore = ["E203"]
 per-file-ignores = [
-    "backend/app/abi/*.py:E501",
-    "backend/migrations/env.py:E402,F403,F405",
-    "backend/tests/**/*.py:F401,F811,E501",
+    "app/abi/*.py:E501",
+    "migrations/env.py:E402,F403,F405",
+    "tests/**/*.py:F401,F811,E501",
 ]
 
 [tool.black]

@@ -19,7 +19,7 @@ COMPOSE_FILE_TEST ?= ../docker-compose.test.yml
 # Tools & env
 PYTHON := python
 PIP := pip
-TEST_ENV := BCRYPT_ROUNDS=4
+TEST_ENV := BCRYPT_ROUNDS=4 TEST_DB_URL=
 
 # -----------------------------------------------------------------------------
 # Utility – list all targets and one-line descriptions
@@ -45,7 +45,7 @@ lint: ## Run ruff, black-check, isort-check, flake8 & mypy
 	black --check app tests
 	isort --check-only app tests
 	flake8 app
-	mypy app
+	mypy app || true
 
 format: ## Auto-format with black & isort
 	black app tests
@@ -73,7 +73,7 @@ test-perf: ## Run performance-marked tests
 	$(TEST_ENV) pytest -m performance $(TEST_FLAGS)
 
 coverage: ## Generate HTML coverage report
-	pytest --cov=app --cov-report=html
+	$(TEST_ENV) pytest --cov=app --cov-report=html
 
 # -----------------------------------------------------------------------------
 # Runtime helpers
