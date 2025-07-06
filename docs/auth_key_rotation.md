@@ -4,7 +4,7 @@ _Last updated: 2025-06-22_
 
 ## Overview
 
-The trading-bot backend now features **fully automated JWT key rotation** that eliminates manual maintenance while ensuring zero-downtime authentication. This system automatically promotes new signing keys and retires old ones based on configurable grace periods, with comprehensive monitoring and alerting.
+SmartWalletFX backend now features **fully automated JWT key rotation** that eliminates manual maintenance while ensuring zero-downtime authentication. This system automatically promotes new signing keys and retires old ones based on configurable grace periods, with comprehensive monitoring and alerting.
 
 ## System Architecture
 
@@ -355,4 +355,4 @@ pytest backend/tests/property/jwt_rotation/
 
 ---
 
-© 2025 Trading-Bot Platform – Security Engineering
+© 2025 SmartWalletFX – Security Engineering

@@ -59,4 +59,3 @@ flowchart LR
 
 ---
 
-_Document generated automatically by Task Master agent on 2025-06-15. Keep up-to-date with evolving architecture._

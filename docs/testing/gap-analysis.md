@@ -38,4 +38,3 @@ Provide a snapshot of current automated test coverage, identify untested or unde
 
 ---
 
-_Document generated automatically. Update after each audit iteration._

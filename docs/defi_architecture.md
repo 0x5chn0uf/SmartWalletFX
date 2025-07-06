@@ -9,7 +9,7 @@ mermaid
 flowchart LR
     Browser -->|HTTPS| Nginx
     Nginx -->|REST| FastAPI
-    FastAPI -->|SQLAlchemy (async)| PostgreSQL[(PostgreSQL / SQLite)]
+    FastAPI -->|SQLAlchemy (async)| PostgreSQL[(PostgreSQL)]
     FastAPI --> CeleryBroker((Redis Broker))
     CeleryWorker((Celery Worker)) -->|SQLAlchemy| PostgreSQL
     CeleryWorker -->|Web3.py| EthereumRPC[(Alchemy / Infura)]
@@ -21,7 +21,7 @@ flowchart LR
 - **FastAPI**: Handles synchronous HTTP requests, aggregates live data, exposes OpenAPI.
 - **Celery Workers**: Perform periodic snapshot aggregation and heavy tasks asynchronously.
 - **Redis**: Acts as both Celery broker and short-lived cache for token prices.
-- **PostgreSQL / SQLite**: Stores historical snapshots and user metadata (SQLite in dev/test, PostgreSQL in staging/prod).
+- **PostgreSQL**: Stores historical snapshots and user metadata (PostgreSQL is used by default; SQLite is a fallback).
 - **Web3.py**: Reads on-chain data from supported protocols via RPC nodes.
 
 ## 2. Layered Hexagonal Design

@@ -1,10 +1,10 @@
 # Database Backup & Restore Runbook
 
-[![Backup Tests](https://img.shields.io/badge/backup%20tests-passing-brightgreen)](https://github.com/your-org/trading-bot-smc/actions)
-[![E2E Tests](https://img.shields.io/badge/E2E%20tests-passing-brightgreen)](https://github.com/your-org/trading-bot-smc/actions)
-[![Performance Tests](https://img.shields.io/badge/performance%20tests-passing-brightgreen)](https://github.com/your-org/trading-bot-smc/actions)
+[![Backup Tests](https://img.shields.io/badge/backup%20tests-passing-brightgreen)](https://github.com/your-org/smartwalletfx/actions)
+[![E2E Tests](https://img.shields.io/badge/E2E%20tests-passing-brightgreen)](https://github.com/your-org/smartwalletfx/actions)
+[![Performance Tests](https://img.shields.io/badge/performance%20tests-passing-brightgreen)](https://github.com/your-org/smartwalletfx/actions)
 
-This document describes how automated and manual database backup/restore operations work for the trading-bot platform.
+This document describes how automated and manual database backup/restore operations work for the SmartWalletFX platform.
 
 ---
 
@@ -341,7 +341,7 @@ Set `SLACK_WEBHOOK_URL` environment variable to enable alerting. If not configur
    # Stop the application
    docker-compose down
    # or
-   systemctl stop trading-bot-app
+   systemctl stop smartwalletfx-app
    ```
 
 4. **Perform the restore:**
@@ -375,7 +375,7 @@ Set `SLACK_WEBHOOK_URL` environment variable to enable alerting. If not configur
    # Start the application
    docker-compose up -d
    # or
-   systemctl start trading-bot-app
+   systemctl start smartwalletfx-app
    ```
 
 8. **Run smoke tests:**
@@ -522,7 +522,7 @@ Add / adjust the following settings (e.g. in `.env`):
 | `BACKUP_ENCRYPTION_ENABLED`                   | `true`                               | Set to `true` to pass each dump through `gpg --encrypt` before upload / retention.                                 |
 | `GPG_RECIPIENT_KEY_ID`                        | `0xDEADBEEF12345678`                 | Public-key **fingerprint** or **email** used as the GPG `--recipient`. _The server must NOT hold the private key._ |
 | `BACKUP_STORAGE_ADAPTER`                      | `s3`                                 | Switches the storage backend from the default local filesystem to S3.                                              |
-| `BACKUP_S3_BUCKET`                            | `trading-bot-backups`                | Destination bucket for uploads.                                                                                    |
+| `BACKUP_S3_BUCKET`                            | `smartwalletfx-backups`                | Destination bucket for uploads.                                                                                    |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | –                                    | Credentials used by `boto3`. Recommended to scope IAM user _write-only_ to the bucket.                             |
 | `AWS_DEFAULT_REGION`                          | `us-east-1`                          | AWS region for the bucket.                                                                                         |
 | `AWS_S3_ENDPOINT_URL`                         | `https://s3.us-east-1.amazonaws.com` | Override to point at a custom endpoint / MinIO / LocalStack.                                                       |
