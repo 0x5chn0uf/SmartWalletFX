@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Audit-event validation helper.
 
 This utility is responsible for ensuring that runtime *audit* log payloads are
@@ -7,8 +5,10 @@ well-formed and comply with the canonical :pymod:`app.schemas.audit_log` models.
 It is lightweight so that it can be imported inside the hot path of
 :pyfunc:`app.utils.logging.audit` without noticeable overhead.
 """
+from __future__ import annotations
 
 import os
+import uuid
 import warnings
 from typing import Any
 
@@ -29,6 +29,9 @@ from app.schemas.audit_log import AuditEventBase
 # ---------------------------------------------------------------------------
 
 _VALIDATION_MODE = os.getenv("AUDIT_VALIDATION", "hard").lower()
+
+# Reserved UUID for system-generated audit logs (when no user is available)
+SYSTEM_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000000")
 
 
 class AuditValidationError(ValueError):
@@ -135,19 +138,24 @@ def _log_change(session: Session, instance: Any, operation: str) -> None:
     # – this behaviour matches expectations of integration tests. For all
     # other tables we attempt to detect the currently authenticated user (via
     # ``get_user`` placeholder) and finally fall back to the reserved
-    # ``"system"`` identifier when no principal is available.
+    # ``SYSTEM_USER_ID`` when no principal is available.
 
     if isinstance(instance, User):
-        user_id = str(instance.id)
+        user_id = instance.id
     else:
         user = get_user(session)
-        user_id = str(user.id) if user else "system"
+        user_id = user.id if user else SYSTEM_USER_ID
+
+    # Ensure UUIDs are stored as string to comply with AuditLog column types
+    import uuid as _uuid
 
     log_entry = AuditLog(
         entity_type=instance.__tablename__,
-        entity_id=str(instance.id),
+        entity_id=str(instance.id)
+        if isinstance(instance.id, _uuid.UUID)
+        else instance.id,
         operation=operation,
         changes=changes,
-        user_id=user_id,
+        user_id=str(user_id) if isinstance(user_id, _uuid.UUID) else user_id,
     )
     session.add(log_entry)

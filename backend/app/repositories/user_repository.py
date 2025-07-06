@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Repository layer for User entity interactions.
 
 Provides a thin abstraction around the SQLAlchemy session to keep the
@@ -7,6 +5,7 @@ application/service layer free from ORM specifics. This aligns with the
 project's hexagonal architecture where repositories are infrastructure
 concerns injected into the domain/application layers.
 """
+from __future__ import annotations
 
 import uuid
 from typing import Optional
@@ -18,6 +17,7 @@ from sqlalchemy.future import select
 
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
+from app.utils.logging import Audit
 
 
 class UserRepository:
@@ -71,13 +71,14 @@ class UserRepository:
 
     async def save(self, user: User) -> User:
         """Persist *user* instance and commit the transaction."""
-
         self._session.add(user)
         try:
             await self._session.commit()
-        except IntegrityError:  # safeguard against race-condition duplicates
+        except IntegrityError as e:  # safeguard against race-condition duplicates
+            Audit.error("User already exists", error=e)
             await self._session.rollback()
             raise
+
         await self._session.refresh(user)
         return user
 

@@ -98,6 +98,7 @@ blockchain_deps = BlockchainDeps()
 class AuthDeps:
     """Rate-limit, OAuth2 scheme, and *current-user* helper."""
 
+    # Standard OAuth2 bearer scheme – requires "Authorization: Bearer <token>" header.
     oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 
     async def rate_limit_auth_token(  # type: ignore[valid-type]
@@ -116,7 +117,8 @@ class AuthDeps:
 
     async def get_current_user(
         self,
-        token: str = Depends(oauth2_scheme),
+        request: Request = None,  # type: ignore[assignment]
+        token: str | None = Depends(oauth2_scheme),
         db: AsyncSession = Depends(get_db),
     ) -> User:
         """Validate JWT *token* and return the associated :class:`User`."""

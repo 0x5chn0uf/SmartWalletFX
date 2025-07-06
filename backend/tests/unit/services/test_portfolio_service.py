@@ -7,15 +7,7 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from app.schemas.defi import Borrowing, Collateral, HealthScore
 from app.schemas.defi import PortfolioSnapshot as DefiPortfolioSnapshot
-from app.schemas.defi import ProtocolName, StakedPosition
-from app.services.portfolio_service import PortfolioCalculationService
-from tests.fixtures.services import (
-    mock_db_session,
-    mock_snapshot_data,
-    portfolio_service,
-)
 
 
 class TestPortfolioCalculationService:

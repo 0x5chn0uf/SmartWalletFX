@@ -116,6 +116,18 @@ db-down: ## Stop & remove DB containers & volumes
 	docker compose -f $(COMPOSE_FILE_DEV) down -v
 	docker compose -f $(COMPOSE_FILE_TEST) down -v || true
 
+alembic-rollback: ## Rollback DB to previous Alembic revision
+	PYTHONPATH=. alembic downgrade -1
+
+db-rollback: ## Rollback DB to previous migration (alias to alembic-rollback)
+	$(MAKE) alembic-rollback
+alembic-rollback-all: ## Rollback DB to base (all migrations)
+	PYTHONPATH=. alembic downgrade base
+
+db-rollback-all: ## Rollback DB to base (alias to alembic-rollback-all)
+	$(MAKE) alembic-rollback-all
+
+
 alembic-upgrade: ## Upgrade DB to latest Alembic head
 	PYTHONPATH=. alembic upgrade head
 

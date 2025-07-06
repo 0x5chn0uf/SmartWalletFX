@@ -1,17 +1,24 @@
-from __future__ import annotations
-
 """Authentication endpoints"""
+
+from __future__ import annotations
 
 import time
 
-import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    Response,
+    status,
+)
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 import app.api.dependencies as deps_mod
+from app.core.config import settings
 from app.core.database import get_db
 from app.domain.errors import InactiveUserError, InvalidCredentialsError
 from app.schemas.auth_token import TokenResponse
@@ -21,9 +28,7 @@ from app.services.auth_service import (
     DuplicateError,
     WeakPasswordError,
 )
-from app.utils.logging import audit
-
-logger = structlog.get_logger(__name__)
+from app.utils.logging import Audit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -46,7 +51,7 @@ async def register_user(
     start_time = time.time()
     client_ip = request.client.host or "unknown"
 
-    logger.info(
+    Audit.info(
         "User registration started",
         username=payload.username,
         email=payload.email,
@@ -58,7 +63,7 @@ async def register_user(
         user = await service.register(payload)
         duration = int((time.time() - start_time) * 1000)
 
-        logger.info(
+        Audit.info(
             "User registration completed successfully",
             user_id=user.id,
             username=user.username,
@@ -66,18 +71,10 @@ async def register_user(
             duration_ms=duration,
         )
 
-        audit(
-            "user_registration_success",
-            user_id=user.id,
-            username=user.username,
-            email=user.email,
-            client_ip=client_ip,
-        )
-
         return user
     except DuplicateError as dup:
         duration = int((time.time() - start_time) * 1000)
-        logger.warning(
+        Audit.error(
             "User registration failed - duplicate field",
             username=payload.username,
             email=payload.email,
@@ -90,7 +87,7 @@ async def register_user(
         ) from dup
     except WeakPasswordError:
         duration = int((time.time() - start_time) * 1000)
-        logger.warning(
+        Audit.warning(
             "User registration failed - weak password",
             username=payload.username,
             email=payload.email,
@@ -102,7 +99,7 @@ async def register_user(
         )
     except Exception as exc:
         duration = int((time.time() - start_time) * 1000)
-        logger.error(
+        Audit.error(
             "User registration failed with unexpected error",
             username=payload.username,
             email=payload.email,
@@ -120,6 +117,7 @@ async def register_user(
 )
 async def login_for_access_token(
     request: Request,
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:  # type: ignore[valid-type]
@@ -128,7 +126,7 @@ async def login_for_access_token(
     identifier = request.client.host or "unknown"
     limiter = deps_mod.login_rate_limiter
 
-    logger.info(
+    Audit.info(
         "User login attempt started", username=form_data.username, client_ip=identifier
     )
 
@@ -139,26 +137,42 @@ async def login_for_access_token(
         limiter.reset(identifier)
 
         duration = int((time.time() - start_time) * 1000)
-        logger.info(
+        Audit.info(
             "User login successful",
             username=form_data.username,
             client_ip=identifier,
             duration_ms=duration,
         )
 
-        audit("user_login_success", username=form_data.username, client_ip=identifier)
+        Audit.info(
+            "user_login_success", username=form_data.username, client_ip=identifier
+        )
+
+        response.set_cookie(
+            "access_token",
+            tokens.access_token,
+            httponly=True,
+            samesite="lax",
+        )
+        response.set_cookie(
+            "refresh_token",
+            tokens.refresh_token,
+            httponly=True,
+            samesite="lax",
+            path="/auth/refresh",
+        )
 
         return tokens
     except InvalidCredentialsError:
         duration = int((time.time() - start_time) * 1000)
-        logger.warning(
+        Audit.warning(
             "User login failed - invalid credentials",
             username=form_data.username,
             client_ip=identifier,
             duration_ms=duration,
         )
 
-        audit(
+        Audit.info(
             "user_login_failed_invalid_credentials",
             username=form_data.username,
             client_ip=identifier,
@@ -166,7 +180,7 @@ async def login_for_access_token(
 
         # Failed credentials → consume one hit and maybe block further attempts
         if not limiter.allow(identifier):
-            logger.warning(
+            Audit.warning(
                 "Login rate limit exceeded",
                 username=form_data.username,
                 client_ip=identifier,
@@ -181,14 +195,14 @@ async def login_for_access_token(
         )
     except InactiveUserError:
         duration = int((time.time() - start_time) * 1000)
-        logger.warning(
+        Audit.warning(
             "User login failed - inactive account",
             username=form_data.username,
             client_ip=identifier,
             duration_ms=duration,
         )
 
-        audit(
+        Audit.info(
             "user_login_failed_inactive_account",
             username=form_data.username,
             client_ip=identifier,
@@ -200,7 +214,7 @@ async def login_for_access_token(
         )
     except Exception as exc:
         duration = int((time.time() - start_time) * 1000)
-        logger.error(
+        Audit.error(
             "User login failed with unexpected error",
             username=form_data.username,
             client_ip=identifier,
@@ -212,7 +226,7 @@ async def login_for_access_token(
 
 
 class _RefreshRequest(BaseModel):
-    refresh_token: str = Field(..., description="Valid JWT refresh token")
+    refresh_token: str | None = Field(None, description="Valid JWT refresh token")
 
 
 @router.post(
@@ -222,7 +236,8 @@ class _RefreshRequest(BaseModel):
 )
 async def refresh_access_token(
     request: Request,
-    payload: _RefreshRequest,
+    response: Response,
+    payload: _RefreshRequest | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:  # type: ignore[valid-type]
     """Exchange *refresh_token* for a new access token.
@@ -232,28 +247,46 @@ async def refresh_access_token(
     start_time = time.time()
     client_ip = request.client.host or "unknown"
 
-    logger.info("Token refresh attempt started", client_ip=client_ip)
+    Audit.info("Token refresh attempt started", client_ip=client_ip)
 
     service = AuthService(db)
     try:
-        tokens = await service.refresh(payload.refresh_token)
+        token_str = None
+        if payload and payload.refresh_token:
+            token_str = payload.refresh_token
+        else:
+            token_str = request.cookies.get("refresh_token")
+
+        if not token_str:
+            raise HTTPException(
+                status_code=HTTP_401_UNAUTHORIZED, detail="Missing refresh token"
+            )
+
+        tokens = await service.refresh(token_str)
 
         duration = int((time.time() - start_time) * 1000)
-        logger.info(
+        Audit.info(
             "Token refresh successful", client_ip=client_ip, duration_ms=duration
+        )
+
+        response.set_cookie(
+            "access_token",
+            tokens.access_token,
+            httponly=True,
+            samesite="lax",
         )
 
         return tokens
     except Exception as exc:  # noqa: BLE001
         duration = int((time.time() - start_time) * 1000)
-        logger.warning(
+        Audit.warning(
             "Token refresh failed",
             client_ip=client_ip,
             duration_ms=duration,
             error=str(exc),
         )
 
-        audit(
+        Audit.info(
             "token_refresh_failed", client_ip=client_ip, error_type=type(exc).__name__
         )
 
@@ -261,3 +294,47 @@ async def refresh_access_token(
             status_code=HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token",
         )
+
+
+@router.post(
+    "/logout",
+    status_code=status.HTTP_200_OK,
+    summary="Logout current user",
+    response_class=Response,
+)
+async def logout(
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Revoke refresh token and clear auth cookies.
+
+    Uses the *refresh_token* cookie if present, revokes it in the database and
+    instructs the browser to delete both auth cookies.
+    """
+
+    token = request.cookies.get("refresh_token")
+    if token:
+        service = AuthService(db)
+        await service.revoke_refresh_token(token)
+
+    # Clear cookies – set empty value & immediate expiry
+    cookie_params = {
+        "path": "/",
+        "httponly": True,
+        "secure": settings.ENVIRONMENT.lower() == "production",
+        "samesite": "lax",
+    }
+    response.set_cookie("access_token", "", max_age=0, **cookie_params)
+    response.set_cookie("refresh_token", "", max_age=0, **cookie_params)
+    # Cookie was originally set with path=/auth/refresh – clear that too
+    response.set_cookie(
+        "refresh_token",
+        "",
+        max_age=0,
+        path="/auth/refresh",
+        httponly=True,
+        secure=cookie_params["secure"],
+        samesite="lax",
+    )
+    Audit.info("User logged out")

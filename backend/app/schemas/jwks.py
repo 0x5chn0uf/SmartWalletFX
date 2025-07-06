@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Pydantic schemas for JSON Web Key (JWK) and JSON Web Key Set (JWKS).
 
 These models intentionally cover the subset of fields required for RSA
@@ -7,6 +5,7 @@ signing keys used by our authentication system ("sig" use, RS256 alg).  The
 schema can be extended to support additional key types (EC, OKP, symmetric)
 in future tasks.
 """
+from __future__ import annotations
 
 from typing import List, Literal
 

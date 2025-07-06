@@ -9,13 +9,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.aggregate_metrics import AggregateMetricsModel
 from app.repositories.aggregate_metrics_repository import (
     AggregateMetricsRepository,
 )
-from tests.fixtures import mock_async_session, sample_aggregate_metrics
 
 
 class TestAggregateMetricsRepository:

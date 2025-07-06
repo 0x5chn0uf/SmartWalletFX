@@ -21,7 +21,12 @@ def upgrade() -> None:  # noqa: D401
 
     op.create_table(
         "audit_logs",
-        sa.Column("id", sa.UUID(), primary_key=True),
+        sa.Column(
+            "id",
+            sa.UUID(),
+            primary_key=True,
+            server_default=sa.text("gen_random_uuid()"),
+        ),
         sa.Column("entity_type", sa.String(length=50), nullable=False),
         sa.Column("entity_id", sa.UUID(), nullable=False),
         sa.Column("operation", sa.String(length=20), nullable=False),

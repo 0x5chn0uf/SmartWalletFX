@@ -1,11 +1,14 @@
 # flake8: noqa: E501
 
 from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.models import Base
+from app.models.portfolio_snapshot import PortfolioSnapshot
 from app.services.snapshot_aggregation import SnapshotAggregationService
 
 # ---------------------------------------------------------------------------
@@ -71,12 +74,6 @@ def test_save_snapshot_sync_persists_row():
 # ---------------------------------------------------------------------------
 # Additional tests (merged from formerly _extra)
 # ---------------------------------------------------------------------------
-
-from unittest.mock import AsyncMock, MagicMock
-
-import pytest
-
-from app.models.portfolio_snapshot import PortfolioSnapshot
 
 
 @pytest.mark.asyncio
