@@ -22,6 +22,14 @@ const initialState: AuthState = {
   error: null,
 };
 
+export const fetchCurrentUser = createAsyncThunk(
+  'auth/fetchCurrentUser',
+  async () => {
+    const resp = await apiClient.get('/users/me', { withCredentials: true });
+    return resp.data as UserProfile;
+  }
+);
+
 export const login = createAsyncThunk(
   'auth/login',
   async (credentials: { email: string; password: string }) => {
@@ -93,6 +101,17 @@ const authSlice = createSlice({
       .addCase(registerUser.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.error.message || 'Registration failed';
+      })
+      .addCase(fetchCurrentUser.pending, state => {
+        state.status = 'loading';
+      })
+      .addCase(fetchCurrentUser.fulfilled, (state, action) => {
+        state.isAuthenticated = true;
+        state.user = action.payload;
+        state.status = 'succeeded';
+      })
+      .addCase(fetchCurrentUser.rejected, state => {
+        state.status = 'idle';
       });
   },
 });
