@@ -437,7 +437,7 @@ jobs:
 
       - name: Run frontend tests
         working-directory: ./frontend
-        run: npm test:coverage
+        run: npm run test:coverage
 
       - name: Run accessibility checks
         working-directory: ./frontend
