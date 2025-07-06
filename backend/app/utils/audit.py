@@ -146,11 +146,16 @@ def _log_change(session: Session, instance: Any, operation: str) -> None:
         user = get_user(session)
         user_id = user.id if user else SYSTEM_USER_ID
 
+    # Ensure UUIDs are stored as string to comply with AuditLog column types
+    import uuid as _uuid
+
     log_entry = AuditLog(
         entity_type=instance.__tablename__,
-        entity_id=instance.id,
+        entity_id=str(instance.id)
+        if isinstance(instance.id, _uuid.UUID)
+        else instance.id,
         operation=operation,
         changes=changes,
-        user_id=user_id,
+        user_id=str(user_id) if isinstance(user_id, _uuid.UUID) else user_id,
     )
     session.add(log_entry)

@@ -20,6 +20,12 @@ class AuditLogRepository:
     async def create(self, **data: Any) -> AuditLog:  # noqa: D401
         """Persist a new :class:`AuditLog` instance to the database."""
 
+        # Ensure UUID fields are stored as string to match column type
+        for key in ("entity_id", "user_id"):
+            if key in data and data[key] is not None:
+                if isinstance(data[key], uuid.UUID):
+                    data[key] = str(data[key])
+
         log = AuditLog(**data)
         self._session.add(log)
         await self._session.flush()
@@ -49,17 +55,9 @@ class AuditLogRepository:
         if entity_type:
             conditions.append(AuditLog.entity_type == entity_type)
         if entity_id:
-            try:
-                _eid = uuid.UUID(entity_id) if isinstance(entity_id, str) else entity_id
-            except ValueError:
-                _eid = entity_id  # leave as-is if not valid UUID string
-            conditions.append(AuditLog.entity_id == _eid)
+            conditions.append(AuditLog.entity_id == str(entity_id))
         if user_id:
-            try:
-                _uid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
-            except ValueError:
-                _uid = user_id
-            conditions.append(AuditLog.user_id == _uid)
+            conditions.append(AuditLog.user_id == str(user_id))
         if start_date and end_date:
             conditions.append(
                 func.DATE(AuditLog.timestamp).between(start_date, end_date)
