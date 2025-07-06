@@ -317,7 +317,6 @@ async def logout(
     if token:
         service = AuthService(db)
         await service.revoke_refresh_token(token)
-        Audit.info("User logged out")
 
     # Clear cookies – set empty value & immediate expiry
     cookie_params = {
@@ -338,3 +337,4 @@ async def logout(
         secure=cookie_params["secure"],
         samesite="lax",
     )
+    Audit.info("User logged out")

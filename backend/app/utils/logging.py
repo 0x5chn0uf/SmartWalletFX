@@ -80,7 +80,7 @@ if not _AUDIT_LOGGER.handlers:
     _AUDIT_LOGGER.addHandler(_handler)
     _AUDIT_LOGGER.setLevel(logging.INFO)
     # Prevent double logging via root handlers
-    _AUDIT_LOGGER.propagate = True
+    _AUDIT_LOGGER.propagate = False
 
 
 def _json_safe(obj):
