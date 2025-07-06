@@ -185,7 +185,7 @@ const WalletPreview: React.FC<WalletPreviewProps> = ({ onInputFocus, onInputBlur
       }, 600);
       return;
     }
-    navigate(`/defi`);
+    navigate(`/defi/${value}`);
   }, [navigate, value]);
 
   const handleKeyDown: React.KeyboardEventHandler<HTMLInputElement> = e => {

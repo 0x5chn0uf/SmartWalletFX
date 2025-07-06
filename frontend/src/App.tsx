@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
 import { CssBaseline } from '@mui/material';
 import LandingPage from './pages/LandingPage';
 import DashboardPage from './pages/DashboardPage';
@@ -24,8 +23,11 @@ const App: React.FC = () => {
   const dispatch = useReduxDispatch<AppDispatch>();
 
   useEffect(() => {
-    dispatch(fetchCurrentUser());
+    if (localStorage.getItem('session_active') === '1') {
+      dispatch(fetchCurrentUser());
+    }
   }, [dispatch]);
+
   return (
     <ErrorBoundary>
       <Provider store={store}>
@@ -37,7 +39,6 @@ const App: React.FC = () => {
               <Routes>
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/login-register" element={<LoginRegisterPage />} />
-                <Route path="/dashboard/:address" element={<DashboardPage />} />
                 <Route
                   path="/dashboard"
                   element={
@@ -46,6 +47,7 @@ const App: React.FC = () => {
                     </ProtectedRoute>
                   }
                 />
+                <Route path="/defi/:address" element={<DeFiDashboardPage />} />
                 <Route
                   path="/defi"
                   element={

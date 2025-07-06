@@ -270,7 +270,7 @@ const LoginRegisterPage: React.FC = () => {
     e.preventDefault();
     try {
       await dispatch(login({ email: loginEmail, password: loginPassword })).unwrap();
-      navigate('/dashboard');
+      navigate('/defi');
     } catch (err: any) {
       if (!err.response) {
         setRegisterError('Unable to reach server');
@@ -291,7 +291,7 @@ const LoginRegisterPage: React.FC = () => {
     setRegisterError('');
     try {
       await dispatch(registerUser({ email: registerEmail, password: registerPassword })).unwrap();
-      navigate('/dashboard');
+      navigate('/defi');
     } catch (err: any) {
       if (!err.response) {
         setRegisterError('Unable to reach server');
@@ -356,6 +356,11 @@ const LoginRegisterPage: React.FC = () => {
               onChange={e => setLoginPassword(e.target.value)}
               required
             />
+            {registerError && (
+              <div style={{ color: '#ff6b6b', fontSize: 14, textAlign: 'center' }}>
+                {registerError}
+              </div>
+            )}
             <SubmitBtn type="submit">Login</SubmitBtn>
             <SwitchLink onClick={() => handleTab('register')}>
               Don't have an account? Register

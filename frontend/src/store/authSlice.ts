@@ -22,13 +22,12 @@ const initialState: AuthState = {
   error: null,
 };
 
-export const fetchCurrentUser = createAsyncThunk(
-  'auth/fetchCurrentUser',
-  async () => {
-    const resp = await apiClient.get('/users/me', { withCredentials: true });
-    return resp.data as UserProfile;
-  }
-);
+export const fetchCurrentUser = createAsyncThunk('auth/fetchCurrentUser', async () => {
+  const resp = await apiClient.get('/users/me', { withCredentials: true });
+  // mark session present
+  localStorage.setItem('session_active', '1');
+  return resp.data as UserProfile;
+});
 
 export const login = createAsyncThunk(
   'auth/login',
@@ -36,8 +35,14 @@ export const login = createAsyncThunk(
     const form = new URLSearchParams();
     form.append('username', credentials.email);
     form.append('password', credentials.password);
-    await apiClient.post('/auth/token', form, { withCredentials: true });
+    const tokenResp = await apiClient.post('/auth/token', form, { withCredentials: true });
+    const accessToken = tokenResp.data?.access_token as string | undefined;
+    if (accessToken) {
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+    }
     const resp = await apiClient.get('/users/me', { withCredentials: true });
+    // mark session present
+    localStorage.setItem('session_active', '1');
     return resp.data as UserProfile;
   }
 );
@@ -57,11 +62,23 @@ export const registerUser = createAsyncThunk(
     const form = new URLSearchParams();
     form.append('username', payload.email);
     form.append('password', payload.password);
-    await apiClient.post('/auth/token', form, { withCredentials: true });
+    const tokenResp = await apiClient.post('/auth/token', form, { withCredentials: true });
+    const accessToken = tokenResp.data?.access_token as string | undefined;
+    if (accessToken) {
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+    }
     const resp = await apiClient.get('/users/me', { withCredentials: true });
+    // mark session present
+    localStorage.setItem('session_active', '1');
     return resp.data as UserProfile;
   }
 );
+
+export const logoutUser = createAsyncThunk('auth/logout', async () => {
+  await apiClient.post('/auth/logout', {}, { withCredentials: true });
+  delete apiClient.defaults.headers.common['Authorization'];
+  localStorage.removeItem('session_active');
+});
 
 const authSlice = createSlice({
   name: 'auth',
@@ -112,6 +129,11 @@ const authSlice = createSlice({
       })
       .addCase(fetchCurrentUser.rejected, state => {
         state.status = 'idle';
+      })
+      .addCase(logoutUser.fulfilled, state => {
+        state.isAuthenticated = false;
+        state.user = null;
+        state.status = 'idle';
       });
   },
 });
@@ -119,4 +141,3 @@ const authSlice = createSlice({
 export const { logout } = authSlice.actions;
 
 export default authSlice.reducer;
-

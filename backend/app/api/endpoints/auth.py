@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 import app.api.dependencies as deps_mod
+from app.core.config import settings
 from app.core.database import get_db
 from app.domain.errors import InactiveUserError, InvalidCredentialsError
 from app.schemas.auth_token import TokenResponse
@@ -28,7 +29,6 @@ from app.services.auth_service import (
     WeakPasswordError,
 )
 from app.utils.logging import Audit
-from app.core.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -144,7 +144,9 @@ async def login_for_access_token(
             duration_ms=duration,
         )
 
-        Audit.info("user_login_success", username=form_data.username, client_ip=identifier)
+        Audit.info(
+            "user_login_success", username=form_data.username, client_ip=identifier
+        )
 
         response.set_cookie(
             "access_token",
@@ -256,7 +258,9 @@ async def refresh_access_token(
             token_str = request.cookies.get("refresh_token")
 
         if not token_str:
-            raise HTTPException(status_code=HTTP_401_UNAUTHORIZED, detail="Missing refresh token")
+            raise HTTPException(
+                status_code=HTTP_401_UNAUTHORIZED, detail="Missing refresh token"
+            )
 
         tokens = await service.refresh(token_str)
 
@@ -291,6 +295,7 @@ async def refresh_access_token(
             detail="Invalid or expired refresh token",
         )
 
+
 @router.post(
     "/logout",
     status_code=status.HTTP_200_OK,
@@ -312,6 +317,7 @@ async def logout(
     if token:
         service = AuthService(db)
         await service.revoke_refresh_token(token)
+        Audit.info("User logged out")
 
     # Clear cookies – set empty value & immediate expiry
     cookie_params = {

@@ -98,7 +98,8 @@ blockchain_deps = BlockchainDeps()
 class AuthDeps:
     """Rate-limit, OAuth2 scheme, and *current-user* helper."""
 
-    oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+    # Allow missing Authorization header so we can fall back to HttpOnly cookie.
+    oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token", auto_error=False)
 
     async def rate_limit_auth_token(  # type: ignore[valid-type]
         self, request: Request
@@ -116,10 +117,30 @@ class AuthDeps:
 
     async def get_current_user(
         self,
-        token: str = Depends(oauth2_scheme),
+        request: Request,
+        token: str | None = Depends(oauth2_scheme),
         db: AsyncSession = Depends(get_db),
     ) -> User:
         """Validate JWT *token* and return the associated :class:`User`."""
+
+        # ------------------------------------------------------------------
+        # Support two token transports:
+        # 1. Standard "Authorization: Bearer <token>" header (preferred)
+        # 2. Fallback to secure HttpOnly cookie named *access_token* which the
+        #    frontend receives after successful login. This keeps JWTs out of
+        #    browser-accessible storage while still allowing API access from
+        #    same-site requests made by the SPA.
+        # ------------------------------------------------------------------
+
+        if not token:
+            token = request.cookies.get("access_token")
+
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Missing authentication token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
         try:
             payload = JWTUtils.decode_token(token)

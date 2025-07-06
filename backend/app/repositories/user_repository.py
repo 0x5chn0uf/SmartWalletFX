@@ -17,6 +17,7 @@ from sqlalchemy.future import select
 
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
+from app.utils.logging import Audit
 
 
 class UserRepository:
@@ -70,13 +71,14 @@ class UserRepository:
 
     async def save(self, user: User) -> User:
         """Persist *user* instance and commit the transaction."""
-
         self._session.add(user)
         try:
             await self._session.commit()
-        except IntegrityError:  # safeguard against race-condition duplicates
+        except IntegrityError as e:  # safeguard against race-condition duplicates
+            Audit.error("User already exists", error=e)
             await self._session.rollback()
-            raise
+            raise IntegrityError("User already exists")
+
         await self._session.refresh(user)
         return user
 

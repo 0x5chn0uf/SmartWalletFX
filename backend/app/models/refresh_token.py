@@ -40,7 +40,7 @@ class RefreshToken(Base):
     )
     user = relationship("app.models.user.User", backref="refresh_tokens")
 
-    expires_at = Column(DateTime, nullable=False, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
     revoked = Column(Boolean, nullable=False, default=False, server_default="false")
 
     __table_args__ = (

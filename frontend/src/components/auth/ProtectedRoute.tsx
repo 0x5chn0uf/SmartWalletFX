@@ -4,12 +4,19 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 
 interface ProtectedRouteProps {
-  children: JSX.Element;
+  children: React.ReactElement;
   roles?: string[];
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roles }) => {
-  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const { isAuthenticated, status, user } = useSelector((state: RootState) => state.auth);
+
+  const hasSessionFlag =
+    typeof window !== 'undefined' && localStorage.getItem('session_active') === '1';
+
+  if (status === 'loading' || (status === 'idle' && hasSessionFlag)) {
+    return null;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login-register" replace />;
