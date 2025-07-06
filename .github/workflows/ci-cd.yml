@@ -443,7 +443,7 @@ jobs:
         working-directory: ./frontend
         run: |
           # Run design token contrast validation
-          npm test -- --watchAll=false --no-watchman --ci --testPathPattern="accessibility" --passWithNoTests
+          npx vitest run --include "**/*accessibility*" --passWithNoTests
 
           # Run Python contrast checker
           cd .. && python scripts/contrast_check.py --strict
