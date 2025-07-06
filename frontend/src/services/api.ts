@@ -12,9 +12,7 @@ apiClient.interceptors.response.use(
   async error => {
     if (error.response?.status === 401) {
       try {
-        await apiClient.post('/auth/refresh', {
-          refresh_token: '',
-        });
+        await apiClient.post('/auth/refresh');
       } catch (err) {
         return Promise.reject(err);
       }
