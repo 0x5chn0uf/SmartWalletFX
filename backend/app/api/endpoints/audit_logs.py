@@ -29,7 +29,7 @@ class AuditLogOut(BaseModel):
     changes: dict[str, object] = Field(..., description="Entity-specific change data")
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class PaginatedAuditLogs(BaseModel):

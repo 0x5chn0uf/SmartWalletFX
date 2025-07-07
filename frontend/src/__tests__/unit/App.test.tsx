@@ -27,4 +27,32 @@ describe('App Component', () => {
     expect(screen.getByRole('link', { name: /defi/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /settings/i })).toBeInTheDocument();
   });
+
+  it('hides navigation on password reset pages', () => {
+    const store = configureStore({
+      reducer: { auth: authReducer },
+      preloadedState: { auth: { isAuthenticated: false, user: null, status: 'idle', error: null } },
+    });
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={['/forgot-password']}>
+          <ThemeProvider>
+            <NavBar />
+          </ThemeProvider>
+        </MemoryRouter>
+      </Provider>
+    );
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={['/reset-password']}>
+          <ThemeProvider>
+            <NavBar />
+          </ThemeProvider>
+        </MemoryRouter>
+      </Provider>
+    );
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+  });
 });
