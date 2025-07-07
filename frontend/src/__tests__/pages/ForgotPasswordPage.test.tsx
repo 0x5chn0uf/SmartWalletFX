@@ -5,6 +5,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter } from 'react-router-dom';
 import passwordResetReducer, { requestReset } from '../../store/passwordResetSlice';
 import ForgotPasswordPage from '../../pages/ForgotPasswordPage';
+import { vi } from 'vitest';
 
 vi.mock('../../store/passwordResetSlice', async () => {
   const actual = await vi.importActual('../../store/passwordResetSlice');

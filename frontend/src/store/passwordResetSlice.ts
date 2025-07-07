@@ -11,12 +11,9 @@ const initialState: ResetState = {
   error: null,
 };
 
-export const requestReset = createAsyncThunk(
-  'passwordReset/request',
-  async (email: string) => {
-    await apiClient.post('/auth/forgot-password', { email });
-  }
-);
+export const requestReset = createAsyncThunk('passwordReset/request', async (email: string) => {
+  await apiClient.post('/auth/forgot-password', { email });
+});
 
 export const resetPassword = createAsyncThunk(
   'passwordReset/reset',

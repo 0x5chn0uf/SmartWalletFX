@@ -1,28 +1,33 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from httpx import AsyncClient
-
-from datetime import datetime, timedelta, timezone
 
 from app.schemas.user import UserCreate
 from app.services.auth_service import AuthService
 
 
 @pytest.mark.asyncio
-async def test_password_reset_flow(async_client_with_db: AsyncClient, db_session) -> None:
+async def test_password_reset_flow(
+    async_client_with_db: AsyncClient, db_session
+) -> None:
     # Register user
     user = await AuthService(db_session).register(
-        UserCreate(username="resetuser", email="reset@example.com", password="Str0ng!pwd")
+        UserCreate(
+            username="resetuser", email="reset@example.com", password="Str0ng!pwd"
+        )
     )
 
     # Patch token generator to return fixed token
     fixed_token = "fixed-token"
+
     async def dummy_send(self, email: str, reset_link: str) -> None:
         assert fixed_token in reset_link
-    
+
     from app.api.endpoints import password_reset as ep
+
     ep.generate_token = lambda: (
         fixed_token,
         "hash",
@@ -45,6 +50,8 @@ async def test_password_reset_flow(async_client_with_db: AsyncClient, db_session
     # Login with new password should succeed
     form = {"username": user.username, "password": new_password}
     login_resp = await async_client_with_db.post(
-        "/auth/token", data=form, headers={"Content-Type": "application/x-www-form-urlencoded"}
+        "/auth/token",
+        data=form,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
     assert login_resp.status_code == 200

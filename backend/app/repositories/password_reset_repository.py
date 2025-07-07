@@ -18,9 +18,13 @@ class PasswordResetRepository:
     def __init__(self, session: AsyncSession):
         self._session = session
 
-    async def create(self, token: str, user_id: uuid.UUID, expires_at: datetime) -> PasswordReset:
+    async def create(
+        self, token: str, user_id: uuid.UUID, expires_at: datetime
+    ) -> PasswordReset:
         token_hash = hashlib.sha256(token.encode()).hexdigest()
-        pr = PasswordReset(token_hash=token_hash, user_id=user_id, expires_at=expires_at)
+        pr = PasswordReset(
+            token_hash=token_hash, user_id=user_id, expires_at=expires_at
+        )
         self._session.add(pr)
         await self._session.commit()
         await self._session.refresh(pr)
