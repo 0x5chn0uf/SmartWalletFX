@@ -20,7 +20,7 @@ class PositionSchema(BaseModel):
     apy: Optional[float] = Field(None, ge=0, description="Annual percentage yield")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "protocol": "aave",
                 "asset": "DAI",
@@ -51,7 +51,7 @@ class AggregateMetricsSchema(BaseModel):
     )
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "id": "123e4567-e89b-12d3-a456-426614174000",
                 "wallet_id": "0x742d35cc6634c0532925a3b8d4c9db96c4b4d8b6",

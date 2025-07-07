@@ -48,8 +48,8 @@ class JWK(BaseModel):
     )
 
     class Config:
-        allow_population_by_field_name = True
-        schema_extra = {
+        populate_by_name = True
+        json_schema_extra = {
             "example": {
                 "kty": "RSA",
                 "use": "sig",
@@ -82,7 +82,7 @@ class JWKSet(BaseModel):
     keys: List[JWK] = Field(..., description="Array of JWK objects")
 
     class Config:
-        schema_extra = {
+        json_schema_extra = {
             "example": {
                 "keys": [
                     {
