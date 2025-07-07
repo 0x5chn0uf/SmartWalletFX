@@ -1,7 +1,6 @@
 import time
 from typing import List
 
-import structlog
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,9 +25,7 @@ from app.usecase.token_balance_usecase import TokenBalanceUsecase
 from app.usecase.token_price_usecase import TokenPriceUsecase
 from app.usecase.token_usecase import TokenUsecase
 from app.usecase.wallet_usecase import WalletUsecase
-from app.utils.logging import audit
-
-logger = structlog.get_logger(__name__)
+from app.utils.logging import Audit
 
 
 class WalletView:
@@ -67,7 +64,7 @@ class WalletView:
             # Cache user_id early to avoid greenlet issues in exception handling
             user_id = current_user.id
 
-            logger.info(
+            Audit.info(
                 "Wallet creation started",
                 user_id=user_id,
                 wallet_address=wallet.address,
@@ -80,7 +77,7 @@ class WalletView:
                 result = await usecase.create_wallet(wallet)
 
                 duration = int((time.time() - start_time) * 1000)
-                logger.info(
+                Audit.info(
                     "Wallet created successfully",
                     user_id=user_id,
                     wallet_id=str(result.id),
@@ -89,19 +86,10 @@ class WalletView:
                     duration_ms=duration,
                 )
 
-                audit(
-                    "wallet_created",
-                    user_id=str(user_id),
-                    wallet_id=str(result.id),
-                    wallet_address=wallet.address,
-                    wallet_name=wallet.name,
-                    client_ip=client_ip,
-                )
-
                 return result
             except Exception as exc:
                 duration = int((time.time() - start_time) * 1000)
-                logger.error(
+                Audit.error(
                     "Wallet creation failed",
                     user_id=user_id,
                     wallet_address=wallet.address,
@@ -135,14 +123,14 @@ class WalletView:
             # Cache user_id early to avoid greenlet issues in exception handling
             user_id = current_user.id
 
-            logger.info("Wallet listing started", user_id=user_id, client_ip=client_ip)
+            Audit.info("Wallet listing started", user_id=user_id, client_ip=client_ip)
 
             try:
                 usecase = WalletUsecase(db, current_user)
                 result = await usecase.list_wallets()
 
                 duration = int((time.time() - start_time) * 1000)
-                logger.info(
+                Audit.info(
                     "Wallet listing completed",
                     user_id=str(user_id),
                     wallet_count=len(result),
@@ -152,7 +140,7 @@ class WalletView:
                 return result
             except Exception as exc:
                 duration = int((time.time() - start_time) * 1000)
-                logger.error(
+                Audit.error(
                     "Wallet listing failed",
                     user_id=str(user_id),
                     duration_ms=duration,
@@ -186,7 +174,7 @@ class WalletView:
             # Cache user_id early to avoid greenlet issues in exception handling
             user_id = current_user.id
 
-            logger.info(
+            Audit.info(
                 "Wallet deletion started",
                 user_id=str(user_id),
                 wallet_address=address,
@@ -198,24 +186,17 @@ class WalletView:
                 await usecase.delete_wallet(address)
 
                 duration = int((time.time() - start_time) * 1000)
-                logger.info(
+                Audit.info(
                     "Wallet deleted successfully",
                     user_id=str(user_id),
                     wallet_address=address,
                     duration_ms=duration,
                 )
 
-                audit(
-                    "wallet_deleted",
-                    user_id=str(user_id),
-                    wallet_address=address,
-                    client_ip=client_ip,
-                )
-
                 return None
             except Exception as exc:
                 duration = int((time.time() - start_time) * 1000)
-                logger.error(
+                Audit.error(
                     "Wallet deletion failed",
                     user_id=str(user_id),
                     wallet_address=address,

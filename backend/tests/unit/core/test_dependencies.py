@@ -1,4 +1,5 @@
 import inspect
+import uuid
 
 import pytest
 from fastapi import HTTPException
@@ -100,10 +101,11 @@ async def test_get_current_user_success(monkeypatch):
     """A valid token with an existing user returns the user instance."""
 
     user = DummyUser()
+    user_id = str(uuid.uuid4())
     monkeypatch.setattr(
         deps_mod.JWTUtils,
         "decode_token",
-        lambda token: {"sub": "42", "roles": ["user"]},
+        lambda token: {"sub": user_id, "roles": ["user"]},
     )
     session = DummySession(user)
 
@@ -116,9 +118,9 @@ async def test_get_current_user_success(monkeypatch):
     "decoded, expected_detail",
     [
         (Exception("boom"), "Invalid authentication credentials"),
-        ({}, "Token missing subject claim"),
+        ({}, "Invalid subject in token"),
         ({"sub": "abc"}, "Invalid subject in token"),
-        ({"sub": "123"}, "User not found"),
+        ({"sub": str(uuid.uuid4())}, "User not found"),
     ],
 )
 async def test_get_current_user_error_paths(monkeypatch, decoded, expected_detail):

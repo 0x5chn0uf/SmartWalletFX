@@ -22,14 +22,14 @@ class DummySession(AsyncSession):
 @pytest.mark.asyncio
 async def test_get_current_user_success(monkeypatch):
     user = User(
-        id=1,
+        id=uuid.uuid4(),
         username=f"alice-{uuid.uuid4().hex[:8]}",
         email=f"a-{uuid.uuid4().hex[:8]}@example.com",
         hashed_password="x",
     )
 
     def _dummy_decode(token: str):  # noqa: D401
-        return {"sub": "1", "roles": ["user"]}
+        return {"sub": str(uuid.uuid4()), "roles": ["user"]}
 
     monkeypatch.setattr(JWTUtils, "decode_token", staticmethod(_dummy_decode))
     dummy_db = DummySession(user)

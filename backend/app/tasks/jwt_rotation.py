@@ -8,7 +8,6 @@ machine implemented in :pymod:`app.utils.jwt_rotation`.
 from __future__ import annotations
 
 import asyncio
-import logging
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -20,7 +19,7 @@ from app.utils.jwt_rotation import (
     KeySetUpdate,
     promote_and_retire_keys,
 )
-from app.utils.logging import audit
+from app.utils.logging import Audit
 from app.utils.redis_lock import acquire_lock
 
 # ---------------------------------------------------------------------------
@@ -85,14 +84,6 @@ except ImportError:  # pragma: no cover – prometheus_client optional dependenc
     }
 
 
-logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Helper utilities (internal)
-# ---------------------------------------------------------------------------
-
-
 def _gather_current_key_set() -> KeySet:
     """Build a :class:`KeySet` instance from *settings* and runtime state."""
 
@@ -137,14 +128,14 @@ def _apply_key_set_update(update: KeySetUpdate) -> None:
     if update.new_active_kid:
         old_kid = settings.ACTIVE_JWT_KID
         settings.ACTIVE_JWT_KID = update.new_active_kid
-        audit("JWT_KEY_PROMOTED", new_kid=update.new_active_kid, old_kid=old_kid)
+        Audit.info("JWT key promoted", new_kid=update.new_active_kid, old_kid=old_kid)
         METRICS["promote"].inc()
 
     # Retire keys
     for kid in update.keys_to_retire:
         # Mark key as retired so verification rejects it after grace period.
         jwt_utils._RETIRED_KEYS[kid] = now  # pylint: disable=protected-access
-        audit("JWT_KEY_RETIRED", kid=kid)
+        Audit.info("JWT key retired", kid=kid)
         METRICS["retire"].inc()
 
     # Invalidate JWKS cache to ensure fresh keys are published immediately
@@ -152,17 +143,18 @@ def _apply_key_set_update(update: KeySetUpdate) -> None:
     try:
         success = invalidate_jwks_cache_sync()
         if success:
-            audit("JWKS_CACHE_INVALIDATED", reason="key_rotation")
+            Audit.info("JWKS cache invalidated", reason="key_rotation")
             METRICS["cache_invalidation"].inc()
         else:
-            audit(
-                "JWKS_CACHE_INVALIDATION_FAILED",
+            Audit.warning(
+                "JWKS cache invalidation failed",
                 error="cache_invalidation_returned_false",
             )
             METRICS["cache_invalidation_error"].inc()
     except Exception as e:
-        logger.warning("Failed to invalidate JWKS cache during key rotation: %s", e)
-        audit("JWKS_CACHE_INVALIDATION_FAILED", error=str(e))
+        Audit.warning(
+            "Failed to invalidate JWKS cache during key rotation", error=str(e)
+        )
         METRICS["cache_invalidation_error"].inc()
 
 
@@ -201,14 +193,14 @@ def promote_and_retire_keys_task(self):  # noqa: D401 – Celery signature
                 timeout=settings.JWT_ROTATION_LOCK_TTL_SEC,
             ) as got_lock:
                 if not got_lock:
-                    logger.debug("JWT key rotation: lock not acquired – skipping run.")
+                    Audit.debug("JWT key rotation: lock not acquired – skipping run.")
                     return
 
                 key_set = _gather_current_key_set()
                 update = promote_and_retire_keys(key_set, datetime.now(timezone.utc))
 
                 if update.is_noop():
-                    logger.debug("JWT key rotation: no changes needed.")
+                    Audit.debug("JWT key rotation: no changes needed.")
                     return
 
                 _apply_key_set_update(update)
@@ -218,8 +210,7 @@ def promote_and_retire_keys_task(self):  # noqa: D401 – Celery signature
     try:
         asyncio.run(_run())
     except Exception as exc:  # pragma: no cover – capture unexpected errors
-        logger.exception("JWT key rotation failed: %s", exc)
-        audit("JWT_ROTATION_FAILED", error=str(exc))
+        Audit.error("JWT key rotation failed", error=str(exc))
         METRICS["error"].inc()
         # Exponential back-off: double countdown each retry up to 1h.
         retry_delay = min(60 * 60, (self.request.retries + 1) * 60)  # 1m,2m,...,60m

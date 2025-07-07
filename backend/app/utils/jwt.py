@@ -9,9 +9,11 @@ from functools import lru_cache
 from typing import Any, Dict
 
 from jose import ExpiredSignatureError, JWTError, jwt
+from pydantic import ValidationError
 
 from app.core.config import settings
-from app.utils.logging import audit
+from app.schemas.jwt import JWTPayload
+from app.utils.logging import Audit
 
 # ---------------------------------------------------------------------------
 # Key-rotation support
@@ -52,7 +54,7 @@ def rotate_signing_key(new_kid: str, new_signing_key: str) -> None:
         )
         _RETIRED_KEYS[old_kid] = retire_at
 
-    audit(
+    Audit.info(
         "JWT_KEY_ROTATED",
         new_kid=new_kid,
         old_kid=old_kid,
@@ -328,7 +330,13 @@ class JWTUtils:
             # Any non-JWT related exception (mostly encode errors) is deemed
             # non-critical for verification purposes and can be ignored.
 
-        return payload
+        try:
+            payload_obj = JWTPayload.model_validate(payload)
+        except ValidationError as exc:
+            Audit.error("jwt_payload_invalid", error=str(exc))
+            raise JWTError(f"Invalid token payload: {exc}") from exc
+
+        return payload_obj.model_dump(mode="json")
 
 
 # ---------------------------------------------------------------------------

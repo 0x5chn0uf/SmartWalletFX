@@ -37,7 +37,7 @@ def _clean_state(monkeypatch):
 
 
 def test_rotation_grace_period_allows_old_tokens(freezer):
-    user_id = "123"
+    user_id = str(uuid.uuid4())
 
     # Issue token with key A
     token_old = JWTUtils.create_access_token(user_id)

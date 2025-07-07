@@ -1,8 +1,5 @@
 """JWKS endpoint for serving JSON Web Key Sets."""
 
-import importlib
-import logging
-
 from fastapi import APIRouter
 
 from app.schemas.jwks import JWKSet
@@ -12,8 +9,8 @@ from app.utils.jwks_cache import (
     set_jwks_cache,
 )
 from app.utils.jwt_keys import format_public_key_to_jwk, get_verifying_keys
+from app.utils.logging import Audit
 
-logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -37,23 +34,22 @@ async def get_jwks():
     try:
         cached_jwks = await get_jwks_cache(redis)
         if cached_jwks:
-            logger.debug("JWKS served from cache")
+            Audit.debug("JWKS served from cache")
             # Emit audit event for cache hit
             try:
-                audit_mod = importlib.import_module("app.utils.logging")
-                audit_mod.audit(
-                    "JWKS_REQUESTED", cache_hit=True, keys_count=len(cached_jwks.keys)
+                Audit.info(
+                    "JWKS requested", cache_hit=True, keys_count=len(cached_jwks.keys)
                 )
             except Exception as audit_exc:  # pragma: no cover
-                logger.debug("Audit logging failed: %s", audit_exc)
+                Audit.debug(f"Audit logging failed: {audit_exc}")
             return cached_jwks
     except Exception as e:
-        logger.warning("Cache lookup failed, falling back to uncached: %s", e)
+        Audit.warning(f"Cache lookup failed, falling back to uncached: {e}")
     finally:
         try:
             await redis.close()
         except Exception as e:
-            logger.warning("Failed to close Redis connection: %s", e)
+            Audit.warning(f"Failed to close Redis connection: {e}")
 
     # Cache miss or error - generate fresh JWKS
     verifying_keys = get_verifying_keys()
@@ -65,29 +61,28 @@ async def get_jwks():
             jwk = format_public_key_to_jwk(key.value, key.kid)
             jwks.append(jwk)
         except Exception as e:
-            logger.warning("Failed to format key %s: %s", key.kid, e)
+            Audit.warning(f"Failed to format key {key.kid}: {e}")
             continue
 
     jwks_response = JWKSet(keys=jwks)
 
     # Emit audit event for cache miss / fresh generation
     try:
-        audit_mod = importlib.import_module("app.utils.logging")
-        audit_mod.audit("JWKS_REQUESTED", cache_hit=False, keys_count=len(jwks))
+        Audit.info("JWKS requested", cache_hit=False, keys_count=len(jwks))
     except Exception as audit_exc:  # pragma: no cover
-        logger.debug("Audit logging failed: %s", audit_exc)
+        Audit.debug(f"Audit logging failed: {audit_exc}")
 
     # Cache the result (fire and forget - don't block response)
     redis = _build_redis_client()
     try:
         await set_jwks_cache(redis, jwks_response)
-        logger.debug("JWKS cached successfully")
+        Audit.debug("JWKS cached successfully")
     except Exception as e:
-        logger.warning("Failed to cache JWKS: %s", e)
+        Audit.warning(f"Failed to cache JWKS: {e}")
     finally:
         try:
             await redis.close()
         except Exception as e:
-            logger.warning("Failed to close Redis connection: %s", e)
+            Audit.warning(f"Failed to close Redis connection: {e}")
 
     return jwks_response
