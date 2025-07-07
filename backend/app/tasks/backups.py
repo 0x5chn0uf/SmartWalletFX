@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import os
 from datetime import datetime
 from pathlib import Path
@@ -16,9 +15,7 @@ from app.utils.db_backup import (  # noqa: E501 – heavy logic lives in utils m
     create_dump,
     restore_dump,
 )
-from app.utils.logging import audit
-
-logger = logging.getLogger(__name__)
+from app.utils.logging import Audit
 
 
 @shared_task(name="app.tasks.backups.create_backup_task")
@@ -37,8 +34,8 @@ def create_backup_task() -> str:
     label = f"scheduled-{timestamp}"
     try:
         dump_path = create_dump(output_dir=output_dir, label=label)
-        audit(
-            "DB_BACKUP_SCHEDULED",
+        Audit.info(
+            "DB backup scheduled",
             dump_path=str(dump_path),
             label=label,
         )
@@ -47,7 +44,7 @@ def create_backup_task() -> str:
         purge_old_backups_task.delay()
         return str(dump_path)
     except Exception as exc:  # pragma: no cover – let Celery capture traceback
-        audit("DB_BACKUP_FAILED", label=label)
+        Audit.error("DB backup failed", label=label)
         raise exc
 
 
@@ -66,15 +63,15 @@ def restore_from_upload_task(temp_file_path: str) -> str:
         # Restore the database using the uploaded file
         restore_dump(Path(temp_file_path), force=True)
 
-        audit(
-            "DB_RESTORE_COMPLETED",
+        Audit.info(
+            "DB restore completed",
             dump_path=temp_file_path,
         )
 
         return f"Database restored successfully from {temp_file_path}"
 
     except Exception as exc:  # pragma: no cover
-        audit("DB_RESTORE_FAILED", dump_path=temp_file_path, error=str(exc))
+        Audit.error("DB restore failed", dump_path=temp_file_path, error=str(exc))
         raise exc
     finally:
         # Clean up the temporary file
@@ -82,7 +79,7 @@ def restore_from_upload_task(temp_file_path: str) -> str:
             if os.path.exists(temp_file_path):
                 os.unlink(temp_file_path)
         except Exception as cleanup_exc:
-            logger.warning(
+            Audit.warning(
                 f"Failed to clean up temp file {temp_file_path}: {cleanup_exc}"
             )
 
@@ -110,7 +107,9 @@ def purge_old_backups_task() -> int:
     for file_path in expired:
         try:
             file_path.unlink(missing_ok=True)
-            audit("DB_BACKUP_PURGED", dump_path=str(file_path))
+            Audit.info("DB backup purged", dump_path=str(file_path))
         except Exception as exc:  # pragma: no cover
-            audit("DB_BACKUP_PURGE_FAILED", dump_path=str(file_path), error=str(exc))
+            Audit.error(
+                "DB backup purge failed", dump_path=str(file_path), error=str(exc)
+            )
     return len(expired)

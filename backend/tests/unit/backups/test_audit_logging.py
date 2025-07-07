@@ -19,7 +19,7 @@ def mock_output_dir(tmp_path: Path) -> Path:
 @patch("app.utils.db_backup.get_storage_adapter")
 @patch("app.utils.db_backup.encrypt_file")
 @patch("app.utils.db_backup._run_subprocess")
-@patch("app.utils.db_backup.log_structured_audit_event")
+@patch("app.utils.db_backup.Audit.log_structured_audit_event")
 def test_create_dump_success_emits_correct_audit_logs(
     mock_log_event: MagicMock,
     mock_run_subprocess: MagicMock,
@@ -63,7 +63,7 @@ def test_create_dump_success_emits_correct_audit_logs(
 
 @patch("app.utils.db_backup.metrics")
 @patch("app.utils.db_backup._run_subprocess")
-@patch("app.utils.db_backup.log_structured_audit_event")
+@patch("app.utils.db_backup.Audit.log_structured_audit_event")
 def test_create_dump_failure_emits_correct_audit_log(
     mock_log_event: MagicMock,
     mock_run_subprocess: MagicMock,

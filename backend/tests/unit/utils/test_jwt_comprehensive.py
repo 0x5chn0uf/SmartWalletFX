@@ -1,5 +1,6 @@
 """Comprehensive unit tests for JWT utilities."""
 
+import uuid
 from datetime import datetime, timedelta, timezone
 from unittest.mock import mock_open, patch
 
@@ -259,17 +260,20 @@ class TestJWTUtils:
         mock_settings.JWT_KEYS = {"kid1": "secret1"}
         mock_settings.ACTIVE_JWT_KID = "kid1"
         mock_get_header.return_value = {"kid": "kid1"}
+        uid = str(uuid.uuid4())
+        now = int(datetime.now(timezone.utc).timestamp())
         mock_decode.return_value = {
-            "sub": "user123",
+            "sub": uid,
             "jti": "token123",
-            "exp": 1234567890,
+            "iat": now,
+            "exp": now + 60,
         }
 
         result = JWTUtils.decode_token("valid_token")
 
-        assert result["sub"] == "user123"
+        assert result["sub"] == uid
         assert result["jti"] == "token123"
-        assert result["exp"] == 1234567890
+        assert result["exp"] == now + 60
 
     @patch("app.utils.jwt.settings")
     @patch("app.utils.jwt.jwt.decode")
@@ -347,7 +351,13 @@ class TestJWTUtils:
             key = args[1]
             if isinstance(key, str):
                 raise JWSError("Key format error")
-            return {"sub": "user123", "jti": "token123", "exp": 1234567890}
+            now = int(datetime.now(timezone.utc).timestamp())
+            return {
+                "sub": str(uuid.uuid4()),
+                "jti": "token123",
+                "iat": now,
+                "exp": now + 60,
+            }
 
         mock_decode.side_effect = side_effect
 
@@ -384,10 +394,12 @@ class TestJWTUtils:
         mock_settings.JWT_KEYS = {"kid1": "secret1"}
         mock_settings.ACTIVE_JWT_KID = "kid1"
         mock_get_header.return_value = {"kid": "kid1"}
+        now = int(datetime.now(timezone.utc).timestamp())
         mock_decode.return_value = {
-            "sub": "user123",
+            "sub": str(uuid.uuid4()),
             "jti": "token123",
-            "exp": 1234567890,
+            "iat": now,
+            "exp": now + 60,
         }
         mock_encode.return_value = "header.payload.differentSig"
 
@@ -447,15 +459,17 @@ class TestJWTUtils:
         mock_settings.JWT_KEYS = {"kid1": "secret1"}
         mock_settings.ACTIVE_JWT_KID = "kid1"
         mock_get_header.return_value = {"kid": "unknown_kid"}  # KID not in JWT_KEYS
+        now = int(datetime.now(timezone.utc).timestamp())
         mock_decode.return_value = {
-            "sub": "user123",
+            "sub": str(uuid.uuid4()),
             "jti": "token123",
-            "exp": 1234567890,
+            "iat": now,
+            "exp": now + 60,
         }
 
         result = JWTUtils.decode_token("valid_token")
 
-        assert result["sub"] == "user123"
+        assert uuid.UUID(result["sub"])
 
     def test_load_key_success(self):
         """Test successful key loading from file."""
@@ -489,7 +503,7 @@ class TestRotateSigningKey:
         _RETIRED_KEYS.clear()
 
     @patch("app.utils.jwt.settings")
-    @patch("app.utils.jwt.audit")
+    @patch("app.utils.logging.Audit.info")
     def test_rotate_signing_key_new_key(self, mock_audit, mock_settings):
         """Test rotating to a new signing key."""
         mock_settings.JWT_KEYS = {"old_kid": "old_secret"}
@@ -504,7 +518,7 @@ class TestRotateSigningKey:
         mock_audit.assert_called_once()
 
     @patch("app.utils.jwt.settings")
-    @patch("app.utils.jwt.audit")
+    @patch("app.utils.logging.Audit.info")
     def test_rotate_signing_key_same_key(self, mock_audit, mock_settings):
         """Test rotating to the same key (no retirement)."""
         mock_settings.JWT_KEYS = {"same_kid": "same_secret"}
@@ -518,7 +532,7 @@ class TestRotateSigningKey:
         mock_audit.assert_called_once()
 
     @patch("app.utils.jwt.settings")
-    @patch("app.utils.jwt.audit")
+    @patch("app.utils.logging.Audit.info")
     def test_rotate_signing_key_no_existing_keys(self, mock_audit, mock_settings):
         """Test rotating when no existing keys."""
         mock_settings.JWT_KEYS = None
@@ -532,7 +546,7 @@ class TestRotateSigningKey:
         mock_audit.assert_called_once()
 
     @patch("app.utils.jwt.settings")
-    @patch("app.utils.jwt.audit")
+    @patch("app.utils.logging.Audit.info")
     def test_rotate_signing_key_old_key_not_in_keys(self, mock_audit, mock_settings):
         """Test rotating when old key is not in JWT_KEYS."""
         mock_settings.JWT_KEYS = {"other_kid": "other_secret"}
@@ -577,13 +591,16 @@ class TestRotateSigningKey:
         # Mock manual verification components
         mock_base64url_decode.return_value = b"signature"
         mock_jwk_construct.return_value.verify.return_value = True
+        uid = str(uuid.uuid4())
+        now = int(datetime.now(timezone.utc).timestamp())
         mock_b64decode.return_value = (
-            b'{"sub":"user123","jti":"token123","exp":1234567890}'
+            f'{{"sub":"{uid}","jti":"token123","iat":{now},"exp":{now + 60}}}'.encode()
         )
         mock_json_loads.return_value = {
-            "sub": "user123",
+            "sub": uid,
             "jti": "token123",
-            "exp": 1234567890,
+            "iat": now,
+            "exp": now + 60,
         }
 
         with pytest.raises(JWSError):

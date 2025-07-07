@@ -29,6 +29,7 @@ from app.usecase.portfolio_aggregation_usecase import (
 )
 from app.utils.jwks_cache import _build_redis_client
 from app.utils.jwt import JWTUtils
+from app.utils.logging import Audit
 from app.utils.rate_limiter import login_rate_limiter
 
 _logger = _logging.getLogger(__name__)
@@ -123,58 +124,45 @@ class AuthDeps:
     ) -> User:
         """Validate JWT *token* and return the associated :class:`User`."""
 
+        Audit.debug("auth_get_current_user_start")
         try:
             payload = JWTUtils.decode_token(token)
-        except Exception:  # noqa: BLE001 – translate
+        except Exception as exc:  # noqa: BLE001 – translate
+            Audit.warning("Invalid auth token", error=str(exc))
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authentication credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        sub = payload.get("sub")
-        if sub is None:
+        try:
+            pk = uuid.UUID(str(payload["sub"]))
+        except Exception:
+            Audit.warning("Invalid subject in token", sub=str(payload.get("sub")))
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token missing subject claim",
+                detail="Invalid subject in token",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        try:
-            pk = uuid.UUID(str(sub))
-        except ValueError:
-            if str(sub).isdigit():
-                pk = int(sub)
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid subject in token",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
-
         user = await db.get(User, pk)
         if not user:
+            Audit.warning("User not found", user_id=str(pk))
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        # Extract role/attribute information from JWT claims (RBAC/ABAC)
-        if "roles" not in payload:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token missing required 'roles' claim",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        token_roles = payload["roles"]
+        token_roles = payload.get("roles", [])
         token_attributes = payload.get("attributes", {})
 
         # Add extracted claims as runtime attributes (not persisted)
         # Authorization deps rely on these runtime props for RBAC/ABAC checks
         user._current_roles = token_roles  # type: ignore[attr-defined]
         user._current_attributes = token_attributes  # type: ignore[attr-defined]
+
+        Audit.info("User loaded", user_id=str(getattr(user, "id", pk)))
 
         return user
 

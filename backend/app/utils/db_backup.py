@@ -33,7 +33,7 @@ from app.schemas.audit_log import DBEvent
 from app.storage import get_storage_adapter
 from app.utils import metrics
 from app.utils.encryption import EncryptionError, encrypt_file
-from app.utils.logging import log_structured_audit_event
+from app.utils.logging import Audit
 
 __all__: Final[Sequence[str]] = (
     "BackupError",
@@ -204,7 +204,7 @@ def create_dump(
         raise BackupError("dump path not found in pg_dump command") from None
 
     # Metrics & audit start
-    log_structured_audit_event(
+    Audit.log_structured_audit_event(
         DBEvent(
             action="db_backup_started",
             timestamp=datetime.now(timezone.utc),
@@ -230,7 +230,7 @@ def create_dump(
             try:
                 encrypted_path = encrypt_file(final_path)
                 final_path = encrypted_path
-                log_structured_audit_event(
+                Audit.log_structured_audit_event(
                     DBEvent(
                         action="db_backup_encrypted",
                         timestamp=datetime.now(timezone.utc),
@@ -239,7 +239,7 @@ def create_dump(
                     )
                 )
             except EncryptionError as exc:
-                log_structured_audit_event(
+                Audit.log_structured_audit_event(
                     DBEvent(
                         action="db_backup_encrypt_failed",
                         timestamp=datetime.now(timezone.utc),
@@ -255,7 +255,7 @@ def create_dump(
         try:
             adapter = get_storage_adapter()
             remote_id = adapter.save(final_path, destination=final_path.name)
-            log_structured_audit_event(
+            Audit.log_structured_audit_event(
                 DBEvent(
                     action="db_backup_uploaded",
                     timestamp=datetime.now(timezone.utc),
@@ -265,7 +265,7 @@ def create_dump(
                 )
             )
         except Exception as exc:
-            log_structured_audit_event(
+            Audit.log_structured_audit_event(
                 DBEvent(
                     action="db_backup_upload_failed",
                     timestamp=datetime.now(timezone.utc),
@@ -282,7 +282,7 @@ def create_dump(
         metrics.BACKUP_DURATION_SECONDS_L.observe(duration)
         metrics.BACKUP_SIZE_BYTES_L.observe(final_path.stat().st_size)
 
-        log_structured_audit_event(
+        Audit.log_structured_audit_event(
             DBEvent(
                 action="db_backup_succeeded",
                 timestamp=datetime.now(timezone.utc),
@@ -301,7 +301,7 @@ def create_dump(
         metrics.BACKUP_DURATION_SECONDS_L.observe(duration)
         metrics.BACKUP_FAILED_TOTAL_L.inc()
 
-        log_structured_audit_event(
+        Audit.log_structured_audit_event(
             DBEvent(
                 action="db_backup_failed",
                 timestamp=datetime.now(timezone.utc),
@@ -332,7 +332,7 @@ def restore_dump(
     if not dump_path.exists():
         raise RestoreError(f"dump file not found: {dump_path}")
 
-    log_structured_audit_event(
+    Audit.log_structured_audit_event(
         DBEvent(
             action="db_restore_started",
             timestamp=datetime.now(timezone.utc),
@@ -345,7 +345,7 @@ def restore_dump(
     try:
         _run_subprocess(cmd, env=env)
         duration = time.perf_counter() - _t0
-        log_structured_audit_event(
+        Audit.log_structured_audit_event(
             DBEvent(
                 action="db_restore_succeeded",
                 timestamp=datetime.now(timezone.utc),
@@ -360,7 +360,7 @@ def restore_dump(
         metrics.BACKUP_DURATION_SECONDS_L.observe(duration)
         metrics.BACKUP_FAILED_TOTAL_L.inc()
 
-        log_structured_audit_event(
+        Audit.log_structured_audit_event(
             DBEvent(
                 action="db_restore_failed",
                 timestamp=datetime.now(timezone.utc),
