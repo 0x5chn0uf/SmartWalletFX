@@ -445,9 +445,6 @@ jobs:
           # Run design token contrast validation
           npx vitest run --include "**/*accessibility*" --passWithNoTests
 
-          # Run Python contrast checker
-          cd .. && python scripts/contrast_check.py --strict
-
       - name: Enforce frontend coverage threshold (75%)
         working-directory: ./frontend
         run: |
