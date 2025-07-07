@@ -23,7 +23,7 @@ class TestCreateBackupTask:
 
     @patch("app.tasks.backups.settings")
     @patch("app.tasks.backups.create_dump")
-    @patch("app.tasks.backups.audit")
+    @patch("app.tasks.backups.Audit.info")
     @patch("app.tasks.backups.purge_old_backups_task")
     def test_create_backup_task_success(
         self, mock_purge_task, mock_audit, mock_create_dump, mock_settings
@@ -39,7 +39,7 @@ class TestCreateBackupTask:
         mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
         mock_create_dump.assert_called_once()
         mock_audit.assert_called_once_with(
-            "DB_BACKUP_SCHEDULED",
+            "DB backup scheduled",
             dump_path=str(self.test_dump_path),
             label=mock_create_dump.call_args[1]["label"],
         )
@@ -47,7 +47,7 @@ class TestCreateBackupTask:
 
     @patch("app.tasks.backups.settings")
     @patch("app.tasks.backups.create_dump")
-    @patch("app.tasks.backups.audit")
+    @patch("app.tasks.backups.Audit.info")
     @patch("app.tasks.backups.purge_old_backups_task")
     def test_create_backup_task_creates_output_directory(
         self, mock_purge_task, mock_audit, mock_create_dump, mock_settings
@@ -63,7 +63,7 @@ class TestCreateBackupTask:
 
     @patch("app.tasks.backups.settings")
     @patch("app.tasks.backups.create_dump")
-    @patch("app.tasks.backups.audit")
+    @patch("app.tasks.backups.Audit.info")
     @patch("app.tasks.backups.purge_old_backups_task")
     def test_create_backup_task_uses_utc_timestamp(
         self, mock_purge_task, mock_audit, mock_create_dump, mock_settings
@@ -86,7 +86,7 @@ class TestCreateBackupTask:
 
     @patch("app.tasks.backups.settings")
     @patch("app.tasks.backups.create_dump")
-    @patch("app.tasks.backups.audit")
+    @patch("app.tasks.backups.Audit.error")
     @patch("app.tasks.backups.purge_old_backups_task")
     def test_create_backup_task_failure(
         self, mock_purge_task, mock_audit, mock_create_dump, mock_settings
@@ -102,14 +102,14 @@ class TestCreateBackupTask:
 
         # Should audit failure
         mock_audit.assert_called_once_with(
-            "DB_BACKUP_FAILED", label=mock_create_dump.call_args[1]["label"]
+            "DB backup failed", label=mock_create_dump.call_args[1]["label"]
         )
         # Should not trigger purge task on failure
         mock_purge_task.delay.assert_not_called()
 
     @patch("app.tasks.backups.settings")
     @patch("app.tasks.backups.create_dump")
-    @patch("app.tasks.backups.audit")
+    @patch("app.tasks.backups.Audit.error")
     @patch("app.tasks.backups.purge_old_backups_task")
     def test_create_backup_task_failure_audit_includes_label(
         self, mock_purge_task, mock_audit, mock_create_dump, mock_settings
@@ -129,7 +129,7 @@ class TestCreateBackupTask:
                     create_backup_task()
 
         mock_audit.assert_called_once_with(
-            "DB_BACKUP_FAILED", label="scheduled-20241201120000"
+            "DB backup failed", label="scheduled-20241201120000"
         )
 
 
@@ -141,11 +141,8 @@ class TestRestoreFromUploadTask:
         self.test_temp_file = "/tmp/uploaded_backup.sql.gz"
 
     @patch("app.tasks.backups.restore_dump")
-    @patch("app.tasks.backups.audit")
-    @patch("app.tasks.backups.logger")
-    def test_restore_from_upload_task_success(
-        self, mock_logger, mock_audit, mock_restore_dump
-    ):
+    @patch("app.tasks.backups.Audit.info")
+    def test_restore_from_upload_task_success(self, mock_audit, mock_restore_dump):
         """Test successful restore task execution."""
         with patch.object(Path, "__new__", return_value=Path(self.test_temp_file)):
             result = restore_from_upload_task(self.test_temp_file)
@@ -154,16 +151,13 @@ class TestRestoreFromUploadTask:
         assert result == expected_message
         mock_restore_dump.assert_called_once_with(Path(self.test_temp_file), force=True)
         mock_audit.assert_called_once_with(
-            "DB_RESTORE_COMPLETED",
+            "DB restore completed",
             dump_path=self.test_temp_file,
         )
 
     @patch("app.tasks.backups.restore_dump")
-    @patch("app.tasks.backups.audit")
-    @patch("app.tasks.backups.logger")
-    def test_restore_from_upload_task_failure(
-        self, mock_logger, mock_audit, mock_restore_dump
-    ):
+    @patch("app.tasks.backups.Audit.error")
+    def test_restore_from_upload_task_failure(self, mock_audit, mock_restore_dump):
         """Test restore task failure handling."""
         test_exception = Exception("Restore failed")
         mock_restore_dump.side_effect = test_exception
@@ -173,17 +167,16 @@ class TestRestoreFromUploadTask:
                 restore_from_upload_task(self.test_temp_file)
 
         mock_audit.assert_called_once_with(
-            "DB_RESTORE_FAILED",
+            "DB restore failed",
             dump_path=self.test_temp_file,
             error="Restore failed",
         )
 
     @patch("app.tasks.backups.restore_dump")
-    @patch("app.tasks.backups.audit")
-    @patch("app.tasks.backups.logger")
+    @patch("app.tasks.backups.Audit.info")
     @patch("app.tasks.backups.os")
     def test_restore_from_upload_task_cleanup_success(
-        self, mock_os, mock_logger, mock_audit, mock_restore_dump
+        self, mock_os, mock_audit, mock_restore_dump
     ):
         """Test that temporary file is cleaned up after successful restore."""
         mock_os.path.exists.return_value = True
@@ -194,11 +187,10 @@ class TestRestoreFromUploadTask:
         mock_os.unlink.assert_called_once_with(self.test_temp_file)
 
     @patch("app.tasks.backups.restore_dump")
-    @patch("app.tasks.backups.audit")
-    @patch("app.tasks.backups.logger")
+    @patch("app.tasks.backups.Audit.info")
     @patch("app.tasks.backups.os")
     def test_restore_from_upload_task_cleanup_file_not_exists(
-        self, mock_os, mock_logger, mock_audit, mock_restore_dump
+        self, mock_os, mock_audit, mock_restore_dump
     ):
         """Test cleanup when temporary file doesn't exist."""
         # Set up the mock to return False for os.path.exists
@@ -210,11 +202,10 @@ class TestRestoreFromUploadTask:
         mock_os.unlink.assert_not_called()
 
     @patch("app.tasks.backups.restore_dump")
-    @patch("app.tasks.backups.audit")
-    @patch("app.tasks.backups.logger")
+    @patch("app.tasks.backups.Audit.warning")
     @patch("app.tasks.backups.os")
     def test_restore_from_upload_task_cleanup_failure(
-        self, mock_os, mock_logger, mock_audit, mock_restore_dump
+        self, mock_os, mock_audit, mock_restore_dump
     ):
         """Test cleanup failure handling."""
         mock_os.path.exists.return_value = True
@@ -223,16 +214,15 @@ class TestRestoreFromUploadTask:
         with patch.object(Path, "__new__", return_value=Path(self.test_temp_file)):
             restore_from_upload_task(self.test_temp_file)
 
-        mock_logger.warning.assert_called_once_with(
+        mock_audit.assert_called_once_with(
             f"Failed to clean up temp file {self.test_temp_file}: Permission denied"
         )
 
     @patch("app.tasks.backups.restore_dump")
-    @patch("app.tasks.backups.audit")
-    @patch("app.tasks.backups.logger")
+    @patch("app.tasks.backups.Audit.warning")
     @patch("app.tasks.backups.os")
     def test_restore_from_upload_task_cleanup_failure_after_restore_failure(
-        self, mock_os, mock_logger, mock_audit, mock_restore_dump
+        self, mock_os, mock_audit, mock_restore_dump
     ):
         """Test cleanup failure after restore failure."""
         mock_os.path.exists.return_value = True
@@ -244,16 +234,15 @@ class TestRestoreFromUploadTask:
                 restore_from_upload_task(self.test_temp_file)
 
         # Should still attempt cleanup and log warning
-        mock_logger.warning.assert_called_once_with(
+        mock_audit.assert_called_once_with(
             f"Failed to clean up temp file {self.test_temp_file}: Permission denied"
         )
 
     @patch("app.tasks.backups.restore_dump")
-    @patch("app.tasks.backups.audit")
-    @patch("app.tasks.backups.logger")
+    @patch("app.tasks.backups.Audit.info")
     @patch("app.tasks.backups.os")
     def test_restore_from_upload_task_force_parameter(
-        self, mock_os, mock_logger, mock_audit, mock_restore_dump
+        self, mock_os, mock_audit, mock_restore_dump
     ):
         """Test that restore_dump is called with force=True."""
         mock_os.path.exists.return_value = True
@@ -272,7 +261,7 @@ class TestPurgeOldBackupsTask:
         self.test_output_dir = Path("/tmp/backups")
 
     @patch("app.tasks.backups.settings")
-    @patch("app.tasks.backups.audit")
+    @patch("app.tasks.backups.Audit.info")
     def test_purge_old_backups_task_success(self, mock_audit, mock_settings):
         """Test successful purge task execution."""
         mock_settings.BACKUP_DIR = "/tmp/backups"
@@ -293,11 +282,11 @@ class TestPurgeOldBackupsTask:
 
         assert result == 2
         assert mock_unlink.call_count == 2
-        mock_audit.assert_any_call("DB_BACKUP_PURGED", dump_path=str(expired_files[0]))
-        mock_audit.assert_any_call("DB_BACKUP_PURGED", dump_path=str(expired_files[1]))
+        mock_audit.assert_any_call("DB backup purged", dump_path=str(expired_files[0]))
+        mock_audit.assert_any_call("DB backup purged", dump_path=str(expired_files[1]))
 
     @patch("app.tasks.backups.settings")
-    @patch("app.tasks.backups.audit")
+    @patch("app.tasks.backups.Audit.info")
     def test_purge_old_backups_task_directory_not_exists(
         self, mock_audit, mock_settings
     ):
@@ -311,7 +300,7 @@ class TestPurgeOldBackupsTask:
         mock_audit.assert_not_called()
 
     @patch("app.tasks.backups.settings")
-    @patch("app.tasks.backups.audit")
+    @patch("app.tasks.backups.Audit.info")
     def test_purge_old_backups_task_no_expired_files(self, mock_audit, mock_settings):
         """Test purge task when no files are expired."""
         mock_settings.BACKUP_DIR = "/tmp/backups"
@@ -325,7 +314,7 @@ class TestPurgeOldBackupsTask:
         mock_audit.assert_not_called()
 
     @patch("app.tasks.backups.settings")
-    @patch("app.tasks.backups.audit")
+    @patch("app.tasks.backups.Audit.error")
     def test_purge_old_backups_task_deletion_failure(self, mock_audit, mock_settings):
         """Test purge task when file deletion fails."""
         mock_settings.BACKUP_DIR = "/tmp/backups"
@@ -344,13 +333,13 @@ class TestPurgeOldBackupsTask:
 
         assert result == 1  # Still returns count of expired files
         mock_audit.assert_called_once_with(
-            "DB_BACKUP_PURGE_FAILED",
+            "DB backup purge failed",
             dump_path=str(expired_files[0]),
             error="Permission denied",
         )
 
     @patch("app.tasks.backups.settings")
-    @patch("app.tasks.backups.audit")
+    @patch("app.tasks.backups.Audit.error")
     def test_purge_old_backups_task_mixed_success_failure(
         self, mock_audit, mock_settings
     ):
@@ -375,15 +364,14 @@ class TestPurgeOldBackupsTask:
 
         assert result == 2  # Returns count of expired files
         # Should have one success and one failure audit
-        mock_audit.assert_any_call("DB_BACKUP_PURGED", dump_path=str(expired_files[1]))
         mock_audit.assert_any_call(
-            "DB_BACKUP_PURGE_FAILED",
+            "DB backup purge failed",
             dump_path=str(expired_files[0]),
             error="Permission denied",
         )
 
     @patch("app.tasks.backups.settings")
-    @patch("app.tasks.backups.audit")
+    @patch("app.tasks.backups.Audit.info")
     def test_purge_old_backups_task_uses_missing_ok(self, mock_audit, mock_settings):
         """Test that unlink is called with missing_ok=True."""
         mock_settings.BACKUP_DIR = "/tmp/backups"

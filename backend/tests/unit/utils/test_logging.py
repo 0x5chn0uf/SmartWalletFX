@@ -16,7 +16,7 @@ from structlog.contextvars import bind_contextvars, clear_contextvars
 from app.schemas.audit_log import AuditEventBase
 from app.utils import logging as audit_logging
 from app.utils.audit import AuditValidationError
-from app.utils.logging import audit, log_structured_audit_event
+from app.utils.logging import Audit
 
 
 def test_audit_logging_includes_trace_id(monkeypatch):
@@ -56,7 +56,7 @@ class TestStructuredAuditLogging:
         )  # ensure records captured despite propagate=False
 
         try:
-            log_structured_audit_event(event)
+            Audit.log_structured_audit_event(event)
 
             # Ensure at least one audit log was emitted
             assert (
@@ -89,7 +89,7 @@ class TestStructuredAuditLogging:
                 id="123", timestamp=datetime.now(timezone.utc), action="test_event"
             )
 
-            log_structured_audit_event(event)
+            Audit.log_structured_audit_event(event)
 
             assert caplog.records, "Expected audit log record"
             payload = json.loads(caplog.records[-1].message)
@@ -121,7 +121,7 @@ class TestAuditLogging:
         audit_logger.addHandler(caplog.handler)
 
         try:
-            audit("user_action", user_id="123", action_type="login")
+            Audit.info("user_action", user_id="123", action_type="login")
 
             assert len(caplog.records) == 1
             record = caplog.records[0]
@@ -150,7 +150,7 @@ class TestAuditLogging:
         audit_logger.addHandler(caplog.handler)
 
         try:
-            audit("test_event")
+            Audit.info("test_event")
 
             assert len(caplog.records) == 1
             payload = json.loads(caplog.records[0].message)
@@ -168,7 +168,7 @@ class TestAuditLogging:
 
         # Create an event that will fail validation
         with pytest.raises(AuditValidationError):
-            audit("test_event")
+            Audit.info("test_event")
 
     @patch("structlog.contextvars.get_contextvars")
     def test_audit_with_context_error(self, mock_get_contextvars, caplog):
@@ -181,7 +181,7 @@ class TestAuditLogging:
 
         try:
             # Should still log without trace ID
-            audit("test_event")
+            Audit.info("test_event")
 
             assert len(caplog.records) == 1
             payload = json.loads(caplog.records[0].message)

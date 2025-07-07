@@ -128,7 +128,7 @@ class AuthDeps:
         try:
             payload = JWTUtils.decode_token(token)
         except Exception as exc:  # noqa: BLE001 – translate
-            Audit.warning("auth_token_invalid", error=str(exc))
+            Audit.warning("Invalid auth token", error=str(exc))
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authentication credentials",
@@ -138,7 +138,7 @@ class AuthDeps:
         try:
             pk = uuid.UUID(str(payload["sub"]))
         except Exception:
-            Audit.warning("auth_invalid_subject", sub=str(payload.get("sub")))
+            Audit.warning("Invalid subject in token", sub=str(payload.get("sub")))
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid subject in token",
@@ -147,7 +147,7 @@ class AuthDeps:
 
         user = await db.get(User, pk)
         if not user:
-            Audit.warning("auth_user_not_found", user_id=str(pk))
+            Audit.warning("User not found", user_id=str(pk))
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found",
@@ -162,7 +162,7 @@ class AuthDeps:
         user._current_roles = token_roles  # type: ignore[attr-defined]
         user._current_attributes = token_attributes  # type: ignore[attr-defined]
 
-        Audit.info("auth_user_loaded", user_id=str(getattr(user, "id", pk)))
+        Audit.info("User loaded", user_id=str(getattr(user, "id", pk)))
 
         return user
 

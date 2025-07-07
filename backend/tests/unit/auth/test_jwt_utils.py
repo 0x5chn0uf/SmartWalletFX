@@ -1,11 +1,11 @@
 from datetime import timedelta
+from uuid import uuid4
 
 import pytest
 from jose.exceptions import ExpiredSignatureError, JWTError
 
 from app.core.config import settings
 from app.utils.jwt import JWTUtils
-from uuid import uuid4
 
 
 def _configure_hs256(monkeypatch):
@@ -16,7 +16,9 @@ def _configure_hs256(monkeypatch):
 def test_jwt_round_trip(monkeypatch):
     _configure_hs256(monkeypatch)
     user_id = uuid4()
-    token = JWTUtils.create_access_token(str(user_id), expires_delta=timedelta(minutes=1))
+    token = JWTUtils.create_access_token(
+        str(user_id), expires_delta=timedelta(minutes=1)
+    )
     payload = JWTUtils.decode_token(token)
     assert payload["sub"] == str(user_id)
 
@@ -34,7 +36,9 @@ def test_jwt_round_trip_with_claims(monkeypatch):
     """Round-trip with additional claims like `role` should succeed."""
     _configure_hs256(monkeypatch)
     user_id = uuid4()
-    token = JWTUtils.create_access_token(str(user_id), additional_claims={"role": "admin"})
+    token = JWTUtils.create_access_token(
+        str(user_id), additional_claims={"role": "admin"}
+    )
     payload = JWTUtils.decode_token(token)
     assert payload["sub"] == str(user_id)
     assert payload["role"] == "admin"

@@ -1,8 +1,8 @@
 import inspect
+import uuid
 
 import pytest
 from fastapi import HTTPException
-import uuid
 
 import app.api.dependencies as deps_mod
 from app.api.dependencies import (

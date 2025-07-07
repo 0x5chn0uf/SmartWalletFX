@@ -147,7 +147,7 @@ async def test_jwks_endpoint_audit_events(test_app, sample_jwks):
     mock_redis.close.return_value = None
 
     with patch("app.api.endpoints.jwks._build_redis_client", return_value=mock_redis):
-        with patch("app.utils.logging.audit") as mock_audit:
+        with patch("app.utils.logging.Audit.info") as mock_audit:
             transport = httpx.ASGITransport(app=test_app, raise_app_exceptions=True)
             async with httpx.AsyncClient(
                 transport=transport, base_url="http://test"
@@ -158,7 +158,7 @@ async def test_jwks_endpoint_audit_events(test_app, sample_jwks):
 
             # Verify audit event was emitted
             mock_audit.assert_called_with(
-                "JWKS_REQUESTED",
+                "JWKS requested",
                 cache_hit=True,
                 keys_count=1,
             )
@@ -173,7 +173,7 @@ async def test_jwks_endpoint_cache_miss_audit_events(test_app):
     mock_redis.close.return_value = None
 
     with patch("app.api.endpoints.jwks._build_redis_client", return_value=mock_redis):
-        with patch("app.utils.logging.audit") as mock_audit:
+        with patch("app.utils.logging.Audit.info") as mock_audit:
             transport = httpx.ASGITransport(app=test_app, raise_app_exceptions=True)
             async with httpx.AsyncClient(
                 transport=transport, base_url="http://test"
@@ -184,7 +184,7 @@ async def test_jwks_endpoint_cache_miss_audit_events(test_app):
 
             # Verify audit event was emitted for cache miss
             mock_audit.assert_called_with(
-                "JWKS_REQUESTED",
+                "JWKS requested",
                 cache_hit=False,
                 keys_count=0,  # Assuming no keys are configured in test
             )
@@ -199,7 +199,7 @@ async def test_jwks_endpoint_error_audit_events(test_app):
     mock_redis.close.return_value = None
 
     with patch("app.api.endpoints.jwks._build_redis_client", return_value=mock_redis):
-        with patch("app.utils.logging.audit") as mock_audit:
+        with patch("app.utils.logging.Audit.info") as mock_audit:
             transport = httpx.ASGITransport(app=test_app, raise_app_exceptions=True)
             async with httpx.AsyncClient(
                 transport=transport, base_url="http://test"
@@ -210,7 +210,7 @@ async def test_jwks_endpoint_error_audit_events(test_app):
 
             # Verify audit event was emitted for error
             mock_audit.assert_called_with(
-                "JWKS_REQUESTED",
+                "JWKS requested",
                 cache_hit=False,
                 keys_count=0,  # Assuming no keys are configured in test
             )
