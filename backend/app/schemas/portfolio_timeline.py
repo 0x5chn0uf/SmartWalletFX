@@ -16,7 +16,7 @@ class TimelineResponse(BaseModel):
     total: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class PortfolioSnapshotResponse(BaseModel):
@@ -26,7 +26,7 @@ class PortfolioSnapshotResponse(BaseModel):
     total_borrowings_usd: float
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class PortfolioTimeline(BaseModel):

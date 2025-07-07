@@ -57,7 +57,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         status_code=422,
         trace_id=trace_id,
     ).model_dump()
-    Audit.info("validation_error", **payload)
+    Audit.error("validation_error", **payload)
     return JSONResponse(status_code=422, content=payload)
 
 

@@ -5,6 +5,9 @@ import { createAppTheme } from '../../../theme';
 import LandingPage from '../../../pages/LandingPage';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { Provider } from 'react-redux';
+import { configureStore } from '@reduxjs/toolkit';
+import authReducer from '../../../store/authSlice';
 
 // Mock WalletPreview to avoid complex internal logic
 vi.mock('../../../components/WalletPreview', () => ({
@@ -14,13 +17,26 @@ vi.mock('../../../components/WalletPreview', () => ({
 describe('LandingPage', () => {
   const theme = createAppTheme();
 
-  const setup = () => {
+  const setup = (isAuthenticated = false) => {
+    const store = configureStore({
+      reducer: { auth: authReducer },
+      preloadedState: {
+        auth: {
+          isAuthenticated,
+          user: null,
+          status: 'idle',
+          error: null,
+        },
+      },
+    });
     render(
-      <ThemeProvider theme={theme}>
-        <MemoryRouter>
-          <LandingPage />
-        </MemoryRouter>
-      </ThemeProvider>
+      <Provider store={store}>
+        <ThemeProvider theme={theme}>
+          <MemoryRouter>
+            <LandingPage />
+          </MemoryRouter>
+        </ThemeProvider>
+      </Provider>
     );
   };
 
@@ -43,5 +59,15 @@ describe('LandingPage', () => {
     featureTitles.forEach(title => {
       expect(screen.getByText(title)).toBeInTheDocument();
     });
+  });
+
+  it('shows login link when unauthenticated', () => {
+    setup(false);
+    expect(screen.getByRole('link', { name: /login/i })).toHaveAttribute('href', '/login-register');
+  });
+
+  it('shows dashboard link when authenticated', () => {
+    setup(true);
+    expect(screen.getByRole('link', { name: /dashboard/i })).toHaveAttribute('href', '/defi');
   });
 });

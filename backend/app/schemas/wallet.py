@@ -52,8 +52,8 @@ class WalletResponse(BaseModel):
         Pydantic configuration for WalletResponse schema.
         """
 
-        orm_mode = True
-        schema_extra = {
+        from_attributes = True
+        json_schema_extra = {
             "example": {
                 "address": "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
                 "name": "Example Wallet",

@@ -223,3 +223,27 @@ async def test_token_inactive_user(
     data = {"username": "inactive", "password": "any"}
     resp = await async_client_with_db.post("/auth/token", data=data)
     assert resp.status_code == 403  # Inactive users get 403, not 401
+
+
+@pytest.mark.asyncio
+async def test_register_weak_password_error(
+    async_client_with_db: AsyncClient,
+    monkeypatch,
+) -> None:
+    """AuthService.register raising WeakPasswordError → 400 Bad Request."""
+
+    from app.api.endpoints import auth as auth_ep
+
+    async def _raise_weak(self, payload):  # noqa: D401 – stub
+        raise WeakPasswordError()
+
+    # Patch *AuthService.register* only for this test
+    monkeypatch.setattr(auth_ep.AuthService, "register", _raise_weak, raising=False)
+
+    payload = {
+        "username": "weakpw",
+        "email": "weakpw@example.com",
+        "password": "SupposedlyStr0ng1!",
+    }
+    resp = await async_client_with_db.post("/auth/register", json=payload)
+    assert resp.status_code == 400

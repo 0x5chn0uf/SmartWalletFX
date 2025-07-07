@@ -133,3 +133,9 @@ reports/
 **/.pytest_cache/
 **/.coverage
 **/htmlcov/
+
+# Ignore all files in the design directory
+design/*
+# But keep these specific files
+!design/design.json
+!design/design-tokens.json

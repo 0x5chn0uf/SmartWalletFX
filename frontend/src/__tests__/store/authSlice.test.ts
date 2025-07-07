@@ -1,3 +1,4 @@
+// @ts-nocheck
 import authReducer, { logout } from '../../store/authSlice';
 
 // Inline AuthState type for test
@@ -31,5 +32,23 @@ describe('authSlice', () => {
       status: 'idle',
       error: null,
     });
+  });
+
+  it('handles login pending/fulfilled/rejected actions', () => {
+    const initial = { isAuthenticated: false, user: null, status: 'idle', error: null };
+
+    const pendingAction = { type: 'auth/login/pending' };
+    let state = authReducer(initial, pendingAction);
+    expect(state.status).toBe('loading');
+
+    const fulfilledAction = { type: 'auth/login/fulfilled', payload: { id: '1' } };
+    state = authReducer(state, fulfilledAction);
+    expect(state.isAuthenticated).toBe(true);
+    expect(state.user).toEqual({ id: '1' });
+
+    const rejectedAction = { type: 'auth/login/rejected', error: { message: 'oops' } };
+    state = authReducer(state, rejectedAction);
+    expect(state.status).toBe('failed');
+    expect(state.error).toBe('oops');
   });
 });

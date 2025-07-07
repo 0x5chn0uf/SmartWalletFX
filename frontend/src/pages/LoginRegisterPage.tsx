@@ -362,8 +362,8 @@ const LoginRegisterPage: React.FC = () => {
               </div>
             )}
             <SubmitBtn type="submit">Login</SubmitBtn>
-            <SwitchLink onClick={() => handleTab('register')}>
-              Don't have an account? Register
+            <SwitchLink onClick={() => navigate('/forgot-password')}>
+              Lost password? Reset here
             </SwitchLink>
           </Form>
         ) : (
