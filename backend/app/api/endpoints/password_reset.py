@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Response,
+    status,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -29,6 +36,7 @@ reset_rate_limiter = InMemoryRateLimiter(max_attempts=5, window_seconds=3600)
 )
 async def request_password_reset(
     payload: PasswordResetRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     identifier = payload.email.lower()
@@ -49,11 +57,11 @@ async def request_password_reset(
     reset_link = f"https://example.com/reset-password?token={token}"
     service = EmailService()
     try:
-        await service.send_password_reset(user.email, reset_link)
+        background_tasks.add_task(service.send_password_reset, user.email, reset_link)
     except Exception as exc:  # pragma: no cover - network errors aren't common
-        Audit.error("Password reset email failed", error=str(exc))
+        Audit.error("password_reset_email_failed", error=str(exc))
         raise HTTPException(status_code=500, detail="Email send failed")
-    Audit.info("Password reset requested", user_id=user.id)
+    Audit.info("password_reset_requested", user_id=user.id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
