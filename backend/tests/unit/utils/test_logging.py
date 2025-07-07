@@ -30,7 +30,7 @@ def test_audit_logging_includes_trace_id(monkeypatch):
     audit_logger = audit_logging._AUDIT_LOGGER  # pylint: disable=protected-access
     audit_logger.addHandler(handler)
 
-    audit_logging.audit("unit_test", foo=1)
+    audit_logging.Audit.info("unit_test", foo=1)
 
     audit_logger.removeHandler(handler)
     handler.flush()
