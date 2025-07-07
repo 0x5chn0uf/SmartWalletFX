@@ -53,7 +53,7 @@ format-backend: ## Format backend code
 # Tests
 # -----------------------------------------------------------------------------
 
-test: test-backend test-frontend ## Run all tests
+test: test-backend test-frontend test-ci ## Run all tests
 
 # Backend tests (pytest + coverage)
 
@@ -67,6 +67,12 @@ coverage-backend: ## Generate backend coverage HTML
 
 test-frontend: ## Run frontend Jest suite
 	cd $(FRONTEND_DIR) && npx vitest run 
+
+# CI / CD (act)
+
+test-ci: ## Test CI/CD locally with act
+	act --list
+	act pull_request --container-architecture linux/amd64
 
 # -----------------------------------------------------------------------------
 # Development servers
