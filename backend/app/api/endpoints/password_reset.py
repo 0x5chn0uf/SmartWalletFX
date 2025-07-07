@@ -33,6 +33,7 @@ async def request_password_reset(
 ) -> Response:
     identifier = payload.email.lower()
     if not reset_rate_limiter.allow(identifier):
+        Audit.error("password_reset_rate_limited", email=payload.email)
         raise HTTPException(status_code=429, detail="Too many requests")
 
     repo = UserRepository(db)
@@ -47,7 +48,11 @@ async def request_password_reset(
 
     reset_link = f"https://example.com/reset-password?token={token}"
     service = EmailService()
-    await service.send_password_reset(user.email, reset_link)
+    try:
+        await service.send_password_reset(user.email, reset_link)
+    except Exception as exc:  # pragma: no cover - network errors aren't common
+        Audit.error("password_reset_email_failed", error=str(exc))
+        raise HTTPException(status_code=500, detail="Email send failed")
     Audit.info("password_reset_requested", user_id=user.id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -59,6 +64,7 @@ async def verify_reset_token(
 ) -> dict[str, bool]:
     repo = PasswordResetRepository(db)
     valid = await repo.get_valid(payload.token) is not None
+    Audit.info("password_reset_token_verification", valid=valid)
     return {"valid": valid}
 
 
@@ -70,11 +76,13 @@ async def reset_password(
     repo = PasswordResetRepository(db)
     pr = await repo.get_valid(payload.token)
     if not pr:
+        Audit.error("password_reset_invalid_token")
         raise HTTPException(status_code=400, detail="Invalid or expired token")
 
     user_repo = UserRepository(db)
     user = await user_repo.get_by_id(pr.user_id)
     if not user:
+        Audit.error("password_reset_user_not_found", user_id=str(pr.user_id))
         raise HTTPException(status_code=400, detail="User not found")
 
     from app.utils.security import PasswordHasher

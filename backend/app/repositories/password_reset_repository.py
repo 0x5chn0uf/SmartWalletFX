@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.models.password_reset import PasswordReset
+from app.utils.logging import Audit
 
 
 class PasswordResetRepository:
@@ -23,6 +24,7 @@ class PasswordResetRepository:
         self._session.add(pr)
         await self._session.commit()
         await self._session.refresh(pr)
+        Audit.info("password_reset_token_created", user_id=str(user_id))
         return pr
 
     async def get_valid(self, token: str) -> Optional[PasswordReset]:
@@ -38,6 +40,7 @@ class PasswordResetRepository:
     async def mark_used(self, pr: PasswordReset) -> None:
         pr.used = True
         await self._session.commit()
+        Audit.info("password_reset_token_used", token_hash=pr.token_hash)
 
     async def delete_expired(self) -> int:
         stmt = PasswordReset.__table__.delete().where(
@@ -45,4 +48,5 @@ class PasswordResetRepository:
         )
         result = await self._session.execute(stmt)
         await self._session.commit()
+        Audit.info("password_reset_tokens_deleted", count=result.rowcount)
         return result.rowcount
