@@ -74,8 +74,15 @@ const NavBar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
-  // Hide navbar on landing/login page if needed
-  if (location.pathname === '/' || location.pathname === '/login-register') return null;
+  // Hide navbar on auth-related pages
+  if (
+    location.pathname === '/' ||
+    location.pathname === '/login-register' ||
+    location.pathname === '/forgot-password' ||
+    location.pathname === '/reset-password'
+  ) {
+    return null;
+  }
   return (
     <Navbar>
       <Logo to="/">SmartWalletFX</Logo>

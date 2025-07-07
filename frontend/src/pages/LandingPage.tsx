@@ -3,6 +3,8 @@ import styled from '@emotion/styled';
 import { keyframes } from '@emotion/react';
 import { FiLink, FiBarChart2, FiZap } from 'react-icons/fi';
 import { Link as RouterLink } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 import WalletPreview from '../components/WalletPreview';
 
 const fadeIn = keyframes`
@@ -364,6 +366,7 @@ const StepIcon = styled.div<{ color: string }>`
 
 const LandingPage: React.FC = () => {
   const [walletInputFocused, setWalletInputFocused] = useState(false);
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
 
   return (
     <Container>
@@ -372,7 +375,11 @@ const LandingPage: React.FC = () => {
         <Nav>
           <NavLink href="#features">Features</NavLink>
           <NavLink href="#pricing">Pricing</NavLink>
-          <LoginLink to="/login-register">Login</LoginLink>
+          {isAuthenticated ? (
+            <LoginLink to="/defi">Dashboard</LoginLink>
+          ) : (
+            <LoginLink to="/login-register">Login</LoginLink>
+          )}
         </Nav>
       </Header>
 

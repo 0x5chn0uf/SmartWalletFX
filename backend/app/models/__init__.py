@@ -7,6 +7,7 @@ from .historical_balance import HistoricalBalance
 from .portfolio_snapshot import PortfolioSnapshot
 from .portfolio_snapshot_cache import PortfolioSnapshotCache
 from .refresh_token import RefreshToken
+from .password_reset import PasswordReset
 from .token import Token
 from .token_balance import TokenBalance
 from .token_price import TokenPrice
@@ -29,6 +30,7 @@ __all__ = [
     "PortfolioSnapshotCache",
     "Base",
     "RefreshToken",
+    "PasswordReset",
     "AggregateMetricsModel",
     "AuditLog",
 ]
