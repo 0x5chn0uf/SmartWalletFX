@@ -9,7 +9,6 @@ import types
 from datetime import datetime, timezone
 from io import StringIO
 from unittest.mock import Mock, patch
-from uuid import UUID
 
 import pytest
 from structlog.contextvars import bind_contextvars, clear_contextvars
