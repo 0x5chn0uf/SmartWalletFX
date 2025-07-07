@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -88,8 +89,10 @@ async def test_password_reset_rate_limit(
     )
 
     # Register user
+    email_unique = f"rl-{uuid.uuid4().hex[:8]}@example.com"
+    username_unique = f"rluser-{uuid.uuid4().hex[:8]}"
     user = await AuthService(db_session).register(
-        UserCreate(username="rluser", email="rl@example.com", password="Str0ng!pwd")
+        UserCreate(username=username_unique, email=email_unique, password="Str0ng!pwd")
     )
 
     # Stub email sending to avoid I/O
@@ -99,6 +102,15 @@ async def test_password_reset_rate_limit(
     monkeypatch.setattr(
         pr_ep.EmailService, "send_password_reset", _dummy_send, raising=False
     )
+
+    # Ensure unique tokens to avoid DB conflict from previous tests
+    def _unique_token():  # noqa: D401 – stub factory
+        tok = uuid.uuid4().hex + "tok"
+        from datetime import datetime, timedelta, timezone
+
+        return tok, "unused", datetime.now(timezone.utc) + timedelta(minutes=30)
+
+    monkeypatch.setattr(pr_ep, "generate_token", _unique_token, raising=False)
 
     payload = {"email": user.email}
 
@@ -128,7 +140,7 @@ async def test_reset_password_invalid_token(async_client_with_db: AsyncClient) -
 
     resp = await async_client_with_db.post(
         "/auth/reset-password",
-        json={"token": "invalid", "password": "NewValid1!"},
+        json={"token": "doesnotexist1", "password": "NewValid1!"},
     )
     assert resp.status_code == 400
 

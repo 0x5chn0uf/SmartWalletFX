@@ -43,7 +43,8 @@ async def test_audit_logs_pagination_and_cursor(
     # next_cursor should be a base64 string
     assert body["next_cursor"]
     # Decode cursor to ensure correct format (<iso-ts>:<id>)
-    ts_str, _id = base64.b64decode(body["next_cursor"].encode()).decode().split(":")
+    ts_decoded = base64.b64decode(body["next_cursor"].encode()).decode()
+    ts_str, _id = ts_decoded.rsplit(":", 1)
     # should match last log
     assert ts_str.startswith(now.date().isoformat()[:10])
     assert _id == str(sample_logs[-1].id)
