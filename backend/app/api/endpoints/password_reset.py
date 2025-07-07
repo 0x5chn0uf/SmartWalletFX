@@ -84,13 +84,13 @@ async def reset_password(
     repo = PasswordResetRepository(db)
     pr = await repo.get_valid(payload.token)
     if not pr:
-        Audit.error("password_reset_invalid_token")
+        Audit.error("Invalid reset token")
         raise HTTPException(status_code=400, detail="Invalid or expired token")
 
     user_repo = UserRepository(db)
     user = await user_repo.get_by_id(pr.user_id)
     if not user:
-        Audit.error("password_reset_user_not_found", user_id=str(pr.user_id))
+        Audit.error("User not found", user_id=str(pr.user_id))
         raise HTTPException(status_code=400, detail="User not found")
 
     from app.utils.security import PasswordHasher
@@ -100,5 +100,5 @@ async def reset_password(
 
     await repo.mark_used(pr)
 
-    Audit.info("password_reset_completed", user_id=user.id)
+    Audit.info("Password reset completed", user_id=user.id)
     return {"status": "success"}
