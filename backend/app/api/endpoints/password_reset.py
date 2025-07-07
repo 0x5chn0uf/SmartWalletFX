@@ -33,16 +33,16 @@ async def request_password_reset(
 ) -> Response:
     identifier = payload.email.lower()
     if not reset_rate_limiter.allow(identifier):
-        Audit.error("password_reset_rate_limited", email=payload.email)
+        Audit.error("Password reset rate limited", email=payload.email)
         raise HTTPException(status_code=429, detail="Too many requests")
 
     repo = UserRepository(db)
     user = await repo.get_by_email(payload.email)
     if not user:
-        Audit.warning("password_reset_requested_unknown_email", email=payload.email)
+        Audit.warning("Password reset requested unknown email", email=payload.email)
         return
 
-    token, token_hash, expires_at = generate_token()
+    token, _, expires_at = generate_token()
     pr_repo = PasswordResetRepository(db)
     await pr_repo.create(token, user.id, expires_at)
 
@@ -51,9 +51,9 @@ async def request_password_reset(
     try:
         await service.send_password_reset(user.email, reset_link)
     except Exception as exc:  # pragma: no cover - network errors aren't common
-        Audit.error("password_reset_email_failed", error=str(exc))
+        Audit.error("Password reset email failed", error=str(exc))
         raise HTTPException(status_code=500, detail="Email send failed")
-    Audit.info("password_reset_requested", user_id=user.id)
+    Audit.info("Password reset requested", user_id=user.id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
