@@ -13,7 +13,7 @@ app = typer.Typer(help="Analyze pytest fixtures")
 
 
 @app.command()
-def analyze(path: str = ".") -> None:
+def analyze(path: str = typer.Argument(".")) -> None:
     """Analyze tests under the given path and emit a JSON report."""
     files = [str(p) for p in Path(path).rglob("test_*.py")]
     fixtures = parse_paths(files)
@@ -22,7 +22,24 @@ def analyze(path: str = ".") -> None:
 
 
 @app.command()
-def deduplicate(path: str = ".", apply: bool = False) -> None:
+def check(path: str = typer.Argument("."), json: bool = False) -> None:
+    """Check for duplicate fixtures and fail on detection."""
+    files = [str(p) for p in Path(path).rglob("test_*.py")]
+    fixtures = parse_paths(files)
+    groups = find_duplicates(fixtures)
+    if json:
+        typer.echo(generate_report(fixtures, groups))
+    else:
+        for g in groups:
+            typer.echo(f"duplicate hash {g.body_hash}:")
+            for fx in g.fixtures:
+                typer.echo(f"  {fx.path}:{fx.line} {fx.name}")
+    if groups:
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def deduplicate(path: str = typer.Argument("."), apply: bool = False) -> None:
     """Remove duplicate fixtures by importing from a canonical location."""
     files = [str(p) for p in Path(path).rglob("test_*.py")]
     fixtures = parse_paths(files)
