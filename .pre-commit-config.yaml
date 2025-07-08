@@ -35,7 +35,7 @@ repos:
     hooks:
       - id: fixture-lint
         name: fixture-lint check
-        entry: python -m fixture_lint.cli analyze
+        entry: fixture-lint check
         language: system
         pass_filenames: false
         stages: [commit]
