@@ -65,22 +65,32 @@ class DeduplicateTransformer(cst.CSTTransformer):
 def apply_deduplication(
     groups: list[DuplicateGroup], root: Path, apply: bool = False
 ) -> None:
-    """Deduplicate fixtures in place."""
+    """Deduplicate fixtures in place and move them to tests/fixtures."""
+    dest_dir = root / "tests" / "fixtures"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest_file = dest_dir / "deduplicated.py"
+    dest_module = path_to_module(dest_file, root)
+
     for group in groups:
         if len(group.fixtures) < 2:
             continue
         canonical = sorted(group.fixtures, key=lambda f: f.path)[0]
-        canonical_module = path_to_module(Path(canonical.path), root)
+
+        if apply:
+            content = dest_file.read_text() if dest_file.exists() else ""
+            if f"def {canonical.name}(" not in content:
+                if content and not content.endswith("\n"):
+                    content += "\n"
+                content += canonical.body + "\n"
+                dest_file.write_text(content)
+
         for fx in group.fixtures:
-            if fx is canonical:
-                continue
             path = Path(fx.path)
             code = path.read_text()
             module = cst.parse_module(code)
-            transformer = DeduplicateTransformer(fx.name, canonical_module)
+            transformer = DeduplicateTransformer(canonical.name, dest_module)
             new_module = module.visit(transformer)
             if apply:
                 path.write_text(new_module.code)
             else:
-                # no-op, but ensures transformation compiles
                 new_module.code
