@@ -7,7 +7,9 @@ import { describe, it, expect, vi } from 'vitest';
 describe('OAuthButton', () => {
   it('renders correct label', () => {
     render(<OAuthButton provider="google" />);
-    expect(screen.getByRole('button')).toHaveTextContent('Continue with Google');
+    const btn = screen.getByRole('button');
+    expect(btn).toHaveTextContent('Continue with Google');
+    expect(btn.querySelector('svg')).not.toBeNull();
   });
 
   it('redirects to provider login on click and calls handler', async () => {

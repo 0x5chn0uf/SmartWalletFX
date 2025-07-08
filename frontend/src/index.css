@@ -159,4 +159,13 @@ footer {
   border: none;
   padding: 10px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.oauth-icon {
+  width: 18px;
+  height: 18px;
 }
