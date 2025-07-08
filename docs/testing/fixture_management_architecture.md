@@ -22,4 +22,4 @@ This document outlines the proposed architecture for the automated fixture manag
 - **Visualisation** – dependency graphs rendered with graphviz or Mermaid.
 - **Pre‑commit Hook** – integration to enforce standards.
 
-This initial version focuses on the static analysis engine (parser and deduplicator) and a minimal JSON report.
+Phase 1 delivered the parser, duplicate detector and JSON reporting. Phase 2 introduces a refactoring engine able to rewrite duplicate fixtures so that only a single canonical definition remains.
