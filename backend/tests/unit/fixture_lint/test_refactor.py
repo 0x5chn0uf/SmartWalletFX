@@ -32,6 +32,11 @@ def foo():
     groups = find_duplicates(fixtures)
     apply_deduplication(groups, tmp_path, apply=True)
 
-    assert "from test_a import foo" in file_b.read_text()
-    # original fixture removed
-    assert "@pytest.fixture" not in file_b.read_text()
+    dedup_file = tmp_path / "tests" / "fixtures" / "deduplicated.py"
+    assert dedup_file.exists()
+    assert "def foo" in dedup_file.read_text()
+
+    # both files now import from the shared fixture
+    expected = "from tests.fixtures.deduplicated import foo"
+    assert expected in file_a.read_text()
+    assert expected in file_b.read_text()

@@ -85,6 +85,11 @@ def foo():
     runner = CliRunner()
     result = runner.invoke(app, ["fix", str(tmp_path)])
     assert result.exit_code == 0
-    assert "from test_a import foo" in file_b.read_text()
     metrics = (tmp_path / ".fixture_lint_metrics.json").read_text()
     assert "duplicate_fixtures" in metrics
+
+    dedup_file = tmp_path / "tests" / "fixtures" / "deduplicated.py"
+    assert dedup_file.exists()
+    expected = "from tests.fixtures.deduplicated import foo"
+    assert expected in file_a.read_text()
+    assert expected in file_b.read_text()
