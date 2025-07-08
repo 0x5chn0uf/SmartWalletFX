@@ -154,7 +154,6 @@ class Settings(BaseSettings):
     PROMETHEUS_PORT: int = 9090  # Port for Prometheus metrics server
     PROMETHEUS_HOST: str = "0.0.0.0"  # Host for Prometheus metrics server
 
-
     # JWT rotation alerting thresholds
     JWT_ROTATION_ALERT_ON_ERROR: bool = True  # Send alerts on rotation errors
     JWT_ROTATION_ALERT_ON_RETRY: bool = False  # Send alerts on retries

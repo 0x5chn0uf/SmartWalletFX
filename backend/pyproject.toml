@@ -92,6 +92,10 @@ dev = [
     # Documentation
     "mkdocs==1.5.3",            # Documentation generator
     "mkdocs-material==9.4.8",   # Material theme for MkDocs
+
+    # Fixture Management Tool
+    "libcst==1.8.2",            # Concrete syntax tree parser
+    "typer==0.16.0",            # CLI framework
     
     # Development Tools
     "build==0.10.0",            # Build tool
@@ -143,6 +147,9 @@ line_length = 79
 
 [tool.setuptools.packages.find]
 exclude = ["abis"]
+
+[project.scripts]
+fixture-lint = "fixture_lint.cli:app"
 
 [tool.alembic]
 
