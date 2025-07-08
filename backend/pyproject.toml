@@ -148,6 +148,9 @@ line_length = 79
 [tool.setuptools.packages.find]
 exclude = ["abis"]
 
+[project.scripts]
+fixture-lint = "fixture_lint.cli:app"
+
 [tool.alembic]
 
 # path to migration scripts.
