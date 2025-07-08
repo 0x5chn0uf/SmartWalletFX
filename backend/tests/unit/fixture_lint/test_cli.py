@@ -58,3 +58,33 @@ def bar():
     runner = CliRunner()
     result = runner.invoke(app, ["check", str(tmp_path)])
     assert result.exit_code == 0
+
+
+def test_fix_command_merges_duplicates(tmp_path: Path) -> None:
+    file_a = tmp_path / "test_a.py"
+    file_a.write_text(
+        """
+import pytest
+
+@pytest.fixture
+def foo():
+    return 1
+"""
+    )
+    file_b = tmp_path / "test_b.py"
+    file_b.write_text(
+        """
+import pytest
+
+@pytest.fixture
+def foo():
+    return 1
+"""
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(app, ["fix", str(tmp_path)])
+    assert result.exit_code == 0
+    assert "from test_a import foo" in file_b.read_text()
+    metrics = (tmp_path / ".fixture_lint_metrics.json").read_text()
+    assert "duplicate_fixtures" in metrics

@@ -7,7 +7,7 @@ import typer
 from .duplication import find_duplicates
 from .parser import parse_paths
 from .refactor import apply_deduplication
-from .report import generate_report
+from .report import generate_report, write_metrics
 
 app = typer.Typer(help="Analyze pytest fixtures")
 
@@ -19,6 +19,7 @@ def analyze(path: str = typer.Argument(".")) -> None:
     fixtures = parse_paths(files)
     groups = find_duplicates(fixtures)
     typer.echo(generate_report(fixtures, groups))
+    write_metrics(fixtures, groups, Path(path) / ".fixture_lint_metrics.json")
 
 
 @app.command()
@@ -45,6 +46,16 @@ def deduplicate(path: str = typer.Argument("."), apply: bool = False) -> None:
     fixtures = parse_paths(files)
     groups = find_duplicates(fixtures)
     apply_deduplication(groups, Path(path), apply=apply)
+
+
+@app.command()
+def fix(path: str = typer.Argument(".")) -> None:
+    """Merge duplicate fixtures by applying the deduplication refactor."""
+    files = [str(p) for p in Path(path).rglob("test_*.py")]
+    fixtures = parse_paths(files)
+    groups = find_duplicates(fixtures)
+    apply_deduplication(groups, Path(path), apply=True)
+    write_metrics(fixtures, groups, Path(path) / ".fixture_lint_metrics.json")
 
 
 if __name__ == "__main__":  # pragma: no cover
