@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging as _logging
 import uuid
-from contextlib import asynccontextmanager
 from functools import lru_cache
 from typing import AsyncGenerator
 
@@ -189,7 +188,6 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 
-@asynccontextmanager
 async def get_redis() -> AsyncGenerator["Redis", None]:  # type: ignore[name-defined]
     """Provide a managed Redis client for request scope."""
 

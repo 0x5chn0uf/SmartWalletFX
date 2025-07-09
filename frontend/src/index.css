@@ -150,3 +150,36 @@ footer {
 .position-table tr:last-child td {
   border-bottom: none;
 }
+.oauth-btn {
+  width: 100%;
+  margin-top: 8px;
+  background: #fff;
+  color: #1a1f2e;
+  border-radius: 8px;
+  border: 1px solid #dadce0;
+  padding: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.oauth-btn:hover {
+  background: #f7f8f9;
+}
+
+.oauth-btn-github {
+  background: #24292e;
+  color: #ffffff;
+  border: none;
+}
+
+.oauth-btn-github:hover {
+  background: #1b1f23;
+}
+
+.oauth-icon {
+  width: 18px;
+  height: 18px;
+}
