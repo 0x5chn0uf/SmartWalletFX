@@ -20,7 +20,7 @@ describe('OAuthButton', () => {
     render(<OAuthButton provider="github" onClick={onClick} />);
     await userEvent.click(screen.getByRole('button'));
     expect(onClick).toHaveBeenCalled();
-    expect(window.location.href).toBe('/auth/oauth/github/login');
+    expect(window.location.href).toBe('http://localhost:8000/auth/oauth/github/login');
     window.location = original;
   });
 });

@@ -13,6 +13,7 @@ from app.core.config import settings
 @pytest.mark.asyncio
 @respx.mock
 async def test_google_oauth_callback(async_client_with_db: AsyncClient, monkeypatch):
+    """OAuth callback should redirect with auth cookies set."""
     state = "abc123"
 
     async def _verify_state(redis, st):
@@ -38,8 +39,35 @@ async def test_google_oauth_callback(async_client_with_db: AsyncClient, monkeypa
         "/auth/oauth/google/callback",
         params={"code": "c", "state": state},
         cookies={"oauth_state": state},
+        follow_redirects=False,
     )
-    assert resp.status_code == 200
-    data = resp.json()
-    assert "access_token" in data
-    assert "refresh_token" in data
+
+    assert resp.status_code == 302
+    assert resp.headers["location"].endswith("/defi")
+
+    cookies = resp.headers.get_list("set-cookie")
+    assert any(c.startswith("access_token=") for c in cookies)
+    assert any(c.startswith("refresh_token=") for c in cookies)
+
+
+@pytest.mark.asyncio
+async def test_google_oauth_login(async_client_with_db: AsyncClient, monkeypatch):
+    """Login endpoint should redirect to provider auth URL and set state cookie."""
+    monkeypatch.setattr("app.api.endpoints.oauth.generate_state", lambda: "state123")
+
+    async def _store_state(redis, st, ttl: int = 300):
+        return True
+
+    monkeypatch.setattr("app.api.endpoints.oauth.store_state", _store_state)
+
+    resp = await async_client_with_db.get(
+        "/auth/oauth/google/login",
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 307
+    assert resp.headers["location"].startswith(
+        "https://accounts.google.com/o/oauth2/v2/auth"
+    )
+    cookies = resp.headers.get_list("set-cookie")
+    assert any("oauth_state=state123" in c for c in cookies)

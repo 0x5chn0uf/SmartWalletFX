@@ -29,8 +29,8 @@ async def test_store_state_success():
 async def test_store_state_failure():
     redis = AsyncMock()
     redis.setex.side_effect = Exception("boom")
-    result = await store_state(redis, "abc")
-    assert result is False
+    result = await store_state(redis, "def")
+    assert result is True
 
 
 @pytest.mark.asyncio
@@ -57,3 +57,18 @@ async def test_verify_state_exception():
     redis.exists.side_effect = Exception("boom")
     result = await verify_state(redis, "abc")
     assert result is False
+
+
+@pytest.mark.asyncio
+async def test_verify_state_fallback(monkeypatch):
+    redis = AsyncMock()
+    redis.exists.side_effect = Exception("boom")
+
+    import time
+    from app.utils import oauth_state_cache
+
+    oauth_state_cache._memory_state_cache["abc"] = time.monotonic() + 5
+
+    result = await oauth_state_cache.verify_state(redis, "abc")
+
+    assert result is True
