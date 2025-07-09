@@ -47,8 +47,8 @@ lint: ## Run ruff, black-check, isort-check & flake8
 	flake8 app
 
 format: ## Auto-format with black & isort
-	black app tests
-	isort app tests
+	black app tests migrations
+	isort app tests migrations
 
 bandit: ## Static security scan
 	bandit -r app -ll -ii -f txt
