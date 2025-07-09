@@ -31,3 +31,11 @@ repos:
         types_or: [javascript, jsx, ts, tsx, json, css, scss, markdown, yaml]
         additional_dependencies:
           - prettier@3.6.2
+  - repo: local
+    hooks:
+      - id: fixture-lint
+        name: fixture-lint check
+        entry: python3 -m fixture_lint.cli check tests
+        language: system
+        pass_filenames: false
+        stages: [commit]

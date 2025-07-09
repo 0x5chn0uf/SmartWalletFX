@@ -1,5 +1,4 @@
 """Unit tests for JWKS cache utilities."""
-
 import json
 from unittest.mock import AsyncMock, patch
 
@@ -12,26 +11,13 @@ from app.utils.jwks_cache import (
     invalidate_jwks_cache,
     set_jwks_cache,
 )
+from tests.fixtures.deduplicated import sample_jwks
 
 
 @pytest.fixture
 def mock_redis():
     """Create a mocked Redis client for testing."""
     return AsyncMock()
-
-
-@pytest.fixture
-def sample_jwks():
-    """Create a sample JWKSet for testing."""
-    jwk = JWK(
-        kty="RSA",
-        use="sig",
-        kid="test-key-1",
-        alg="RS256",
-        n="test-modulus",
-        e="AQAB",
-    )
-    return JWKSet(keys=[jwk])
 
 
 class TestGetJwksCache:

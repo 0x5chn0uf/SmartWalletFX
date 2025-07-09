@@ -72,7 +72,7 @@ test-frontend: ## Run frontend Jest suite
 
 test-ci: ## Test CI/CD locally with act
 	act --list
-	act pull_request --container-architecture linux/amd64
+	act pull_request -e .github/workflows/pull_request_event.json --container-architecture linux/amd64
 
 # -----------------------------------------------------------------------------
 # Development servers

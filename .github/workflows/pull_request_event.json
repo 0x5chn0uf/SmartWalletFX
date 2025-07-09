@@ -1,0 +1,20 @@
+{
+  "pull_request": {
+    "number": 42,
+    "merged": false,
+    "base": {
+      "ref": "main",
+      "sha": "420cd5645cd49604f0dab63234a5f5a3bcd91c17"
+    },
+    "head": {
+      "ref": "feature/122-implement-password-recovery-flow",
+      "sha": "041e839e63e3e030bbd04954f74f6bd4f0d6c748"
+    }
+  },
+  "repository": {
+    "full_name": "0x5chn0uf/SmartWalletFx",
+    "default_branch": "main"
+  },
+  "before": "420cd5645cd49604f0dab63234a5f5a3bcd91c17",
+  "after": "041e839e63e3e030bbd04954f74f6bd4f0d6c748"
+}
