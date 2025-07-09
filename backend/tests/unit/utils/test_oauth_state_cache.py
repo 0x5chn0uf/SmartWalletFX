@@ -65,6 +65,7 @@ async def test_verify_state_fallback(monkeypatch):
     redis.exists.side_effect = Exception("boom")
 
     import time
+
     from app.utils import oauth_state_cache
 
     oauth_state_cache._memory_state_cache["abc"] = time.monotonic() + 5
