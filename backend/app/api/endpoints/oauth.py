@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Any
 from urllib.parse import urlencode
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_redis
@@ -49,15 +49,19 @@ def _build_auth_url(provider: str, state: str) -> str:
 @router.get("/{provider}/login")
 async def oauth_login(
     provider: str,
-    response: Response,
     redis=Depends(get_redis),
-) -> dict[str, Any]:
+) -> RedirectResponse:
     if provider not in PROVIDERS:
         Audit.error("oauth_unknown_provider", provider=provider)
         raise HTTPException(status_code=404, detail="Provider not supported")
+
     state = generate_state()
     await store_state(redis, state)
-    response.set_cookie(
+
+    url = _build_auth_url(provider, state)
+    resp = RedirectResponse(url)
+
+    resp.set_cookie(
         "oauth_state",
         state,
         max_age=300,
@@ -65,9 +69,9 @@ async def oauth_login(
         samesite="lax",
         secure=settings.ENVIRONMENT.lower() == "production",
     )
-    url = _build_auth_url(provider, state)
+
     Audit.info("oauth_login_url_generated", provider=provider)
-    return {"auth_url": url}
+    return resp
 
 
 async def _exchange_code(provider: str, code: str, redirect_uri: str) -> dict[str, str]:
@@ -140,30 +144,39 @@ async def oauth_callback(
     db: AsyncSession = Depends(get_db),
     redis=Depends(get_redis),
 ) -> Response:
+    Audit.info("oauth_callback_start", provider=provider)
+
     if provider not in PROVIDERS:
         Audit.error("oauth_unknown_provider", provider=provider)
         raise HTTPException(status_code=404, detail="Provider not supported")
+
     cookie_state = request.cookies.get("oauth_state")
+
     if not cookie_state or state != cookie_state:
         Audit.error("oauth_state_mismatch", provider=provider)
         raise HTTPException(status_code=400, detail="Invalid state")
+
     if not await verify_state(redis, state):
         Audit.error("oauth_state_invalid", provider=provider)
         raise HTTPException(status_code=400, detail="Invalid state")
+
     redirect_uri = settings.OAUTH_REDIRECT_URI.format(provider=provider)
     user_info = await _exchange_code(provider, code, redirect_uri)
     if not user_info.get("sub"):
         Audit.error("oauth_missing_sub", provider=provider)
         raise HTTPException(400, "Invalid provider response")
+
     service = OAuthService(db)
     user = await service.authenticate_or_create(
         provider, user_info["sub"], user_info.get("email")
     )
     tokens = await service.issue_tokens(user)
     Audit.info("oauth_login_success", provider=provider, user_id=str(user.id))
-    resp = Response(
-        media_type="application/json",
-    )
+
+    # Redirect browser to frontend /defi route
+    front_url = settings.FRONTEND_BASE_URL.rstrip("/") + "/defi"
+    resp = RedirectResponse(url=front_url, status_code=302)
+
     resp.set_cookie(
         "access_token",
         tokens.access_token,
@@ -177,10 +190,5 @@ async def oauth_callback(
         samesite="lax",
         path="/auth/refresh",
     )
-    resp.body = (
-        f'{{"access_token": "{tokens.access_token}", '
-        f'"refresh_token": "{tokens.refresh_token}", '
-        f'"token_type": "{tokens.token_type}", '
-        f'"expires_in": {tokens.expires_in}}}'
-    ).encode()
+
     return resp

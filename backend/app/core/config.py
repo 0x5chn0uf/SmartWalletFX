@@ -86,6 +86,12 @@ class Settings(BaseSettings):
     ARBITRUM_RPC_URL: Optional[str] = None
     WEB3_PROVIDER_URI: Optional[str] = None
 
+    # Redis
+    REDIS_URL: Optional[str] = None
+
+    # Frontend base URL used for OAuth success redirects
+    FRONTEND_BASE_URL: str = "http://localhost:5173"
+
     # OAuth provider credentials
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None

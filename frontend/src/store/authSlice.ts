@@ -93,6 +93,13 @@ const authSlice = createSlice({
       state.status = 'idle';
       state.error = null;
     },
+    sessionCheckFinished: state => {
+      // Silent session check completed and no session was found.
+      state.status = 'failed';
+    },
+    sessionCheckStarted: state => {
+      state.status = 'loading';
+    },
   },
   extraReducers: builder => {
     builder
@@ -131,7 +138,7 @@ const authSlice = createSlice({
         state.status = 'succeeded';
       })
       .addCase(fetchCurrentUser.rejected, state => {
-        state.status = 'idle';
+        state.status = 'failed';
       })
       .addCase(logoutUser.fulfilled, state => {
         state.isAuthenticated = false;
@@ -141,6 +148,6 @@ const authSlice = createSlice({
   },
 });
 
-export const { logout } = authSlice.actions;
+export const { logout, sessionCheckFinished, sessionCheckStarted } = authSlice.actions;
 
 export default authSlice.reducer;

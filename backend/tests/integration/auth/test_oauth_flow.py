@@ -3,8 +3,8 @@ from __future__ import annotations
 import uuid
 
 import httpx
-import respx
 import pytest
+import respx
 from httpx import AsyncClient
 
 from app.core.config import settings
@@ -14,6 +14,7 @@ from app.core.config import settings
 @respx.mock
 async def test_google_oauth_callback(async_client_with_db: AsyncClient, monkeypatch):
     state = "abc123"
+
     async def _verify_state(redis, st):
         return True
 

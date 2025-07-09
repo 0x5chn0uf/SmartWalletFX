@@ -3,7 +3,14 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, String, UniqueConstraint, Index
+from sqlalchemy import (
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -17,7 +24,9 @@ class OAuthAccount(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
     user = relationship("app.models.user.User", backref="oauth_accounts")
 
     provider = Column(String(length=20), nullable=False)
@@ -26,6 +35,8 @@ class OAuthAccount(Base):
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     __table_args__ = (
-        UniqueConstraint("provider", "provider_account_id", name="uq_oauth_provider_account"),
+        UniqueConstraint(
+            "provider", "provider_account_id", name="uq_oauth_provider_account"
+        ),
         Index("ix_oauth_user_provider", "user_id", "provider"),
     )

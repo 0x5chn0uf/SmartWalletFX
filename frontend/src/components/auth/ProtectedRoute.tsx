@@ -11,10 +11,8 @@ interface ProtectedRouteProps {
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roles }) => {
   const { isAuthenticated, status, user } = useSelector((state: RootState) => state.auth);
 
-  const hasSessionFlag =
-    typeof window !== 'undefined' && localStorage.getItem('session_active') === '1';
-
-  if (status === 'loading' || (status === 'idle' && hasSessionFlag)) {
+  if (status === 'loading' || status === 'idle') {
+    // Wait until auth request finishes
     return null;
   }
 

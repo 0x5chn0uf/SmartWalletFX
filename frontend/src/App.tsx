@@ -17,7 +17,7 @@ import DeFiDashboardPage from './pages/DeFiDashboardPage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import LoginRegisterPage from './pages/LoginRegisterPage';
 import NavBar from './components/NavBar';
-import { fetchCurrentUser } from './store/authSlice';
+import { fetchCurrentUser, sessionCheckStarted, sessionCheckFinished } from './store/authSlice';
 import apiClient from './services/api';
 
 const queryClient = new QueryClient();
@@ -30,9 +30,18 @@ const App: React.FC = () => {
 
     if (storedToken) {
       apiClient.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+      localStorage.setItem('access_token', storedToken);
+
+      // Token is ready – fetch current user to populate store
       dispatch(fetchCurrentUser());
-    } else if (localStorage.getItem('session_active') === '1') {
-      // Attempt silent refresh using HttpOnly refresh token cookie
+    }
+
+    // If there is no stored token we attempt a silent refresh once – if the
+    // browser carries a valid refresh_token cookie the call will succeed.
+    if (!storedToken) {
+      // Indicate that we are performing a silent session check
+      dispatch(sessionCheckStarted());
+
       apiClient
         .post('/auth/refresh', {}, { withCredentials: true })
         .then(resp => {
@@ -42,11 +51,13 @@ const App: React.FC = () => {
             localStorage.setItem('access_token', newToken);
             dispatch(fetchCurrentUser());
           } else {
-            localStorage.removeItem('session_active');
+            // No token in response – finish session check without session
+            dispatch(sessionCheckFinished());
           }
         })
         .catch(() => {
-          localStorage.removeItem('session_active');
+          // Silent refresh failed – finish session check so UI can redirect
+          dispatch(sessionCheckFinished());
         });
     }
   }, [dispatch]);

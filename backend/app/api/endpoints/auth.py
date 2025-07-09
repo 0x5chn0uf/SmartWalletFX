@@ -239,7 +239,7 @@ async def refresh_access_token(
     response: Response,
     payload: _RefreshRequest | None = None,
     db: AsyncSession = Depends(get_db),
-) -> TokenResponse:  # type: ignore[valid-type]
+) -> TokenResponse | Response:  # type: ignore[valid-type]
     """Exchange *refresh_token* for a new access token.
 
     The new access token contains the latest roles/attributes claims.
@@ -257,10 +257,18 @@ async def refresh_access_token(
         else:
             token_str = request.cookies.get("refresh_token")
 
+        # If the browser does not carry a *refresh_token* cookie we simply
+        # reply with *204 No Content* to indicate that no auth session exists.
+        # Returning 401 here is technically correct but clutters the browser
+        # console with errors on the public pages where no user is expected
+        # to be authenticated yet.
+
         if not token_str:
-            raise HTTPException(
-                status_code=HTTP_401_UNAUTHORIZED, detail="Missing refresh token"
+            Audit.info(
+                "Token refresh skipped – no refresh token provided", client_ip=client_ip
             )
+            response.status_code = status.HTTP_204_NO_CONTENT
+            return response
 
         tokens = await service.refresh(token_str)
 
@@ -284,10 +292,6 @@ async def refresh_access_token(
             client_ip=client_ip,
             duration_ms=duration,
             error=str(exc),
-        )
-
-        Audit.info(
-            "token_refresh_failed", client_ip=client_ip, error_type=type(exc).__name__
         )
 
         raise HTTPException(
@@ -318,23 +322,38 @@ async def logout(
         service = AuthService(db)
         await service.revoke_refresh_token(token)
 
-    # Clear cookies – set empty value & immediate expiry
-    cookie_params = {
-        "path": "/",
-        "httponly": True,
-        "secure": settings.ENVIRONMENT.lower() == "production",
-        "samesite": "lax",
-    }
-    response.set_cookie("access_token", "", max_age=0, **cookie_params)
-    response.set_cookie("refresh_token", "", max_age=0, **cookie_params)
-    # Cookie was originally set with path=/auth/refresh – clear that too
+    secure = settings.ENVIRONMENT.lower() == "production"
+
+    response.set_cookie(
+        "access_token",
+        "",
+        max_age=0,
+        path="/",
+        httponly=True,
+        secure=secure,
+        samesite="lax",
+    )
+
+    # Clear refresh_token set with path=/auth/refresh
     response.set_cookie(
         "refresh_token",
         "",
         max_age=0,
         path="/auth/refresh",
         httponly=True,
-        secure=cookie_params["secure"],
+        secure=secure,
         samesite="lax",
     )
+
+    # Clear any leftover OAuth state cookie
+    response.set_cookie(
+        "oauth_state",
+        "",
+        max_age=0,
+        path="/",
+        httponly=False,
+        secure=secure,
+        samesite="lax",
+    )
+
     Audit.info("User logged out")
