@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '../store';
 import { login, registerUser } from '../store/authSlice';
+import { OAuthButton } from '../components/oauth/OAuthButton';
 
 const moveDots = keyframes`
   0% { background-position: 0 0, 20px 20px; }
@@ -362,6 +363,8 @@ const LoginRegisterPage: React.FC = () => {
               </div>
             )}
             <SubmitBtn type="submit">Login</SubmitBtn>
+            <OAuthButton provider="google" />
+            <OAuthButton provider="github" />
             <SwitchLink onClick={() => navigate('/forgot-password')}>
               Lost password? Reset here
             </SwitchLink>
@@ -412,6 +415,8 @@ const LoginRegisterPage: React.FC = () => {
               </div>
             )}
             <SubmitBtn type="submit">Register</SubmitBtn>
+            <OAuthButton provider="google" />
+            <OAuthButton provider="github" />
             <SwitchLink onClick={() => handleTab('login')}>
               Already have an account? Login
             </SwitchLink>

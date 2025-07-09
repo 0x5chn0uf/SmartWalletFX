@@ -8,6 +8,7 @@ from app.api.endpoints import (
     defi,
     health,
     jwks,
+    oauth,
     password_reset,
     users,
     wallets,
@@ -18,6 +19,7 @@ api_router.include_router(health.router, tags=["health"])
 api_router.include_router(wallets.router, tags=["wallets"])
 api_router.include_router(defi.router, tags=["defi"])
 api_router.include_router(auth.router, tags=["auth"])
+api_router.include_router(oauth.router, tags=["auth"])
 api_router.include_router(password_reset.router, tags=["auth"])
 api_router.include_router(users.router, tags=["users"])
 api_router.include_router(jwks.router, tags=["jwks"])

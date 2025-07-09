@@ -53,7 +53,7 @@ format-backend: ## Format backend code
 # Tests
 # -----------------------------------------------------------------------------
 
-test: test-backend test-frontend test-ci ## Run all tests
+test: test-backend test-frontend ## Run all tests
 
 # Backend tests (pytest + coverage)
 

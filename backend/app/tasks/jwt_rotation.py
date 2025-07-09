@@ -165,7 +165,8 @@ def _build_redis_client():  # pragma: no cover – isolation for patching
         Redis,  # imported lazily to avoid heavy dep at import
     )
 
-    return Redis.from_url("redis://localhost:6379/0")
+    redis_url = settings.REDIS_URL or "redis://localhost:6379/0"
+    return Redis.from_url(redis_url)
 
 
 # ---------------------------------------------------------------------------

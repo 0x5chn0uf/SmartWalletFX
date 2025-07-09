@@ -97,6 +97,17 @@ def invalidate_jwks_cache_sync() -> bool:
         return False
 
 
+_redis_singleton: Redis | None = None
+
+
 def _build_redis_client() -> Redis:
-    """Return an async Redis client instance configured from environment."""
-    return Redis.from_url("redis://localhost:6379/0")
+    """Return an *async* Redis client using ``settings.REDIS_URL`` if defined."""
+
+    from app.core.config import settings  # local import to avoid cycles
+
+    global _redis_singleton  # noqa: PLW0603 – module-level singleton
+
+    if _redis_singleton is None:
+        redis_url = settings.REDIS_URL or "redis://localhost:6379/0"
+        _redis_singleton = Redis.from_url(redis_url)
+    return _redis_singleton

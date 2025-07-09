@@ -166,9 +166,11 @@ class TestRedisClientBuilder:
     @patch("app.utils.jwks_cache.Redis")
     def test_build_redis_client(self, mock_redis_class):
         """Test Redis client creation with correct URL."""
-        from app.utils.jwks_cache import _build_redis_client
+        from app.utils import jwks_cache
 
-        _build_redis_client()
+        jwks_cache._redis_singleton = None
+
+        jwks_cache._build_redis_client()
 
         mock_redis_class.from_url.assert_called_once_with("redis://localhost:6379/0")
 

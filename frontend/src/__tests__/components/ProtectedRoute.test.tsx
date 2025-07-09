@@ -14,7 +14,12 @@ const TestComponent = () => <div>Protected Content</div>;
 describe('ProtectedRoute', () => {
   it('redirects unauthenticated users to login-register', () => {
     // @ts-expect-error testing store
-    const store = configureStore({ reducer: { auth: authReducer } });
+    const store = configureStore({
+      reducer: { auth: authReducer },
+      preloadedState: {
+        auth: { isAuthenticated: false, user: null, status: 'succeeded', error: null },
+      } as any,
+    });
     render(
       <Provider store={store}>
         <MemoryRouter initialEntries={['/secret']}>
@@ -39,7 +44,9 @@ describe('ProtectedRoute', () => {
     // @ts-expect-error testing store
     const store = configureStore({
       reducer: { auth: authReducer },
-      preloadedState: { auth: { isAuthenticated: true, user: null, status: 'idle', error: null } },
+      preloadedState: {
+        auth: { isAuthenticated: true, user: null, status: 'succeeded', error: null },
+      } as any,
     });
     render(
       <Provider store={store}>
@@ -98,7 +105,7 @@ describe('ProtectedRoute', () => {
         auth: {
           isAuthenticated: true,
           user: { id: '1', username: 'x', email: 'e', role: 'user' },
-          status: 'idle',
+          status: 'succeeded',
           error: null,
         },
       } as any,
