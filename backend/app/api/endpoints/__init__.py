@@ -11,6 +11,9 @@ for _module in [
     "defi",
     "health",
     "jwks",
+    "oauth",
+    "password_reset",
+    "email_verification",
     "users",
     "wallets",
 ]:

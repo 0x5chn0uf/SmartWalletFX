@@ -16,6 +16,8 @@ class UserBase(BaseModel):
     email: EmailStr
     created_at: datetime
     updated_at: datetime
+    email_verified: bool
+    verification_deadline: datetime | None
 
     model_config = {"from_attributes": True}
 

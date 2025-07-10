@@ -35,6 +35,8 @@ def test_user_read_roundtrip():
         email=f"carol-{uuid.uuid4().hex[:8]}@example.com",
         created_at=now,
         updated_at=now,
+        email_verified=False,
+        verification_deadline=None,
     )
     serialized = read.model_dump()
     assert serialized["username"] == username
@@ -48,6 +50,8 @@ def test_user_in_db_includes_hash():
         email=f"dave-{uuid.uuid4().hex[:8]}@example.com",
         created_at=now,
         updated_at=now,
+        email_verified=True,
+        verification_deadline=None,
         hashed_password="hash",
     )
     assert user_in_db.hashed_password == "hash"

@@ -10,6 +10,7 @@ from app.api.endpoints import (
     jwks,
     oauth,
     password_reset,
+    email_verification,
     users,
     wallets,
 )
@@ -21,6 +22,7 @@ api_router.include_router(defi.router, tags=["defi"])
 api_router.include_router(auth.router, tags=["auth"])
 api_router.include_router(oauth.router, tags=["auth"])
 api_router.include_router(password_reset.router, tags=["auth"])
+api_router.include_router(email_verification.router, tags=["auth"])
 api_router.include_router(users.router, tags=["users"])
 api_router.include_router(jwks.router, tags=["jwks"])
 api_router.include_router(audit_logs.router, tags=["audit-logs"])
