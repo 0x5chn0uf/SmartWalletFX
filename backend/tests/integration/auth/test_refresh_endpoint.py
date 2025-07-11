@@ -3,11 +3,12 @@ import uuid
 import pytest
 from httpx import AsyncClient
 from jose import jwt
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.utils.jwt import JWTUtils
 
 
-async def _register_and_login(client: AsyncClient):
+async def _register_and_login(client: AsyncClient, db_session: AsyncSession):
     username = f"refreshuser_{uuid.uuid4().hex[:8]}"
     password = "Str0ngP@ssw0rd!"
     email = f"{username}@example.com"
@@ -18,6 +19,14 @@ async def _register_and_login(client: AsyncClient):
         json={"username": username, "email": email, "password": password},
     )
     assert res.status_code == 201
+
+    # Mark the user's email as verified directly in the database
+    from app.repositories.user_repository import UserRepository
+
+    user_repo = UserRepository(db_session)
+    user = await user_repo.get_by_email(email)
+    user.email_verified = True
+    await db_session.commit()
 
     # Login – obtain tokens
     res = await client.post(
@@ -31,8 +40,10 @@ async def _register_and_login(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_refresh_success(async_client_with_db: AsyncClient):
-    _, refresh_token = await _register_and_login(async_client_with_db)
+async def test_refresh_success(
+    async_client_with_db: AsyncClient, db_session: AsyncSession
+):
+    _, refresh_token = await _register_and_login(async_client_with_db, db_session)
 
     res = await async_client_with_db.post(
         "/auth/refresh", json={"refresh_token": refresh_token}
