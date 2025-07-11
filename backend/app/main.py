@@ -5,13 +5,14 @@ from sqlalchemy.exc import IntegrityError  # local import
 from app.api.api import api_router
 from app.core import error_handling
 from app.core.init_db import init_db
-from app.core.services import ServiceContainer
-from app.core.database import container as default_container
 
 # --- New imports for structured logging & error handling ---
 from app.core.logging import setup_logging  # noqa: F401 – side-effect import
 from app.core.middleware import CorrelationIdMiddleware
+from app.core.services import ServiceContainer
 from app.utils import audit  # noqa: F401
+
+_default_container = ServiceContainer()
 
 
 def create_app(container: ServiceContainer | None = None) -> FastAPI:
@@ -21,7 +22,7 @@ def create_app(container: ServiceContainer | None = None) -> FastAPI:
     Returns:
         FastAPI: The configured FastAPI app instance.
     """
-    cont = container or default_container
+    cont = container or _default_container
 
     app = FastAPI(
         title=cont.settings.PROJECT_NAME,
@@ -76,5 +77,5 @@ def create_app(container: ServiceContainer | None = None) -> FastAPI:
     return app
 
 
-container = default_container
+container = _default_container
 app = create_app(container)

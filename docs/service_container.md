@@ -11,4 +11,4 @@ container = ServiceContainer()
 app = create_app(container)
 ```
 
-The default container instance lives in `app.core.database` for backwards compatibility but new code should create its own container instance and pass it explicitly.
+Create and pass a container instance explicitly instead of relying on module-level globals.

@@ -5,8 +5,8 @@ from unittest.mock import MagicMock
 import pytest
 from freezegun import freeze_time
 
+from app.celery_app import celery
 from app.core.config import settings
-from app.celery_app import container
 from app.tasks.jwt_rotation import promote_and_retire_keys_task
 from app.utils import jwt as jwt_utils
 
@@ -21,13 +21,13 @@ def _isolate_settings(monkeypatch):
 
     orig_keys = settings.JWT_KEYS.copy()
     orig_active = settings.ACTIVE_JWT_KID
-    orig_container_keys = container.settings.JWT_KEYS.copy()
-    orig_container_active = container.settings.ACTIVE_JWT_KID
+    orig_container_keys = celery.service_container.settings.JWT_KEYS.copy()
+    orig_container_active = celery.service_container.settings.ACTIVE_JWT_KID
     yield
     settings.JWT_KEYS = orig_keys
     settings.ACTIVE_JWT_KID = orig_active
-    container.settings.JWT_KEYS = orig_container_keys
-    container.settings.ACTIVE_JWT_KID = orig_container_active
+    celery.service_container.settings.JWT_KEYS = orig_container_keys
+    celery.service_container.settings.ACTIVE_JWT_KID = orig_container_active
     jwt_utils._RETIRED_KEYS.clear()  # pylint: disable=protected-access
 
 
@@ -63,15 +63,15 @@ def test_noop_run():
 
     # Arrange – single active key, no retirements
     settings.JWT_KEYS = {"A": "secret-a"}
-    container.settings.JWT_KEYS = {"A": "secret-a"}
+    celery.service_container.settings.JWT_KEYS = {"A": "secret-a"}
     settings.ACTIVE_JWT_KID = "A"
-    container.settings.ACTIVE_JWT_KID = "A"
+    celery.service_container.settings.ACTIVE_JWT_KID = "A"
 
     # Act – run task synchronously (eager mode)
     promote_and_retire_keys_task()
 
     # Assert – state unchanged, no retired keys
-    assert container.settings.ACTIVE_JWT_KID == "A"
+    assert celery.service_container.settings.ACTIVE_JWT_KID == "A"
     assert jwt_utils._RETIRED_KEYS == {}
 
 
@@ -83,9 +83,9 @@ def test_retirement_only(monkeypatch):
 
     # Arrange – single active key already expired
     settings.JWT_KEYS = {"A": "secret-a"}
-    container.settings.JWT_KEYS = {"A": "secret-a"}
+    celery.service_container.settings.JWT_KEYS = {"A": "secret-a"}
     settings.ACTIVE_JWT_KID = "A"
-    container.settings.ACTIVE_JWT_KID = "A"
+    celery.service_container.settings.ACTIVE_JWT_KID = "A"
     # Simulate that grace-period for A expired 1 second ago
     jwt_utils._RETIRED_KEYS["A"] = now - timedelta(
         seconds=1
@@ -107,9 +107,9 @@ def test_promotion_and_retirement(monkeypatch):
 
     # Arrange – active key A expired, next key B is valid
     settings.JWT_KEYS = {"A": "secret-a", "B": "secret-b"}
-    container.settings.JWT_KEYS = {"A": "secret-a", "B": "secret-b"}
+    celery.service_container.settings.JWT_KEYS = {"A": "secret-a", "B": "secret-b"}
     settings.ACTIVE_JWT_KID = "A"
-    container.settings.ACTIVE_JWT_KID = "A"
+    celery.service_container.settings.ACTIVE_JWT_KID = "A"
     jwt_utils._RETIRED_KEYS["A"] = now - timedelta(
         seconds=1
     )  # pylint: disable=protected-access
@@ -118,7 +118,7 @@ def test_promotion_and_retirement(monkeypatch):
     promote_and_retire_keys_task()
 
     # Assert – B promoted, A retired (timestamp ~ now)
-    assert container.settings.ACTIVE_JWT_KID == "B"
+    assert celery.service_container.settings.ACTIVE_JWT_KID == "B"
     retired_at = jwt_utils._RETIRED_KEYS.get("A")  # pylint: disable=protected-access
     assert retired_at is not None and abs((retired_at - now).total_seconds()) < 1.0
 
@@ -129,9 +129,9 @@ def test_lock_contention(monkeypatch):
 
     # Arrange – active key A, next key B
     settings.JWT_KEYS = {"A": "secret-a", "B": "secret-b"}
-    container.settings.JWT_KEYS = {"A": "secret-a", "B": "secret-b"}
+    celery.service_container.settings.JWT_KEYS = {"A": "secret-a", "B": "secret-b"}
     settings.ACTIVE_JWT_KID = "A"
-    container.settings.ACTIVE_JWT_KID = "A"
+    celery.service_container.settings.ACTIVE_JWT_KID = "A"
 
     # Override *acquire_lock* to simulate contention (returns False)
     @asynccontextmanager
@@ -149,4 +149,4 @@ def test_lock_contention(monkeypatch):
 
     # Assert – helper never executed, active kid unchanged
     helper_spy.assert_not_called()
-    assert container.settings.ACTIVE_JWT_KID == "A"
+    assert celery.service_container.settings.ACTIVE_JWT_KID == "A"

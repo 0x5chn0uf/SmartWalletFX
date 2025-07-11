@@ -8,7 +8,7 @@ from typing import List
 from celery import shared_task
 from celery.schedules import crontab  # noqa: F401 – used by Celery beat
 
-from app.celery_app import container
+from app.celery_app import celery
 from app.utils.db_backup import (  # noqa: E501 – heavy logic lives in utils module
     create_dump,
     restore_dump,
@@ -24,6 +24,7 @@ def create_backup_task() -> str:
     workflows (or simple .delay().get()) can reference the artifact.
     """
 
+    container = celery.service_container
     output_dir = Path(container.settings.BACKUP_DIR)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -101,13 +102,12 @@ def _list_expired_dumps(directory: Path, days: int) -> List[Path]:
 def purge_old_backups_task() -> int:
     """Delete dumps older than *BACKUP_RETENTION_DAYS* and return count."""
 
+    container = celery.service_container
     output_dir = Path(container.settings.BACKUP_DIR)
     if not output_dir.exists():
         return 0
 
-    expired = _list_expired_dumps(
-        output_dir, container.settings.BACKUP_RETENTION_DAYS
-    )
+    expired = _list_expired_dumps(output_dir, container.settings.BACKUP_RETENTION_DAYS)
     for file_path in expired:
         try:
             file_path.unlink(missing_ok=True)

@@ -162,11 +162,9 @@ async def test_app(async_engine):
 
     # Patch engine and SessionLocal on the database service container
     db_mod.container.db._engine = async_engine
-    db_mod.engine = db_mod.container.db.engine
     db_mod.container.db._SessionLocal = async_sessionmaker(
         bind=async_engine, class_=AsyncSession, expire_on_commit=False
     )
-    db_mod.SessionLocal = db_mod.container.db.SessionLocal
 
     # Also patch the sync engine to use the same test database
     from sqlalchemy import create_engine
@@ -175,20 +173,15 @@ async def test_app(async_engine):
     db_mod.container.db._sync_engine = create_engine(
         sync_url, connect_args={"check_same_thread": False}
     )
-    db_mod.sync_engine = db_mod.container.db.sync_engine
     db_mod.container.db._SyncSessionLocal = sessionmaker(
         autocommit=False, autoflush=False, bind=db_mod.container.db._sync_engine
     )
-    db_mod.SyncSessionLocal = db_mod.container.db.SyncSessionLocal
 
     # Reuse existing app instance instead of creating a new one each time
     # Ensure other modules that imported `engine` directly (e.g., init_db)
     # use the *patched* engine as well.  Those modules performed
     # `from app.core.database import engine` at import-time and therefore hold
     # a separate reference that needs to be updated manually.
-    import app.core.init_db as _init_db_mod
     from app.main import app as _app
-
-    _init_db_mod.engine = db_mod.engine
 
     yield _app

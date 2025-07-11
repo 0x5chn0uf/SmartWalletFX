@@ -3,6 +3,7 @@ import inspect
 import pytest
 
 from app import di
+from app.core.services import ServiceContainer
 
 
 @pytest.mark.asyncio
@@ -66,11 +67,11 @@ async def test_get_session_sync_returns_custom(monkeypatch):
         factory_called["called"] = True
         return DummySession()
 
-    # Patch the session factory used inside DI module
-    monkeypatch.setattr(di, "SyncSessionLocal", dummy_factory)
+    container = ServiceContainer(load_celery=False)
+    monkeypatch.setattr(container.db, "_SyncSessionLocal", lambda: dummy_factory())
 
     # Because get_session_sync is a thin wrapper, it should return the object from our dummy factory.
-    session = di.get_session_sync()
+    session = di.get_session_sync(container)
     assert isinstance(session, DummySession)
     assert factory_called.get("called") is True
 
@@ -89,7 +90,8 @@ def test_get_snapshot_service_sync(monkeypatch):
     monkeypatch.setattr(di, "_build_aggregator", lambda: "agg")
     monkeypatch.setattr(di, "SnapshotAggregationService", DummyService)
 
-    service = di.get_snapshot_service_sync()
+    container = ServiceContainer(load_celery=False)
+    service = di.get_snapshot_service_sync(container=container)
 
     # Ensure our DummyService was instantiated with patched dependencies
     assert isinstance(service, DummyService)

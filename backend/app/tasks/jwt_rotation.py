@@ -11,7 +11,7 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Optional
 
-from app.celery_app import celery, container
+from app.celery_app import celery
 from app.utils.jwt_rotation import (
     Key,
     KeySet,
@@ -43,8 +43,7 @@ try:
     )
     _CACHE_INVALIDATION_C = Counter(
         "jwt_jwks_cache_invalidations_total",
-        "Number of times the JWKS cache has been invalidated during key"
-        " rotation.",
+        "Number of times the JWKS cache has been invalidated during key" " rotation.",
     )
     _CACHE_INVALIDATION_ERROR_C = Counter(
         "jwt_jwks_cache_invalidation_errors_total",
@@ -63,9 +62,7 @@ try:
         "retire": _MetricsWrapper(_RETIRE_C),
         "error": _MetricsWrapper(_ERROR_C),
         "cache_invalidation": _MetricsWrapper(_CACHE_INVALIDATION_C),
-        "cache_invalidation_error": _MetricsWrapper(
-            _CACHE_INVALIDATION_ERROR_C
-        ),
+        "cache_invalidation_error": _MetricsWrapper(_CACHE_INVALIDATION_ERROR_C),
     }
 
 except ImportError:  # pragma: no cover – prometheus_client optional dependency
@@ -94,7 +91,7 @@ def _gather_current_key_set() -> KeySet:
     keys: dict[str, Key] = {}
 
     # 1. In-memory map from settings
-    for kid, val in container.settings.JWT_KEYS.items():
+    for kid, val in celery.service_container.settings.JWT_KEYS.items():
         retired_at = jwt_utils._RETIRED_KEYS.get(
             kid
         )  # pylint: disable=protected-access
@@ -103,16 +100,16 @@ def _gather_current_key_set() -> KeySet:
     # 2. Derive *next_kid* naively: first non-active key in insertion order.
     next_kid: Optional[str] = None
     for kid in keys:
-        if kid != container.settings.ACTIVE_JWT_KID:
+        if kid != celery.service_container.settings.ACTIVE_JWT_KID:
             next_kid = kid
             break
 
     return KeySet(
         keys=keys,
-        active_kid=container.settings.ACTIVE_JWT_KID,
+        active_kid=celery.service_container.settings.ACTIVE_JWT_KID,
         next_kid=next_kid,
         grace_period_seconds=(
-            container.settings.JWT_ROTATION_GRACE_PERIOD_SECONDS
+            celery.service_container.settings.JWT_ROTATION_GRACE_PERIOD_SECONDS
         ),
     )
 
@@ -130,8 +127,8 @@ def _apply_key_set_update(update: KeySetUpdate) -> None:
 
     # Promote new active key
     if update.new_active_kid:
-        old_kid = container.settings.ACTIVE_JWT_KID
-        container.settings.ACTIVE_JWT_KID = update.new_active_kid
+        old_kid = celery.service_container.settings.ACTIVE_JWT_KID
+        celery.service_container.settings.ACTIVE_JWT_KID = update.new_active_kid
         Audit.info(
             "JWT key promoted",
             new_kid=update.new_active_kid,
@@ -173,7 +170,9 @@ def _build_redis_client():  # pragma: no cover – isolation for patching
         Redis,  # imported lazily to avoid heavy dep at import
     )
 
-    redis_url = container.settings.REDIS_URL or "redis://localhost:6379/0"
+    redis_url = (
+        celery.service_container.settings.REDIS_URL or "redis://localhost:6379/0"
+    )
     return Redis.from_url(redis_url)
 
 
@@ -182,9 +181,7 @@ def _build_redis_client():  # pragma: no cover – isolation for patching
 # ---------------------------------------------------------------------------
 
 
-@celery.task(
-    bind=True, name="app.tasks.jwt_rotation.promote_and_retire_keys_task"
-)
+@celery.task(bind=True, name="app.tasks.jwt_rotation.promote_and_retire_keys_task")
 def promote_and_retire_keys_task(self):  # noqa: D401 – Celery signature
     """Automated promotion & retirement of JWT signing keys.
 
@@ -202,18 +199,14 @@ def promote_and_retire_keys_task(self):  # noqa: D401 – Celery signature
             async with acquire_lock(
                 redis,
                 "jwt_key_rotation",
-                timeout=container.settings.JWT_ROTATION_LOCK_TTL_SEC,
+                timeout=celery.service_container.settings.JWT_ROTATION_LOCK_TTL_SEC,
             ) as got_lock:
                 if not got_lock:
-                    Audit.debug(
-                        "JWT key rotation: lock not acquired – skipping run."
-                    )
+                    Audit.debug("JWT key rotation: lock not acquired – skipping run.")
                     return
 
                 key_set = _gather_current_key_set()
-                update = promote_and_retire_keys(
-                    key_set, datetime.now(timezone.utc)
-                )
+                update = promote_and_retire_keys(key_set, datetime.now(timezone.utc))
 
                 if update.is_noop():
                     Audit.debug("JWT key rotation: no changes needed.")

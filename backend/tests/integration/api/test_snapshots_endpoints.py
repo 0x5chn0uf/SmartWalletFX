@@ -84,7 +84,7 @@ async def test_celery_task_stores_snapshots(db_session, monkeypatch):
         )
 
         # Use the global sync session factory
-        session = db_mod.SyncSessionLocal()
+        session = db_mod.container.db.SyncSessionLocal()
         # Only process wallets created in this test to ensure isolation
         wallets = (
             session.query(Wallet)

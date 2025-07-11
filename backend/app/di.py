@@ -2,36 +2,27 @@
 
 from sqlalchemy.orm import Session
 
-from app.core.database import container as default_container
 from app.core.services import ServiceContainer
 from app.services.snapshot_aggregation import SnapshotAggregationService
 from app.usecase.portfolio_aggregation_usecase import (
     PortfolioAggregationUsecase,
 )
 
-# Backward-compatible reference to the session factory for patching
-SyncSessionLocal = default_container.db.SyncSessionLocal
 
-
-def get_session_sync(
-    container: ServiceContainer | None = None,
-) -> Session:  # pragma: no cover
+def get_session_sync(container: ServiceContainer) -> Session:  # pragma: no cover
     """Return a new synchronous SQLAlchemy ``Session``.
 
     Parameters
     ----------
     container:
-        Optional :class:`ServiceContainer` to draw the database service from.
-        If omitted, the default container from ``app.core.database`` is used.
+        :class:`ServiceContainer` to draw the database service from.
     """
 
-    if container is not None:
-        return container.db.SyncSessionLocal()
-    return SyncSessionLocal()
+    return container.db.SyncSessionLocal()
 
 
 def get_snapshot_service_sync(
-    *, container: ServiceContainer | None = None
+    *, container: ServiceContainer
 ) -> SnapshotAggregationService:  # pragma: no cover
     """Return :class:`SnapshotAggregationService` wired with a sync session."""
 

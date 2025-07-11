@@ -13,10 +13,10 @@ async def db_session():
     Function-scoped async session using the session-scoped async engine.
     Provides complete test isolation with automatic rollback.
     """
-    from app.core.database import engine
+    from app.core.database import container
 
     async_session = async_sessionmaker(
-        bind=engine, class_=AsyncSession, expire_on_commit=False
+        bind=container.db.engine, class_=AsyncSession, expire_on_commit=False
     )
     async with async_session() as session:
         await session.begin()
@@ -32,10 +32,10 @@ async def module_db_session():
     Module-scoped async session for shared test data.
     Use this when you need to share database state across multiple tests in a module.
     """
-    from app.core.database import engine
+    from app.core.database import container
 
     async_session = async_sessionmaker(
-        bind=engine, class_=AsyncSession, expire_on_commit=False
+        bind=container.db.engine, class_=AsyncSession, expire_on_commit=False
     )
     async with async_session() as session:
         await session.begin()
@@ -51,9 +51,11 @@ def sync_session():
     Function-scoped sync session using the session-scoped sync engine.
     Provides complete test isolation with automatic rollback.
     """
-    from app.core.database import sync_engine
+    from app.core.database import container
 
-    Session = sessionmaker(bind=sync_engine, autocommit=False, autoflush=False)
+    Session = sessionmaker(
+        bind=container.db.sync_engine, autocommit=False, autoflush=False
+    )
     session = Session()
     transaction = session.begin()
     try:
@@ -70,9 +72,11 @@ def module_sync_session():
     Module-scoped sync session for shared test data.
     Use this when you need to share database state across multiple tests in a module.
     """
-    from app.core.database import sync_engine
+    from app.core.database import container
 
-    Session = sessionmaker(bind=sync_engine, autocommit=False, autoflush=False)
+    Session = sessionmaker(
+        bind=container.db.sync_engine, autocommit=False, autoflush=False
+    )
     session = Session()
     transaction = session.begin()
     try:
@@ -89,19 +93,19 @@ async def clean_db_session():
     Function-scoped async session with automatic cleanup.
     Ensures the database is clean before and after each test.
     """
-    from app.core.database import engine
+    from app.core.database import container
 
     async_session = async_sessionmaker(
-        bind=engine, class_=AsyncSession, expire_on_commit=False
+        bind=container.db.engine, class_=AsyncSession, expire_on_commit=False
     )
     async with async_session() as session:
         # Start transaction
         await session.begin()
 
         # Clean up any existing data
-        insp = _sa.inspect(engine)
-        for table in reversed(insp.get_table_names()):
-            await session.execute(_sa.text(f"DELETE FROM {table}"))
+    insp = _sa.inspect(container.db.engine)
+    for table in reversed(insp.get_table_names()):
+        await session.execute(_sa.text(f"DELETE FROM {table}"))
 
         try:
             yield session
@@ -115,14 +119,16 @@ def clean_sync_session():
     Function-scoped sync session with automatic cleanup.
     Ensures the database is clean before and after each test.
     """
-    from app.core.database import sync_engine
+    from app.core.database import container
 
-    Session = sessionmaker(bind=sync_engine, autocommit=False, autoflush=False)
+    Session = sessionmaker(
+        bind=container.db.sync_engine, autocommit=False, autoflush=False
+    )
     session = Session()
     transaction = session.begin()
 
     # Clean up any existing data
-    insp_sync = _sa.inspect(sync_engine)
+    insp_sync = _sa.inspect(container.db.sync_engine)
     for table in reversed(insp_sync.get_table_names()):
         session.execute(_sa.text(f"DELETE FROM {table}"))
 

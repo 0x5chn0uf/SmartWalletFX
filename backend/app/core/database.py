@@ -1,21 +1,13 @@
 # Synchronous SQLAlchemy imports for Celery / legacy callers
-"""Database helpers using :class:`DatabaseService` under the hood."""
-
+"""Database helpers relying on :class:`ServiceContainer`."""
 
 from app.core.services import ServiceContainer
 
-# Default service container used by modules that import from app.core.database.
-# Applications should instantiate their own container instead of relying on the
-# module-level instance.  This global is kept for backward-compatibility.
+# Default service container used by modules that import from ``app.core.database``.
+# Applications are expected to create and pass their own container instance.
 container = ServiceContainer(load_celery=False)
 
-# ---------------------------------------------------------------------------
-# Expose commonly used attributes for compatibility with previous API
-# ---------------------------------------------------------------------------
-engine = container.db.engine
-SessionLocal = container.db.SessionLocal
-sync_engine = container.db.sync_engine
-SyncSessionLocal = container.db.SyncSessionLocal
+# Shared SQLAlchemy ``Base`` used by model declarations
 Base = container.db.Base
 
 

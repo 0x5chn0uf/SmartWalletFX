@@ -42,7 +42,7 @@ async def test_init_db_success(monkeypatch):
 
     conn = _DummyConn()
     engine = _DummyEngine(conn)
-    monkeypatch.setattr(init_module, "engine", engine)
+    monkeypatch.setattr(init_module.container.db, "_engine", engine)
 
     # Run
     result = await init_module.init_db()
@@ -60,7 +60,7 @@ async def test_init_db_error_propagation(monkeypatch):
 
     conn = _DummyConn(should_raise=True)
     engine = _DummyEngine(conn)
-    monkeypatch.setattr(init_module, "engine", engine)
+    monkeypatch.setattr(init_module.container.db, "_engine", engine)
 
     with pytest.raises(ValueError):
         await init_module.init_db()
