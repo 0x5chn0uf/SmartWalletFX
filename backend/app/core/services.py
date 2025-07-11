@@ -3,6 +3,8 @@ from __future__ import annotations
 import threading
 from typing import Generator, Optional
 
+from celery import Celery
+from celery.schedules import crontab
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -12,9 +14,6 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.core.config import Settings
-from celery import Celery
-from celery.schedules import crontab
-
 from app.core.settings_service import SettingsService
 from app.utils.logging import LoggingService
 
@@ -140,16 +139,84 @@ class CeleryService:
         return self._app
 
 
+class RepositorySingletons:
+    """Lazily expose repository classes to avoid circular imports."""
+
+    _MAP = {
+        "AggregateMetricsRepository": "aggregate_metrics_repository",
+        "AuditLogRepository": "audit_log_repository",
+        "HistoricalBalanceRepository": "historical_balance_repository",
+        "OAuthAccountRepository": "oauth_account_repository",
+        "PasswordResetRepository": "password_reset_repository",
+        "PortfolioSnapshotRepository": "portfolio_snapshot_repository",
+        "RefreshTokenRepository": "refresh_token_repository",
+        "TokenBalanceRepository": "token_balance_repository",
+        "TokenPriceRepository": "token_price_repository",
+        "TokenRepository": "token_repository",
+        "UserRepository": "user_repository",
+        "WalletRepository": "wallet_repository",
+    }
+
+    def __getattr__(self, item: str):
+        if item not in self._MAP:
+            raise AttributeError(item)
+        module_name = self._MAP[item]
+        module = __import__(f"app.repositories.{module_name}", fromlist=[item])
+        return getattr(module, item)
+
+
+class UsecaseSingletons:
+    """Lazily expose use case classes to avoid circular imports."""
+
+    _MAP = {
+        "AuditLogUsecase": "audit_log_usecase",
+        "AaveUsecase": "defi_aave_usecase",
+        "CompoundUsecase": "defi_compound_usecase",
+        "RadiantUsecase": "defi_radiant_usecase",
+        "HistoricalBalanceUsecase": "historical_balance_usecase",
+        "PortfolioAggregationUsecase": "portfolio_aggregation_usecase",
+        "PortfolioSnapshotUsecase": "portfolio_snapshot_usecase",
+        "TokenBalanceUsecase": "token_balance_usecase",
+        "TokenPriceUsecase": "token_price_usecase",
+        "TokenUsecase": "token_usecase",
+        "WalletUsecase": "wallet_usecase",
+    }
+
+    def __getattr__(self, item: str):
+        if item not in self._MAP:
+            raise AttributeError(item)
+        module_name = self._MAP[item]
+        module = __import__(f"app.usecase.{module_name}", fromlist=[item])
+        return getattr(module, item)
+
+
+class EndpointSingletons:
+    """Expose API routers as singletons for FastAPI apps."""
+
+    def __init__(self) -> None:
+        from app.api.api import api_router
+
+        self.api_router = api_router
+
+
 class ServiceContainer:
     """Simple service container for dependency management."""
 
-    def __init__(self, settings_service: SettingsService | None = None, *, load_celery: bool = True) -> None:
+    def __init__(
+        self,
+        settings_service: SettingsService | None = None,
+        *,
+        load_celery: bool = True,
+    ) -> None:
         self.settings_service = settings_service or SettingsService()
         self.database_service = DatabaseService(self.settings_service.settings)
         self.celery_service = (
             CeleryService(self.settings_service.settings) if load_celery else None
         )
         self.logging_service = LoggingService()
+        self._repositories = RepositorySingletons()
+        self._usecases = UsecaseSingletons()
+        self._endpoints: EndpointSingletons | None = None
 
     # Convenience accessors -------------------------------------------------
     @property
@@ -168,3 +235,17 @@ class ServiceContainer:
     @property
     def logging(self) -> LoggingService:
         return self.logging_service
+
+    @property
+    def repositories(self) -> RepositorySingletons:
+        return self._repositories
+
+    @property
+    def usecases(self) -> UsecaseSingletons:
+        return self._usecases
+
+    @property
+    def endpoints(self) -> EndpointSingletons:
+        if self._endpoints is None:
+            self._endpoints = EndpointSingletons()
+        return self._endpoints
