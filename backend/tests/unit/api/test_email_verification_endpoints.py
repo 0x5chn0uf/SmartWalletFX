@@ -7,7 +7,10 @@ import pytest
 from fastapi import BackgroundTasks, HTTPException
 
 from app.api.endpoints import email_verification as ep
-from app.schemas.email_verification import EmailVerificationRequest, EmailVerificationVerify
+from app.schemas.email_verification import (
+    EmailVerificationRequest,
+    EmailVerificationVerify,
+)
 
 
 @pytest.mark.asyncio
@@ -26,7 +29,9 @@ async def test_resend_verification_unknown_user(monkeypatch):
     user_repo.get_by_email.return_value = None
     monkeypatch.setattr(ep, "UserRepository", lambda _: user_repo)
     resp = await ep.resend_verification_email(
-        EmailVerificationRequest(email="nobody@example.com"), BackgroundTasks(), db=AsyncMock()
+        EmailVerificationRequest(email="nobody@example.com"),
+        BackgroundTasks(),
+        db=AsyncMock(),
     )
     assert isinstance(resp, ep.Response)
 
@@ -35,12 +40,16 @@ async def test_resend_verification_unknown_user(monkeypatch):
 async def test_resend_verification_email_failure(monkeypatch):
     monkeypatch.setattr(ep.verify_rate_limiter, "allow", lambda _: True)
     user_repo = AsyncMock()
-    user_repo.get_by_email.return_value = Mock(id=1, email="e@example.com", email_verified=False)
+    user_repo.get_by_email.return_value = Mock(
+        id=1, email="e@example.com", email_verified=False
+    )
     monkeypatch.setattr(ep, "UserRepository", lambda _: user_repo)
     repo = AsyncMock()
     monkeypatch.setattr(ep, "EmailVerificationRepository", lambda _: repo)
     monkeypatch.setattr(
-        ep, "generate_verification_token", lambda: ("tok", "hash", datetime.now(timezone.utc))
+        ep,
+        "generate_verification_token",
+        lambda: ("tok", "hash", datetime.now(timezone.utc)),
     )
     monkeypatch.setattr(ep, "EmailService", lambda: AsyncMock())
     tasks = BackgroundTasks()
@@ -67,7 +76,9 @@ async def test_resend_verification_success(monkeypatch):
     repo = AsyncMock()
     monkeypatch.setattr(ep, "EmailVerificationRepository", lambda _: repo)
     monkeypatch.setattr(
-        ep, "generate_verification_token", lambda: ("tok", "hash", datetime.now(timezone.utc))
+        ep,
+        "generate_verification_token",
+        lambda: ("tok", "hash", datetime.now(timezone.utc)),
     )
     service = AsyncMock()
     monkeypatch.setattr(ep, "EmailService", lambda: service)
@@ -118,10 +129,7 @@ async def test_verify_email_success(monkeypatch):
     user_repo.get_by_id.return_value = user
     monkeypatch.setattr(ep, "UserRepository", lambda _: user_repo)
     db = AsyncMock()
-    res = await ep.verify_email(
-        EmailVerificationVerify(token="tok1234567"), db=db
-    )
+    res = await ep.verify_email(EmailVerificationVerify(token="tok1234567"), db=db)
     assert res == {"status": "verified"}
     db.commit.assert_awaited()
     repo.mark_used.assert_awaited_with(ev)
-

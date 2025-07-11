@@ -1,12 +1,24 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Response,
+    status,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.repositories.email_verification_repository import EmailVerificationRepository
+from app.repositories.email_verification_repository import (
+    EmailVerificationRepository,
+)
 from app.repositories.user_repository import UserRepository
-from app.schemas.email_verification import EmailVerificationRequest, EmailVerificationVerify
+from app.schemas.email_verification import (
+    EmailVerificationRequest,
+    EmailVerificationVerify,
+)
 from app.services.email_service import EmailService
 from app.utils.logging import Audit
 from app.utils.rate_limiter import InMemoryRateLimiter
@@ -63,7 +75,9 @@ async def resend_verification_email(
     user_repo = UserRepository(db)
     user = await user_repo.get_by_email(payload.email)
     if not user or user.email_verified:
-        Audit.warning("verification_email_resend_unknown_or_verified", email=payload.email)
+        Audit.warning(
+            "verification_email_resend_unknown_or_verified", email=payload.email
+        )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     token, _, expires_at = generate_verification_token()
@@ -73,7 +87,9 @@ async def resend_verification_email(
     verify_link = f"https://example.com/verify-email?token={token}"
     service = EmailService()
     try:
-        background_tasks.add_task(service.send_email_verification, user.email, verify_link)
+        background_tasks.add_task(
+            service.send_email_verification, user.email, verify_link
+        )
     except Exception as exc:  # pragma: no cover - network errors aren't common
         Audit.error("verification_email_send_failed", error=str(exc))
         raise HTTPException(status_code=500, detail="Email send failed")

@@ -16,8 +16,16 @@ depends_on = None
 
 def upgrade() -> None:
     with op.batch_alter_table("users", schema=None) as batch_op:
-        batch_op.add_column(sa.Column("email_verified", sa.Boolean(), nullable=False, server_default="false"))
-        batch_op.add_column(sa.Column("verification_deadline", sa.DateTime(timezone=True), nullable=True))
+        batch_op.add_column(
+            sa.Column(
+                "email_verified", sa.Boolean(), nullable=False, server_default="false"
+            )
+        )
+        batch_op.add_column(
+            sa.Column(
+                "verification_deadline", sa.DateTime(timezone=True), nullable=True
+            )
+        )
 
 
 def downgrade() -> None:

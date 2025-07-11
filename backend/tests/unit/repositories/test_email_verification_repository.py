@@ -5,7 +5,9 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from app.repositories.email_verification_repository import EmailVerificationRepository
+from app.repositories.email_verification_repository import (
+    EmailVerificationRepository,
+)
 
 
 @pytest.mark.asyncio
