@@ -10,9 +10,6 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from datetime import datetime, timedelta, timezone
-
-from app.core.config import settings
 from app.core.database import get_db
 from app.repositories.email_verification_repository import (
     EmailVerificationRepository,
@@ -52,7 +49,6 @@ async def verify_email(
         raise HTTPException(status_code=400, detail="User not found")
 
     user.email_verified = True
-    user.verification_deadline = None
     await repo.mark_used(token_obj)
     await db.commit()
 
@@ -87,11 +83,6 @@ async def resend_verification_email(
     token, _, expires_at = generate_verification_token()
     ev_repo = EmailVerificationRepository(db)
     await ev_repo.create(token, user.id, expires_at)
-
-    # Extend verification deadline from now
-    user.verification_deadline = datetime.now(timezone.utc) + timedelta(
-        days=settings.EMAIL_VERIFICATION_GRACE_DAYS
-    )
 
     verify_link = f"https://example.com/verify-email?token={token}"
     service = EmailService()

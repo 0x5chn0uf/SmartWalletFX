@@ -78,9 +78,6 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     JWT_SECRET_KEY: Optional[str] = "insecure-test-key"
 
-    # Email verification
-    EMAIL_VERIFICATION_GRACE_DAYS: int = 7
-
     # Authentication rate-limiting (login attempts)
     AUTH_RATE_LIMIT_ATTEMPTS: int = 5  # max attempts per window
     AUTH_RATE_LIMIT_WINDOW_SECONDS: int = 60  # rolling window size

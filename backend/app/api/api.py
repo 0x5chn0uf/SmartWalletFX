@@ -6,11 +6,11 @@ from app.api.endpoints import (
     audit_logs,
     auth,
     defi,
+    email_verification,
     health,
     jwks,
     oauth,
     password_reset,
-    email_verification,
     users,
     wallets,
 )

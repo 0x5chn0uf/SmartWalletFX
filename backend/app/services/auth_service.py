@@ -7,8 +7,10 @@ FastAPI adapters and domain/infrastructure layers.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
+from typing import Optional
 
+from fastapi import BackgroundTasks
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,35 +34,21 @@ class DuplicateError(Exception):
         self.field = field
 
 
-class WeakPasswordError(Exception):
-    """Raised when a password does not meet strength requirements."""
-
-
 class AuthService:
     """Core authentication service (register, authenticate, tokens…)."""
 
     def __init__(self, session: AsyncSession):
         self._repo = UserRepository(session)
 
-    async def register(
+    async def register(  # noqa: D401 – business method
         self,
-        payload: UserCreate | None = None,
-        /,
-        **data,
-    ) -> User:  # noqa: D401 – business method
+        payload: UserCreate,
+        background_tasks: Optional[BackgroundTasks] = None,
+    ) -> User:
         """Register a new user.
 
-        The method is *dual-purpose* to preserve backward-compatibility with
-        legacy test helpers that still call the service with explicit keyword
-        arguments (``email=…`` & ``password=…``).  Newer call-sites should pass
-        a :class:`app.schemas.user.UserCreate` instance via the *payload*
-        positional argument which offers full pydantic validation.  If *payload*
-        is omitted we build it from the supplied kwargs.
-
         Args:
-            payload: Optional :class:`UserCreate` schema (preferred).
-            **data: Fallback keyword arguments – expected keys are *email*,
-                *password* and optionally *username*.
+            payload: :class:`UserCreate` schema.
 
         Returns:
             Newly-persisted :class:`app.models.user.User` object.
@@ -68,28 +56,7 @@ class AuthService:
         Raises:
             DuplicateError: If provided *username* or *email* already exists.
             WeakPasswordError: If *password* does not meet strength policy.
-            ValueError: If mandatory arguments are missing when *payload* is
-                not supplied.
         """
-
-        # ------------------------------------------------------------------
-        # Normalise input – support both (*payload*) and (**kwargs**) styles.
-        # ------------------------------------------------------------------
-        if payload is None:
-            email: str | None = data.get("email")
-            password: str | None = data.get("password")
-            username: str | None = data.get("username")
-
-            if email is None or password is None:
-                raise ValueError("'email' and 'password' are required")
-
-            # Derive *username* from the email if not provided (legacy tests)
-            if username is None:
-                username = email.split("@", 1)[0]
-
-            payload = UserCreate(username=username, email=email, password=password)
-
-        # At this point we have a *UserCreate* instance
         # Password strength validation is handled by UserCreate's field validator
 
         # Duplicate checks
@@ -119,6 +86,30 @@ class AuthService:
             if "users_email_key" in str(exc.orig):  # simplistic check
                 raise DuplicateError("email") from exc
             raise
+
+        from app.repositories.email_verification_repository import (
+            EmailVerificationRepository,
+        )
+        from app.services.email_service import EmailService
+        from app.utils.token import generate_verification_token
+
+        token, _, expires_at = generate_verification_token()
+
+        ev_repo = EmailVerificationRepository(self._repo._session)
+        await ev_repo.create(token, user.id, expires_at)
+
+        verify_link = f"https://example.com/verify-email?token={token}"
+
+        if background_tasks is not None:
+            background_tasks.add_task(
+                EmailService().send_email_verification, user.email, verify_link
+            )
+        else:  # Fallback – send inline (mainly for tests/CLI)
+            await EmailService().send_email_verification(user.email, verify_link)
+
+        # Persist deadline change
+        await self._repo._session.commit()
+        await self._repo._session.refresh(user)
 
         Audit.info("user_registered", extra={"user_id": str(user.id)})
         return user
@@ -178,20 +169,16 @@ class AuthService:
             )
             raise InvalidCredentialsError()
 
+        # Reject all logins when the email address is not verified – no grace period
         if not getattr(user, "email_verified", False):
-            deadline = getattr(user, "verification_deadline", None)
-            if deadline:
-                if deadline.tzinfo is None:
-                    deadline = deadline.replace(tzinfo=timezone.utc)
-                if datetime.now(timezone.utc) > deadline:
-                    Audit.error(
-                        "AUTH_FAILURE",
-                        reason="email_unverified",
-                        user_id=str(user.id),
-                    )
-                    from app.domain.errors import UnverifiedEmailError
+            Audit.error(
+                "AUTH_FAILURE",
+                reason="email_unverified",
+                user_id=str(user.id),
+            )
+            from app.domain.errors import UnverifiedEmailError
 
-                    raise UnverifiedEmailError()
+            raise UnverifiedEmailError()
 
         # Prepare additional claims for RBAC/ABAC
         additional_claims = {}

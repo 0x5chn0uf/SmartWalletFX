@@ -27,12 +27,8 @@ from app.domain.errors import (
     UnverifiedEmailError,
 )
 from app.schemas.auth_token import TokenResponse
-from app.schemas.user import UserCreate, UserRead
-from app.services.auth_service import (
-    AuthService,
-    DuplicateError,
-    WeakPasswordError,
-)
+from app.schemas.user import UserCreate, UserRead, WeakPasswordError
+from app.services.auth_service import AuthService, DuplicateError
 from app.utils.logging import Audit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -54,7 +50,6 @@ async def register_user(
 
     Returns the newly-created user object excluding sensitive fields.
     """
-    start_time = time.time()
     client_ip = request.client.host or "unknown"
 
     Audit.info(
@@ -66,72 +61,42 @@ async def register_user(
 
     service = AuthService(db)
     try:
-        user = await service.register(payload)
-        from datetime import datetime, timedelta, timezone
-
-        from app.core.config import settings
-        from app.repositories.email_verification_repository import (
-            EmailVerificationRepository,
-        )
-        from app.services.email_service import EmailService
-        from app.utils.token import generate_verification_token
-
-        token, _, expires_at = generate_verification_token()
-        ev_repo = EmailVerificationRepository(db)
-        await ev_repo.create(token, user.id, expires_at)
-
-        verify_link = f"https://example.com/verify-email?token={token}"
-        background_tasks.add_task(
-            EmailService().send_email_verification, user.email, verify_link
-        )
-
-        user.verification_deadline = datetime.now(timezone.utc) + timedelta(
-            days=settings.EMAIL_VERIFICATION_GRACE_DAYS
-        )
-        await db.commit()
-        duration = int((time.time() - start_time) * 1000)
+        user = await service.register(payload, background_tasks=background_tasks)
 
         Audit.info(
             "User registration completed successfully",
             user_id=user.id,
             username=user.username,
             email=user.email,
-            duration_ms=duration,
         )
 
         return user
     except DuplicateError as dup:
-        duration = int((time.time() - start_time) * 1000)
         Audit.error(
             "User registration failed - duplicate field",
             username=payload.username,
             email=payload.email,
             duplicate_field=dup.field,
-            duration_ms=duration,
         )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"{dup.field} already exists",
         ) from dup
     except WeakPasswordError:
-        duration = int((time.time() - start_time) * 1000)
         Audit.warning(
             "User registration failed - weak password",
             username=payload.username,
             email=payload.email,
-            duration_ms=duration,
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password does not meet strength requirements",
         )
     except Exception as exc:
-        duration = int((time.time() - start_time) * 1000)
         Audit.error(
             "User registration failed with unexpected error",
             username=payload.username,
             email=payload.email,
-            duration_ms=duration,
             error=str(exc),
             exc_info=True,
         )
@@ -150,7 +115,6 @@ async def login_for_access_token(
     db: AsyncSession = Depends(get_db),
 ) -> TokenResponse:  # type: ignore[valid-type]
     """OAuth2 Password grant – return access & refresh tokens."""
-    start_time = time.time()
     identifier = request.client.host or "unknown"
     limiter = deps_mod.login_rate_limiter
 
@@ -164,12 +128,10 @@ async def login_for_access_token(
         # Successful login → reset any accumulated failures for this IP
         limiter.reset(identifier)
 
-        duration = int((time.time() - start_time) * 1000)
         Audit.info(
             "User login successful",
             username=form_data.username,
             client_ip=identifier,
-            duration_ms=duration,
         )
 
         Audit.info(
@@ -191,17 +153,10 @@ async def login_for_access_token(
         )
 
         return tokens
+
     except InvalidCredentialsError:
-        duration = int((time.time() - start_time) * 1000)
         Audit.warning(
             "User login failed - invalid credentials",
-            username=form_data.username,
-            client_ip=identifier,
-            duration_ms=duration,
-        )
-
-        Audit.info(
-            "user_login_failed_invalid_credentials",
             username=form_data.username,
             client_ip=identifier,
         )
@@ -222,16 +177,8 @@ async def login_for_access_token(
             detail="Invalid username or password",
         )
     except InactiveUserError:
-        duration = int((time.time() - start_time) * 1000)
         Audit.warning(
             "User login failed - inactive account",
-            username=form_data.username,
-            client_ip=identifier,
-            duration_ms=duration,
-        )
-
-        Audit.info(
-            "user_login_failed_inactive_account",
             username=form_data.username,
             client_ip=identifier,
         )
@@ -241,15 +188,8 @@ async def login_for_access_token(
             detail="Inactive or disabled user account",
         )
     except UnverifiedEmailError:
-        duration = int((time.time() - start_time) * 1000)
         Audit.warning(
             "User login failed - email unverified",
-            username=form_data.username,
-            client_ip=identifier,
-            duration_ms=duration,
-        )
-        Audit.info(
-            "user_login_failed_unverified_email",
             username=form_data.username,
             client_ip=identifier,
         )
@@ -258,12 +198,10 @@ async def login_for_access_token(
             detail="Email address not verified",
         )
     except Exception as exc:
-        duration = int((time.time() - start_time) * 1000)
         Audit.error(
             "User login failed with unexpected error",
             username=form_data.username,
             client_ip=identifier,
-            duration_ms=duration,
             error=str(exc),
             exc_info=True,
         )

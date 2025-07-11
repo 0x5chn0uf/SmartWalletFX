@@ -90,7 +90,6 @@ async def test_resend_verification_success(monkeypatch):
     assert isinstance(resp, ep.Response)
     service.send_email_verification.assert_not_called()
     assert tasks.tasks
-    assert user.verification_deadline is not None
 
 
 @pytest.mark.asyncio
@@ -135,4 +134,3 @@ async def test_verify_email_success(monkeypatch):
     db.commit.assert_awaited()
     repo.mark_used.assert_awaited_with(ev)
     assert user.email_verified is True
-    assert user.verification_deadline is None

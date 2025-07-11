@@ -10,6 +10,7 @@ from app.core.init_db import init_db
 # --- New imports for structured logging & error handling ---
 from app.core.logging import setup_logging  # noqa: F401 – side-effect import
 from app.core.middleware import CorrelationIdMiddleware
+from app.schemas.user import WeakPasswordError  # local import
 from app.utils import audit  # noqa: F401
 
 
@@ -54,6 +55,10 @@ def create_app() -> FastAPI:
 
     app.add_exception_handler(
         IntegrityError, error_handling.integrity_error_handler  # type: ignore[arg-type]
+    )
+
+    app.add_exception_handler(
+        WeakPasswordError, error_handling.weak_password_error_handler
     )
 
     # Initialize database tables on startup

@@ -37,4 +37,3 @@ async def test_register_user_sends_verification(monkeypatch):
     assert res is user
     assert tasks.tasks
     repo.create.assert_awaited()
-    assert user.verification_deadline is not None

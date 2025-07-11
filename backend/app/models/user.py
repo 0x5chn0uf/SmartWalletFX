@@ -24,7 +24,6 @@ class User(Base):
     email_verified = Column(
         Boolean, nullable=False, default=False, server_default="false"
     )
-    verification_deadline = Column(DateTime(timezone=True), nullable=True)
 
     # Role-based access control fields
     roles = Column(JSON, nullable=True, doc="List of user roles for RBAC")

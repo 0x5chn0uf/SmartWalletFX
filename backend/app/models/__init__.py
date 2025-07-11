@@ -2,10 +2,10 @@ from app.core.database import Base
 
 from .aggregate_metrics import AggregateMetricsModel
 from .audit_log import AuditLog
+from .email_verification import EmailVerification
 from .group import Group
 from .historical_balance import HistoricalBalance
 from .password_reset import PasswordReset
-from .email_verification import EmailVerification
 from .portfolio_snapshot import PortfolioSnapshot
 from .portfolio_snapshot_cache import PortfolioSnapshotCache
 from .refresh_token import RefreshToken

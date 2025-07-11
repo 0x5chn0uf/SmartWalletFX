@@ -182,7 +182,6 @@ class TestAuthService:
         mock_user.id = 1
         mock_user.is_active = True
         mock_user.email_verified = False
-        mock_user.verification_deadline = datetime.now(timezone.utc) - timedelta(days=1)
         mock_user.hashed_password = (
             "$2b$04$qRbw3X8ORqGW0Ru0JXmCfudYyKapkjduhzRQX4PQBj.7JriqK6tFC"
         )
