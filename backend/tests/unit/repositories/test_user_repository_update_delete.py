@@ -10,8 +10,6 @@ from app.repositories.user_repository import UserRepository
 
 @pytest.mark.asyncio
 async def test_user_repository_update(db_session, monkeypatch):
-    _disable_audit_listener(monkeypatch)
-
     repo = UserRepository(db_session)
 
     # Create and persist original user
@@ -32,8 +30,6 @@ async def test_user_repository_update(db_session, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_user_repository_delete_cascades_refresh_tokens(db_session, monkeypatch):
-    _disable_audit_listener(monkeypatch)
-
     repo = UserRepository(db_session)
 
     user = User(
