@@ -172,7 +172,11 @@ class Settings(BaseSettings):
     JWT_ROTATION_ALERT_ON_RETRY: bool = False  # Send alerts on retries
 
 
-settings = Settings()
+from app.core.settings_service import SettingsService  # noqa: E402
+
+# Default settings service for modules that import from app.core.config.
+settings_service = SettingsService()
+settings = settings_service.settings
 
 """
 CoinGecko is used as the price oracle for live USD values
