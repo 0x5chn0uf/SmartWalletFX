@@ -7,7 +7,7 @@ FastAPI adapters and domain/infrastructure layers.
 """
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -177,6 +177,21 @@ class AuthService:
                 "AUTH_FAILURE", reason="invalid_credentials", user_id=str(user.id)
             )
             raise InvalidCredentialsError()
+
+        if not getattr(user, "email_verified", False):
+            deadline = getattr(user, "verification_deadline", None)
+            if deadline:
+                if deadline.tzinfo is None:
+                    deadline = deadline.replace(tzinfo=timezone.utc)
+                if datetime.now(timezone.utc) > deadline:
+                    Audit.error(
+                        "AUTH_FAILURE",
+                        reason="email_unverified",
+                        user_id=str(user.id),
+                    )
+                    from app.domain.errors import UnverifiedEmailError
+
+                    raise UnverifiedEmailError()
 
         # Prepare additional claims for RBAC/ABAC
         additional_claims = {}

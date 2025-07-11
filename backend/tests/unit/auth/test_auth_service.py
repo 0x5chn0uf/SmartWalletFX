@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -173,6 +174,24 @@ class TestAuthService:
 
         with pytest.raises(InvalidCredentialsError):
             await auth_service.authenticate("test", "WrongPass123!")
+
+    @pytest.mark.asyncio
+    async def test_authenticate_unverified_email(self, auth_service, mock_user_repo):
+        """Authentication should fail when email is unverified past deadline."""
+        mock_user = Mock(spec=User)
+        mock_user.id = 1
+        mock_user.is_active = True
+        mock_user.email_verified = False
+        mock_user.verification_deadline = datetime.now(timezone.utc) - timedelta(days=1)
+        mock_user.hashed_password = (
+            "$2b$04$qRbw3X8ORqGW0Ru0JXmCfudYyKapkjduhzRQX4PQBj.7JriqK6tFC"
+        )
+        mock_user_repo.get_by_username.return_value = mock_user
+
+        from app.domain.errors import UnverifiedEmailError
+
+        with pytest.raises(UnverifiedEmailError):
+            await auth_service.authenticate("test", "StrongPass123!")
 
     @pytest.mark.asyncio
     @patch("app.services.auth_service.RefreshTokenRepository")

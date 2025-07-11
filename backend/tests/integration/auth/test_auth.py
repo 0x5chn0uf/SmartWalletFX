@@ -195,6 +195,10 @@ class DummyAuthService:  # noqa: D101 – lightweight stub
             from app.domain.errors import InactiveUserError
 
             raise InactiveUserError()
+        if username == "unverified":
+            from app.domain.errors import UnverifiedEmailError
+
+            raise UnverifiedEmailError()
         raise InvalidCredentialsError()
 
 
@@ -223,6 +227,15 @@ async def test_token_inactive_user(
     data = {"username": "inactive", "password": "any"}
     resp = await async_client_with_db.post("/auth/token", data=data)
     assert resp.status_code == 403  # Inactive users get 403, not 401
+
+
+@pytest.mark.asyncio
+async def test_token_unverified_email(
+    test_app, patched_auth_service, async_client_with_db: AsyncClient
+) -> None:
+    data = {"username": "unverified", "password": "any"}
+    resp = await async_client_with_db.post("/auth/token", data=data)
+    assert resp.status_code == 403
 
 
 @pytest.mark.asyncio

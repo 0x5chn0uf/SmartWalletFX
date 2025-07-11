@@ -21,7 +21,11 @@ from starlette.status import HTTP_401_UNAUTHORIZED
 import app.api.dependencies as deps_mod
 from app.core.config import settings
 from app.core.database import get_db
-from app.domain.errors import InactiveUserError, InvalidCredentialsError
+from app.domain.errors import (
+    InactiveUserError,
+    InvalidCredentialsError,
+    UnverifiedEmailError,
+)
 from app.schemas.auth_token import TokenResponse
 from app.schemas.user import UserCreate, UserRead
 from app.services.auth_service import (
@@ -235,6 +239,23 @@ async def login_for_access_token(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive or disabled user account",
+        )
+    except UnverifiedEmailError:
+        duration = int((time.time() - start_time) * 1000)
+        Audit.warning(
+            "User login failed - email unverified",
+            username=form_data.username,
+            client_ip=identifier,
+            duration_ms=duration,
+        )
+        Audit.info(
+            "user_login_failed_unverified_email",
+            username=form_data.username,
+            client_ip=identifier,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email address not verified",
         )
     except Exception as exc:
         duration = int((time.time() - start_time) * 1000)
