@@ -171,6 +171,18 @@ class Settings(BaseSettings):
     JWT_ROTATION_ALERT_ON_ERROR: bool = True  # Send alerts on rotation errors
     JWT_ROTATION_ALERT_ON_RETRY: bool = False  # Send alerts on retries
 
+    # ------------------------------------------------------------------
+    # Email / SMTP configuration  (used by EmailService for outgoing mail)
+    # ------------------------------------------------------------------
+
+    SMTP_HOST: str = "localhost"
+    SMTP_PORT: int = 1025
+    SMTP_USERNAME: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_USE_TLS: bool = False  # STARTTLS
+    SMTP_USE_SSL: bool = False  # SMTPS (implicit TLS)
+    EMAIL_FROM: str = "no-reply@smartwalletfx.local"  # Default From header
+
 
 settings = Settings()
 
