@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from app.core.config import settings
 from app.tasks.backups import create_backup_task, purge_old_backups_task
+from app.celery_app import container
 
 
 def test_backup_and_retention_flow(monkeypatch):
@@ -14,6 +15,8 @@ def test_backup_and_retention_flow(monkeypatch):
     # Use a temp directory for BACKUP_DIR
     with tempfile.TemporaryDirectory() as tmpdir:
         monkeypatch.setattr(settings, "BACKUP_DIR", tmpdir)
+        # Also update container to use patched settings
+        container.settings.BACKUP_DIR = tmpdir
         backup_dir = Path(tmpdir)
 
         # Create an expired dump (older than retention)

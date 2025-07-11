@@ -7,12 +7,12 @@ import asyncio
 
 from sqlalchemy import delete, select
 
-from app.core.database import SessionLocal
+from app.core.database import container
 from app.models.user import User
 
 
 async def delete_all_users():
-    async with SessionLocal() as session:
+    async with container.db.SessionLocal() as session:
         # Count users before delete
         result = await session.execute(select(User))
         users = result.scalars().all()

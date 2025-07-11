@@ -4,7 +4,7 @@ import time
 
 import structlog
 
-from app.celery_app import celery
+from app.celery_app import celery, container
 from app.di import get_session_sync
 from app.models.wallet import Wallet
 from app.services.snapshot_aggregation import SnapshotAggregationService
@@ -35,7 +35,7 @@ def collect_portfolio_snapshots():
 
     logger.info("Portfolio snapshot collection task started")
 
-    session = get_session_sync()
+    session = get_session_sync(container)
     try:
         # Log the DB engine URL and resolved file path
         engine_url = str(session.bind.url)
@@ -46,14 +46,17 @@ def collect_portfolio_snapshots():
             "Database configuration",
             engine_url=engine_url,
             db_file=abs_db_file,
-            db_file_exists=os.path.exists(abs_db_file) if abs_db_file else None,
+            db_file_exists=(
+                os.path.exists(abs_db_file) if abs_db_file else None
+            ),
         )
 
         start = time.time()
         wallets = session.query(Wallet).all()
 
         logger.info(
-            "Retrieved wallets for snapshot collection", wallet_count=len(wallets)
+            "Retrieved wallets for snapshot collection",
+            wallet_count=len(wallets),
         )
 
         success = 0

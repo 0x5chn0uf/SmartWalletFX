@@ -85,7 +85,7 @@ def test_get_snapshot_service_sync(monkeypatch):
 
     # Prepare patches
     dummy_session = object()
-    monkeypatch.setattr(di, "get_session_sync", lambda: dummy_session)
+    monkeypatch.setattr(di, "get_session_sync", lambda *_, **__: dummy_session)
     monkeypatch.setattr(di, "_build_aggregator", lambda: "agg")
     monkeypatch.setattr(di, "SnapshotAggregationService", DummyService)
 
