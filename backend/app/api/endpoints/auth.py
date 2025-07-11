@@ -6,6 +6,7 @@ import time
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     HTTPException,
     Request,
@@ -42,6 +43,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def register_user(
     request: Request,
     payload: UserCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ) -> UserRead:  # type: ignore[valid-type]
     """Create a new user account.
@@ -61,6 +63,28 @@ async def register_user(
     service = AuthService(db)
     try:
         user = await service.register(payload)
+        from datetime import datetime, timedelta, timezone
+
+        from app.core.config import settings
+        from app.repositories.email_verification_repository import (
+            EmailVerificationRepository,
+        )
+        from app.services.email_service import EmailService
+        from app.utils.token import generate_verification_token
+
+        token, _, expires_at = generate_verification_token()
+        ev_repo = EmailVerificationRepository(db)
+        await ev_repo.create(token, user.id, expires_at)
+
+        verify_link = f"https://example.com/verify-email?token={token}"
+        background_tasks.add_task(
+            EmailService().send_email_verification, user.email, verify_link
+        )
+
+        user.verification_deadline = datetime.now(timezone.utc) + timedelta(
+            days=settings.EMAIL_VERIFICATION_GRACE_DAYS
+        )
+        await db.commit()
         duration = int((time.time() - start_time) * 1000)
 
         Audit.info(
