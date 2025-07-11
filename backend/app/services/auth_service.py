@@ -17,13 +17,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.security.roles import UserRole
 from app.models.user import User
+from app.repositories.email_verification_repository import (
+    EmailVerificationRepository,
+)
 from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth_token import TokenResponse
 from app.schemas.user import UserCreate
+from app.services.email_service import EmailService
 from app.utils import security
 from app.utils.jwt import JWTUtils
 from app.utils.logging import Audit
+from app.utils.token import generate_verification_token
 
 
 class DuplicateError(Exception):
@@ -87,18 +92,15 @@ class AuthService:
                 raise DuplicateError("email") from exc
             raise
 
-        from app.repositories.email_verification_repository import (
-            EmailVerificationRepository,
-        )
-        from app.services.email_service import EmailService
-        from app.utils.token import generate_verification_token
-
         token, _, expires_at = generate_verification_token()
 
         ev_repo = EmailVerificationRepository(self._repo._session)
         await ev_repo.create(token, user.id, expires_at)
 
-        verify_link = f"https://example.com/verify-email?token={token}"
+        # Build a portable verification URL based on the configured frontend base
+        verify_link = (
+            f"{settings.FRONTEND_BASE_URL.rstrip('/')}/verify-email?token={token}"
+        )
 
         if background_tasks is not None:
             background_tasks.add_task(
