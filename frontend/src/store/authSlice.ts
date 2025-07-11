@@ -10,11 +10,17 @@ export interface UserProfile {
   role?: string;
 }
 
+export interface AuthError {
+  status?: number | null;
+  data?: any;
+  message?: string;
+}
+
 interface AuthState {
   isAuthenticated: boolean;
   user: UserProfile | null;
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
-  error: string | null;
+  error: AuthError | null;
 }
 
 const initialState: AuthState = {
@@ -50,7 +56,10 @@ export const login = createAsyncThunk(
       return resp.data as UserProfile;
     } catch (err: any) {
       if (axios.isAxiosError(err)) {
-        return rejectWithValue(err.response?.status ?? null);
+        return rejectWithValue({
+          status: err.response?.status,
+          data: err.response?.data,
+        });
       }
       throw err;
     }
@@ -72,7 +81,10 @@ export const registerUser = createAsyncThunk(
       );
     } catch (err: any) {
       if (axios.isAxiosError(err)) {
-        return rejectWithValue(err.response?.status ?? null);
+        return rejectWithValue({
+          status: err.response?.status,
+          data: err.response?.data,
+        });
       }
       throw err;
     }
@@ -117,7 +129,9 @@ const authSlice = createSlice({
       })
       .addCase(login.rejected, (state, action) => {
         state.status = 'failed';
-        state.error = action.error.message || 'Login failed';
+        state.error = (action.payload as AuthError) || {
+          message: action.error.message || 'Login failed',
+        };
       })
       .addCase(registerUser.pending, state => {
         state.status = 'loading';
@@ -128,7 +142,9 @@ const authSlice = createSlice({
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.status = 'failed';
-        state.error = action.error.message || 'Registration failed';
+        state.error = (action.payload as AuthError) || {
+          message: action.error.message || 'Registration failed',
+        };
       })
       .addCase(fetchCurrentUser.pending, state => {
         state.status = 'loading';

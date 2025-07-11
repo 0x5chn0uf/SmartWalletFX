@@ -273,15 +273,16 @@ const LoginRegisterPage: React.FC = () => {
       await dispatch(login({ email: loginEmail, password: loginPassword })).unwrap();
       navigate('/defi');
     } catch (err: any) {
-      const status = err?.status ?? err?.response?.status;
+      const status = err?.status || err?.data?.status_code;
+      const detail = err?.data?.detail;
       if (!status) {
         setRegisterError('Unable to reach server');
       } else if (status === 401) {
         setRegisterError('Invalid email or password');
-      } else if (status === 403) {
+      } else if (status === 403 && err?.data?.code === 'EMAIL_NOT_VERIFIED') {
         setRegisterError('Please verify your email address');
       } else {
-        setRegisterError('Login failed');
+        setRegisterError(detail || 'Login failed');
       }
     }
   };
