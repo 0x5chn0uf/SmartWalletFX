@@ -1,15 +1,15 @@
 """add email verification fields
 
-Revision ID: 0013_add_email_verification
-Revises: 0012_add_oauth_accounts_table
+Revision ID: 0009_add_email_verification
+Revises: 0008_add_rbac_abac_fields
 Create Date: 2025-07-03
 """
 
 import sqlalchemy as sa
 from alembic import op
 
-revision = "0013_add_email_verification"
-down_revision = "0012_add_oauth_accounts_table"
+revision = "0009_add_email_verification"
+down_revision = "0008_add_rbac_abac_fields"
 branch_labels = None
 depends_on = None
 

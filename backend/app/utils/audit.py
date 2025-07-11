@@ -16,7 +16,6 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import get_history
 
-from app.models.audit_log import AuditLog
 from app.models.user import User
 from app.schemas.audit_log import AuditEventBase
 
@@ -62,25 +61,6 @@ def get_user(session: Session) -> User | None:
     # from the request context (e.g., thread-local storage).
     # For now, we return a mock or None.
     return None
-
-
-@event.listens_for(Session, "after_flush")
-def on_after_flush(session: Session, _flush_context: Any) -> None:
-    """Listen for flush events and record changes in the audit log."""
-    # Note: "after_flush" is used instead of individual after_insert/update
-    # events to handle all changes in a single, efficient pass.
-
-    for instance in session.new:
-        if not isinstance(instance, AuditLog):
-            _log_change(session, instance, "create")
-
-    for instance in session.dirty:
-        if not isinstance(instance, AuditLog):
-            _log_change(session, instance, "update")
-
-    for instance in session.deleted:
-        if not isinstance(instance, AuditLog):
-            _log_change(session, instance, "delete")
 
 
 def _log_change(session: Session, instance: Any, operation: str) -> None:

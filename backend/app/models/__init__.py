@@ -1,7 +1,6 @@
 from app.core.database import Base
 
 from .aggregate_metrics import AggregateMetricsModel
-from .audit_log import AuditLog
 from .email_verification import EmailVerification
 from .group import Group
 from .historical_balance import HistoricalBalance
@@ -34,5 +33,4 @@ __all__ = [
     "PasswordReset",
     "EmailVerification",
     "AggregateMetricsModel",
-    "AuditLog",
 ]

@@ -50,18 +50,6 @@ CREATE TABLE portfolio_snapshots (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE audit_logs (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    action VARCHAR(100) NOT NULL,
-    resource_type VARCHAR(50),
-    resource_id VARCHAR(100),
-    details JSONB,
-    ip_address INET,
-    user_agent TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
 -- Create indexes for performance
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_created_at ON users(created_at);
@@ -73,9 +61,6 @@ CREATE INDEX idx_transactions_created_at ON transactions(created_at);
 CREATE INDEX idx_token_balances_wallet_id ON token_balances(wallet_id);
 CREATE INDEX idx_portfolio_snapshots_user_id ON portfolio_snapshots(user_id);
 CREATE INDEX idx_portfolio_snapshots_created_at ON portfolio_snapshots(created_at);
-CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
-CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
-CREATE INDEX idx_audit_logs_action ON audit_logs(action);
 
 -- Create a function to update timestamps
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -174,34 +159,6 @@ SELECT
         'last_updated', now()::text
     )
 FROM generate_series(1, 50000) AS i;
-
--- Audit logs (200,000 audit entries)
-INSERT INTO audit_logs (user_id, action, resource_type, resource_id, details, ip_address)
-SELECT 
-    (i % 10000) + 1,
-    CASE (i % 10)
-        WHEN 0 THEN 'login'
-        WHEN 1 THEN 'logout'
-        WHEN 2 THEN 'create_wallet'
-        WHEN 3 THEN 'update_wallet'
-        WHEN 4 THEN 'delete_wallet'
-        WHEN 5 THEN 'view_portfolio'
-        WHEN 6 THEN 'export_data'
-        WHEN 7 THEN 'change_password'
-        WHEN 8 THEN 'update_profile'
-        ELSE 'view_transactions'
-    END,
-    CASE (i % 5)
-        WHEN 0 THEN 'wallet'
-        WHEN 1 THEN 'user'
-        WHEN 2 THEN 'transaction'
-        WHEN 3 THEN 'portfolio'
-        ELSE 'token'
-    END,
-    (i % 100000)::text,
-    jsonb_build_object('ip', '192.168.1.' || (i % 255), 'user_agent', 'Mozilla/5.0'),
-    inet '192.168.1.' || (i % 255)
-FROM generate_series(1, 200000) AS i;
 
 -- Create a view for testing
 CREATE VIEW wallet_summary AS
