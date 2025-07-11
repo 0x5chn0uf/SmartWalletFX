@@ -277,6 +277,8 @@ const LoginRegisterPage: React.FC = () => {
         setRegisterError('Unable to reach server');
       } else if (err.response.status === 401) {
         setRegisterError('Invalid email or password');
+      } else if (err.response.status === 403) {
+        setRegisterError('Please verify your email address');
       } else {
         setRegisterError('Login failed');
       }
@@ -292,7 +294,7 @@ const LoginRegisterPage: React.FC = () => {
     setRegisterError('');
     try {
       await dispatch(registerUser({ email: registerEmail, password: registerPassword })).unwrap();
-      navigate('/defi');
+      navigate('/verify-email-sent');
     } catch (err: any) {
       if (!err.response) {
         setRegisterError('Unable to reach server');

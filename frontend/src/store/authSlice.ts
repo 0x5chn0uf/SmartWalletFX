@@ -61,19 +61,6 @@ export const registerUser = createAsyncThunk(
       },
       { withCredentials: true }
     );
-    const form = new URLSearchParams();
-    form.append('username', payload.email);
-    form.append('password', payload.password);
-    const tokenResp = await apiClient.post('/auth/token', form, { withCredentials: true });
-    const accessToken = tokenResp.data?.access_token as string | undefined;
-    if (accessToken) {
-      apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-      localStorage.setItem('access_token', accessToken);
-    }
-    const resp = await apiClient.get('/users/me', { withCredentials: true });
-    // mark session present
-    localStorage.setItem('session_active', '1');
-    return resp.data as UserProfile;
   }
 );
 
@@ -121,9 +108,7 @@ const authSlice = createSlice({
         state.status = 'loading';
         state.error = null;
       })
-      .addCase(registerUser.fulfilled, (state, action) => {
-        state.isAuthenticated = true;
-        state.user = action.payload;
+      .addCase(registerUser.fulfilled, state => {
         state.status = 'succeeded';
       })
       .addCase(registerUser.rejected, (state, action) => {
