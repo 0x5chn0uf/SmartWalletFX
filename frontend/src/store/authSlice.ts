@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import axios from 'axios';
 import apiClient from '../services/api';
 
 export interface UserProfile {
@@ -32,35 +33,49 @@ export const fetchCurrentUser = createAsyncThunk('auth/fetchCurrentUser', async 
 
 export const login = createAsyncThunk(
   'auth/login',
-  async (credentials: { email: string; password: string }) => {
+  async (credentials: { email: string; password: string }, { rejectWithValue }) => {
     const form = new URLSearchParams();
     form.append('username', credentials.email);
     form.append('password', credentials.password);
-    const tokenResp = await apiClient.post('/auth/token', form, { withCredentials: true });
-    const accessToken = tokenResp.data?.access_token as string | undefined;
-    if (accessToken) {
-      apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-      localStorage.setItem('access_token', accessToken);
+    try {
+      const tokenResp = await apiClient.post('/auth/token', form, { withCredentials: true });
+      const accessToken = tokenResp.data?.access_token as string | undefined;
+      if (accessToken) {
+        apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+        localStorage.setItem('access_token', accessToken);
+      }
+      const resp = await apiClient.get('/users/me', { withCredentials: true });
+      // mark session present
+      localStorage.setItem('session_active', '1');
+      return resp.data as UserProfile;
+    } catch (err: any) {
+      if (axios.isAxiosError(err)) {
+        return rejectWithValue(err.response?.status ?? null);
+      }
+      throw err;
     }
-    const resp = await apiClient.get('/users/me', { withCredentials: true });
-    // mark session present
-    localStorage.setItem('session_active', '1');
-    return resp.data as UserProfile;
   }
 );
 
 export const registerUser = createAsyncThunk(
   'auth/register',
-  async (payload: { email: string; password: string }) => {
-    await apiClient.post(
-      '/auth/register',
-      {
-        username: payload.email.split('@')[0],
-        email: payload.email,
-        password: payload.password,
-      },
-      { withCredentials: true }
-    );
+  async (payload: { email: string; password: string }, { rejectWithValue }) => {
+    try {
+      await apiClient.post(
+        '/auth/register',
+        {
+          username: payload.email.split('@')[0],
+          email: payload.email,
+          password: payload.password,
+        },
+        { withCredentials: true }
+      );
+    } catch (err: any) {
+      if (axios.isAxiosError(err)) {
+        return rejectWithValue(err.response?.status ?? null);
+      }
+      throw err;
+    }
   }
 );
 

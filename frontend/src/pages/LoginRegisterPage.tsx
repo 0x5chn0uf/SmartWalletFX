@@ -273,11 +273,12 @@ const LoginRegisterPage: React.FC = () => {
       await dispatch(login({ email: loginEmail, password: loginPassword })).unwrap();
       navigate('/defi');
     } catch (err: any) {
-      if (!err.response) {
+      const status = err?.status ?? err?.response?.status;
+      if (!status) {
         setRegisterError('Unable to reach server');
-      } else if (err.response.status === 401) {
+      } else if (status === 401) {
         setRegisterError('Invalid email or password');
-      } else if (err.response.status === 403) {
+      } else if (status === 403) {
         setRegisterError('Please verify your email address');
       } else {
         setRegisterError('Login failed');
@@ -296,11 +297,12 @@ const LoginRegisterPage: React.FC = () => {
       await dispatch(registerUser({ email: registerEmail, password: registerPassword })).unwrap();
       navigate('/verify-email-sent');
     } catch (err: any) {
-      if (!err.response) {
+      const status = err?.status ?? err?.response?.status;
+      if (!status) {
         setRegisterError('Unable to reach server');
-      } else if (err.response.status === 400) {
+      } else if (status === 400) {
         setRegisterError('Password does not meet strength requirements');
-      } else if (err.response.status === 409) {
+      } else if (status === 409) {
         setRegisterError('Email already registered');
       } else {
         setRegisterError('Registration failed');
