@@ -16,10 +16,12 @@ async def test_google_oauth_callback(async_client_with_db: AsyncClient, monkeypa
     """OAuth callback should redirect with auth cookies set."""
     state = "abc123"
 
+    # Mock both the endpoint and usecase verify_state functions
     async def _verify_state(redis, st):
         return True
 
     monkeypatch.setattr("app.api.endpoints.oauth.verify_state", _verify_state)
+    monkeypatch.setattr("app.usecase.oauth_usecase.verify_state", _verify_state)
 
     respx.post("https://oauth2.googleapis.com/token").mock(
         return_value=httpx.Response(200, json={"id_token": "dummy"})
@@ -53,12 +55,19 @@ async def test_google_oauth_callback(async_client_with_db: AsyncClient, monkeypa
 @pytest.mark.asyncio
 async def test_google_oauth_login(async_client_with_db: AsyncClient, monkeypatch):
     """Login endpoint should redirect to provider auth URL and set state cookie."""
-    monkeypatch.setattr("app.api.endpoints.oauth.generate_state", lambda: "state123")
+
+    # Mock both the endpoint and usecase generate_state functions
+    def _generate_state():
+        return "state123"
+
+    monkeypatch.setattr("app.api.endpoints.oauth.generate_state", _generate_state)
+    monkeypatch.setattr("app.usecase.oauth_usecase.generate_state", _generate_state)
 
     async def _store_state(redis, st, ttl: int = 300):
         return True
 
     monkeypatch.setattr("app.api.endpoints.oauth.store_state", _store_state)
+    monkeypatch.setattr("app.usecase.oauth_usecase.store_state", _store_state)
 
     resp = await async_client_with_db.get(
         "/auth/oauth/google/login",
