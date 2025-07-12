@@ -2,11 +2,22 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ThemeProvider } from '@mui/material/styles';
 import { createAppTheme } from '../../../theme';
-import LoginRegisterPage from '../../../pages/LoginRegisterPage';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 import { Provider } from 'react-redux';
 import { store } from '../../../store';
+
+const mockDispatch = vi.fn();
+
+vi.mock('react-redux', async () => {
+  const actual = await vi.importActual<any>('react-redux');
+  return {
+    ...actual,
+    useDispatch: () => mockDispatch,
+  };
+});
+
+import LoginRegisterPage from '../../../pages/LoginRegisterPage';
 
 // Mock useNavigate to avoid actual navigation during tests
 vi.mock('react-router-dom', async () => {
@@ -65,5 +76,27 @@ describe('LoginRegisterPage', () => {
     fireEvent.click(submitBtn);
 
     expect(screen.getByText(/passwords do not match/i)).toBeInTheDocument();
+  });
+
+  it('shows error when login fails with 401', async () => {
+    const rejected: any = Promise.reject({ status: 401, data: { detail: 'Invalid' } });
+    rejected.unwrap = () => Promise.reject({ status: 401, data: { detail: 'Invalid' } });
+    rejected.catch(() => {});
+    mockDispatch.mockReturnValueOnce(rejected);
+
+    setup();
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: 'user@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/password/i), {
+      target: { value: 'secret' },
+    });
+
+    const loginButtons = screen.getAllByRole('button', { name: /^login$/i });
+    const loginBtn =
+      loginButtons.find(btn => btn.getAttribute('type') === 'submit') ?? loginButtons[0];
+    fireEvent.click(loginBtn);
+
+    await screen.findByText(/invalid email or password/i);
   });
 });

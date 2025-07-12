@@ -1,6 +1,5 @@
 import re
 import uuid
-from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field, validator
@@ -42,8 +41,6 @@ class WalletResponse(BaseModel):
     user_id: Optional[uuid.UUID]
     address: str
     name: Optional[str]
-    created_at: datetime
-    updated_at: datetime
     is_active: bool
     balance_usd: Optional[float]
 

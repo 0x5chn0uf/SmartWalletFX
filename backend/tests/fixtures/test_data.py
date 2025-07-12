@@ -415,8 +415,6 @@ def sample_wallet(sample_user):
         user_id=sample_user.id,
         address="0x1234567890abcdef",
         name="Test Wallet",
-        created_at=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
-        updated_at=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
     )
 
 

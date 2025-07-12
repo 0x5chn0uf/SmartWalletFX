@@ -174,6 +174,9 @@ async def assign_user_role(
             "user_roles": current_roles,
             "assigned_by": str(current_user.id),
         }
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

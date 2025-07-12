@@ -1,11 +1,9 @@
 import re
 import uuid
-from datetime import datetime
 
 from sqlalchemy import (
     Boolean,
     Column,
-    DateTime,
     Float,
     ForeignKey,
     String,
@@ -54,17 +52,6 @@ class Wallet(Base):
     )
     balance_usd = Column(
         Float, default=0.0, nullable=True, doc="Cached balance in USD."
-    )
-
-    created_at = Column(
-        DateTime, default=datetime.utcnow, nullable=False, doc="Creation timestamp."
-    )
-    updated_at = Column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
-        nullable=False,
-        doc="Last update timestamp.",
     )
 
     # One-to-many – time-series of token balances

@@ -147,7 +147,7 @@ db-restore: ## Restore a database dump (stub)
 # House-keeping
 # -----------------------------------------------------------------------------
 clean: ## Remove caches & artefacts
-	rm -rf __pycache__ .pytest_cache .coverage htmlcov .coverage.* .ruff_cache .hypothesis .benchmarks
+	rm -rf __pycache__ .pytest_cache .coverage htmlcov .coverage.* .ruff_cache .hypothesis .benchmarks .uvicorn.log
 	find . -type d -name '__pycache__' -exec rm -rf {} +
 
 .PHONY: help install install-dev install-s3 install-perf lint format bandit safety \

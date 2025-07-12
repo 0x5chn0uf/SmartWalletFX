@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
 from app.schemas.error import ErrorResponse
+from app.schemas.user import WeakPasswordError
 from app.utils.logging import Audit
 
 # ---------------------------------------------------------------------------
@@ -73,9 +74,6 @@ async def generic_exception_handler(request: Request, exc: Exception):  # type: 
     return JSONResponse(status_code=500, content=payload)
 
 
-# Additional handler for DB conflicts -------------------------------------------------
-
-
 async def integrity_error_handler(request: Request, exc: IntegrityError):  # type: ignore[valid-type]  # noqa: E501
     trace_id = _get_trace_id(request)
     payload = ErrorResponse(  # noqa: E501
@@ -88,9 +86,26 @@ async def integrity_error_handler(request: Request, exc: IntegrityError):  # typ
     return JSONResponse(status_code=409, content=payload)
 
 
+async def weak_password_error_handler(
+    request: Request, exc: WeakPasswordError
+):  # type: ignore[valid-type]
+    """Return 400 BAD_REQUEST when password strength validation fails."""
+
+    trace_id = _get_trace_id(request)
+    payload = ErrorResponse(
+        detail=exc.detail,
+        code="BAD_REQUEST",
+        status_code=400,
+        trace_id=trace_id,
+    ).model_dump()
+    Audit.warning("weak_password", **payload)
+    return JSONResponse(status_code=400, content=payload)
+
+
 __all__ = [
     "http_exception_handler",
     "validation_exception_handler",
     "generic_exception_handler",
     "integrity_error_handler",
+    "weak_password_error_handler",
 ]

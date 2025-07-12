@@ -7,6 +7,8 @@ import WalletDetailPage from './pages/WalletDetailPage';
 import WalletList from './pages/WalletList';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import EmailVerificationPage from './pages/EmailVerificationPage';
+import VerifyEmailNoticePage from './pages/VerifyEmailNoticePage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { Provider, useDispatch as useReduxDispatch } from 'react-redux';
 import { ThemeProvider } from './providers/ThemeProvider';
@@ -75,6 +77,8 @@ const App: React.FC = () => {
                 <Route path="/login-register" element={<LoginRegisterPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/verify-email" element={<EmailVerificationPage />} />
+                <Route path="/verify-email-sent" element={<VerifyEmailNoticePage />} />
                 <Route
                   path="/dashboard"
                   element={

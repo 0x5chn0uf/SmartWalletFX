@@ -135,3 +135,32 @@ def _register_sqlite_timezone_function(dbapi_conn, connection_record):  # noqa: 
         # Fail silently – the function is best-effort; tests relying on
         # Postgres semantics should use a dedicated database fixture.
         pass
+
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _patch_email_service(monkeypatch):
+    """Disable outbound e-mails during the entire test session.
+
+    Replaces *EmailService.send_email_verification* and *send_password_reset*
+    with lightweight async no-ops so tests that register users or trigger
+    password resets don't attempt real SMTP operations or background tasks.
+    """
+
+    async def _noop(*_args, **_kwargs):  # noqa: D401 – intentional stub
+        return None
+
+    mp = monkeypatch
+    mp.setattr(
+        "app.services.email_service.EmailService.send_email_verification",
+        _noop,
+        raising=False,
+    )
+    mp.setattr(
+        "app.services.email_service.EmailService.send_password_reset",
+        _noop,
+        raising=False,
+    )
+    yield

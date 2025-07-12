@@ -8,6 +8,14 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 from app.utils.security import validate_password_strength
 
 
+class WeakPasswordError(Exception):
+    """Raised when a password does not meet strength requirements."""
+
+    def __init__(self, detail: str = "Password does not meet strength requirements"):
+        self.detail = detail
+        super().__init__(detail)
+
+
 class UserBase(BaseModel):
     """Common fields shared by all user-facing schemas."""
 
@@ -16,6 +24,7 @@ class UserBase(BaseModel):
     email: EmailStr
     created_at: datetime
     updated_at: datetime
+    email_verified: bool
 
     model_config = {"from_attributes": True}
 
@@ -27,8 +36,6 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(
         ...,
-        min_length=8,
-        max_length=100,
         description="Plaintext user password (will be hashed)",
     )
 
@@ -36,9 +43,7 @@ class UserCreate(BaseModel):
     @classmethod
     def check_strength(cls, v: str) -> str:  # noqa: D401
         if not validate_password_strength(v):
-            raise ValueError(
-                "Password must be at least 8 characters and include a digit and symbol"
-            )
+            raise WeakPasswordError()
         return v
 
 

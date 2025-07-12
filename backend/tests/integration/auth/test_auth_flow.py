@@ -3,6 +3,7 @@ from typing import Dict
 import pytest
 from httpx import AsyncClient
 from jose import jwt
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.fixture
@@ -16,7 +17,9 @@ def user_payload() -> Dict[str, str]:
 
 @pytest.mark.asyncio
 async def test_register_login_and_me(
-    async_client_with_db: AsyncClient, user_payload: Dict[str, str]
+    async_client_with_db: AsyncClient,
+    user_payload: Dict[str, str],
+    db_session: AsyncSession,
 ) -> None:
     """Happy-path: register → login → protected `/users/me`."""
 
@@ -27,6 +30,14 @@ async def test_register_login_and_me(
     assert user_out["username"] == user_payload["username"]
     assert user_out["email"] == user_payload["email"]
     assert "hashed_password" not in user_out, "Sensitive field leaked in response"
+
+    # Mark the user's email as verified directly in the database
+    from app.repositories.user_repository import UserRepository
+
+    user_repo = UserRepository(db_session)
+    user = await user_repo.get_by_email(user_payload["email"])
+    user.email_verified = True
+    await db_session.commit()
 
     # Login – OAuth2 Password flow expects form-encoded payload
     form = {
@@ -54,11 +65,21 @@ async def test_register_login_and_me(
 
 @pytest.mark.asyncio
 async def test_login_with_wrong_password(
-    async_client_with_db: AsyncClient, user_payload: Dict[str, str]
+    async_client_with_db: AsyncClient,
+    user_payload: Dict[str, str],
+    db_session: AsyncSession,
 ) -> None:
     """Incorrect password should yield 401."""
     # Ensure user exists
-    await async_client_with_db.post("/auth/register", json=user_payload)
+    resp = await async_client_with_db.post("/auth/register", json=user_payload)
+
+    # Mark the user's email as verified directly in the database
+    from app.repositories.user_repository import UserRepository
+
+    user_repo = UserRepository(db_session)
+    user = await user_repo.get_by_email(user_payload["email"])
+    user.email_verified = True
+    await db_session.commit()
 
     bad_form = {"username": user_payload["username"], "password": "WrongPass1!"}
     resp = await async_client_with_db.post(
@@ -88,11 +109,21 @@ async def test_protected_route_rejects_invalid_token(
 
 @pytest.mark.asyncio
 async def test_access_token_contains_expected_claims(
-    async_client_with_db: AsyncClient, user_payload: Dict[str, str]
+    async_client_with_db: AsyncClient,
+    user_payload: Dict[str, str],
+    db_session: AsyncSession,
 ) -> None:
     """Verify issued access token contains required claims."""
     # First register the user
     await async_client_with_db.post("/auth/register", json=user_payload)
+
+    # Mark the user's email as verified directly in the database
+    from app.repositories.user_repository import UserRepository
+
+    user_repo = UserRepository(db_session)
+    user = await user_repo.get_by_email(user_payload["email"])
+    user.email_verified = True
+    await db_session.commit()
 
     resp = await async_client_with_db.post(
         "/auth/token",

@@ -8,8 +8,8 @@ from httpx import AsyncClient
 from app.api.endpoints import auth as auth_ep
 from app.core.config import settings
 from app.domain.errors import InvalidCredentialsError
-from app.schemas.user import UserCreate
-from app.services.auth_service import AuthService, WeakPasswordError
+from app.schemas.user import UserCreate, WeakPasswordError
+from app.services.auth_service import AuthService
 from app.utils.jwt import JWTUtils
 from app.utils.rate_limiter import InMemoryRateLimiter, login_rate_limiter
 
@@ -45,7 +45,7 @@ async def _cleanup_auth_state():
                 "email": "weak@example.com",
                 "password": "weakpass",
             },
-            422,
+            400,
         ),
     ],
 )
@@ -94,13 +94,17 @@ async def test_obtain_token_success(
 
     # Arrange – create user via service
     service = AuthService(db_session)
-    await service.register(
+    user = await service.register(
         UserCreate(
             username=username,
             email=email,
             password=password,
         )
     )
+    # Mark email verified for test login
+    user.email_verified = True
+    await db_session.commit()
+    await db_session.refresh(user)
 
     data = {"username": username, "password": password}
     resp = await async_client_with_db.post("/auth/token", data=data)
@@ -157,9 +161,12 @@ async def test_users_me_endpoint(async_client_with_db: AsyncClient, db_session) 
 
     # Register user & obtain token
     service = AuthService(db_session)
-    await service.register(
+    user = await service.register(
         UserCreate(username=username, email=email, password="Str0ng!pwd")
     )
+    user.email_verified = True
+    await db_session.commit()
+    await db_session.refresh(user)
 
     token_resp = await async_client_with_db.post(
         "/auth/token", data={"username": username, "password": "Str0ng!pwd"}
@@ -195,6 +202,10 @@ class DummyAuthService:  # noqa: D101 – lightweight stub
             from app.domain.errors import InactiveUserError
 
             raise InactiveUserError()
+        if username == "unverified":
+            from app.domain.errors import UnverifiedEmailError
+
+            raise UnverifiedEmailError()
         raise InvalidCredentialsError()
 
 
@@ -226,6 +237,15 @@ async def test_token_inactive_user(
 
 
 @pytest.mark.asyncio
+async def test_token_unverified_email(
+    test_app, patched_auth_service, async_client_with_db: AsyncClient
+) -> None:
+    data = {"username": "unverified", "password": "any"}
+    resp = await async_client_with_db.post("/auth/token", data=data)
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_register_weak_password_error(
     async_client_with_db: AsyncClient,
     monkeypatch,
@@ -234,7 +254,7 @@ async def test_register_weak_password_error(
 
     from app.api.endpoints import auth as auth_ep
 
-    async def _raise_weak(self, payload):  # noqa: D401 – stub
+    async def _raise_weak(self, payload, **kwargs):  # noqa: D401 – stub
         raise WeakPasswordError()
 
     # Patch *AuthService.register* only for this test

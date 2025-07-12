@@ -2,7 +2,7 @@ import uuid
 
 import pytest
 
-from app.schemas.user import UserCreate
+from app.schemas.user import UserCreate, WeakPasswordError
 from app.services.auth_service import AuthService, DuplicateError
 
 
@@ -37,7 +37,7 @@ async def test_register_duplicate_username(db_session):
 @pytest.mark.asyncio
 async def test_register_weak_password(db_session):
     service = AuthService(db_session)
-    with pytest.raises(ValueError):
+    with pytest.raises(WeakPasswordError):
         weak = UserCreate(
             username=f"charlie-{uuid.uuid4().hex[:8]}",
             email=f"charlie-{uuid.uuid4().hex[:8]}@example.com",

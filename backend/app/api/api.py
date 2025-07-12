@@ -3,9 +3,9 @@ from fastapi import APIRouter
 from app.api.endpoints import admin as admin_rbac
 from app.api.endpoints import (
     admin_db,
-    audit_logs,
     auth,
     defi,
+    email_verification,
     health,
     jwks,
     oauth,
@@ -21,9 +21,9 @@ api_router.include_router(defi.router, tags=["defi"])
 api_router.include_router(auth.router, tags=["auth"])
 api_router.include_router(oauth.router, tags=["auth"])
 api_router.include_router(password_reset.router, tags=["auth"])
+api_router.include_router(email_verification.router, tags=["auth"])
 api_router.include_router(users.router, tags=["users"])
 api_router.include_router(jwks.router, tags=["jwks"])
-api_router.include_router(audit_logs.router, tags=["audit-logs"])
 api_router.include_router(
     admin_db.router, prefix="/admin/db", tags=["admin", "database"]
 )

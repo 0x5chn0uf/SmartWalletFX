@@ -2,11 +2,17 @@
 import authReducer, { logout } from '../../store/authSlice';
 
 // Inline AuthState type for test
+interface AuthError {
+  status?: number | null;
+  data?: any;
+  message?: string;
+}
+
 interface AuthState {
   isAuthenticated: boolean;
   user: any;
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
-  error: string | null;
+  error: AuthError | null;
 }
 
 describe('authSlice', () => {
@@ -46,9 +52,13 @@ describe('authSlice', () => {
     expect(state.isAuthenticated).toBe(true);
     expect(state.user).toEqual({ id: '1' });
 
-    const rejectedAction = { type: 'auth/login/rejected', error: { message: 'oops' } };
+    const rejectedAction = {
+      type: 'auth/login/rejected',
+      payload: { status: 401, data: { detail: 'Invalid' } },
+      error: { message: 'oops' },
+    };
     state = authReducer(state, rejectedAction);
     expect(state.status).toBe('failed');
-    expect(state.error).toBe('oops');
+    expect(state.error).toEqual({ status: 401, data: { detail: 'Invalid' } });
   });
 });

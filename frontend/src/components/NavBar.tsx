@@ -79,7 +79,9 @@ const NavBar: React.FC = () => {
     location.pathname === '/' ||
     location.pathname === '/login-register' ||
     location.pathname === '/forgot-password' ||
-    location.pathname === '/reset-password'
+    location.pathname === '/reset-password' ||
+    location.pathname === '/verify-email' ||
+    location.pathname === '/verify-email-sent'
   ) {
     return null;
   }

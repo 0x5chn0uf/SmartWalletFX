@@ -1,9 +1,11 @@
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from pydantic import ValidationError
 
 from app.domain.errors import InvalidCredentialsError
 from app.models.user import User
+from app.schemas.user import UserCreate
 from app.services.auth_service import AuthService
 
 
@@ -14,7 +16,11 @@ async def test_register_via_kwargs(auth_service, mock_user_repo):
         id=2, username="via", email="via@example.com"
     )
 
-    user = await auth_service.register(email="via@example.com", password="Str0ng!pw")
+    # Create a UserCreate object instead of passing kwargs directly
+    user_create = UserCreate(
+        username="via", email="via@example.com", password="Str0ng!pw"
+    )
+    user = await auth_service.register(user_create)
 
     assert user.username == "via"
     assert mock_user_repo.exists.call_count == 2
@@ -23,8 +29,11 @@ async def test_register_via_kwargs(auth_service, mock_user_repo):
 
 @pytest.mark.asyncio
 async def test_register_kwargs_missing_fields(auth_service):
-    with pytest.raises(ValueError):
-        await auth_service.register(email="foo@example.com")
+    # This should raise a ValidationError when creating UserCreate with missing required fields
+    with pytest.raises(ValidationError):
+        # Missing required fields (username and password)
+        user_create = UserCreate(email="foo@example.com")
+        await auth_service.register(user_create)
 
 
 @pytest.mark.asyncio

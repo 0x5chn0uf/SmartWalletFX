@@ -12,7 +12,7 @@ from app.services.auth_service import AuthService
 
 @pytest.mark.asyncio
 async def test_password_reset_flow(
-    async_client_with_db: AsyncClient, db_session
+    async_client_with_db: AsyncClient, db_session, monkeypatch
 ) -> None:
     # Register user
     user = await AuthService(db_session).register(
@@ -20,6 +20,10 @@ async def test_password_reset_flow(
             username="resetuser", email="reset@example.com", password="Str0ng!pwd"
         )
     )
+
+    # Mark the user's email as verified
+    user.email_verified = True
+    await db_session.commit()
 
     # Patch token generator to return fixed token
     fixed_token = "fixed-token"
@@ -34,7 +38,10 @@ async def test_password_reset_flow(
         "hash",
         datetime.now(timezone.utc) + timedelta(minutes=30),
     )
-    ep.EmailService.send_password_reset = dummy_send  # type: ignore
+    # Patch using monkeypatch to ensure cleanup after the test
+    monkeypatch.setattr(
+        ep.EmailService, "send_password_reset", dummy_send, raising=False
+    )
 
     resp = await async_client_with_db.post(
         "/auth/forgot-password", json={"email": user.email}
@@ -94,6 +101,10 @@ async def test_password_reset_rate_limit(
     user = await AuthService(db_session).register(
         UserCreate(username=username_unique, email=email_unique, password="Str0ng!pwd")
     )
+
+    # Mark the user's email as verified
+    user.email_verified = True
+    await db_session.commit()
 
     # Stub email sending to avoid I/O
     async def _dummy_send(self, email: str, link: str) -> None:  # noqa: D401 – stub
@@ -162,6 +173,10 @@ async def test_reset_password_token_reuse(
     user = await AuthService(db_session).register(
         UserCreate(username="reuse", email="reuse@example.com", password="Str0ng!pwd")
     )
+
+    # Mark the user's email as verified
+    user.email_verified = True
+    await db_session.commit()
 
     token = "single-use-token"
     expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
