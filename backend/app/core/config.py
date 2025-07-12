@@ -6,8 +6,10 @@ from pydantic_settings import BaseSettings
 from app.validators.security import SecurityValidator
 
 
-class Settings(BaseSettings):
-    PROJECT_NAME: str = "Wallet Tracker"
+class ConfigurationService(BaseSettings):
+    """Configuration service for application settings as singleton."""
+
+    PROJECT_NAME: str = "SmartWalletFX"
     VERSION: str = "0.1.0"
     ENVIRONMENT: str = "development"
     BACKEND_CORS_ORIGINS: List[str] = [
@@ -184,9 +186,8 @@ class Settings(BaseSettings):
     EMAIL_FROM: str = "no-reply@smartwalletfx.local"  # Default From header
 
 
-settings = Settings()
+# Keep the old Settings class as an alias for backward compatibility during transition
+Settings = ConfigurationService
 
-"""
-CoinGecko is used as the price oracle for live USD values
-in the Radiant adapter.
-"""
+# Keep the existing module-level settings for backward compatibility during transition
+settings = ConfigurationService()

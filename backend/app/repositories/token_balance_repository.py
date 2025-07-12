@@ -1,23 +1,49 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from app.core.database import DatabaseService
 from app.models.token_balance import TokenBalance
 from app.schemas.token_balance import TokenBalanceCreate
+from app.utils.logging import Audit
 
 
 class TokenBalanceRepository:
     """Repository for :class:`~app.models.token_balance.TokenBalance`."""
 
-    def __init__(self, db: AsyncSession):
-        self.db = db
+    def __init__(self, database_service: DatabaseService, audit: Audit):
+        self.__database_service = database_service
+        self.__audit = audit
 
     async def create(self, data: TokenBalanceCreate) -> TokenBalance:
-        balance = TokenBalance(
-            token_id=data.token_id,
-            wallet_id=data.wallet_id,
+        """Create a new token balance record."""
+        self.__audit.info(
+            "token_balance_repository_create_started",
+            token_id=str(data.token_id),
+            wallet_id=str(data.wallet_id),
             balance=data.balance,
-            balance_usd=data.balance_usd,
         )
-        self.db.add(balance)
-        await self.db.commit()
-        await self.db.refresh(balance)
-        return balance
+
+        try:
+            async with self.__database_service.get_session() as session:
+                balance = TokenBalance(
+                    token_id=data.token_id,
+                    wallet_id=data.wallet_id,
+                    balance=data.balance,
+                    balance_usd=data.balance_usd,
+                )
+                session.add(balance)
+                await session.commit()
+                await session.refresh(balance)
+
+                self.__audit.info(
+                    "token_balance_repository_create_success",
+                    token_id=str(data.token_id),
+                    wallet_id=str(data.wallet_id),
+                    balance_id=str(balance.id),
+                )
+                return balance
+        except Exception as e:
+            self.__audit.error(
+                "token_balance_repository_create_failed",
+                token_id=str(data.token_id),
+                wallet_id=str(data.wallet_id),
+                error=str(e),
+            )
+            raise

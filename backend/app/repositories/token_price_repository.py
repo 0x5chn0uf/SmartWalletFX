@@ -1,21 +1,44 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from app.core.database import DatabaseService
 from app.models.token_price import TokenPrice
 from app.schemas.token_price import TokenPriceCreate
+from app.utils.logging import Audit
 
 
 class TokenPriceRepository:
     """Repository for :class:`~app.models.token_price.TokenPrice`."""
 
-    def __init__(self, db: AsyncSession):
-        self.db = db
+    def __init__(self, database_service: DatabaseService, audit: Audit):
+        self.__database_service = database_service
+        self.__audit = audit
 
     async def create(self, data: TokenPriceCreate) -> TokenPrice:
-        price = TokenPrice(
-            token_id=data.token_id,
+        """Create a new token price record."""
+        self.__audit.info(
+            "token_price_repository_create_started",
+            token_id=str(data.token_id),
             price_usd=data.price_usd,
         )
-        self.db.add(price)
-        await self.db.commit()
-        await self.db.refresh(price)
-        return price
+
+        try:
+            async with self.__database_service.get_session() as session:
+                price = TokenPrice(
+                    token_id=data.token_id,
+                    price_usd=data.price_usd,
+                )
+                session.add(price)
+                await session.commit()
+                await session.refresh(price)
+
+                self.__audit.info(
+                    "token_price_repository_create_success",
+                    token_id=str(data.token_id),
+                    price_id=str(price.id),
+                )
+                return price
+        except Exception as e:
+            self.__audit.error(
+                "token_price_repository_create_failed",
+                token_id=str(data.token_id),
+                error=str(e),
+            )
+            raise

@@ -4,7 +4,8 @@ from sqlalchemy.exc import IntegrityError  # local import
 
 from app.api.api import api_router
 from app.core import error_handling
-from app.core.config import settings
+from app.core.config import ConfigurationService, settings
+from app.core.database import DatabaseService
 from app.core.init_db import init_db
 
 # --- New imports for structured logging & error handling ---
@@ -68,7 +69,10 @@ def create_app() -> FastAPI:
         FastAPI startup event handler.
         Initializes the database tables asynchronously.
         """
-        await init_db()
+        # Create database service instance for initialization
+        config_service = ConfigurationService()
+        database_service = DatabaseService(config_service)
+        await init_db(database_service)
 
     # Import and include API routers
     app.include_router(api_router)
