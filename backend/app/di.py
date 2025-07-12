@@ -23,6 +23,16 @@ from app.repositories.token_repository import TokenRepository
 # Repository imports
 from app.repositories.user_repository import UserRepository
 from app.repositories.wallet_repository import WalletRepository
+
+# Usecase imports
+from app.usecase.email_verification_usecase import EmailVerificationUsecase
+from app.usecase.historical_balance_usecase import HistoricalBalanceUsecase
+from app.usecase.oauth_usecase import OAuthUsecase
+from app.usecase.portfolio_snapshot_usecase import PortfolioSnapshotUsecase
+from app.usecase.token_balance_usecase import TokenBalanceUsecase
+from app.usecase.token_price_usecase import TokenPriceUsecase
+from app.usecase.token_usecase import TokenUsecase
+from app.usecase.wallet_usecase import WalletUsecase
 from app.utils.logging import Audit
 
 
@@ -63,7 +73,7 @@ class DIContainer:
         self._initialize_repositories()
 
         # Create and register singleton usecases (Phase 3)
-        # self._initialize_usecases()
+        self._initialize_usecases()
 
         # Create and register singleton endpoints (Phase 4)
         # self._initialize_endpoints()
@@ -120,6 +130,95 @@ class DIContainer:
             database_service, audit_service
         )
         self.register_repository("token_balance", token_balance_repository)
+
+    def _initialize_usecases(self):
+        """Initialize and register usecase singletons."""
+        # Get required services
+        config_service = self.get_service("config")
+        audit_service = self.get_service("audit")
+
+        # Get repositories
+        user_repo = self.get_repository("user")
+        email_verification_repo = self.get_repository("email_verification")
+        oauth_account_repo = self.get_repository("oauth_account")
+        refresh_token_repo = self.get_repository("refresh_token")
+        wallet_repo = self.get_repository("wallet")
+        portfolio_snapshot_repo = self.get_repository("portfolio_snapshot")
+        historical_balance_repo = self.get_repository("historical_balance")
+        token_repo = self.get_repository("token")
+        token_price_repo = self.get_repository("token_price")
+        token_balance_repo = self.get_repository("token_balance")
+
+        # TODO: Add these services when they are refactored
+        # email_service = self.get_service("email")
+        # jwt_utils = self.get_service("jwt_utils")
+
+        # Create and register usecases
+        # Note: EmailVerificationUsecase needs email_service and jwt_utils
+        # For now, we'll register it with placeholders
+        email_verification_uc = EmailVerificationUsecase(
+            email_verification_repo,
+            user_repo,
+            refresh_token_repo,
+            None,  # email_service - TODO: add when refactored
+            None,  # jwt_utils - TODO: add when refactored
+            config_service,
+            audit_service,
+        )
+        self.register_usecase("email_verification", email_verification_uc)
+
+        wallet_uc = WalletUsecase(
+            wallet_repo,
+            portfolio_snapshot_repo,
+            config_service,
+            audit_service,
+        )
+        self.register_usecase("wallet", wallet_uc)
+
+        oauth_uc = OAuthUsecase(
+            oauth_account_repo,
+            user_repo,
+            refresh_token_repo,
+            config_service,
+            audit_service,
+        )
+        self.register_usecase("oauth", oauth_uc)
+
+        token_price_uc = TokenPriceUsecase(
+            token_price_repo,
+            config_service,
+            audit_service,
+        )
+        self.register_usecase("token_price", token_price_uc)
+
+        token_uc = TokenUsecase(
+            token_repo,
+            config_service,
+            audit_service,
+        )
+        self.register_usecase("token", token_uc)
+
+        historical_balance_uc = HistoricalBalanceUsecase(
+            historical_balance_repo,
+            config_service,
+            audit_service,
+        )
+        self.register_usecase("historical_balance", historical_balance_uc)
+
+        token_balance_uc = TokenBalanceUsecase(
+            token_balance_repo,
+            config_service,
+            audit_service,
+        )
+        self.register_usecase("token_balance", token_balance_uc)
+
+        portfolio_snapshot_uc = PortfolioSnapshotUsecase(
+            portfolio_snapshot_repo,
+            wallet_repo,
+            config_service,
+            audit_service,
+        )
+        self.register_usecase("portfolio_snapshot", portfolio_snapshot_uc)
 
     def register_service(self, name: str, service):
         """Register a service singleton."""

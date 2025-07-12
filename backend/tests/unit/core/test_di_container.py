@@ -48,6 +48,49 @@ class TestDIContainer:
 
         assert audit_service is not None
 
+    def test_all_repositories_registered(self):
+        """Test that all repositories are properly registered."""
+        container = DIContainer()
+        
+        # List of all expected repositories
+        expected_repositories = [
+            "user",
+            "email_verification",
+            "oauth_account",
+            "password_reset",
+            "refresh_token",
+            "wallet",
+            "portfolio_snapshot",
+            "historical_balance",
+            "token",
+            "token_price",
+            "token_balance",
+        ]
+        
+        for repo_name in expected_repositories:
+            repo = container.get_repository(repo_name)
+            assert repo is not None, f"Repository '{repo_name}' should be registered"
+
+    def test_all_usecases_registered(self):
+        """Test that all usecases are properly registered."""
+        container = DIContainer()
+        
+        # List of all expected usecases
+        expected_usecases = [
+            "email_verification",
+            "wallet",
+            "oauth",
+            "token_price",
+            "token",
+            "historical_balance",
+            "token_balance",
+            "portfolio_snapshot",
+        ]
+        
+        for usecase_name in expected_usecases:
+            usecase = container.get_usecase(usecase_name)
+            assert usecase is not None, f"Usecase '{usecase_name}' should be registered"
+
     def test_singleton_behavior(self):
         """Test that services are singletons."""
         container1 = DIContainer()
