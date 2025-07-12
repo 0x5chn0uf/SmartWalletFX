@@ -5,9 +5,8 @@ from typing import Optional
 
 from fastapi import BackgroundTasks, HTTPException
 from jose import jwt as jose_jwt
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
+from app.core.config import ConfigurationService
 from app.core.security.roles import UserRole
 from app.models.user import User
 from app.repositories.email_verification_repository import (
@@ -24,56 +23,74 @@ from app.utils.token import generate_verification_token
 
 
 class EmailVerificationUsecase:
-    def __init__(self, session: AsyncSession):
-        self._session = session
-        self._ev_repo = EmailVerificationRepository(session)
-        self._user_repo = UserRepository(session)
-        self._rt_repo = RefreshTokenRepository(session)
+    """Email verification usecase with explicit dependency injection."""
+
+    def __init__(
+        self,
+        ev_repo: EmailVerificationRepository,
+        user_repo: UserRepository,
+        rt_repo: RefreshTokenRepository,
+        email_service: EmailService,
+        jwt_utils: JWTUtils,
+        config_service: ConfigurationService,
+        audit: Audit,
+    ):
+        self.__ev_repo = ev_repo
+        self.__user_repo = user_repo
+        self.__rt_repo = rt_repo
+        self.__email_service = email_service
+        self.__jwt_utils = jwt_utils
+        self.__config_service = config_service
+        self.__audit = audit
 
     async def verify_email(self, token: str) -> TokenResponse:
         """Validate *token*, mark user as verified and issue JWT tokens."""
-        token_obj = await self._ev_repo.get_valid(token)
-        if not token_obj:
-            Audit.error("invalid_email_verification_token")
-            raise HTTPException(status_code=400, detail="Invalid or expired token")
+        self.__audit.info("verify_email_started", token=token[:8] + "..." if len(token) > 8 else token)
+        
+        try:
+            token_obj = await self.__ev_repo.get_valid(token)
+            if not token_obj:
+                self.__audit.warning("invalid_email_verification_token")
+                raise HTTPException(status_code=400, detail="Invalid or expired token")
 
-        user: Optional[User] = await self._user_repo.get_by_id(token_obj.user_id)
-        if not user:
-            Audit.error(
-                "user_not_found_for_verification", user_id=str(token_obj.user_id)
+            user: Optional[User] = await self.__user_repo.get_by_id(token_obj.user_id)
+            if not user:
+                self.__audit.error(
+                    "user_not_found_for_verification", user_id=str(token_obj.user_id)
+                )
+                raise HTTPException(status_code=400, detail="User not found")
+
+            user.email_verified = True
+            await self.__ev_repo.mark_used(token_obj)
+
+            # Build claims
+            additional_claims = {
+                "roles": user.roles if user.roles else [UserRole.INDIVIDUAL_INVESTOR.value],
+                "attributes": user.attributes if user.attributes else {},
+            }
+
+            access_token = self.__jwt_utils.create_access_token(
+                str(user.id), additional_claims=additional_claims
             )
-            raise HTTPException(status_code=400, detail="User not found")
+            refresh_token = self.__jwt_utils.create_refresh_token(str(user.id))
 
-        user.email_verified = True
-        await self._ev_repo.mark_used(token_obj)
+            # Persist refresh token JTI hash
+            payload_claims = jose_jwt.get_unverified_claims(refresh_token)
+            jti = payload_claims["jti"]
+            ttl = timedelta(days=self.__config_service.REFRESH_TOKEN_EXPIRE_DAYS)
+            await self.__rt_repo.create_from_jti(jti, user.id, ttl)
 
-        # Build claims
-        additional_claims = {
-            "roles": user.roles if user.roles else [UserRole.INDIVIDUAL_INVESTOR.value],
-            "attributes": user.attributes if user.attributes else {},
-        }
+            self.__audit.info("email_verification_success", user_id=str(user.id))
 
-        access_token = JWTUtils.create_access_token(
-            str(user.id), additional_claims=additional_claims
-        )
-        refresh_token = JWTUtils.create_refresh_token(str(user.id))
-
-        # Persist refresh token JTI hash
-        payload_claims = jose_jwt.get_unverified_claims(refresh_token)
-        jti = payload_claims["jti"]
-        ttl = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-        await self._rt_repo.create_from_jti(jti, user.id, ttl)
-
-        await self._session.commit()
-
-        Audit.info("email_verified", user_id=str(user.id))
-
-        return TokenResponse(
-            access_token=access_token,
-            refresh_token=refresh_token,
-            token_type="bearer",
-            expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        )
+            return TokenResponse(
+                access_token=access_token,
+                refresh_token=refresh_token,
+                token_type="bearer",
+                expires_in=self.__config_service.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            )
+        except Exception as e:
+            self.__audit.error("email_verification_failed", error=str(e))
+            raise
 
     async def resend_verification(
         self,
@@ -82,26 +99,30 @@ class EmailVerificationUsecase:
         rate_limiter: InMemoryRateLimiter,
     ) -> None:
         """Generate a new token and send verification email if allowed."""
+        self.__audit.info("resend_verification_started", email=email)
+        
+        try:
+            identifier = email.lower()
+            if not rate_limiter.allow(identifier):
+                self.__audit.error("email_verification_rate_limited", email=email)
+                raise HTTPException(status_code=429, detail="Too many requests")
 
-        identifier = email.lower()
-        if not rate_limiter.allow(identifier):
-            Audit.error("email_verification_rate_limited", email=email)
-            raise HTTPException(status_code=429, detail="Too many requests")
+            user = await self.__user_repo.get_by_email(email)
+            if not user or user.email_verified:
+                self.__audit.warning("verification_email_resend_unknown_or_verified", email=email)
+                return  # Silently succeed for idempotency
 
-        user = await self._user_repo.get_by_email(email)
-        if not user or user.email_verified:
-            Audit.warning("verification_email_resend_unknown_or_verified", email=email)
-            return  # Silently succeed for idempotency
+            token, _, expires_at = generate_verification_token()
+            await self.__ev_repo.create(token, user.id, expires_at)
 
-        token, _, expires_at = generate_verification_token()
-        await self._ev_repo.create(token, user.id, expires_at)
+            verify_link = (
+                f"{self.__config_service.FRONTEND_BASE_URL.rstrip('/')}/verify-email?token={token}"
+            )
+            background_tasks.add_task(
+                self.__email_service.send_email_verification, user.email, verify_link
+            )
 
-        verify_link = (
-            f"{settings.FRONTEND_BASE_URL.rstrip('/')}/verify-email?token={token}"
-        )
-        service = EmailService()
-        background_tasks.add_task(
-            service.send_email_verification, user.email, verify_link
-        )
-
-        Audit.info("verification_email_resent", user_id=str(user.id))
+            self.__audit.info("verification_email_resent", user_id=str(user.id))
+        except Exception as e:
+            self.__audit.error("resend_verification_failed", email=email, error=str(e))
+            raise
