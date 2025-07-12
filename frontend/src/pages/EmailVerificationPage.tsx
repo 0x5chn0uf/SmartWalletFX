@@ -1,10 +1,11 @@
 import React from 'react';
 import styled from '@emotion/styled';
 import { keyframes } from '@emotion/react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AppDispatch } from '../store';
 import { verifyEmail } from '../store/emailVerificationSlice';
+import { RootState } from '../store';
 
 const moveDots = keyframes`
   0% { background-position: 0 0, 20px 20px; }
@@ -147,10 +148,14 @@ const EmailVerificationPage = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    dispatch(verifyEmail(token));
-  };
+  const verificationStatus = useSelector((state: RootState) => state.emailVerification.status);
+
+  React.useEffect(() => {
+    if (token) {
+      // Trigger verification automatically on mount
+      dispatch(verifyEmail(token));
+    }
+  }, [token, dispatch]);
 
   return (
     <Container>
@@ -158,9 +163,23 @@ const EmailVerificationPage = () => {
       <BackBtn onClick={() => navigate('/login-register')}>← Back to Login</BackBtn>
       <GlassCard>
         <Logo>SmartWalletFX</Logo>
-        <Subtitle>Click below to verify your email address.</Subtitle>
-        <Form onSubmit={handleSubmit}>
-          <SubmitBtn type="submit">Verify Email</SubmitBtn>
+        {verificationStatus === 'loading' && (
+          <Subtitle>Verifying your email, please wait…</Subtitle>
+        )}
+        {verificationStatus === 'succeeded' && (
+          <Subtitle>Your email has been verified successfully!</Subtitle>
+        )}
+        {verificationStatus === 'failed' && (
+          <Subtitle>Verification failed. Please try again.</Subtitle>
+        )}
+
+        <Form
+          onSubmit={e => {
+            e.preventDefault();
+            navigate('/defi');
+          }}
+        >
+          <SubmitBtn type="submit">Go to Dashboard</SubmitBtn>
         </Form>
       </GlassCard>
     </Container>

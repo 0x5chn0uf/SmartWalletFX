@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import apiClient from '../services/api';
+import { verifyEmail } from './emailVerificationSlice';
 
 export interface UserProfile {
   id: string;
@@ -156,6 +157,12 @@ const authSlice = createSlice({
       })
       .addCase(fetchCurrentUser.rejected, state => {
         state.status = 'failed';
+      })
+      // Mark authenticated on successful email verification (auto-login)
+      .addCase(verifyEmail.fulfilled, (state, action) => {
+        state.isAuthenticated = true;
+        state.user = action.payload;
+        state.status = 'succeeded';
       })
       .addCase(logoutUser.fulfilled, state => {
         state.isAuthenticated = false;
