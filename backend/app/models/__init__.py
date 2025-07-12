@@ -2,8 +2,8 @@ from app.core.database import Base
 
 from .aggregate_metrics import AggregateMetricsModel
 from .email_verification import EmailVerification
-from .group import Group
 from .historical_balance import HistoricalBalance
+from .oauth_account import OAuthAccount
 from .password_reset import PasswordReset
 from .portfolio_snapshot import PortfolioSnapshot
 from .portfolio_snapshot_cache import PortfolioSnapshotCache
@@ -14,7 +14,6 @@ from .token_price import TokenPrice
 from .transaction import Transaction
 from .user import User
 from .wallet import Wallet
-from .wallet_group import WalletGroup
 
 __all__ = [
     "Wallet",
@@ -24,8 +23,6 @@ __all__ = [
     "TokenPrice",
     "Transaction",
     "User",
-    "Group",
-    "WalletGroup",
     "PortfolioSnapshot",
     "PortfolioSnapshotCache",
     "Base",
@@ -33,4 +30,5 @@ __all__ = [
     "PasswordReset",
     "EmailVerification",
     "AggregateMetricsModel",
+    "OAuthAccount",
 ]
