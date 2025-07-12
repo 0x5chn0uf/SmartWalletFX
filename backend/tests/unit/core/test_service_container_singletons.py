@@ -8,7 +8,8 @@ from app.usecase.wallet_usecase import WalletUsecase
 
 def test_repository_singletons():
     cont = ServiceContainer(load_celery=False)
-    assert cont.repositories.UserRepository is UserRepository
+    repo = cont.repositories.UserRepository
+    assert isinstance(repo, UserRepository)
 
 
 def test_usecase_singletons():

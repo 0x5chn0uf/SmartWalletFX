@@ -140,7 +140,7 @@ class CeleryService:
 
 
 class RepositorySingletons:
-    """Lazily expose repository classes to avoid circular imports."""
+    """Lazily instantiate repository singletons bound to a container."""
 
     _MAP = {
         "AggregateMetricsRepository": "aggregate_metrics_repository",
@@ -157,12 +157,20 @@ class RepositorySingletons:
         "WalletRepository": "wallet_repository",
     }
 
+    def __init__(self, container: "ServiceContainer") -> None:
+        self._container = container
+        self._instances: dict[str, object] = {}
+
     def __getattr__(self, item: str):
         if item not in self._MAP:
             raise AttributeError(item)
-        module_name = self._MAP[item]
-        module = __import__(f"app.repositories.{module_name}", fromlist=[item])
-        return getattr(module, item)
+        if item not in self._instances:
+            module_name = self._MAP[item]
+            module = __import__(f"app.repositories.{module_name}", fromlist=[item])
+            repo_cls = getattr(module, item)
+            session = self._container.db.SessionLocal()  # AsyncSession
+            self._instances[item] = repo_cls(session)
+        return self._instances[item]
 
 
 class UsecaseSingletons:
@@ -214,7 +222,7 @@ class ServiceContainer:
             CeleryService(self.settings_service.settings) if load_celery else None
         )
         self.logging_service = LoggingService()
-        self._repositories = RepositorySingletons()
+        self._repositories = RepositorySingletons(self)
         self._usecases = UsecaseSingletons()
         self._endpoints: EndpointSingletons | None = None
 
