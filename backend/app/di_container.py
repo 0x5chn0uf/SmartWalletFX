@@ -21,6 +21,10 @@ class DIContainer:
     def get(self, name: str) -> Any:
         return self._services[name]
 
+    def has(self, name: str) -> bool:
+        """Return True if *name* is registered."""
+        return name in self._services
+
     # ------------------------------------------------------------------
     # Bootstrapping
     # ------------------------------------------------------------------

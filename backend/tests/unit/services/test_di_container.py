@@ -10,3 +10,6 @@ def test_container_singletons():
     db1 = container.get("db")
     db2 = container.get("db")
     assert db1 is db2
+
+    assert container.has("config") is True
+    assert container.has("missing") is False
