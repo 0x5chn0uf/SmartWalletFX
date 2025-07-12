@@ -13,3 +13,7 @@ def test_container_singletons():
 
     assert container.has("config") is True
     assert container.has("missing") is False
+
+    repo1 = container.get("user_repo")
+    repo2 = container.get("user_repo")
+    assert repo1 is repo2

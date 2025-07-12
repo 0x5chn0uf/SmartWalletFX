@@ -63,6 +63,7 @@ def strong_passwords():  # pragma: no cover – will be properly implemented lat
             st.text(
                 alphabet=string.ascii_letters + string.digits + allowed_symbols,
                 min_size=remaining_len,
+                max_size=16,
             )
         )
 
