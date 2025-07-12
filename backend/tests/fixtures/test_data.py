@@ -15,7 +15,6 @@ import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
-from app.models.aggregate_metrics import AggregateMetricsModel
 from app.models.historical_balance import HistoricalBalance
 from app.models.portfolio_snapshot import PortfolioSnapshot
 from app.models.user import User
@@ -449,20 +448,6 @@ def sample_historical_balance(sample_wallet):
         balance=100.0,
         balance_usd=150.0,
         timestamp=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
-    )
-
-
-@pytest.fixture
-def sample_aggregate_metrics(sample_wallet):
-    """Create a sample AggregateMetrics for testing."""
-    return AggregateMetricsModel(
-        id=uuid4(),
-        wallet_id=sample_wallet.id,
-        tvl=1000.0,
-        total_borrowings=200.0,
-        aggregate_apy=0.08,
-        as_of=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
-        positions=[],
     )
 
 

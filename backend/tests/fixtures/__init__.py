@@ -89,7 +89,6 @@ from .services import (
     portfolio_service,
 )
 from .test_data import (
-    sample_aggregate_metrics,
     sample_historical_balance,
     sample_historical_data,
     sample_portfolio_data,
@@ -153,7 +152,6 @@ __all__ = [
     "sample_wallet",
     "sample_portfolio_snapshot",
     "sample_historical_balance",
-    "sample_aggregate_metrics",
     "sample_wallet_data",
     "sample_historical_data",
     "sample_portfolio_data",
