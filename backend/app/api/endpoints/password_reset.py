@@ -31,11 +31,21 @@ class PasswordResetView(EndpointBase):
     """Password reset endpoints."""
 
     ep = APIRouter(prefix="/auth")
-    __container: ServiceContainer
+    __user_repo: type[UserRepository]
+    __pr_repo: type[PasswordResetRepository]
+    __email_service: type[EmailService]
 
-    def __init__(self, container: ServiceContainer) -> None:
+    def __init__(
+        self,
+        container: ServiceContainer,
+        user_repo: type[UserRepository] = UserRepository,
+        pr_repo: type[PasswordResetRepository] = PasswordResetRepository,
+        email_service: type[EmailService] = EmailService,
+    ) -> None:
         super().__init__(container)
-        PasswordResetView.__container = container
+        PasswordResetView.__user_repo = user_repo
+        PasswordResetView.__pr_repo = pr_repo
+        PasswordResetView.__email_service = email_service
 
     # ------------------------------------------------------------------
     # Request password reset
@@ -56,16 +66,16 @@ class PasswordResetView(EndpointBase):
         if not reset_rate_limiter.allow(identifier):
             Audit.error("Password reset rate limited", email=payload.email)
             raise HTTPException(status_code=429, detail="Too many requests")
-        repo = UserRepository(db)
+        repo = PasswordResetView.__user_repo(db)
         user = await repo.get_by_email(payload.email)
         if not user:
             Audit.warning("Password reset requested unknown email", email=payload.email)
             return None
         token, _, expires_at = generate_token()
-        pr_repo = PasswordResetRepository(db)
+        pr_repo = PasswordResetView.__pr_repo(db)
         await pr_repo.create(token, user.id, expires_at)
         reset_link = f"https://example.com/reset-password?token={token}"
-        service = EmailService()
+        service = PasswordResetView.__email_service()
         try:
             background_tasks.add_task(
                 service.send_password_reset, user.email, reset_link
@@ -85,7 +95,7 @@ class PasswordResetView(EndpointBase):
         payload: PasswordResetVerify,
         db: AsyncSession = Depends(get_db),
     ) -> dict[str, bool]:
-        repo = PasswordResetRepository(db)
+        repo = PasswordResetView.__pr_repo(db)
         valid = await repo.get_valid(payload.token) is not None
         Audit.info("password_reset_token_verification", valid=valid)
         return {"valid": valid}
@@ -99,12 +109,12 @@ class PasswordResetView(EndpointBase):
         payload: PasswordResetComplete,
         db: AsyncSession = Depends(get_db),
     ) -> dict[str, str]:
-        repo = PasswordResetRepository(db)
+        repo = PasswordResetView.__pr_repo(db)
         pr = await repo.get_valid(payload.token)
         if not pr:
             Audit.error("Invalid reset token")
             raise HTTPException(status_code=400, detail="Invalid or expired token")
-        user_repo = UserRepository(db)
+        user_repo = PasswordResetView.__user_repo(db)
         user = await user_repo.get_by_id(pr.user_id)
         if not user:
             Audit.error("User not found", user_id=str(pr.user_id))
@@ -122,7 +132,12 @@ class PasswordResetView(EndpointBase):
 
 
 def get_router(container: ServiceContainer) -> APIRouter:
-    PasswordResetView(container)
+    PasswordResetView(
+        container,
+        UserRepository,
+        PasswordResetRepository,
+        EmailService,
+    )
     return PasswordResetView.ep
 
 

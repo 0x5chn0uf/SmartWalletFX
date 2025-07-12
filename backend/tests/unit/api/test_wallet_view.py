@@ -11,5 +11,5 @@ def test_wallet_view_uses_container():
     app = FastAPI()
     app.include_router(router)
     assert hasattr(router, "routes")
-    view = wallets.Wallets(cont)
+    view = wallets.Wallets(cont, cont.usecases)
     assert view.container is cont

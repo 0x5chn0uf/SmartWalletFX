@@ -39,11 +39,11 @@ class AuthView(EndpointBase):
     """Class-based auth endpoints."""
 
     ep = APIRouter(prefix="/auth", tags=["auth"])
-    __container: ServiceContainer
+    __auth_service: type[AuthService]
 
-    def __init__(self, container: ServiceContainer) -> None:
+    def __init__(self, container: ServiceContainer, auth_service: type[AuthService] = AuthService) -> None:
         super().__init__(container)
-        AuthView.__container = container
+        AuthView.__auth_service = auth_service
 
     # ------------------------------------------------------------------
     # Registration
@@ -68,7 +68,7 @@ class AuthView(EndpointBase):
             email=payload.email,
             client_ip=client_ip,
         )
-        service = AuthService(db)
+        service = AuthView.__auth_service(db)
         try:
             user = await service.register(payload)
             duration = int((time.time() - start_time) * 1000)
@@ -136,7 +136,7 @@ class AuthView(EndpointBase):
             username=form_data.username,
             client_ip=identifier,
         )
-        service = AuthService(db)
+        service = AuthView.__auth_service(db)
         try:
             tokens = await service.authenticate(form_data.username, form_data.password)
             limiter.reset(identifier)
@@ -237,7 +237,7 @@ class AuthView(EndpointBase):
         start_time = time.time()
         client_ip = request.client.host or "unknown"
         Audit.info("Token refresh attempt started", client_ip=client_ip)
-        service = AuthService(db)
+        service = AuthView.__auth_service(db)
         try:
             token_str = None
             if payload and payload.refresh_token:
@@ -292,7 +292,7 @@ class AuthView(EndpointBase):
     ) -> None:
         token = request.cookies.get("refresh_token")
         if token:
-            service = AuthService(db)
+            service = AuthView.__auth_service(db)
             await service.revoke_refresh_token(token)
         secure = AuthView.__container.settings.ENVIRONMENT.lower() == "production"
         response.set_cookie(
@@ -329,7 +329,7 @@ class AuthView(EndpointBase):
 
 
 def get_router(container: ServiceContainer) -> APIRouter:
-    AuthView(container)
+    AuthView(container, AuthService)
     return AuthView.ep
 
 

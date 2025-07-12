@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import auth_deps
 from app.core.database import get_db
-from app.core.services import EndpointBase, ServiceContainer
+from app.core.services import EndpointBase, ServiceContainer, UsecaseSingletons
 from app.schemas.historical_balance import (
     HistoricalBalanceCreate,
     HistoricalBalanceResponse,
@@ -27,11 +27,11 @@ class Wallets(EndpointBase):
     """Class-based wallet endpoints."""
 
     ep = APIRouter(prefix="", tags=["wallets"])
-    __container: ServiceContainer
+    __usecases: UsecaseSingletons
 
-    def __init__(self, container: ServiceContainer):
+    def __init__(self, container: ServiceContainer, usecases: UsecaseSingletons) -> None:
         super().__init__(container)
-        Wallets.__container = container
+        Wallets.__usecases = usecases
 
     # ------------------------------------------------------------------
     # Wallet CRUD
@@ -57,7 +57,7 @@ class Wallets(EndpointBase):
             client_ip=client_ip,
         )
         try:
-            usecase = Wallets.__container.usecases.WalletUsecase(db, current_user)
+            usecase = Wallets.__usecases.WalletUsecase(db, current_user)
             result = await usecase.create_wallet(wallet)
             duration = int((time.time() - start_time) * 1000)
             Audit.info(
@@ -94,7 +94,7 @@ class Wallets(EndpointBase):
         user_id = current_user.id
         Audit.info("Wallet listing started", user_id=user_id, client_ip=client_ip)
         try:
-            usecase = Wallets.__container.usecases.WalletUsecase(db, current_user)
+            usecase = Wallets.__usecases.WalletUsecase(db, current_user)
             result = await usecase.list_wallets()
             duration = int((time.time() - start_time) * 1000)
             Audit.info(
@@ -133,7 +133,7 @@ class Wallets(EndpointBase):
             client_ip=client_ip,
         )
         try:
-            usecase = Wallets.__container.usecases.WalletUsecase(db, current_user)
+            usecase = Wallets.__usecases.WalletUsecase(db, current_user)
             await usecase.delete_wallet(address)
             duration = int((time.time() - start_time) * 1000)
             Audit.info(
@@ -165,7 +165,7 @@ class Wallets(EndpointBase):
     async def create_token(
         token: TokenCreate, db: AsyncSession = Depends(get_db)
     ) -> TokenResponse:
-        usecase = Wallets.__container.usecases.TokenUsecase(db)
+        usecase = Wallets.__usecases.TokenUsecase(db)
         return await usecase.create_token(token)
 
     @staticmethod
@@ -177,7 +177,7 @@ class Wallets(EndpointBase):
     async def create_historical_balance(
         hb: HistoricalBalanceCreate, db: AsyncSession = Depends(get_db)
     ) -> HistoricalBalanceResponse:
-        usecase = Wallets.__container.usecases.HistoricalBalanceUsecase(db)
+        usecase = Wallets.__usecases.HistoricalBalanceUsecase(db)
         return await usecase.create_historical_balance(hb)
 
     @staticmethod
@@ -189,7 +189,7 @@ class Wallets(EndpointBase):
     async def create_token_price(
         tp: TokenPriceCreate, db: AsyncSession = Depends(get_db)
     ) -> TokenPriceResponse:
-        usecase = Wallets.__container.usecases.TokenPriceUsecase(db)
+        usecase = Wallets.__usecases.TokenPriceUsecase(db)
         return await usecase.create_token_price(tp)
 
     @staticmethod
@@ -201,7 +201,7 @@ class Wallets(EndpointBase):
     async def create_token_balance(
         tb: TokenBalanceCreate, db: AsyncSession = Depends(get_db)
     ) -> TokenBalanceResponse:
-        usecase = Wallets.__container.usecases.TokenBalanceUsecase(db)
+        usecase = Wallets.__usecases.TokenBalanceUsecase(db)
         return await usecase.create_token_balance(tb)
 
     @staticmethod
@@ -214,7 +214,7 @@ class Wallets(EndpointBase):
         db: AsyncSession = Depends(get_db),
         current_user=Depends(auth_deps.get_current_user),
     ) -> List[PortfolioSnapshotResponse]:
-        usecase = Wallets.__container.usecases.WalletUsecase(db, current_user)
+        usecase = Wallets.__usecases.WalletUsecase(db, current_user)
         return await usecase.get_portfolio_snapshots(address)
 
     @staticmethod
@@ -228,7 +228,7 @@ class Wallets(EndpointBase):
         db: AsyncSession = Depends(get_db),
         current_user=Depends(auth_deps.get_current_user),
     ) -> PortfolioMetrics:
-        usecase = Wallets.__container.usecases.WalletUsecase(db, current_user)
+        usecase = Wallets.__usecases.WalletUsecase(db, current_user)
         return await usecase.get_portfolio_metrics(address)
 
     @staticmethod
@@ -244,7 +244,7 @@ class Wallets(EndpointBase):
         db: AsyncSession = Depends(get_db),
         current_user=Depends(auth_deps.get_current_user),
     ) -> PortfolioTimeline:
-        usecase = Wallets.__container.usecases.WalletUsecase(db, current_user)
+        usecase = Wallets.__usecases.WalletUsecase(db, current_user)
         return await usecase.get_portfolio_timeline(
             address=address,
             interval=interval,
@@ -257,7 +257,7 @@ class Wallets(EndpointBase):
 
 
 def get_router(container: ServiceContainer) -> APIRouter:
-    Wallets(container)
+    Wallets(container, container.usecases)
     return Wallets.ep
 
 

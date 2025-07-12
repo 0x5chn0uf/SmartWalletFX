@@ -203,8 +203,10 @@ def patched_auth_service(monkeypatch):
     """Patch *AuthService* used in auth endpoints with DummyAuthService."""
     original_service = auth_ep.AuthService
     monkeypatch.setattr(auth_ep, "AuthService", DummyAuthService)
+    monkeypatch.setattr(auth_ep.AuthView, "_AuthView__auth_service", DummyAuthService, raising=False)
     yield
     monkeypatch.setattr(auth_ep, "AuthService", original_service)
+    monkeypatch.setattr(auth_ep.AuthView, "_AuthView__auth_service", original_service, raising=False)
 
 
 @pytest.mark.asyncio
