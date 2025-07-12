@@ -1,18 +1,27 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import axios from 'axios';
 import apiClient from '../services/api';
+import { verifyEmail } from './emailVerificationSlice';
 
 export interface UserProfile {
   id: string;
   username: string;
   email: string;
+  email_verified: boolean;
   role?: string;
+}
+
+export interface AuthError {
+  status?: number | null;
+  data?: any;
+  message?: string;
 }
 
 interface AuthState {
   isAuthenticated: boolean;
   user: UserProfile | null;
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
-  error: string | null;
+  error: AuthError | null;
 }
 
 const initialState: AuthState = {
@@ -31,48 +40,55 @@ export const fetchCurrentUser = createAsyncThunk('auth/fetchCurrentUser', async 
 
 export const login = createAsyncThunk(
   'auth/login',
-  async (credentials: { email: string; password: string }) => {
+  async (credentials: { email: string; password: string }, { rejectWithValue }) => {
     const form = new URLSearchParams();
     form.append('username', credentials.email);
     form.append('password', credentials.password);
-    const tokenResp = await apiClient.post('/auth/token', form, { withCredentials: true });
-    const accessToken = tokenResp.data?.access_token as string | undefined;
-    if (accessToken) {
-      apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-      localStorage.setItem('access_token', accessToken);
+    try {
+      const tokenResp = await apiClient.post('/auth/token', form, { withCredentials: true });
+      const accessToken = tokenResp.data?.access_token as string | undefined;
+      if (accessToken) {
+        apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+        localStorage.setItem('access_token', accessToken);
+      }
+      const resp = await apiClient.get('/users/me', { withCredentials: true });
+      // mark session present
+      localStorage.setItem('session_active', '1');
+      return resp.data as UserProfile;
+    } catch (err: any) {
+      if (axios.isAxiosError(err)) {
+        return rejectWithValue({
+          status: err.response?.status,
+          data: err.response?.data,
+        });
+      }
+      throw err;
     }
-    const resp = await apiClient.get('/users/me', { withCredentials: true });
-    // mark session present
-    localStorage.setItem('session_active', '1');
-    return resp.data as UserProfile;
   }
 );
 
 export const registerUser = createAsyncThunk(
   'auth/register',
-  async (payload: { email: string; password: string }) => {
-    await apiClient.post(
-      '/auth/register',
-      {
-        username: payload.email.split('@')[0],
-        email: payload.email,
-        password: payload.password,
-      },
-      { withCredentials: true }
-    );
-    const form = new URLSearchParams();
-    form.append('username', payload.email);
-    form.append('password', payload.password);
-    const tokenResp = await apiClient.post('/auth/token', form, { withCredentials: true });
-    const accessToken = tokenResp.data?.access_token as string | undefined;
-    if (accessToken) {
-      apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-      localStorage.setItem('access_token', accessToken);
+  async (payload: { email: string; password: string }, { rejectWithValue }) => {
+    try {
+      await apiClient.post(
+        '/auth/register',
+        {
+          username: payload.email.split('@')[0],
+          email: payload.email,
+          password: payload.password,
+        },
+        { withCredentials: true }
+      );
+    } catch (err: any) {
+      if (axios.isAxiosError(err)) {
+        return rejectWithValue({
+          status: err.response?.status,
+          data: err.response?.data,
+        });
+      }
+      throw err;
     }
-    const resp = await apiClient.get('/users/me', { withCredentials: true });
-    // mark session present
-    localStorage.setItem('session_active', '1');
-    return resp.data as UserProfile;
   }
 );
 
@@ -114,20 +130,22 @@ const authSlice = createSlice({
       })
       .addCase(login.rejected, (state, action) => {
         state.status = 'failed';
-        state.error = action.error.message || 'Login failed';
+        state.error = (action.payload as AuthError) || {
+          message: action.error.message || 'Login failed',
+        };
       })
       .addCase(registerUser.pending, state => {
         state.status = 'loading';
         state.error = null;
       })
-      .addCase(registerUser.fulfilled, (state, action) => {
-        state.isAuthenticated = true;
-        state.user = action.payload;
+      .addCase(registerUser.fulfilled, state => {
         state.status = 'succeeded';
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.status = 'failed';
-        state.error = action.error.message || 'Registration failed';
+        state.error = (action.payload as AuthError) || {
+          message: action.error.message || 'Registration failed',
+        };
       })
       .addCase(fetchCurrentUser.pending, state => {
         state.status = 'loading';
@@ -139,6 +157,12 @@ const authSlice = createSlice({
       })
       .addCase(fetchCurrentUser.rejected, state => {
         state.status = 'failed';
+      })
+      // Mark authenticated on successful email verification (auto-login)
+      .addCase(verifyEmail.fulfilled, (state, action) => {
+        state.isAuthenticated = true;
+        state.user = action.payload;
+        state.status = 'succeeded';
       })
       .addCase(logoutUser.fulfilled, state => {
         state.isAuthenticated = false;

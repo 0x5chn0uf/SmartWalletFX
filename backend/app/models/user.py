@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, Column, DateTime, String
+from sqlalchemy import JSON, Boolean, Column, DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -20,6 +20,10 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=True)
+
+    email_verified = Column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
 
     # Role-based access control fields
     roles = Column(JSON, nullable=True, doc="List of user roles for RBAC")

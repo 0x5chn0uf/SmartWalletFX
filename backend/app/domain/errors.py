@@ -10,8 +10,13 @@ class InactiveUserError(AuthenticationError):
     """Raised when the user exists but is marked as inactive/disabled."""
 
 
+class UnverifiedEmailError(AuthenticationError):
+    """Raised when the user's email address has not been verified."""
+
+
 __all__ = [
     "AuthenticationError",
     "InvalidCredentialsError",
     "InactiveUserError",
+    "UnverifiedEmailError",
 ]

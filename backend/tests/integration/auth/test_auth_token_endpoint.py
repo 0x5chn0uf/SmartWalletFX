@@ -2,6 +2,7 @@ from typing import Dict
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 pytestmark = pytest.mark.usefixtures("async_client_with_db")
 
@@ -19,13 +20,22 @@ async def _register_user(
 
 
 @pytest.mark.asyncio
-async def test_obtain_token_success(async_client_with_db: AsyncClient) -> None:
+async def test_obtain_token_success(
+    async_client_with_db: AsyncClient, db_session: AsyncSession
+) -> None:
     """Test successful token acquisition with valid credentials."""
     username = "dana"
     password = "Sup3rStr0ng!!"
-    await _register_user(
-        async_client_with_db, username, f"{username}@example.com", password
-    )
+    email = f"{username}@example.com"
+    await _register_user(async_client_with_db, username, email, password)
+
+    # Mark the user's email as verified directly in the database
+    from app.repositories.user_repository import UserRepository
+
+    user_repo = UserRepository(db_session)
+    user = await user_repo.get_by_email(email)
+    user.email_verified = True
+    await db_session.commit()
 
     res = await async_client_with_db.post(
         "/auth/token",
@@ -40,13 +50,22 @@ async def test_obtain_token_success(async_client_with_db: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_obtain_token_bad_credentials(async_client_with_db: AsyncClient) -> None:
+async def test_obtain_token_bad_credentials(
+    async_client_with_db: AsyncClient, db_session: AsyncSession
+) -> None:
     """Test token acquisition fails with invalid credentials."""
     username = "edgar"
     password = "GoodPwd1!!"
-    await _register_user(
-        async_client_with_db, username, f"{username}@example.com", password
-    )
+    email = f"{username}@example.com"
+    await _register_user(async_client_with_db, username, email, password)
+
+    # Mark the user's email as verified directly in the database
+    from app.repositories.user_repository import UserRepository
+
+    user_repo = UserRepository(db_session)
+    user = await user_repo.get_by_email(email)
+    user.email_verified = True
+    await db_session.commit()
 
     res = await async_client_with_db.post(
         "/auth/token",

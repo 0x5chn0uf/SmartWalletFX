@@ -1,6 +1,10 @@
+from .email_verification_repository import (  # noqa: F401
+    EmailVerificationRepository,
+)
 from .historical_balance_repository import (  # noqa: F401
     HistoricalBalanceRepository,
 )
+from .password_reset_repository import PasswordResetRepository  # noqa: F401
 from .portfolio_snapshot_repository import (  # noqa: F401
     PortfolioSnapshotRepository,
 )

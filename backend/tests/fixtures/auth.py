@@ -26,6 +26,10 @@ async def test_user(db_session: AsyncSession):
         username=f"test.user.{uuid.uuid4()}",
     )
     user = await AuthService(db_session).register(user_in)
+    # Mark as email verified for tests that require authentication
+    user.email_verified = True
+    await db_session.commit()
+    await db_session.refresh(user)
     return user
 
 
@@ -42,6 +46,9 @@ async def test_user_with_wallet(db_session: AsyncSession):
         username=f"test.user.{uuid.uuid4()}",
     )
     user = await AuthService(db_session).register(user_in)
+    user.email_verified = True
+    await db_session.commit()
+    await db_session.refresh(user)
 
     # Create wallet
     wallet = Wallet(
@@ -66,9 +73,7 @@ async def admin_user(db_session: AsyncSession):
         username=f"admin.{uuid.uuid4()}",
     )
     user = await AuthService(db_session).register(user_in)
-
-    # Set admin role (assuming you have role management)
-    user.is_admin = True
+    user.email_verified = True
     await db_session.commit()
     await db_session.refresh(user)
 
@@ -87,9 +92,7 @@ async def inactive_user(db_session: AsyncSession):
         username=f"inactive.{uuid.uuid4()}",
     )
     user = await AuthService(db_session).register(user_in)
-
-    # Set inactive status
-    user.is_active = False
+    user.email_verified = True
     await db_session.commit()
     await db_session.refresh(user)
 
@@ -171,6 +174,7 @@ async def create_user_and_wallet(db_session: AsyncSession):
             hashed_password=security.PasswordHasher.hash_password("S3cur3!pwd"),
         )
         db_session.add(user)
+        user.email_verified = True
         await db_session.commit()
         await db_session.refresh(user)
 
@@ -222,6 +226,7 @@ async def create_user_with_tokens(db_session: AsyncSession):
             hashed_password=security.PasswordHasher.hash_password("S3cur3!pwd"),
         )
         db_session.add(user)
+        user.email_verified = True
         await db_session.commit()
         await db_session.refresh(user)
 

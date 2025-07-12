@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -9,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from app.core.security.roles import UserRole
 from app.domain.errors import InactiveUserError, InvalidCredentialsError
 from app.models.user import User
-from app.schemas.user import UserCreate
+from app.schemas.user import UserCreate, WeakPasswordError
 from app.services.auth_service import DuplicateError
 
 
@@ -73,19 +74,12 @@ class TestAuthService:
     @pytest.mark.asyncio
     async def test_register_weak_password(self, auth_service):
         """Test registration with weak password."""
-        with pytest.raises(ValidationError) as exc_info:
+        with pytest.raises(WeakPasswordError):
             await auth_service.register(
                 UserCreate(
                     username="test", email="test@example.com", password="weakpass"
                 )  # 8 chars but no digit
             )
-        # Verify it's specifically a password validation error
-        error_details = exc_info.value.errors()
-        assert len(error_details) == 1
-        assert error_details[0]["loc"] == ("password",)
-        assert "Password must be at least 8 characters and include a digit" in str(
-            error_details[0]["msg"]
-        )
 
     @pytest.mark.asyncio
     async def test_register_integrity_error(self, auth_service, mock_user_repo):
@@ -173,6 +167,23 @@ class TestAuthService:
 
         with pytest.raises(InvalidCredentialsError):
             await auth_service.authenticate("test", "WrongPass123!")
+
+    @pytest.mark.asyncio
+    async def test_authenticate_unverified_email(self, auth_service, mock_user_repo):
+        """Authentication should fail when email is unverified past deadline."""
+        mock_user = Mock(spec=User)
+        mock_user.id = 1
+        mock_user.is_active = True
+        mock_user.email_verified = False
+        mock_user.hashed_password = (
+            "$2b$04$qRbw3X8ORqGW0Ru0JXmCfudYyKapkjduhzRQX4PQBj.7JriqK6tFC"
+        )
+        mock_user_repo.get_by_username.return_value = mock_user
+
+        from app.domain.errors import UnverifiedEmailError
+
+        with pytest.raises(UnverifiedEmailError):
+            await auth_service.authenticate("test", "StrongPass123!")
 
     @pytest.mark.asyncio
     @patch("app.services.auth_service.RefreshTokenRepository")

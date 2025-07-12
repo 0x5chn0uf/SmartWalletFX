@@ -633,7 +633,6 @@ class TestRestorePerformance:
                         "transactions",
                         "token_balances",
                         "portfolio_snapshots",
-                        "audit_logs",
                     ]
                     for table in tables:
                         cur.execute(f"SELECT COUNT(*) FROM {table}")

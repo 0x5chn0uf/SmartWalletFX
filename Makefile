@@ -30,9 +30,6 @@ setup-backend: ## Install backend dependencies via backend/Makefile
 setup-frontend: ## Install frontend npm dependencies
 	cd $(FRONTEND_DIR) && npm ci
 
-cd-back: ## Activate the virtual environment
-	cd $(BACKEND_DIR) && source .venv/bin/activate
-
 # -----------------------------------------------------------------------------
 # Linting & formatting
 # -----------------------------------------------------------------------------

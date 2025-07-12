@@ -2,7 +2,7 @@
 update uuid columns and wallet schema using batch_alter_table
 
 Revision ID: 0010_update_uuid_columns
-Revises: 0009_add_audit_logs_table
+Revises: 0009_add_email_verification
 Create Date: 2024-03-19 10:00:00.000000
 
 """
@@ -11,7 +11,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "0010_update_uuid_columns"
-down_revision = "0009_add_audit_logs_table"
+down_revision = "0009_add_email_verification"
 branch_labels = None
 depends_on = None
 

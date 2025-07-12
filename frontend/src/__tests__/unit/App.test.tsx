@@ -54,5 +54,27 @@ describe('App Component', () => {
       </Provider>
     );
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={['/verify-email']}>
+          <ThemeProvider>
+            <NavBar />
+          </ThemeProvider>
+        </MemoryRouter>
+      </Provider>
+    );
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter initialEntries={['/verify-email-sent']}>
+          <ThemeProvider>
+            <NavBar />
+          </ThemeProvider>
+        </MemoryRouter>
+      </Provider>
+    );
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
   });
 });

@@ -21,6 +21,7 @@ from app.schemas.password_reset import (
 from app.services.email_service import EmailService
 from app.utils.logging import Audit
 from app.utils.rate_limiter import InMemoryRateLimiter
+from app.utils.security import PasswordHasher
 from app.utils.token import generate_token
 
 router = APIRouter(prefix="/auth")
@@ -92,8 +93,6 @@ async def reset_password(
     if not user:
         Audit.error("User not found", user_id=str(pr.user_id))
         raise HTTPException(status_code=400, detail="User not found")
-
-    from app.utils.security import PasswordHasher
 
     user.hashed_password = PasswordHasher.hash_password(payload.password)
     await db.commit()

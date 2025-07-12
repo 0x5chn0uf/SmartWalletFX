@@ -30,6 +30,12 @@ class UserRepository:
     # Query helpers
     # ---------------------------------------------------------------------
 
+    async def get_all(self) -> list[User]:
+        """Return all users in the database."""
+        stmt = select(User)
+        result = await self._session.execute(stmt)
+        return result.scalars().all()
+
     async def get_by_username(self, username: str) -> Optional[User]:
         stmt = select(User).filter_by(username=username)
         result = await self._session.execute(stmt)
