@@ -156,17 +156,13 @@ def mock_external_apis():
     Comprehensive mock for all external APIs.
     Provides mocks for commonly used external services.
     """
-    with patch("app.adapters.defi_position.DefiPositionAdapter") as mock_defi, patch(
+    with patch(
         "app.services.blockchain_service.BlockchainService"
     ) as mock_blockchain, patch(
         "app.utils.metrics_cache.get_metrics_cache"
     ) as mock_cache, patch(
         "app.utils.metrics_cache.set_metrics_cache"
     ) as mock_set_cache:
-        # Mock DeFi adapter
-        mock_defi.return_value.fetch_positions = AsyncMock(return_value=[])
-        mock_defi.return_value.calculate_aggregate_metrics = Mock(return_value={})
-
         # Mock blockchain service
         mock_blockchain.return_value.get_wallet_balances = AsyncMock(return_value={})
         mock_blockchain.return_value.get_token_price = AsyncMock(return_value=1.0)
@@ -177,7 +173,6 @@ def mock_external_apis():
         mock_set_cache.return_value = True
 
         yield {
-            "defi_adapter": mock_defi,
             "blockchain_service": mock_blockchain,
             "cache": mock_cache,
             "set_cache": mock_set_cache,

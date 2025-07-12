@@ -5,11 +5,7 @@ import pytest
 from fastapi import HTTPException
 
 import app.api.dependencies as deps_mod
-from app.api.dependencies import (
-    _build_aggregator_async,
-    auth_deps,
-    blockchain_deps,
-)
+from app.api.dependencies import auth_deps, blockchain_deps
 
 
 @pytest.fixture(autouse=True)
@@ -51,32 +47,6 @@ def test_get_w3_returns_cached_instance(monkeypatch):
     assert first.provider.uri == getattr(
         settings, "WEB3_PROVIDER_URI", "https://ethereum-rpc.publicnode.com"
     )
-
-
-# ---------------------------------------------------------------------------
-# _build_aggregator_async helper
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.asyncio
-async def test_build_aggregator_async_invokes_usecase(monkeypatch):
-    """Ensure the aggregator returned by _build_aggregator_async delegates to the underlying use-case."""
-
-    captured = {}
-
-    class DummyUsecase:  # noqa: D101 – test double
-        async def aggregate_portfolio_metrics(self, address):
-            captured["address"] = address
-            return "METRICS"
-
-    monkeypatch.setattr(deps_mod, "PortfolioAggregationUsecase", DummyUsecase)
-
-    aggregator = _build_aggregator_async()
-    assert inspect.iscoroutinefunction(aggregator)
-
-    result = await aggregator("0x123")
-    assert result == "METRICS"
-    assert captured["address"] == "0x123"
 
 
 # ---------------------------------------------------------------------------

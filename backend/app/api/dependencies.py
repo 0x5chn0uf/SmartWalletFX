@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging as _logging
 import uuid
 from functools import lru_cache
 from typing import AsyncGenerator
@@ -15,55 +14,10 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.security.roles import ROLE_PERMISSIONS_MAP, UserRole
 from app.models.user import User
-from app.repositories.aggregate_metrics_repository import (
-    AggregateMetricsRepository,
-)
-from app.services.defi_aggregation_service import DeFiAggregationService
-from app.services.snapshot_aggregation import SnapshotAggregationService
-from app.usecase.defi_aave_usecase import AaveUsecase
-from app.usecase.defi_compound_usecase import CompoundUsecase
-from app.usecase.defi_radiant_usecase import RadiantUsecase
-from app.usecase.portfolio_aggregation_usecase import (
-    PortfolioAggregationUsecase,
-)
 from app.utils.jwks_cache import _build_redis_client
 from app.utils.jwt import JWTUtils
 from app.utils.logging import Audit
 from app.utils.rate_limiter import login_rate_limiter
-
-_logger = _logging.getLogger(__name__)
-
-
-def _build_aggregator_async():
-    usecase = PortfolioAggregationUsecase()
-
-    async def _aggregator(address: str):  # type: ignore[override]
-        return await usecase.aggregate_portfolio_metrics(address)
-
-    return _aggregator
-
-
-class DBDeps:  # noqa: D101 – small wrapper for DB related deps
-    def __init__(self):
-        # Public callables are exposed below via bound attributes
-        pass
-
-    def get_snapshot_service(
-        self, db: AsyncSession = Depends(get_db)
-    ) -> SnapshotAggregationService:  # pragma: no cover – simple factory
-        """Return SnapshotAggregationService bound to provided DB session."""
-
-        return SnapshotAggregationService(db, _build_aggregator_async())
-
-    def get_aggregate_metrics_repo(
-        self, db: AsyncSession = Depends(get_db)
-    ) -> AggregateMetricsRepository:  # noqa: D401 – factory
-        """Return SQLAlchemy implementation of AggregateMetricsRepository."""
-
-        return AggregateMetricsRepository(db)
-
-
-db_deps = DBDeps()
 
 
 class BlockchainDeps:
@@ -74,22 +28,6 @@ class BlockchainDeps:
         default_uri = "https://ethereum-rpc.publicnode.com"
         uri = getattr(settings, "WEB3_PROVIDER_URI", default_uri)
         return Web3(Web3.HTTPProvider(uri))
-
-    # Use-case factories -----------------------------------------------------
-
-    def get_aave_usecase(self) -> AaveUsecase:  # noqa: D401 – dep factory
-        return AaveUsecase(self.get_w3())
-
-    def get_compound_usecase(self) -> CompoundUsecase:  # noqa: D401 – dep factory
-        return CompoundUsecase(self.get_w3())
-
-    def get_radiant_usecase(self) -> RadiantUsecase:  # noqa: D401 – dep factory
-        return RadiantUsecase()
-
-    def get_portfolio_aggregation_usecase(
-        self,
-    ) -> PortfolioAggregationUsecase:  # noqa: D401
-        return PortfolioAggregationUsecase()
 
 
 blockchain_deps = BlockchainDeps()
@@ -169,18 +107,10 @@ class AuthDeps:
 # Instantiate auth deps singleton
 auth_deps = AuthDeps()
 
-# Public API – expose only the singletons and the DB snapshot helper
-get_snapshot_service = db_deps.get_snapshot_service  # convenience bound method
-get_aggregate_metrics_repo = db_deps.get_aggregate_metrics_repo
-
 __all__ = [
-    "db_deps",
     "blockchain_deps",
     "auth_deps",
     "get_redis",
-    "get_snapshot_service",
-    "get_aggregate_metrics_repo",
-    "get_aggregator_service",
 ]
 
 # ---------------------------------------------------------------------------
@@ -199,14 +129,6 @@ async def get_redis() -> AsyncGenerator["Redis", None]:  # type: ignore[name-def
             await client.close()
         except Exception:  # noqa: BLE001 – ignore shutdown errors
             pass
-
-
-async def get_aggregator_service(
-    db: AsyncSession = Depends(get_db),
-    redis=Depends(get_redis),
-) -> DeFiAggregationService:
-    """Return DeFiAggregationService with database and Redis dependencies."""
-    return DeFiAggregationService(db, redis)
 
 
 # ---------------------------------------------------------------------------

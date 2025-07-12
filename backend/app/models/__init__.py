@@ -1,6 +1,5 @@
 from app.core.database import Base
 
-from .aggregate_metrics import AggregateMetricsModel
 from .email_verification import EmailVerification
 from .historical_balance import HistoricalBalance
 from .oauth_account import OAuthAccount
@@ -29,6 +28,5 @@ __all__ = [
     "RefreshToken",
     "PasswordReset",
     "EmailVerification",
-    "AggregateMetricsModel",
     "OAuthAccount",
 ]

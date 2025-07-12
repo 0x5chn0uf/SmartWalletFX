@@ -15,7 +15,6 @@ from .fixtures.base import *
 from .fixtures.client import *
 from .fixtures.database import *
 from .fixtures.mocks import *
-from .fixtures.portfolio_metrics import *
 from .fixtures.services import *
 from .fixtures.test_data import *
 from .fixtures.usecase import *

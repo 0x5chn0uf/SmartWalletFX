@@ -9,10 +9,6 @@ celery = Celery(
 celery.conf.timezone = "UTC"
 
 celery.conf.beat_schedule = {
-    "collect-snapshots-every-hours": {
-        "task": "app.tasks.snapshots.collect_portfolio_snapshots",
-        "schedule": crontab(hour="*", minute="0"),
-    },
     # Daily automated database backup (Subtask 8.3)
     "db-backup-daily": {
         "task": "app.tasks.backups.create_backup_task",
@@ -27,7 +23,6 @@ celery.conf.beat_schedule = {
 
 import app.tasks.backups  # noqa: F401, E402
 import app.tasks.jwt_rotation  # noqa: F401, E402
-import app.tasks.snapshots  # noqa: F401, E402
 from app.core.config import settings  # noqa: F401, E402
 
 # Update schedule from settings

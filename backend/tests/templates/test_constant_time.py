@@ -8,15 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-try:
-    from tests.utils import security_testing as st
-except ModuleNotFoundError:  # pragma: no cover
-    from backend.tests.utils import security_testing as st
-
-try:
-    from app.utils.security import PasswordHasher
-except ModuleNotFoundError:  # pragma: no cover
-    from backend.app.utils.security import PasswordHasher
+from app.utils.security import PasswordHasher
+from tests.utils import security_testing as st
 
 pytestmark = pytest.mark.property
 

@@ -8,7 +8,6 @@ __all__: List[str] = []
 for _module in [
     "admin_db",
     "auth",
-    "defi",
     "health",
     "jwks",
     "oauth",
