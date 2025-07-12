@@ -21,7 +21,7 @@ describe('EmailVerificationPage', () => {
       </Provider>
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /verify email/i }));
+    fireEvent.click(screen.getByRole('button', { name: /go to dashboard/i }));
     expect(spy).toHaveBeenCalled();
   });
 });
