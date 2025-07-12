@@ -214,8 +214,6 @@ class DIContainer:
 
         portfolio_snapshot_uc = PortfolioSnapshotUsecase(
             portfolio_snapshot_repo,
-            wallet_repo,
-            config_service,
             audit_service,
         )
         self.register_usecase("portfolio_snapshot", portfolio_snapshot_uc)

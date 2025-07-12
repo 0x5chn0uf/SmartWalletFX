@@ -54,26 +54,28 @@ class OAuthUsecase:
             sub=sub[:8] + "..." if len(sub) > 8 else sub,
             email=email,
         )
-        
+
         try:
             # TODO: Implement direct repository calls instead of using OAuthService
-            # This is a placeholder - the actual implementation should use the injected repositories
+            # This is a placeholder - the actual implementation should use the
+            # injected repositories
             if not self.__oauth_service:
                 # Temporary fallback to old service pattern
-                from sqlalchemy.ext.asyncio import AsyncSession
                 # This is a temporary solution until we fully refactor the service layer
                 session = None  # This would need to be passed from the endpoint
                 self.__oauth_service = OAuthService(session)
-            
-            user = await self.__oauth_service.authenticate_or_create(provider, sub, email)
+
+            user = await self.__oauth_service.authenticate_or_create(
+                provider, sub, email
+            )
             tokens = await self.__oauth_service.issue_tokens(user)
-            
+
             self.__audit.info(
                 "oauth_authenticate_and_issue_tokens_success",
                 provider=provider,
                 user_id=str(user.id),
             )
-            
+
             return user, tokens
         except Exception as e:
             self.__audit.error(
@@ -86,7 +88,7 @@ class OAuthUsecase:
     async def generate_login_redirect(self, provider: str, redis) -> RedirectResponse:
         """Return RedirectResponse that sends the browser to the provider login page."""
         self.__audit.info("oauth_generate_login_redirect_started", provider=provider)
-        
+
         try:
             if provider not in self._PROVIDERS:
                 self.__audit.error("oauth_unknown_provider", provider=provider)
@@ -143,7 +145,9 @@ class OAuthUsecase:
                 self.__audit.error("oauth_state_invalid", provider=provider)
                 raise HTTPException(status_code=400, detail="Invalid state")
 
-            redirect_uri = self.__config_service.OAUTH_REDIRECT_URI.format(provider=provider)
+            redirect_uri = self.__config_service.OAUTH_REDIRECT_URI.format(
+                provider=provider
+            )
             user_info = await self._exchange_code(provider, code, redirect_uri)
             if not user_info.get("sub"):
                 self.__audit.error("oauth_missing_sub", provider=provider)
@@ -153,7 +157,9 @@ class OAuthUsecase:
                 provider, user_info["sub"], user_info.get("email")
             )
 
-            self.__audit.info("oauth_login_success", provider=provider, user_id=str(user.id))
+            self.__audit.info(
+                "oauth_login_success", provider=provider, user_id=str(user.id)
+            )
 
             front_url = self.__config_service.FRONTEND_BASE_URL.rstrip("/") + "/defi"
             resp = RedirectResponse(url=front_url, status_code=302)
@@ -189,7 +195,9 @@ class OAuthUsecase:
             params = {
                 "client_id": self.__config_service.GOOGLE_CLIENT_ID,
                 "response_type": "code",
-                "redirect_uri": self.__config_service.OAUTH_REDIRECT_URI.format(provider="google"),
+                "redirect_uri": self.__config_service.OAUTH_REDIRECT_URI.format(
+                    provider="google"
+                ),
                 "scope": "openid email profile",
                 "state": state,
                 "access_type": "offline",
@@ -198,7 +206,9 @@ class OAuthUsecase:
         if provider == "github":
             params = {
                 "client_id": self.__config_service.GITHUB_CLIENT_ID,
-                "redirect_uri": self.__config_service.OAUTH_REDIRECT_URI.format(provider="github"),
+                "redirect_uri": self.__config_service.OAUTH_REDIRECT_URI.format(
+                    provider="github"
+                ),
                 "scope": "user:email",
                 "state": state,
             }

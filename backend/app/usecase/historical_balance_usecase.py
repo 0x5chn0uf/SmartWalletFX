@@ -1,5 +1,7 @@
 from app.core.config import ConfigurationService
-from app.repositories.historical_balance_repository import HistoricalBalanceRepository
+from app.repositories.historical_balance_repository import (
+    HistoricalBalanceRepository,
+)
 from app.schemas.historical_balance import (
     HistoricalBalanceCreate,
     HistoricalBalanceResponse,
@@ -35,17 +37,17 @@ class HistoricalBalanceUsecase:
         """
         self.__audit.info(
             "historical_balance_usecase_create_started",
-            wallet_address=hb.wallet_address if hasattr(hb, 'wallet_address') else None,
+            wallet_address=hb.wallet_address if hasattr(hb, "wallet_address") else None,
         )
-        
+
         try:
             result = await self.__historical_balance_repo.create(hb)
-            
+
             self.__audit.info(
                 "historical_balance_usecase_create_success",
-                historical_balance_id=str(result.id) if hasattr(result, 'id') else None,
+                historical_balance_id=str(result.id) if hasattr(result, "id") else None,
             )
-            
+
             return result
         except Exception as e:
             self.__audit.error(

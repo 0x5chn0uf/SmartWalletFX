@@ -51,7 +51,7 @@ class TestDIContainer:
     def test_all_repositories_registered(self):
         """Test that all repositories are properly registered."""
         container = DIContainer()
-        
+
         # List of all expected repositories
         expected_repositories = [
             "user",
@@ -66,7 +66,7 @@ class TestDIContainer:
             "token_price",
             "token_balance",
         ]
-        
+
         for repo_name in expected_repositories:
             repo = container.get_repository(repo_name)
             assert repo is not None, f"Repository '{repo_name}' should be registered"
@@ -74,7 +74,7 @@ class TestDIContainer:
     def test_all_usecases_registered(self):
         """Test that all usecases are properly registered."""
         container = DIContainer()
-        
+
         # List of all expected usecases
         expected_usecases = [
             "email_verification",
@@ -86,7 +86,7 @@ class TestDIContainer:
             "token_balance",
             "portfolio_snapshot",
         ]
-        
+
         for usecase_name in expected_usecases:
             usecase = container.get_usecase(usecase_name)
             assert usecase is not None, f"Usecase '{usecase_name}' should be registered"

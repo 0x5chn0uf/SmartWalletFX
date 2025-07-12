@@ -45,8 +45,11 @@ class EmailVerificationUsecase:
 
     async def verify_email(self, token: str) -> TokenResponse:
         """Validate *token*, mark user as verified and issue JWT tokens."""
-        self.__audit.info("verify_email_started", token=token[:8] + "..." if len(token) > 8 else token)
-        
+        self.__audit.info(
+            "verify_email_started",
+            token=token[:8] + "..." if len(token) > 8 else token,
+        )
+
         try:
             token_obj = await self.__ev_repo.get_valid(token)
             if not token_obj:
@@ -65,7 +68,9 @@ class EmailVerificationUsecase:
 
             # Build claims
             additional_claims = {
-                "roles": user.roles if user.roles else [UserRole.INDIVIDUAL_INVESTOR.value],
+                "roles": user.roles
+                if user.roles
+                else [UserRole.INDIVIDUAL_INVESTOR.value],
                 "attributes": user.attributes if user.attributes else {},
             }
 
@@ -100,7 +105,7 @@ class EmailVerificationUsecase:
     ) -> None:
         """Generate a new token and send verification email if allowed."""
         self.__audit.info("resend_verification_started", email=email)
-        
+
         try:
             identifier = email.lower()
             if not rate_limiter.allow(identifier):
@@ -109,15 +114,17 @@ class EmailVerificationUsecase:
 
             user = await self.__user_repo.get_by_email(email)
             if not user or user.email_verified:
-                self.__audit.warning("verification_email_resend_unknown_or_verified", email=email)
+                self.__audit.warning(
+                    "verification_email_resend_unknown_or_verified", email=email
+                )
                 return  # Silently succeed for idempotency
 
             token, _, expires_at = generate_verification_token()
             await self.__ev_repo.create(token, user.id, expires_at)
 
-            verify_link = (
-                f"{self.__config_service.FRONTEND_BASE_URL.rstrip('/')}/verify-email?token={token}"
-            )
+            frontend_base_url = self.__config_service.FRONTEND_BASE_URL.rstrip("/")
+            verify_link = f"{frontend_base_url}/verify-email?token={token}"
+
             background_tasks.add_task(
                 self.__email_service.send_email_verification, user.email, verify_link
             )
