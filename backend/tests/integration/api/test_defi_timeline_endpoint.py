@@ -6,14 +6,14 @@ import sqlalchemy
 from fastapi import status
 from httpx import AsyncClient
 
-from app.core.database import engine
+from app.core.database import container
 from app.main import app
 from app.models.portfolio_snapshot import PortfolioSnapshot
 
 
 @pytest.mark.asyncio
 async def test_timeline_empty_result(db_session):
-    print("SQLAlchemy engine URL:", str(engine.url))
+    print("SQLAlchemy engine URL:", str(container.db.engine.url))
     await db_session.execute(sqlalchemy.delete(PortfolioSnapshot))
     await db_session.commit()
     transport = httpx.ASGITransport(app=app)

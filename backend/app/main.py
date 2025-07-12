@@ -2,34 +2,39 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import IntegrityError  # local import
 
-from app.api.api import api_router
+from app.api.api import create_api_router
 from app.core import error_handling
-from app.core.config import settings
 from app.core.init_db import init_db
 
 # --- New imports for structured logging & error handling ---
 from app.core.logging import setup_logging  # noqa: F401 – side-effect import
 from app.core.middleware import CorrelationIdMiddleware
+from app.core.services import ServiceContainer
 from app.utils import audit  # noqa: F401
 
+_default_container = ServiceContainer()
 
-def create_app() -> FastAPI:
+
+def create_app(container: ServiceContainer | None = None) -> FastAPI:
     """
     Create and configure the FastAPI application instance.
     Sets up CORS, database initialization, and API routers.
     Returns:
         FastAPI: The configured FastAPI app instance.
     """
+    cont = container or _default_container
+
     app = FastAPI(
-        title=settings.PROJECT_NAME,
-        version=settings.VERSION,
+        title=cont.settings.PROJECT_NAME,
+        version=cont.settings.VERSION,
         openapi_url="/openapi.json",
     )
+    cont.startup(app)
 
     # Set up CORS
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.BACKEND_CORS_ORIGINS,
+        allow_origins=cont.settings.BACKEND_CORS_ORIGINS,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -40,10 +45,12 @@ def create_app() -> FastAPI:
 
     # Register global exception handlers
     app.add_exception_handler(
-        Exception, error_handling.generic_exception_handler  # type: ignore[arg-type]
+        Exception,
+        error_handling.generic_exception_handler,  # type: ignore[arg-type]
     )
     app.add_exception_handler(
-        HTTPException, error_handling.http_exception_handler  # type: ignore[arg-type]
+        HTTPException,
+        error_handling.http_exception_handler,  # type: ignore[arg-type]
     )
     from fastapi.exceptions import RequestValidationError  # local import
 
@@ -53,7 +60,8 @@ def create_app() -> FastAPI:
     )
 
     app.add_exception_handler(
-        IntegrityError, error_handling.integrity_error_handler  # type: ignore[arg-type]
+        IntegrityError,
+        error_handling.integrity_error_handler,  # type: ignore[arg-type]
     )
 
     # Initialize database tables on startup
@@ -65,9 +73,14 @@ def create_app() -> FastAPI:
         """
         await init_db()
 
+    @app.on_event("shutdown")
+    async def on_shutdown() -> None:
+        cont.shutdown()
+
     # Import and include API routers
-    app.include_router(api_router)
+    app.include_router(cont.endpoints.api_router)
     return app
 
 
-app = create_app()
+container = _default_container
+app = create_app(container)

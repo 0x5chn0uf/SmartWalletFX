@@ -1,36 +1,16 @@
-from celery import Celery
-from celery.schedules import crontab
+"""Celery application instance relying on :class:`ServiceContainer`."""
 
-celery = Celery(
-    "SmartWalletFX",
-    broker="redis://localhost:6379/0",
-    backend="redis://localhost:6379/0",
-)
-celery.conf.timezone = "UTC"
+from app.core.services import ServiceContainer
 
-celery.conf.beat_schedule = {
-    "collect-snapshots-every-hours": {
-        "task": "app.tasks.snapshots.collect_portfolio_snapshots",
-        "schedule": crontab(hour="*", minute="0"),
-    },
-    # Daily automated database backup (Subtask 8.3)
-    "db-backup-daily": {
-        "task": "app.tasks.backups.create_backup_task",
-        # 02:00 UTC daily – override via settings.BACKUP_SCHEDULE_CRON in future
-        "schedule": crontab(hour=2, minute=0),
-    },
-    "jwt-rotation-beat": {
-        "task": "app.tasks.jwt_rotation.promote_and_retire_keys_task",
-        "schedule": crontab(minute="*/5"),  # Placeholder, will be replaced
-    },
-}
 
-import app.tasks.backups  # noqa: F401, E402
-import app.tasks.jwt_rotation  # noqa: F401, E402
-import app.tasks.snapshots  # noqa: F401, E402
-from app.core.config import settings  # noqa: F401, E402
+def create_celery(container: ServiceContainer | None = None):
+    """Return a Celery app configured from *container*."""
 
-# Update schedule from settings
-celery.conf.beat_schedule["jwt-rotation-beat"]["schedule"] = crontab(
-    *settings.JWT_ROTATION_SCHEDULE_CRON.split()
-)
+    cont = container or ServiceContainer()
+    app = cont.celery.app
+    # Expose container for tasks that need access to settings/database
+    app.service_container = cont  # type: ignore[attr-defined]
+    return app
+
+
+celery = create_celery()

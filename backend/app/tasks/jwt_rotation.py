@@ -12,7 +12,6 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from app.celery_app import celery
-from app.core.config import settings
 from app.utils.jwt_rotation import (
     Key,
     KeySet,
@@ -44,7 +43,7 @@ try:
     )
     _CACHE_INVALIDATION_C = Counter(
         "jwt_jwks_cache_invalidations_total",
-        "Number of times the JWKS cache has been invalidated during key rotation.",
+        "Number of times the JWKS cache has been invalidated during key" " rotation.",
     )
     _CACHE_INVALIDATION_ERROR_C = Counter(
         "jwt_jwks_cache_invalidation_errors_total",
@@ -92,7 +91,7 @@ def _gather_current_key_set() -> KeySet:
     keys: dict[str, Key] = {}
 
     # 1. In-memory map from settings
-    for kid, val in settings.JWT_KEYS.items():
+    for kid, val in celery.service_container.settings.JWT_KEYS.items():
         retired_at = jwt_utils._RETIRED_KEYS.get(
             kid
         )  # pylint: disable=protected-access
@@ -101,15 +100,17 @@ def _gather_current_key_set() -> KeySet:
     # 2. Derive *next_kid* naively: first non-active key in insertion order.
     next_kid: Optional[str] = None
     for kid in keys:
-        if kid != settings.ACTIVE_JWT_KID:
+        if kid != celery.service_container.settings.ACTIVE_JWT_KID:
             next_kid = kid
             break
 
     return KeySet(
         keys=keys,
-        active_kid=settings.ACTIVE_JWT_KID,
+        active_kid=celery.service_container.settings.ACTIVE_JWT_KID,
         next_kid=next_kid,
-        grace_period_seconds=settings.JWT_ROTATION_GRACE_PERIOD_SECONDS,
+        grace_period_seconds=(
+            celery.service_container.settings.JWT_ROTATION_GRACE_PERIOD_SECONDS
+        ),
     )
 
 
@@ -126,9 +127,13 @@ def _apply_key_set_update(update: KeySetUpdate) -> None:
 
     # Promote new active key
     if update.new_active_kid:
-        old_kid = settings.ACTIVE_JWT_KID
-        settings.ACTIVE_JWT_KID = update.new_active_kid
-        Audit.info("JWT key promoted", new_kid=update.new_active_kid, old_kid=old_kid)
+        old_kid = celery.service_container.settings.ACTIVE_JWT_KID
+        celery.service_container.settings.ACTIVE_JWT_KID = update.new_active_kid
+        Audit.info(
+            "JWT key promoted",
+            new_kid=update.new_active_kid,
+            old_kid=old_kid,
+        )
         METRICS["promote"].inc()
 
     # Retire keys
@@ -165,7 +170,9 @@ def _build_redis_client():  # pragma: no cover – isolation for patching
         Redis,  # imported lazily to avoid heavy dep at import
     )
 
-    redis_url = settings.REDIS_URL or "redis://localhost:6379/0"
+    redis_url = (
+        celery.service_container.settings.REDIS_URL or "redis://localhost:6379/0"
+    )
     return Redis.from_url(redis_url)
 
 
@@ -178,7 +185,8 @@ def _build_redis_client():  # pragma: no cover – isolation for patching
 def promote_and_retire_keys_task(self):  # noqa: D401 – Celery signature
     """Automated promotion & retirement of JWT signing keys.
 
-    1. Acquire a Redis-based distributed lock to ensure single-worker execution.
+    1. Acquire a Redis-based distributed lock to ensure single-worker
+       execution.
     2. Load the current key-set state.
     3. Run the *pure* decision function to determine required changes.
     4. Apply changes (promotion / retirement) and emit audit logs + metrics.
@@ -191,7 +199,7 @@ def promote_and_retire_keys_task(self):  # noqa: D401 – Celery signature
             async with acquire_lock(
                 redis,
                 "jwt_key_rotation",
-                timeout=settings.JWT_ROTATION_LOCK_TTL_SEC,
+                timeout=celery.service_container.settings.JWT_ROTATION_LOCK_TTL_SEC,
             ) as got_lock:
                 if not got_lock:
                     Audit.debug("JWT key rotation: lock not acquired – skipping run.")
@@ -214,5 +222,6 @@ def promote_and_retire_keys_task(self):  # noqa: D401 – Celery signature
         Audit.error("JWT key rotation failed", error=str(exc))
         METRICS["error"].inc()
         # Exponential back-off: double countdown each retry up to 1h.
-        retry_delay = min(60 * 60, (self.request.retries + 1) * 60)  # 1m,2m,...,60m
+        retry_delay = min(60 * 60, (self.request.retries + 1) * 60)
+        # 1m,2m,...,60m
         raise self.retry(exc=exc, countdown=retry_delay)

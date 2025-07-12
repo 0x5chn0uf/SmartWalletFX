@@ -6,11 +6,9 @@ from pathlib import Path
 from typing import List
 
 from celery import shared_task
-from celery.schedules import (  # noqa: F401  # used by Celery beat when inspecting task
-    crontab,
-)
+from celery.schedules import crontab  # noqa: F401 – used by Celery beat
 
-from app.core.config import settings
+from app.celery_app import celery
 from app.utils.db_backup import (  # noqa: E501 – heavy logic lives in utils module
     create_dump,
     restore_dump,
@@ -26,7 +24,8 @@ def create_backup_task() -> str:
     workflows (or simple .delay().get()) can reference the artifact.
     """
 
-    output_dir = Path(settings.BACKUP_DIR)
+    container = celery.service_container
+    output_dir = Path(container.settings.BACKUP_DIR)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Use UTC timestamp to ensure deterministic filenames across nodes.
@@ -71,7 +70,11 @@ def restore_from_upload_task(temp_file_path: str) -> str:
         return f"Database restored successfully from {temp_file_path}"
 
     except Exception as exc:  # pragma: no cover
-        Audit.error("DB restore failed", dump_path=temp_file_path, error=str(exc))
+        Audit.error(
+            "DB restore failed",
+            dump_path=temp_file_path,
+            error=str(exc),
+        )
         raise exc
     finally:
         # Clean up the temporary file
@@ -99,17 +102,20 @@ def _list_expired_dumps(directory: Path, days: int) -> List[Path]:
 def purge_old_backups_task() -> int:
     """Delete dumps older than *BACKUP_RETENTION_DAYS* and return count."""
 
-    output_dir = Path(settings.BACKUP_DIR)
+    container = celery.service_container
+    output_dir = Path(container.settings.BACKUP_DIR)
     if not output_dir.exists():
         return 0
 
-    expired = _list_expired_dumps(output_dir, settings.BACKUP_RETENTION_DAYS)
+    expired = _list_expired_dumps(output_dir, container.settings.BACKUP_RETENTION_DAYS)
     for file_path in expired:
         try:
             file_path.unlink(missing_ok=True)
             Audit.info("DB backup purged", dump_path=str(file_path))
         except Exception as exc:  # pragma: no cover
             Audit.error(
-                "DB backup purge failed", dump_path=str(file_path), error=str(exc)
+                "DB backup purge failed",
+                dump_path=str(file_path),
+                error=str(exc),
             )
     return len(expired)

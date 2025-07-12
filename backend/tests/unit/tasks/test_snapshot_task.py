@@ -51,7 +51,10 @@ async def test_collect_portfolio_snapshots_success(monkeypatch):
     assert len(fake_session.query(Wallet).all()) == 2
 
     # Patch get_session_sync to return our fake session
-    monkeypatch.setattr("app.tasks.snapshots.get_session_sync", lambda: fake_session)
+    monkeypatch.setattr(
+        "app.tasks.snapshots.get_session_sync",
+        lambda *_, **__: fake_session,
+    )
 
     # Patch the SnapshotAggregationService to a lightweight stub
     class _FakeService:
@@ -109,7 +112,10 @@ async def test_collect_portfolio_snapshots_mixed_success_error(monkeypatch):
             self.closed = True
 
     fake_session = _FakeSession()
-    monkeypatch.setattr("app.tasks.snapshots.get_session_sync", lambda: fake_session)
+    monkeypatch.setattr(
+        "app.tasks.snapshots.get_session_sync",
+        lambda *_, **__: fake_session,
+    )
 
     # Service stub that raises on second call
     class _FakeServiceWithError:

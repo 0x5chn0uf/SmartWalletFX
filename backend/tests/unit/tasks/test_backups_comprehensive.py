@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from app.celery_app import celery
 from app.tasks.backups import (
     _list_expired_dumps,
     create_backup_task,
@@ -21,15 +22,16 @@ class TestCreateBackupTask:
         self.test_output_dir = Path("/tmp/backups")
         self.test_dump_path = Path("/tmp/backups/scheduled-20241201120000.sql.gz")
 
-    @patch("app.tasks.backups.settings")
     @patch("app.tasks.backups.create_dump")
     @patch("app.tasks.backups.Audit.info")
     @patch("app.tasks.backups.purge_old_backups_task")
     def test_create_backup_task_success(
-        self, mock_purge_task, mock_audit, mock_create_dump, mock_settings
+        self, mock_purge_task, mock_audit, mock_create_dump
     ):
         """Test successful backup task execution."""
-        mock_settings.BACKUP_DIR = "/tmp/backups"
+        from app.tasks import backups
+
+        celery.service_container.settings.BACKUP_DIR = "/tmp/backups"
         mock_create_dump.return_value = self.test_dump_path
 
         with patch.object(Path, "mkdir") as mock_mkdir:
@@ -45,15 +47,16 @@ class TestCreateBackupTask:
         )
         mock_purge_task.delay.assert_called_once()
 
-    @patch("app.tasks.backups.settings")
     @patch("app.tasks.backups.create_dump")
     @patch("app.tasks.backups.Audit.info")
     @patch("app.tasks.backups.purge_old_backups_task")
     def test_create_backup_task_creates_output_directory(
-        self, mock_purge_task, mock_audit, mock_create_dump, mock_settings
+        self, mock_purge_task, mock_audit, mock_create_dump
     ):
         """Test that backup task creates output directory."""
-        mock_settings.BACKUP_DIR = "/tmp/backups"
+        from app.tasks import backups
+
+        celery.service_container.settings.BACKUP_DIR = "/tmp/backups"
         mock_create_dump.return_value = self.test_dump_path
 
         with patch.object(Path, "mkdir") as mock_mkdir:
@@ -61,15 +64,16 @@ class TestCreateBackupTask:
 
         mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
 
-    @patch("app.tasks.backups.settings")
     @patch("app.tasks.backups.create_dump")
     @patch("app.tasks.backups.Audit.info")
     @patch("app.tasks.backups.purge_old_backups_task")
     def test_create_backup_task_uses_utc_timestamp(
-        self, mock_purge_task, mock_audit, mock_create_dump, mock_settings
+        self, mock_purge_task, mock_audit, mock_create_dump
     ):
         """Test that backup task uses UTC timestamp for label."""
-        mock_settings.BACKUP_DIR = "/tmp/backups"
+        from app.tasks import backups
+
+        celery.service_container.settings.BACKUP_DIR = "/tmp/backups"
         mock_create_dump.return_value = self.test_dump_path
 
         with patch("app.tasks.backups.datetime") as mock_datetime:
@@ -84,15 +88,16 @@ class TestCreateBackupTask:
         call_args = mock_create_dump.call_args[1]
         assert call_args["label"] == "scheduled-20241201120000"
 
-    @patch("app.tasks.backups.settings")
     @patch("app.tasks.backups.create_dump")
     @patch("app.tasks.backups.Audit.error")
     @patch("app.tasks.backups.purge_old_backups_task")
     def test_create_backup_task_failure(
-        self, mock_purge_task, mock_audit, mock_create_dump, mock_settings
+        self, mock_purge_task, mock_audit, mock_create_dump
     ):
         """Test backup task failure handling."""
-        mock_settings.BACKUP_DIR = "/tmp/backups"
+        from app.tasks import backups
+
+        celery.service_container.settings.BACKUP_DIR = "/tmp/backups"
         test_exception = Exception("Backup failed")
         mock_create_dump.side_effect = test_exception
 
@@ -107,15 +112,16 @@ class TestCreateBackupTask:
         # Should not trigger purge task on failure
         mock_purge_task.delay.assert_not_called()
 
-    @patch("app.tasks.backups.settings")
     @patch("app.tasks.backups.create_dump")
     @patch("app.tasks.backups.Audit.error")
     @patch("app.tasks.backups.purge_old_backups_task")
     def test_create_backup_task_failure_audit_includes_label(
-        self, mock_purge_task, mock_audit, mock_create_dump, mock_settings
+        self, mock_purge_task, mock_audit, mock_create_dump
     ):
         """Test that failure audit includes the label."""
-        mock_settings.BACKUP_DIR = "/tmp/backups"
+        from app.tasks import backups
+
+        celery.service_container.settings.BACKUP_DIR = "/tmp/backups"
         mock_create_dump.side_effect = Exception("Backup failed")
 
         with patch("app.tasks.backups.datetime") as mock_datetime:
@@ -260,12 +266,13 @@ class TestPurgeOldBackupsTask:
         """Set up test fixtures."""
         self.test_output_dir = Path("/tmp/backups")
 
-    @patch("app.tasks.backups.settings")
     @patch("app.tasks.backups.Audit.info")
-    def test_purge_old_backups_task_success(self, mock_audit, mock_settings):
+    def test_purge_old_backups_task_success(self, mock_audit):
         """Test successful purge task execution."""
-        mock_settings.BACKUP_DIR = "/tmp/backups"
-        mock_settings.BACKUP_RETENTION_DAYS = 7
+        from app.tasks import backups
+
+        celery.service_container.settings.BACKUP_DIR = "/tmp/backups"
+        celery.service_container.settings.BACKUP_RETENTION_DAYS = 7
 
         # Mock expired files
         expired_files = [
@@ -285,13 +292,12 @@ class TestPurgeOldBackupsTask:
         mock_audit.assert_any_call("DB backup purged", dump_path=str(expired_files[0]))
         mock_audit.assert_any_call("DB backup purged", dump_path=str(expired_files[1]))
 
-    @patch("app.tasks.backups.settings")
     @patch("app.tasks.backups.Audit.info")
-    def test_purge_old_backups_task_directory_not_exists(
-        self, mock_audit, mock_settings
-    ):
+    def test_purge_old_backups_task_directory_not_exists(self, mock_audit):
         """Test purge task when backup directory doesn't exist."""
-        mock_settings.BACKUP_DIR = "/tmp/backups"
+        from app.tasks import backups
+
+        celery.service_container.settings.BACKUP_DIR = "/tmp/backups"
 
         with patch.object(Path, "exists", return_value=False):
             result = purge_old_backups_task()
@@ -299,12 +305,13 @@ class TestPurgeOldBackupsTask:
         assert result == 0
         mock_audit.assert_not_called()
 
-    @patch("app.tasks.backups.settings")
     @patch("app.tasks.backups.Audit.info")
-    def test_purge_old_backups_task_no_expired_files(self, mock_audit, mock_settings):
+    def test_purge_old_backups_task_no_expired_files(self, mock_audit):
         """Test purge task when no files are expired."""
-        mock_settings.BACKUP_DIR = "/tmp/backups"
-        mock_settings.BACKUP_RETENTION_DAYS = 7
+        from app.tasks import backups
+
+        celery.service_container.settings.BACKUP_DIR = "/tmp/backups"
+        celery.service_container.settings.BACKUP_RETENTION_DAYS = 7
 
         with patch.object(Path, "exists", return_value=True):
             with patch("app.tasks.backups._list_expired_dumps", return_value=[]):
@@ -313,12 +320,13 @@ class TestPurgeOldBackupsTask:
         assert result == 0
         mock_audit.assert_not_called()
 
-    @patch("app.tasks.backups.settings")
     @patch("app.tasks.backups.Audit.error")
-    def test_purge_old_backups_task_deletion_failure(self, mock_audit, mock_settings):
+    def test_purge_old_backups_task_deletion_failure(self, mock_audit):
         """Test purge task when file deletion fails."""
-        mock_settings.BACKUP_DIR = "/tmp/backups"
-        mock_settings.BACKUP_RETENTION_DAYS = 7
+        from app.tasks import backups
+
+        celery.service_container.settings.BACKUP_DIR = "/tmp/backups"
+        celery.service_container.settings.BACKUP_RETENTION_DAYS = 7
 
         expired_files = [Path("/tmp/backups/old1.sql.gz")]
 
@@ -338,14 +346,13 @@ class TestPurgeOldBackupsTask:
             error="Permission denied",
         )
 
-    @patch("app.tasks.backups.settings")
     @patch("app.tasks.backups.Audit.error")
-    def test_purge_old_backups_task_mixed_success_failure(
-        self, mock_audit, mock_settings
-    ):
+    def test_purge_old_backups_task_mixed_success_failure(self, mock_audit):
         """Test purge task with mixed success and failure."""
-        mock_settings.BACKUP_DIR = "/tmp/backups"
-        mock_settings.BACKUP_RETENTION_DAYS = 7
+        from app.tasks import backups
+
+        celery.service_container.settings.BACKUP_DIR = "/tmp/backups"
+        celery.service_container.settings.BACKUP_RETENTION_DAYS = 7
 
         expired_files = [
             Path("/tmp/backups/old1.sql.gz"),
@@ -370,12 +377,13 @@ class TestPurgeOldBackupsTask:
             error="Permission denied",
         )
 
-    @patch("app.tasks.backups.settings")
     @patch("app.tasks.backups.Audit.info")
-    def test_purge_old_backups_task_uses_missing_ok(self, mock_audit, mock_settings):
+    def test_purge_old_backups_task_uses_missing_ok(self, mock_audit):
         """Test that unlink is called with missing_ok=True."""
-        mock_settings.BACKUP_DIR = "/tmp/backups"
-        mock_settings.BACKUP_RETENTION_DAYS = 7
+        from app.tasks import backups
+
+        celery.service_container.settings.BACKUP_DIR = "/tmp/backups"
+        celery.service_container.settings.BACKUP_RETENTION_DAYS = 7
 
         expired_files = [Path("/tmp/backups/old1.sql.gz")]
 

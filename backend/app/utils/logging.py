@@ -16,10 +16,17 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
-from app.schemas.audit_log import AuditEventBase
-from app.utils.audit import validate_audit_event
 
-_AUDIT_LOGGER = logging.getLogger("audit")
+from app.schemas.audit_log import AuditEventBase
+
+
+def validate_audit_event(event: dict[str, Any]) -> None:
+    """Delegate to :func:`app.utils.audit.validate_audit_event` lazily."""
+
+    from app.utils.audit import validate_audit_event as _validate
+
+    _validate(event)
+
 
 
 class _ColoredAuditFormatter(logging.Formatter):
@@ -69,49 +76,47 @@ class _ColoredAuditFormatter(logging.Formatter):
         return f"{level_part}{route_part}: {record.getMessage()}"
 
 
-# Attach handler only once (avoids duplicate logs under Uvicorn workers)
-if not _AUDIT_LOGGER.handlers:
-    _handler = logging.StreamHandler(sys.stdout)
-    _handler.setFormatter(_ColoredAuditFormatter())
-    _AUDIT_LOGGER.addHandler(_handler)
-    _AUDIT_LOGGER.setLevel(logging.INFO)
-    # Prevent double logging via root handlers
-    _AUDIT_LOGGER.propagate = False
+class LoggingService:
+    """Manage audit logging configuration and helpers."""
 
+    def __init__(self, *, logger_name: str = "audit") -> None:
+        self._logger = logging.getLogger(logger_name)
+        if not self._logger.handlers:
+            handler = logging.StreamHandler(sys.stdout)
+            handler.setFormatter(_ColoredAuditFormatter())
+            self._logger.addHandler(handler)
+            self._logger.setLevel(logging.INFO)
+            self._logger.propagate = False
 
-class Audit:  # noqa: D101 – thin convenience facade
+    # ------------------------------------------------------------------
+    # Helper methods
+    # ------------------------------------------------------------------
     @staticmethod
     def _json_safe(obj):
-        """Recursively convert UUID and datetime objects
-        in a dict/list to strings for JSON serialization."""
+        """Recursively convert UUID and datetime objects in ``obj`` to strings."""
+
         if isinstance(obj, dict):
-            return {k: Audit._json_safe(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [Audit._json_safe(v) for v in obj]
-        elif isinstance(obj, uuid.UUID):
+            return {k: LoggingService._json_safe(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [LoggingService._json_safe(v) for v in obj]
+        if isinstance(obj, uuid.UUID):
             return str(obj)
-        elif isinstance(obj, datetime):
+        if isinstance(obj, datetime):
             return obj.isoformat()
-        else:
-            # Fallback to string representation for any non-serialisable types
-            try:
-                json.dumps(obj)  # type: ignore[arg-type]
-                return obj
-            except TypeError:
-                return str(obj)
+        try:
+            json.dumps(obj)  # type: ignore[arg-type]
+            return obj
+        except TypeError:
+            return str(obj)
 
-    @staticmethod
-    def log_structured_audit_event(event: AuditEventBase) -> None:
-        """Emit a structured audit log from a Pydantic model.
+    # ------------------------------------------------------------------
+    # Structured audit logging
+    # ------------------------------------------------------------------
+    def log_structured_audit_event(self, event: AuditEventBase) -> None:
+        """Emit a structured audit log from a Pydantic model."""
 
-        Args:
-            event: A Pydantic model instance inheriting from AuditEventBase.
-        """
-        # by_alias=True ensures model fields with aliases (like sha256) are
-        # serialised with their alias name.
         payload = event.model_dump(by_alias=True)
 
-        # Add trace_id from context if available and not already set
         try:
             from structlog.contextvars import get_contextvars
 
@@ -121,28 +126,20 @@ class Audit:  # noqa: D101 – thin convenience facade
         except Exception:  # pragma: no cover
             pass
 
-        _AUDIT_LOGGER.info(json.dumps(payload, default=str, separators=(",", ":")))
+        self._logger.info(
+            json.dumps(payload, default=str, separators=(",", ":"))
+        )
 
-        # Validation is implicitly handled by Pydantic model creation before this
-        # function is called, but we run the validator anyway to respect the
-        # AUDIT_VALIDATION=[hard|warn|off] modes.
         try:
             validate_audit_event(payload)
         except Exception:
-            # Re-raise to surface errors in *hard* mode; in *warn/off* the helper
-            # already handled warning emission or silent discard.
             raise
 
-    @staticmethod
-    def audit(event: str, *, level: str = "INFO", **extra: Any) -> None:
-        """Emit an *audit* log entry.
-
-        Args:
-            event: Event name, e.g. ``user_login_success``.
-            level: Logging level – one of "DEBUG", "INFO", "WARNING", "ERROR",
-                "CRITICAL".
-            **extra: Arbitrary key/value metadata to include in the log record.
-        """
+    # ------------------------------------------------------------------
+    # Convenience helpers
+    # ------------------------------------------------------------------
+    def audit(self, event: str, *, level: str = "INFO", **extra: Any) -> None:
+        """Emit an audit log entry."""
 
         route = None
         try:
@@ -150,10 +147,8 @@ class Audit:  # noqa: D101 – thin convenience facade
             stack = inspect.stack()[1:]
             for frame_info in stack:
                 path = frame_info.filename.replace("\\", "/")
-                # Skip internal helper frames (this module)
                 if path == current_file:
                     continue
-                # Build relative path starting at app/
                 app_idx = path.rfind("app/")
                 rel_path = path[app_idx:] if app_idx != -1 else path
                 route = f"{rel_path}:{frame_info.function}"
@@ -176,14 +171,13 @@ class Audit:  # noqa: D101 – thin convenience facade
         except Exception:  # pragma: no cover – structlog may not be configured
             pass
 
-        # Prepare visual representation without noisy meta fields
         printable = payload.copy()
         printable.pop("id", None)
         printable.pop("timestamp", None)
 
-        log_method = getattr(_AUDIT_LOGGER, level.lower(), _AUDIT_LOGGER.info)
+        log_method = getattr(self._logger, level.lower(), self._logger.info)
         log_method(
-            json.dumps(Audit._json_safe(printable), separators=(",", ":")),
+            json.dumps(LoggingService._json_safe(printable), separators=(",", ":")),
             extra={"route": route} if route else None,
         )
 
@@ -192,22 +186,53 @@ class Audit:  # noqa: D101 – thin convenience facade
         except Exception:
             raise
 
+    def info(self, message: str, **extra: Any) -> None:  # noqa: D401
+        self.audit(message, level="INFO", **extra)
+
+    def debug(self, message: str, **extra: Any) -> None:  # noqa: D401
+        self.audit(message, level="DEBUG", **extra)
+
+    def warning(self, message: str, **extra: Any) -> None:  # noqa: D401
+        self.audit(message, level="WARNING", **extra)
+
+    def error(self, message: str, **extra: Any) -> None:  # noqa: D401
+        self.audit(message, level="ERROR", **extra)
+
+    def critical(self, message: str, **extra: Any) -> None:  # noqa: D401
+        self.audit(message, level="CRITICAL", **extra)
+
+
+# Default logging service and backwards compatibility helpers ------------
+logging_service = LoggingService()
+_AUDIT_LOGGER = logging_service._logger
+
+
+class Audit:  # noqa: D101 – thin convenience facade
+    @staticmethod
+    def log_structured_audit_event(event: AuditEventBase) -> None:
+        logging_service.log_structured_audit_event(event)
+
+    @staticmethod
+    def audit(event: str, *, level: str = "INFO", **extra: Any) -> None:
+        logging_service.audit(event, level=level, **extra)
+
     @staticmethod
     def info(message: str, **extra: Any) -> None:  # noqa: D401
-        Audit.audit(message, level="INFO", **extra)
+        logging_service.info(message, **extra)
 
     @staticmethod
     def debug(message: str, **extra: Any) -> None:  # noqa: D401
-        Audit.audit(message, level="DEBUG", **extra)
+        logging_service.debug(message, **extra)
 
     @staticmethod
     def warning(message: str, **extra: Any) -> None:  # noqa: D401
-        Audit.audit(message, level="WARNING", **extra)
+        logging_service.warning(message, **extra)
 
     @staticmethod
     def error(message: str, **extra: Any) -> None:  # noqa: D401
-        Audit.audit(message, level="ERROR", **extra)
+        logging_service.error(message, **extra)
 
     @staticmethod
     def critical(message: str, **extra: Any) -> None:  # noqa: D401
-        Audit.audit(message, level="CRITICAL", **extra)
+        logging_service.critical(message, **extra)
+

@@ -5,6 +5,7 @@ import pytest
 from fastapi import BackgroundTasks, HTTPException
 
 from app.api.endpoints import password_reset as ep
+from app.core.services import ServiceContainer
 from app.schemas.password_reset import (
     PasswordResetComplete,
     PasswordResetRequest,
@@ -16,8 +17,14 @@ from app.schemas.password_reset import (
 async def test_request_password_reset_rate_limited(monkeypatch):
     monkeypatch.setattr(ep.reset_rate_limiter, "allow", lambda _: False)
     payload = PasswordResetRequest(email="foo@example.com")
+    cont = ServiceContainer(load_celery=False)
+    ep.get_router(cont)
     with pytest.raises(HTTPException) as exc:
-        await ep.request_password_reset(payload, BackgroundTasks(), db=AsyncMock())
+        await ep.PasswordResetView.request_password_reset(
+            payload,
+            BackgroundTasks(),
+            db=AsyncMock(),
+        )
     assert exc.value.status_code == 429
 
 
@@ -27,7 +34,9 @@ async def test_request_password_reset_unknown_email(monkeypatch):
     mock_repo = AsyncMock()
     mock_repo.get_by_email.return_value = None
     monkeypatch.setattr(ep, "UserRepository", lambda _: mock_repo)
-    resp = await ep.request_password_reset(
+    cont = ServiceContainer(load_celery=False)
+    ep.get_router(cont)
+    resp = await ep.PasswordResetView.request_password_reset(
         PasswordResetRequest(email="nobody@example.com"),
         BackgroundTasks(),
         db=AsyncMock(),
@@ -46,7 +55,6 @@ async def test_request_password_reset_email_failure(monkeypatch):
     monkeypatch.setattr(
         ep, "generate_token", lambda: ("tok", "hash", datetime.now(timezone.utc))
     )
-
     monkeypatch.setattr(ep, "EmailService", lambda: AsyncMock())
     tasks = BackgroundTasks()
 
@@ -54,10 +62,13 @@ async def test_request_password_reset_email_failure(monkeypatch):
         raise Exception("boom")
 
     monkeypatch.setattr(tasks, "add_task", boom)
-
+    cont = ServiceContainer(load_celery=False)
+    ep.get_router(cont)
     with pytest.raises(HTTPException) as exc:
-        await ep.request_password_reset(
-            PasswordResetRequest(email="e@example.com"), tasks, db=AsyncMock()
+        await ep.PasswordResetView.request_password_reset(
+            PasswordResetRequest(email="e@example.com"),
+            tasks,
+            db=AsyncMock(),
         )
     assert exc.value.status_code == 500
 
@@ -74,16 +85,18 @@ async def test_request_password_reset_success(monkeypatch):
     monkeypatch.setattr(
         ep, "generate_token", lambda: ("tok", "hash", datetime.now(timezone.utc))
     )
-
     service = AsyncMock()
     monkeypatch.setattr(ep, "EmailService", lambda: service)
-
     tasks = BackgroundTasks()
-    resp = await ep.request_password_reset(
-        PasswordResetRequest(email=user.email), tasks, db=AsyncMock()
+    cont = ServiceContainer(load_celery=False)
+    ep.get_router(cont)
+    resp = await ep.PasswordResetView.request_password_reset(
+        PasswordResetRequest(email=user.email),
+        tasks,
+        db=AsyncMock(),
     )
     assert isinstance(resp, ep.Response)
-    service.send_password_reset.assert_not_called()  # added as background task
+    service.send_password_reset.assert_not_called()
     assert tasks.tasks
 
 
@@ -92,8 +105,11 @@ async def test_verify_reset_token(monkeypatch):
     repo = AsyncMock()
     repo.get_valid.return_value = object()
     monkeypatch.setattr(ep, "PasswordResetRepository", lambda _: repo)
-    res = await ep.verify_reset_token(
-        PasswordResetVerify(token="tok1234567"), db=AsyncMock()
+    cont = ServiceContainer(load_celery=False)
+    ep.get_router(cont)
+    res = await ep.PasswordResetView.verify_reset_token(
+        PasswordResetVerify(token="tok1234567"),
+        db=AsyncMock(),
     )
     assert res == {"valid": True}
 
@@ -103,8 +119,11 @@ async def test_verify_reset_token_invalid(monkeypatch):
     repo = AsyncMock()
     repo.get_valid.return_value = None
     monkeypatch.setattr(ep, "PasswordResetRepository", lambda _: repo)
-    res = await ep.verify_reset_token(
-        PasswordResetVerify(token="tok1234567"), db=AsyncMock()
+    cont = ServiceContainer(load_celery=False)
+    ep.get_router(cont)
+    res = await ep.PasswordResetView.verify_reset_token(
+        PasswordResetVerify(token="tok1234567"),
+        db=AsyncMock(),
     )
     assert res == {"valid": False}
 
@@ -114,8 +133,10 @@ async def test_reset_password_invalid_token(monkeypatch):
     repo = AsyncMock()
     repo.get_valid.return_value = None
     monkeypatch.setattr(ep, "PasswordResetRepository", lambda _: repo)
+    cont = ServiceContainer(load_celery=False)
+    ep.get_router(cont)
     with pytest.raises(HTTPException):
-        await ep.reset_password(
+        await ep.PasswordResetView.reset_password(
             PasswordResetComplete(token="badtoken12", password="Validpass1"),
             db=AsyncMock(),
         )
@@ -130,8 +151,10 @@ async def test_reset_password_user_not_found(monkeypatch):
     user_repo = AsyncMock()
     user_repo.get_by_id.return_value = None
     monkeypatch.setattr(ep, "UserRepository", lambda _: user_repo)
+    cont = ServiceContainer(load_celery=False)
+    ep.get_router(cont)
     with pytest.raises(HTTPException):
-        await ep.reset_password(
+        await ep.PasswordResetView.reset_password(
             PasswordResetComplete(token="tok1234567", password="Validpass1"),
             db=AsyncMock(),
         )
@@ -151,8 +174,11 @@ async def test_reset_password_success(monkeypatch):
         "app.utils.security.PasswordHasher.hash_password", lambda pw: "hash"
     )
     db = AsyncMock()
-    res = await ep.reset_password(
-        PasswordResetComplete(token="tok1234567", password="Validpass1"), db=db
+    cont = ServiceContainer(load_celery=False)
+    ep.get_router(cont)
+    res = await ep.PasswordResetView.reset_password(
+        PasswordResetComplete(token="tok1234567", password="Validpass1"),
+        db=db,
     )
     assert res == {"status": "success"}
     db.commit.assert_awaited()

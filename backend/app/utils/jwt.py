@@ -1,8 +1,7 @@
-"""
-JWT utility helpers leveraging python-jose.
-"""
+"""JWT utility helpers leveraging python-jose."""
 from __future__ import annotations
 
+import threading
 import uuid
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
@@ -11,104 +10,90 @@ from typing import Any, Dict
 from jose import ExpiredSignatureError, JWTError, jwt
 from pydantic import ValidationError
 
-from app.core.config import settings
+from app.core.config import Settings, settings
 from app.schemas.jwt import JWTPayload
 from app.utils.logging import Audit
 
-# ---------------------------------------------------------------------------
-# Key-rotation support
-# ---------------------------------------------------------------------------
 
-# Retired keys → expiry timestamp (UTC).  Tokens signed with these keys remain
-# valid until *retire_at* then are rejected.
-_RETIRED_KEYS: dict[str, datetime] = {}
+class JWTService:
+    """Encapsulate JWT creation and verification logic."""
 
+    def __init__(self, settings: Settings) -> None:
+        self._settings = settings
+        self._lock = threading.Lock()
+        self._retired_keys: dict[str, datetime] = {}
 
-def _now_utc() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def rotate_signing_key(new_kid: str, new_signing_key: str) -> None:
-    """Rotate the active signing key.
-
-    This helper updates *settings* in-memory configuration so that subsequent
-    token issuance uses *new_kid*.  The previous active key is preserved in
-    ``settings.JWT_KEYS`` for a grace-period (configured by
-    ``settings.JWT_ROTATION_GRACE_PERIOD_SECONDS``) and then considered
-    retired/untrusted.
-    """
-
-    # Ensure key map exists
-    if settings.JWT_KEYS is None:
-        settings.JWT_KEYS = {}
-
-    old_kid = settings.ACTIVE_JWT_KID
-    # Add/overwrite new key in map and switch active kid
-    settings.JWT_KEYS[new_kid] = new_signing_key
-    settings.ACTIVE_JWT_KID = new_kid
-
-    # Schedule retirement for old kid (unless same)
-    if old_kid and old_kid != new_kid and old_kid in settings.JWT_KEYS:
-        retire_at = _now_utc() + timedelta(
-            seconds=settings.JWT_ROTATION_GRACE_PERIOD_SECONDS
-        )
-        _RETIRED_KEYS[old_kid] = retire_at
-
-    Audit.info(
-        "JWT_KEY_ROTATED",
-        new_kid=new_kid,
-        old_kid=old_kid,
-        grace_seconds=settings.JWT_ROTATION_GRACE_PERIOD_SECONDS,
-    )
-
-
-class JWTUtils:
-    """Helper class encapsulating JWT creation and decoding logic."""
-
+    # ------------------------------------------------------------------
+    # Key rotation
+    # ------------------------------------------------------------------
     @staticmethod
+    def _now_utc() -> datetime:
+        return datetime.now(timezone.utc)
+
+    def rotate_signing_key(self, new_kid: str, new_signing_key: str) -> None:
+        """Rotate active signing key and schedule retirement of the old one."""
+
+        if self._settings.JWT_KEYS is None:
+            self._settings.JWT_KEYS = {}
+
+        old_kid = self._settings.ACTIVE_JWT_KID
+        self._settings.JWT_KEYS[new_kid] = new_signing_key
+        self._settings.ACTIVE_JWT_KID = new_kid
+
+        if old_kid and old_kid != new_kid and old_kid in self._settings.JWT_KEYS:
+            retire_at = self._now_utc() + timedelta(
+                seconds=self._settings.JWT_ROTATION_GRACE_PERIOD_SECONDS
+            )
+            with self._lock:
+                self._retired_keys[old_kid] = retire_at
+
+        Audit.info(
+            "JWT_KEY_ROTATED",
+            new_kid=new_kid,
+            old_kid=old_kid,
+            grace_seconds=self._settings.JWT_ROTATION_GRACE_PERIOD_SECONDS,
+        )
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
     @lru_cache(maxsize=1)
-    def _get_sign_key() -> str | bytes:  # pragma: no cover
-        """Return the key used to sign tokens based on algorithm."""
-        alg = settings.JWT_ALGORITHM
+    def _get_sign_key(self) -> str | bytes:  # pragma: no cover
+        alg = self._settings.JWT_ALGORITHM
         if alg.startswith("HS"):
-            # Prefer key-map entry if configured (rotation support)
-            if settings.JWT_KEYS:
-                if settings.ACTIVE_JWT_KID not in settings.JWT_KEYS:
+            if self._settings.JWT_KEYS:
+                if self._settings.ACTIVE_JWT_KID not in self._settings.JWT_KEYS:
                     raise RuntimeError(
                         "ACTIVE_JWT_KID not found in JWT_KEYS – misconfiguration"
                     )
-                return _to_text(settings.JWT_KEYS[settings.ACTIVE_JWT_KID])
-
-            if not settings.JWT_SECRET_KEY:
+                return _to_text(self._settings.JWT_KEYS[self._settings.ACTIVE_JWT_KID])
+            if not self._settings.JWT_SECRET_KEY:
                 raise RuntimeError("JWT_SECRET_KEY must be set for HS* algorithms")
-            return _to_text(settings.JWT_SECRET_KEY)
+            return _to_text(self._settings.JWT_SECRET_KEY)
 
         if alg.startswith("RS"):
-            if not settings.JWT_PRIVATE_KEY_PATH:
+            if not self._settings.JWT_PRIVATE_KEY_PATH:
                 raise RuntimeError(
                     "JWT_PRIVATE_KEY_PATH must be set for RS* algorithms"
                 )
-            return JWTUtils._load_key(settings.JWT_PRIVATE_KEY_PATH)
+            return self._load_key(self._settings.JWT_PRIVATE_KEY_PATH)
         raise RuntimeError(f"Unsupported JWT_ALGORITHM: {alg}")
 
-    @staticmethod
     @lru_cache(maxsize=1)
-    def _get_verify_key() -> str | bytes:  # pragma: no cover
-        """Return the key used to verify tokens based on algorithm."""
-        alg = settings.JWT_ALGORITHM
+    def _get_verify_key(self) -> str | bytes:  # pragma: no cover
+        alg = self._settings.JWT_ALGORITHM
         if alg.startswith("HS"):
-            # Symmetric key – attempt lookup by kid
-            if settings.JWT_KEYS:
-                verify_key = settings.JWT_KEYS.get(
-                    settings.ACTIVE_JWT_KID, next(iter(settings.JWT_KEYS.values()))
+            if self._settings.JWT_KEYS:
+                verify_key = self._settings.JWT_KEYS.get(
+                    self._settings.ACTIVE_JWT_KID,
+                    next(iter(self._settings.JWT_KEYS.values())),
                 )
                 return _to_text(verify_key)
-            # Fall back: reuse signing key
-            return _to_text(JWTUtils._get_sign_key())
+            return _to_text(self._get_sign_key())
         if alg.startswith("RS"):
-            if not settings.JWT_PUBLIC_KEY_PATH:
+            if not self._settings.JWT_PUBLIC_KEY_PATH:
                 raise RuntimeError("JWT_PUBLIC_KEY_PATH must be set for RS* algorithms")
-            return JWTUtils._load_key(settings.JWT_PUBLIC_KEY_PATH)
+            return self._load_key(self._settings.JWT_PUBLIC_KEY_PATH)
         raise RuntimeError(f"Unsupported JWT_ALGORITHM: {alg}")
 
     @staticmethod
@@ -116,22 +101,23 @@ class JWTUtils:
         with open(path, "r", encoding="utf-8") as fh:
             return fh.read()
 
-    @staticmethod
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
     def create_access_token(
+        self,
         subject: str | int,
         *,
         expires_delta: timedelta | None = None,
         additional_claims: Dict[str, Any] | None = None,
     ) -> str:
-        # Ensure we always use the latest runtime configuration (tests often
-        # patch `settings.JWT_SECRET_KEY`/`JWT_ALGORITHM`).
-        # Clearing the cache on every call is inexpensive and
-        # prevents stale keys from being reused across test cases.
-        JWTUtils._get_sign_key.cache_clear()
-        JWTUtils._get_verify_key.cache_clear()
+        self._get_sign_key.cache_clear()
+        self._get_verify_key.cache_clear()
 
         if expires_delta is None:
-            expires_delta = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+            expires_delta = timedelta(
+                minutes=self._settings.ACCESS_TOKEN_EXPIRE_MINUTES
+            )
         now = datetime.now(timezone.utc)
         expire = now + expires_delta
         payload: Dict[str, Any] = {
@@ -143,17 +129,16 @@ class JWTUtils:
         }
         if additional_claims:
             payload.update(additional_claims)
-        headers = {"kid": settings.ACTIVE_JWT_KID}
-        sign_key = JWTUtils._get_sign_key()
+        headers = {"kid": self._settings.ACTIVE_JWT_KID}
+        sign_key = self._get_sign_key()
         try:
             token = jwt.encode(
                 payload,
                 sign_key,
-                algorithm=settings.JWT_ALGORITHM,
+                algorithm=self._settings.JWT_ALGORITHM,
                 headers=headers,
             )
         except JWTError:
-            # Retry with alternate representation if needed
             alt_key = (
                 sign_key.encode("latin-1")
                 if isinstance(sign_key, str)
@@ -162,22 +147,16 @@ class JWTUtils:
             token = jwt.encode(
                 payload,
                 alt_key,
-                algorithm=settings.JWT_ALGORITHM,
+                algorithm=self._settings.JWT_ALGORITHM,
                 headers=headers,
             )
         return token
 
-    @staticmethod
-    def create_refresh_token(subject: str | int) -> str:
-        # Ensure we always use the latest runtime configuration (tests often
-        # patch `settings.JWT_SECRET_KEY`/`JWT_ALGORITHM`).  Clearing the cache
-        # on every call is inexpensive and prevents stale keys from being
-        # reused across test cases.
-        JWTUtils._get_sign_key.cache_clear()
-        JWTUtils._get_verify_key.cache_clear()
-        """Create a refresh JWT using the default *REFRESH_TOKEN_EXPIRE_DAYS*."""
+    def create_refresh_token(self, subject: str | int) -> str:
+        self._get_sign_key.cache_clear()
+        self._get_verify_key.cache_clear()
 
-        expires_delta = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+        expires_delta = timedelta(days=self._settings.REFRESH_TOKEN_EXPIRE_DAYS)
         now = datetime.now(timezone.utc)
         expire = now + expires_delta
         jti = uuid.uuid4().hex
@@ -190,52 +169,32 @@ class JWTUtils:
         }
         token = jwt.encode(
             payload,
-            JWTUtils._get_sign_key(),
-            algorithm=settings.JWT_ALGORITHM,
+            self._get_sign_key(),
+            algorithm=self._settings.JWT_ALGORITHM,
         )
         return token
 
-    @staticmethod
-    def decode_token(token: str) -> Dict[str, Any]:
-        # Ensure we always use the latest runtime configuration (tests often
-        # patch `settings.JWT_SECRET_KEY`/`JWT_ALGORITHM`).  Clearing the cache
-        # on every call is inexpensive and prevents stale keys from being
-        # reused across test cases.
-        JWTUtils._get_sign_key.cache_clear()
-        JWTUtils._get_verify_key.cache_clear()
-        """Decode a JWT and validate its integrity.
+    def decode_token(self, token: str) -> Dict[str, Any]:
+        self._get_sign_key.cache_clear()
+        self._get_verify_key.cache_clear()
 
-        In a few situations (e.g. when an incorrect *options* dict is
-        accidentally supplied) python-jose can skip signature validation and
-        simply return the payload.  We explicitly set *verify_signature=True*
-        to guarantee tamper-detection.  We also perform a minimal sanity check
-        on required claims so that a token missing *sub* will never be treated
-        as valid.  Any failure propagates as *JWTError* subclasses which the
-        caller may handle.
-        """
-
-        # 1. Extract *kid* from unverified header so we can locate verification key.
         header = jwt.get_unverified_header(token)
         kid: str | None = header.get("kid") if isinstance(header, dict) else None
 
-        # Determine verification key
         verify_key = None
-
-        if kid and kid in settings.JWT_KEYS:
-            verify_key = settings.JWT_KEYS[kid]
+        if kid and kid in self._settings.JWT_KEYS:
+            verify_key = self._settings.JWT_KEYS[kid]
         else:
-            # Fallback to default single-key behaviour for backward compatibility
-            verify_key = JWTUtils._get_verify_key()
+            verify_key = self._get_verify_key()
 
-        # Reject tokens signed with retired keys after grace-period
-        if kid in _RETIRED_KEYS and _now_utc() > _RETIRED_KEYS[kid]:
+        if kid in self._retired_keys and self._now_utc() > self._retired_keys[kid]:
             raise ExpiredSignatureError("Token signed with retired key")
 
-        def _decode_with_key(key):
+        def _decode_with_key(key: str | bytes):
             return jwt.decode(
                 token,
                 _to_text(key),
-                algorithms=[settings.JWT_ALGORITHM],
+                algorithms=[self._settings.JWT_ALGORITHM],
                 options={
                     "verify_signature": True,
                     "verify_exp": True,
@@ -247,17 +206,12 @@ class JWTUtils:
 
         try:
             payload = _decode_with_key(verify_key)
-        except Exception as exc:
-            # If the failure is due to token expiry or other standard issues,
-            # propagate it immediately.  We only want to retry on key-format
-            # problems (e.g., JWKError about string/bytes).
+        except Exception as exc:  # noqa: BLE001
             if isinstance(exc, ExpiredSignatureError):
                 raise
             if not isinstance(exc, JWTError):
-                # Any other JWT-related error should bubble up.
                 raise
 
-            # Edge-case: retry with the alternate representation (bytes ↔ str).
             alt_key = None
             if isinstance(verify_key, bytes):
                 try:
@@ -270,11 +224,9 @@ class JWTUtils:
             if alt_key is not None:
                 try:
                     payload = _decode_with_key(alt_key)
-                except Exception as inner_exc:
+                except Exception as inner_exc:  # noqa: BLE001
                     if isinstance(inner_exc, ExpiredSignatureError):
                         raise
-                    # Final fallback – manual HMAC verification (handles rare
-                    # python-jose bug with specific secrets like 'Infinity').
                     try:
                         import base64
                         import json
@@ -285,26 +237,22 @@ class JWTUtils:
                         header_b64, payload_b64, signature_b64 = token.split(".")
                         signing_input = f"{header_b64}.{payload_b64}".encode()
                         signature = jose_utils.base64url_decode(signature_b64.encode())
-
                         key_obj = jose_jwk.construct(
-                            _to_text(verify_key), settings.JWT_ALGORITHM
+                            _to_text(verify_key), self._settings.JWT_ALGORITHM
                         )
                         if not key_obj.verify(signing_input, signature):
-                            raise inner_exc  # Signature invalid
-
+                            raise inner_exc
                         padded = payload_b64 + "=" * (-len(payload_b64) % 4)
                         payload = json.loads(base64.urlsafe_b64decode(padded))
-                        return payload  # Verified manually
+                        return payload
                     except Exception:
                         raise inner_exc
             else:
                 raise exc
 
-        # Basic payload sanity – make sure subject still present and non-empty.
         if not payload.get("sub"):
             raise JWTError("Token payload is missing required 'sub' claim")
 
-        # Extra integrity guard – ensure provided token signature matches
         try:
             recomputed_key = (
                 verify_key if "alt_key" not in locals() or not alt_key else alt_key
@@ -312,23 +260,14 @@ class JWTUtils:
             recomputed = jwt.encode(
                 payload,
                 recomputed_key,
-                algorithm=settings.JWT_ALGORITHM,
+                algorithm=self._settings.JWT_ALGORITHM,
                 headers={"kid": kid} if kid else None,
             )
             if recomputed.split(".")[2] != token.split(".")[2]:
                 raise JWTError("Signature verification failed")
-        except Exception as exc:
-            # If re-encoding fails due to python-jose edge-cases (e.g. when
-            # the secret cannot be represented in the alternate form) we can
-            # safely ignore *encoding* errors **BUT** we must surface
-            # signature verification problems so that tampering is detected
-            # by calling code and relevant security tests (see
-            # ``tests/unit/auth/test_jwt_utils.py::test_jwt_invalid_token``).
-
+        except Exception as exc:  # noqa: BLE001
             if isinstance(exc, JWTError):
                 raise
-            # Any non-JWT related exception (mostly encode errors) is deemed
-            # non-critical for verification purposes and can be ignored.
 
         try:
             payload_obj = JWTPayload.model_validate(payload)
@@ -340,19 +279,82 @@ class JWTUtils:
 
 
 # ---------------------------------------------------------------------------
-# Internal helpers
+# Module-level helpers for backward compatibility
+# ---------------------------------------------------------------------------
+
+jwt_service = JWTService(settings)
+_RETIRED_KEYS = jwt_service._retired_keys
+
+
+def rotate_signing_key(new_kid: str, new_signing_key: str) -> None:
+    jwt_service._settings = settings
+    jwt_service.rotate_signing_key(new_kid, new_signing_key)
+
+
+_now_utc = JWTService._now_utc
+
+
+@lru_cache(maxsize=1)
+def _jwtutils_get_sign_key() -> str | bytes:
+    jwt_service._settings = settings
+    jwt_service._get_sign_key.cache_clear()
+    return jwt_service._get_sign_key()
+
+
+@lru_cache(maxsize=1)
+def _jwtutils_get_verify_key() -> str | bytes:
+    jwt_service._settings = settings
+    jwt_service._get_verify_key.cache_clear()
+    return jwt_service._get_verify_key()
+
+
+class JWTUtils:
+    """Backward-compatible static wrapper around :class:`JWTService`."""
+
+    @staticmethod
+    def rotate_signing_key(new_kid: str, new_signing_key: str) -> None:
+        jwt_service._settings = settings
+        jwt_service.rotate_signing_key(new_kid, new_signing_key)
+
+    @staticmethod
+    def create_access_token(
+        subject: str | int,
+        *,
+        expires_delta: timedelta | None = None,
+        additional_claims: Dict[str, Any] | None = None,
+    ) -> str:
+        jwt_service._settings = settings
+        return jwt_service.create_access_token(
+            subject,
+            expires_delta=expires_delta,
+            additional_claims=additional_claims,
+        )
+
+    @staticmethod
+    def create_refresh_token(subject: str | int) -> str:
+        jwt_service._settings = settings
+        return jwt_service.create_refresh_token(subject)
+
+    @staticmethod
+    def decode_token(token: str) -> Dict[str, Any]:
+        jwt_service._settings = settings
+        return jwt_service.decode_token(token)
+
+    _get_sign_key = staticmethod(_jwtutils_get_sign_key)
+
+    _get_verify_key = staticmethod(_jwtutils_get_verify_key)
+
+    _load_key = staticmethod(jwt_service._load_key)
+
+
+# ---------------------------------------------------------------------------
+# Internal helper
 # ---------------------------------------------------------------------------
 
 
 def _to_text(key: str | bytes) -> str:
-    """Return *key* as a **str** without losing information.
-
-    python-jose occasionally raises ``JWKError`` when the HMAC secret is
-    provided as *bytes* (depends on library version).  We therefore coerce
-    any *bytes* value to *str* via latin-1 which performs a direct 1-to-1
-    mapping, ensuring round-tripping back to bytes is lossless.
-    """
+    """Return *key* as ``str`` without losing information."""
 
     if isinstance(key, bytes):
-        return key.decode("latin-1")  # 1-byte → 1-codepoint – lossless
+        return key.decode("latin-1")
     return key
