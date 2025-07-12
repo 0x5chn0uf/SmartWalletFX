@@ -6,6 +6,7 @@ from app.api.endpoints import (
     audit_logs,
     auth,
     defi,
+    pings,
     health,
     jwks,
     oauth,
@@ -19,6 +20,7 @@ from app.core.services import ServiceContainer
 def create_api_router(container: ServiceContainer) -> APIRouter:
     router = APIRouter()
     router.include_router(health.router, tags=["health"])
+    router.include_router(pings.get_router(container), tags=["pings"])
     router.include_router(wallets.get_router(container), tags=["wallets"])
     router.include_router(defi.router, tags=["defi"])
     router.include_router(auth.router, tags=["auth"])
