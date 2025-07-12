@@ -20,7 +20,9 @@ class TokenBalanceUsecase:
         self.__config_service = config_service
         self.__audit = audit
 
-    async def create_token_balance(self, tb: TokenBalanceCreate) -> TokenBalanceResponse:
+    async def create_token_balance(
+        self, tb: TokenBalanceCreate
+    ) -> TokenBalanceResponse:
         """
         Create a new token balance record.
         Args:
@@ -30,17 +32,17 @@ class TokenBalanceUsecase:
         """
         self.__audit.info(
             "token_balance_usecase_create_started",
-            wallet_address=tb.wallet_address if hasattr(tb, 'wallet_address') else None,
+            wallet_address=tb.wallet_address if hasattr(tb, "wallet_address") else None,
         )
-        
+
         try:
             result = await self.__token_balance_repo.create(tb)
-            
+
             self.__audit.info(
                 "token_balance_usecase_create_success",
-                token_balance_id=str(result.id) if hasattr(result, 'id') else None,
+                token_balance_id=str(result.id) if hasattr(result, "id") else None,
             )
-            
+
             return result
         except Exception as e:
             self.__audit.error(

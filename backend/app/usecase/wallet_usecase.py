@@ -1,5 +1,5 @@
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List
 
 from fastapi import HTTPException, status
@@ -335,7 +335,12 @@ class WalletUsecase:
             raise
 
     async def get_portfolio_timeline(
-        self, user: User, address: str, interval: str = "daily", limit: int = 30, offset: int = 0
+        self,
+        user: User,
+        address: str,
+        interval: str = "daily",
+        limit: int = 30,
+        offset: int = 0,
     ) -> PortfolioTimeline:
         """
         Get portfolio timeline for a wallet.

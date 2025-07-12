@@ -1,10 +1,8 @@
 import json
 
-from app.core.config import ConfigurationService
 from app.repositories.portfolio_snapshot_repository import (
     PortfolioSnapshotRepository,
 )
-from app.repositories.wallet_repository import WalletRepository
 from app.schemas.defi import PortfolioSnapshot
 from app.utils.logging import Audit
 
@@ -18,13 +16,9 @@ class PortfolioSnapshotUsecase:
     def __init__(
         self,
         portfolio_snapshot_repo: PortfolioSnapshotRepository,
-        wallet_repo: WalletRepository,
-        config_service: ConfigurationService,
         audit: Audit,
     ):
         self.__portfolio_snapshot_repo = portfolio_snapshot_repo
-        self.__wallet_repo = wallet_repo
-        self.__config_service = config_service
         self.__audit = audit
 
     async def get_snapshots_by_wallet(self, wallet_address: str) -> list[dict]:
@@ -39,16 +33,18 @@ class PortfolioSnapshotUsecase:
             "portfolio_snapshot_usecase_get_by_wallet_started",
             wallet_address=wallet_address,
         )
-        
+
         try:
-            result = await self.__portfolio_snapshot_repo.get_by_wallet_address(wallet_address)
-            
+            result = await self.__portfolio_snapshot_repo.get_by_wallet_address(
+                wallet_address
+            )
+
             self.__audit.info(
                 "portfolio_snapshot_usecase_get_by_wallet_success",
                 wallet_address=wallet_address,
                 snapshot_count=len(result),
             )
-            
+
             return result
         except Exception as e:
             self.__audit.error(
@@ -81,7 +77,7 @@ class PortfolioSnapshotUsecase:
             limit=limit,
             offset=offset,
         )
-        
+
         try:
             # Try cache
             cached = await self.__portfolio_snapshot_repo.get_cache(
@@ -95,7 +91,7 @@ class PortfolioSnapshotUsecase:
                     snapshot_count=len(cached_data),
                 )
                 return cached_data
-                
+
             # Compute result
             result = await self.__portfolio_snapshot_repo.get_timeline(
                 user_address, from_ts, to_ts, limit, offset, interval
@@ -116,13 +112,13 @@ class PortfolioSnapshotUsecase:
                 offset=offset,
                 response_json=json.dumps([p.model_dump() for p in pydantic_result]),
             )
-            
+
             self.__audit.info(
                 "portfolio_snapshot_usecase_get_timeline_success",
                 user_address=user_address,
                 snapshot_count=len(pydantic_result),
             )
-            
+
             return pydantic_result
         except Exception as e:
             self.__audit.error(

@@ -30,17 +30,17 @@ class TokenUsecase:
         """
         self.__audit.info(
             "token_usecase_create_started",
-            token_symbol=token.symbol if hasattr(token, 'symbol') else None,
+            token_symbol=token.symbol if hasattr(token, "symbol") else None,
         )
-        
+
         try:
             result = await self.__token_repo.create(token)
-            
+
             self.__audit.info(
                 "token_usecase_create_success",
-                token_id=str(result.id) if hasattr(result, 'id') else None,
+                token_id=str(result.id) if hasattr(result, "id") else None,
             )
-            
+
             return result
         except Exception as e:
             self.__audit.error(
