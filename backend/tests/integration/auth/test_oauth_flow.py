@@ -60,13 +60,11 @@ async def test_google_oauth_login(async_client_with_db: AsyncClient, monkeypatch
     def _generate_state():
         return "state123"
 
-    monkeypatch.setattr("app.api.endpoints.oauth.generate_state", _generate_state)
     monkeypatch.setattr("app.usecase.oauth_usecase.generate_state", _generate_state)
 
     async def _store_state(redis, st, ttl: int = 300):
         return True
 
-    monkeypatch.setattr("app.api.endpoints.oauth.store_state", _store_state)
     monkeypatch.setattr("app.usecase.oauth_usecase.store_state", _store_state)
 
     resp = await async_client_with_db.get(
