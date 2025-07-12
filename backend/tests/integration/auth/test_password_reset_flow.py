@@ -12,7 +12,7 @@ from app.services.auth_service import AuthService
 
 @pytest.mark.asyncio
 async def test_password_reset_flow(
-    async_client_with_db: AsyncClient, db_session
+    async_client_with_db: AsyncClient, db_session, monkeypatch
 ) -> None:
     # Register user
     user = await AuthService(db_session).register(
@@ -38,7 +38,10 @@ async def test_password_reset_flow(
         "hash",
         datetime.now(timezone.utc) + timedelta(minutes=30),
     )
-    ep.EmailService.send_password_reset = dummy_send  # type: ignore
+    # Patch using monkeypatch to ensure cleanup after the test
+    monkeypatch.setattr(
+        ep.EmailService, "send_password_reset", dummy_send, raising=False
+    )
 
     resp = await async_client_with_db.post(
         "/auth/forgot-password", json={"email": user.email}
