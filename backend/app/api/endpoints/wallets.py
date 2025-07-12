@@ -25,13 +25,15 @@ from app.usecase.token_balance_usecase import TokenBalanceUsecase
 from app.usecase.token_price_usecase import TokenPriceUsecase
 from app.usecase.token_usecase import TokenUsecase
 from app.usecase.wallet_usecase import WalletUsecase
+from app.core.services import ServiceContainer, EndpointBase
 from app.utils.logging import Audit
 
 
-class WalletView:
+class WalletView(EndpointBase):
     """Class-based view for wallet endpoints."""
 
-    def __init__(self):
+    def __init__(self, container: ServiceContainer):
+        super().__init__(container)
         self.router = APIRouter()
         self._register_routes()
 
@@ -73,7 +75,7 @@ class WalletView:
             )
 
             try:
-                usecase = WalletUsecase(db, current_user)
+                usecase = self.container.usecases.WalletUsecase(db, current_user)
                 result = await usecase.create_wallet(wallet)
 
                 duration = int((time.time() - start_time) * 1000)
@@ -126,7 +128,7 @@ class WalletView:
             Audit.info("Wallet listing started", user_id=user_id, client_ip=client_ip)
 
             try:
-                usecase = WalletUsecase(db, current_user)
+                usecase = self.container.usecases.WalletUsecase(db, current_user)
                 result = await usecase.list_wallets()
 
                 duration = int((time.time() - start_time) * 1000)
@@ -182,7 +184,7 @@ class WalletView:
             )
 
             try:
-                usecase = WalletUsecase(db, current_user)
+                usecase = self.container.usecases.WalletUsecase(db, current_user)
                 await usecase.delete_wallet(address)
 
                 duration = int((time.time() - start_time) * 1000)
@@ -213,7 +215,7 @@ class WalletView:
         )
         async def create_token(token: TokenCreate, db: AsyncSession = Depends(get_db)):
             """Create a new token."""
-            usecase = TokenUsecase(db)
+            usecase = self.container.usecases.TokenUsecase(db)
             return await usecase.create_token(token)
 
         @self.router.post(
@@ -225,7 +227,7 @@ class WalletView:
             hb: HistoricalBalanceCreate, db: AsyncSession = Depends(get_db)
         ):
             """Create a new historical balance record."""
-            usecase = HistoricalBalanceUsecase(db)
+            usecase = self.container.usecases.HistoricalBalanceUsecase(db)
             return await usecase.create_historical_balance(hb)
 
         @self.router.post(
@@ -237,7 +239,7 @@ class WalletView:
             tp: TokenPriceCreate, db: AsyncSession = Depends(get_db)
         ):
             """Create a new token price record."""
-            usecase = TokenPriceUsecase(db)
+            usecase = self.container.usecases.TokenPriceUsecase(db)
             return await usecase.create_token_price(tp)
 
         @self.router.post(
@@ -249,7 +251,7 @@ class WalletView:
             tb: TokenBalanceCreate, db: AsyncSession = Depends(get_db)
         ):
             """Create a new token balance record."""
-            usecase = TokenBalanceUsecase(db)
+            usecase = self.container.usecases.TokenBalanceUsecase(db)
             return await usecase.create_token_balance(tb)
 
         @self.router.get(
@@ -264,7 +266,7 @@ class WalletView:
             """
             Retrieve portfolio snapshots for a given wallet address.
             """
-            usecase = WalletUsecase(db, current_user)
+            usecase = self.container.usecases.WalletUsecase(db, current_user)
             return await usecase.get_portfolio_snapshots(address)
 
         @self.router.get(
@@ -278,7 +280,7 @@ class WalletView:
             current_user=Depends(auth_deps.get_current_user),
         ):
             """Retrieve aggregated portfolio metrics for a wallet."""
-            usecase = WalletUsecase(db, current_user)
+            usecase = self.container.usecases.WalletUsecase(db, current_user)
             return await usecase.get_portfolio_metrics(address)
 
         @self.router.get(
@@ -294,7 +296,7 @@ class WalletView:
             current_user=Depends(auth_deps.get_current_user),
         ):
             """Retrieve historical portfolio trend data for visualization."""
-            usecase = WalletUsecase(db, current_user)
+            usecase = self.container.usecases.WalletUsecase(db, current_user)
             return await usecase.get_portfolio_timeline(
                 address=address,
                 interval=interval,
@@ -303,6 +305,11 @@ class WalletView:
             )
 
 
-# Create view instance and export router
-wallet_view = WalletView()
-router = wallet_view.router
+# Create view factory for dependency injection
+def get_router(container: ServiceContainer) -> APIRouter:
+    """Return router wired with *container* for dependency access."""
+
+    return WalletView(container).router
+
+# Default router for backward compatibility
+router = get_router(ServiceContainer(load_celery=False))

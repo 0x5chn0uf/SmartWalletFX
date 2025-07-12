@@ -201,10 +201,10 @@ class UsecaseSingletons:
 class EndpointSingletons:
     """Expose API routers as singletons for FastAPI apps."""
 
-    def __init__(self) -> None:
-        from app.api.api import api_router
+    def __init__(self, container: "ServiceContainer") -> None:
+        from app.api.api import create_api_router
 
-        self.api_router = api_router
+        self.api_router = create_api_router(container)
 
 
 class ServiceContainer:
@@ -225,6 +225,7 @@ class ServiceContainer:
         self._repositories = RepositorySingletons(self)
         self._usecases = UsecaseSingletons()
         self._endpoints: EndpointSingletons | None = None
+        self._started = False
 
     # Convenience accessors -------------------------------------------------
     @property
@@ -255,5 +256,30 @@ class ServiceContainer:
     @property
     def endpoints(self) -> EndpointSingletons:
         if self._endpoints is None:
-            self._endpoints = EndpointSingletons()
+            self._endpoints = EndpointSingletons(self)
         return self._endpoints
+
+    # Lifecycle --------------------------------------------------------------
+    def startup(self, app) -> None:
+        """Attach this container to *app* and mark as started."""
+
+        if self._started:
+            return
+        app.state.container = self
+        # Access repositories/usecases/endpoints to trigger lazy init if needed
+        _ = self.repositories
+        _ = self.usecases
+        _ = self.endpoints
+        self._started = True
+
+    def shutdown(self) -> None:
+        """Placeholder for future cleanup hooks."""
+
+        self._started = False
+
+
+class EndpointBase:
+    """Base class for container-aware API endpoints."""
+
+    def __init__(self, container: ServiceContainer):
+        self.container = container

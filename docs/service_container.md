@@ -11,4 +11,18 @@ container = ServiceContainer()
 app = create_app(container)
 ```
 
+Call `startup()` during app creation to attach the container to the FastAPI instance so class-based endpoints can access it via `request.app.state.container`.
+
 Create and pass a container instance explicitly instead of relying on module-level globals.
+
+## Using in Class-Based Endpoints
+
+```python
+from app.core.services import EndpointBase
+
+class WalletView(EndpointBase):
+    def __init__(self, container: ServiceContainer):
+        super().__init__(container)
+        self.router = APIRouter()
+        # use self.container.repositories or self.container.usecases
+```
