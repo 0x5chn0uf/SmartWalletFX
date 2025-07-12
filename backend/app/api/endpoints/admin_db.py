@@ -6,6 +6,83 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from app.api.dependencies import auth_deps, require_roles
 from app.models.user import User
 
+
+class AdminDB:
+    """Admin database endpoint using singleton pattern with dependency injection."""
+
+    ep = APIRouter(tags=["admin", "database"])
+
+    def __init__(self):
+        """Initialize admin database endpoint."""
+        pass
+
+    @staticmethod
+    @ep.post(
+        "/backup",
+        status_code=status.HTTP_202_ACCEPTED,
+        summary="Trigger a database backup (admin only)",
+    )
+    async def trigger_backup(
+        current_user: User = Depends(auth_deps.get_current_user),
+        _role_check: User = Depends(require_roles(["admin"])),
+    ):
+        """Trigger an asynchronous database backup via Celery."""
+        # Role enforcement is handled by the **require_roles** dependency above.
+
+        # Import inside function to avoid circular dependencies at import time
+        from app.tasks.backups import create_backup_task  # pragma: no cover
+
+        task = create_backup_task.delay()
+        return {"task_id": task.id, "status": "accepted"}
+
+    @staticmethod
+    @ep.post(
+        "/restore",
+        status_code=status.HTTP_202_ACCEPTED,
+        summary="Restore database from backup file (admin only)",
+    )
+    async def trigger_restore(
+        file: UploadFile = File(...),
+        current_user: User = Depends(auth_deps.get_current_user),
+        _role_check: User = Depends(require_roles(["admin"])),
+    ):
+        """Trigger an asynchronous database restore via Celery."""
+        # Role enforcement handled by **require_roles** dependency.
+
+        # Validate file type
+        if not file.filename or not file.filename.endswith(".sql.gz"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File must be a .sql.gz backup file",
+            )
+
+        # Save uploaded file to temporary location
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".sql.gz")
+        try:
+            content = await file.read()
+            temp_file.write(content)
+            temp_file.close()
+
+            # Import inside function to avoid circular dependencies at import time
+            from app.tasks.backups import (
+                restore_from_upload_task,  # pragma: no cover
+            )
+
+            task = restore_from_upload_task.delay(temp_file.name)
+            return {"task_id": task.id, "status": "accepted"}
+
+        except Exception as e:
+            # Clean up temp file on error
+            if os.path.exists(temp_file.name):
+                os.unlink(temp_file.name)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to process upload: {str(e)}",
+            )
+
+
+# Backward compatibility - create router instance
+# This will be replaced when main.py is updated to use DIContainer
 router = APIRouter()
 
 
@@ -14,7 +91,7 @@ router = APIRouter()
     status_code=status.HTTP_202_ACCEPTED,
     summary="Trigger a database backup (admin only)",
 )
-async def trigger_backup(
+async def trigger_backup_legacy(
     current_user: User = Depends(auth_deps.get_current_user),
     _role_check: User = Depends(require_roles(["admin"])),
 ):
@@ -38,7 +115,7 @@ async def trigger_backup(
     status_code=status.HTTP_202_ACCEPTED,
     summary="Restore database from backup file (admin only)",
 )
-async def trigger_restore(
+async def trigger_restore_legacy(
     file: UploadFile = File(...),
     current_user: User = Depends(auth_deps.get_current_user),
     _role_check: User = Depends(require_roles(["admin"])),

@@ -76,7 +76,7 @@ class DIContainer:
         self._initialize_usecases()
 
         # Create and register singleton endpoints (Phase 4)
-        # self._initialize_endpoints()
+        self._initialize_endpoints()
 
     def _initialize_repositories(self):
         """Initialize and register repository singletons."""
@@ -217,6 +217,82 @@ class DIContainer:
             audit_service,
         )
         self.register_usecase("portfolio_snapshot", portfolio_snapshot_uc)
+
+    def _initialize_endpoints(self):
+        """Initialize and register endpoint singletons."""
+        # Import endpoint classes
+        from app.api.endpoints.admin import Admin
+        from app.api.endpoints.admin_db import AdminDB
+        from app.api.endpoints.email_verification import EmailVerification
+        from app.api.endpoints.health import Health
+        from app.api.endpoints.jwks import JWKS
+        from app.api.endpoints.oauth import OAuth
+        from app.api.endpoints.users import Users
+        from app.api.endpoints.wallets import Wallets
+
+        # Get required usecases
+        email_verification_uc = self.get_usecase("email_verification")
+        oauth_uc = self.get_usecase("oauth")
+        wallet_uc = self.get_usecase("wallet")
+        token_uc = self.get_usecase("token")
+        historical_balance_uc = self.get_usecase("historical_balance")
+        token_price_uc = self.get_usecase("token_price")
+        token_balance_uc = self.get_usecase("token_balance")
+        portfolio_snapshot_uc = self.get_usecase("portfolio_snapshot")
+
+        # Get required repositories for endpoints that need them directly
+        user_repo = self.get_repository("user")
+
+        # TODO: Add these services when they are refactored
+        # email_service = self.get_service("email")
+        # auth_service = self.get_service("auth")
+
+        # Create and register endpoint singletons
+        email_verification_endpoint = EmailVerification(email_verification_uc)
+        self.register_endpoint("email_verification", email_verification_endpoint)
+
+        oauth_endpoint = OAuth(oauth_uc)
+        self.register_endpoint("oauth", oauth_endpoint)
+
+        wallets_endpoint = Wallets(
+            wallet_uc,
+            token_uc,
+            historical_balance_uc,
+            token_price_uc,
+            token_balance_uc,
+            portfolio_snapshot_uc,
+        )
+        self.register_endpoint("wallets", wallets_endpoint)
+
+        # Simple endpoints that don't need dependencies
+        health_endpoint = Health()
+        self.register_endpoint("health", health_endpoint)
+
+        jwks_endpoint = JWKS()
+        self.register_endpoint("jwks", jwks_endpoint)
+
+        admin_db_endpoint = AdminDB()
+        self.register_endpoint("admin_db", admin_db_endpoint)
+
+        # Endpoints that need repository dependencies
+        users_endpoint = Users(user_repo)
+        self.register_endpoint("users", users_endpoint)
+
+        admin_endpoint = Admin(user_repo)
+        self.register_endpoint("admin", admin_endpoint)
+
+        # TODO: Add password_reset_endpoint when EmailService is refactored
+        # password_reset_repo = self.get_repository("password_reset")
+        # password_reset_endpoint = PasswordReset(
+        #     password_reset_repo,
+        #     user_repo,
+        #     email_service,
+        # )
+        # self.register_endpoint("password_reset", password_reset_endpoint)
+
+        # TODO: Add auth_endpoint when AuthService is refactored
+        # auth_endpoint = Auth(auth_service)
+        # self.register_endpoint("auth", auth_endpoint)
 
     def register_service(self, name: str, service):
         """Register a service singleton."""
