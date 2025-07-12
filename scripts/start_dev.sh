@@ -25,8 +25,8 @@ if [ -f .env ]; then
   set +a
 fi
 
-echo "▶ Starting PostgreSQL & Redis containers…"
-docker compose up -d postgres-dev redis
+echo "▶ Starting mailhog, PostgreSQL & Redis containers…"
+docker compose up -d postgres-dev redis mailhog
 
 # 2. Start backend (hot-reload) in a new terminal tab/window if available.
 #    Fallback: run in background so the script continues to frontend.
@@ -37,7 +37,7 @@ echo "▶ Starting FastAPI backend (uvicorn --reload)…"
 # 3. Start frontend dev server
 
 echo "▶ Starting React dev server…"
-( cd frontend && npm run dev -- --host 0.0.0.0 --port 3000 )
+( cd frontend && npm run dev )
 
 # When the user stops the frontend (Ctrl-C), propagate shutdown.
 
