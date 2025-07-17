@@ -1,14 +1,6 @@
 from __future__ import annotations
 
-from fastapi import (
-    APIRouter,
-    BackgroundTasks,
-    Depends,
-    HTTPException,
-    Response,
-    status,
-)
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Response, status
 
 from app.domain.schemas.password_reset import (
     PasswordResetComplete,

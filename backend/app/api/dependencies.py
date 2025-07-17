@@ -1,21 +1,18 @@
 from __future__ import annotations
 
 import uuid
-from functools import lru_cache
 from typing import AsyncGenerator
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from redis import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
-from web3 import Web3
 
 from app.core.config import ConfigurationService
 from app.core.database import get_db
 from app.core.security.roles import ROLE_PERMISSIONS_MAP, UserRole
 from app.models.user import User
 from app.utils.jwks_cache import _build_redis_client
-from app.utils.jwt import JWTUtils
 from app.utils.logging import Audit
 from app.utils.rate_limiter import login_rate_limiter
 
@@ -88,7 +85,9 @@ class AuthDeps:
 
         # Attach roles and attributes from token payload to the user object
         user._current_roles = payload.get("roles", [])  # type: ignore[attr-defined]
-        user._current_attributes = payload.get("attributes", {})  # type: ignore[attr-defined]
+        user._current_attributes = payload.get(
+            "attributes", {}
+        )  # type: ignore[attr-defined]
 
         audit.info("User loaded from token payload", user_id=str(user.id))
 

@@ -36,7 +36,7 @@ def _b64url_uint(integer: int) -> str:
 
 def get_signing_key() -> tuple[str, str]:
     """Get the active signing key and algorithm.
-    
+
     Returns
     -------
     tuple[str, str]
@@ -45,20 +45,21 @@ def get_signing_key() -> tuple[str, str]:
     """
     config = ConfigurationService()
     active_kid = config.ACTIVE_JWT_KID
-    
+
     if active_kid not in config.JWT_KEYS:
         raise ValueError(f"Active JWT key ID '{active_kid}' not found in JWT_KEYS")
-    
+
     signing_key = config.JWT_KEYS[active_kid]
     algorithm = config.JWT_ALGORITHM
-    
+
     return signing_key, algorithm
 
 
 def get_verifying_keys() -> list[Key]:
     """Return all keys that are currently valid for verifying signatures.
 
-    This function builds a list of all known keys from ``ConfigurationService.JWT_KEYS``,
+    This function builds a list of all known keys from
+    ``ConfigurationService.JWT_KEYS``,
     checks their retirement status against the runtime ``_RETIRED_KEYS`` map,
     and returns only those that are not yet expired.  This list is suitable
     for building a JWKS endpoint.

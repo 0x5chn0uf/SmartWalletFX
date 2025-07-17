@@ -9,7 +9,6 @@ from app.core.config import ConfigurationService
 from app.domain.schemas.portfolio_metrics import PortfolioMetrics
 from app.domain.schemas.portfolio_timeline import PortfolioTimeline
 from app.domain.schemas.wallet import WalletCreate, WalletResponse
-from app.models.user import User
 from app.repositories.portfolio_snapshot_repository import (
     PortfolioSnapshotRepository,
 )

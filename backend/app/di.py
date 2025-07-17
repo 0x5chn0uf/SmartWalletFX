@@ -151,7 +151,8 @@ class DIContainer:
         token_balance_repository = TokenBalanceRepository(database, audit)
         self.register_repository("token_balance", token_balance_repository)
 
-        # AuthService depends on repositories, so initialize it here after all repos are created
+        # AuthService depends on repositories, so initialize it here after all
+        # repos are created
         email_service = self.get_service("email")
         jwt_utils = self.get_utility("jwt_utils")
         config = self.get_core("config")
@@ -269,22 +270,14 @@ class DIContainer:
         )
         self.register_usecase("portfolio_snapshot", portfolio_snapshot_uc)
 
-    def _initialize_utilities(self):
-        """Initialize and register utility singletons."""
-        config = self.get_core("config")
-        audit = self.get_core("audit")
-
-        jwt_utils = JWTUtils(config, audit)
-        self.register_utility("jwt_utils", jwt_utils)
-
     def _initialize_endpoints(self):
         """Initialize and register endpoint singletons."""
         # Get core components
-        audit = self.get_core("audit")
+        self.get_core("audit")
 
         # Get services
         auth_service = self.get_service("auth")
-        oauth_service = self.get_service("oauth")
+        self.get_service("oauth")
         email_service = self.get_service("email")
 
         # Get usecases
