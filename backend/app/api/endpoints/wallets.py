@@ -1,8 +1,7 @@
 import time
-from datetime import datetime
 from typing import List
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Request, status
 
 # Dependency imports
 from app.api.dependencies import get_user_id_from_request

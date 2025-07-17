@@ -13,7 +13,6 @@ from fastapi import (
 )
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 import app.api.dependencies as deps_mod

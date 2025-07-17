@@ -113,7 +113,8 @@ class AuthService:
         await self.__email_verification_repo.create(token, user.id, expires_at)
 
         # Build a portable verification URL based on the configured frontend base
-        verify_link = f"{self.__config_service.FRONTEND_BASE_URL.rstrip('/')}/verify-email?token={token}"
+        frontend_url = self.__config_service.FRONTEND_BASE_URL.rstrip("/")
+        verify_link = f"{frontend_url}/verify-email?token={token}"
 
         if background_tasks is not None:
             background_tasks.add_task(
