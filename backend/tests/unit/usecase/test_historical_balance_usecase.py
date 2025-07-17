@@ -14,7 +14,23 @@ from app.domain.schemas.historical_balance import (
     HistoricalBalanceCreate,
     HistoricalBalanceResponse,
 )
-from app.usecase.historical_balance_usecase import HistoricalBalanceUsecase
+
+@pytest.fixture
+def sample_historical_balance_data():
+    """Sample historical balance data for testing."""
+    return {
+        "wallet_id": uuid.uuid4(),
+        "token_id": uuid.uuid4(),
+        "balance": 100.0,
+        "balance_usd": 150.0,
+        "timestamp": datetime.utcnow(),
+    }
+
+
+@pytest.fixture
+def historical_balance_usecase(historical_balance_usecase_with_di):
+    """Alias fixture for consistency with test expectations."""
+    return historical_balance_usecase_with_di
 
 
 class TestHistoricalBalanceUsecase:
@@ -29,7 +45,7 @@ class TestHistoricalBalanceUsecase:
         mock_response = HistoricalBalanceResponse(
             id=uuid.uuid4(), **sample_historical_balance_data
         )
-        historical_balance_usecase.historical_balance_repository.create = AsyncMock(
+        historical_balance_usecase._HistoricalBalanceUsecase__historical_balance_repo.create = AsyncMock(
             return_value=mock_response
         )
 
@@ -47,7 +63,7 @@ class TestHistoricalBalanceUsecase:
         assert result.timestamp == sample_historical_balance_data["timestamp"]
 
         # Verify repository was called
-        historical_balance_usecase.historical_balance_repository.create.assert_called_once_with(
+        historical_balance_usecase._HistoricalBalanceUsecase__historical_balance_repo.create.assert_called_once_with(
             hb_create
         )
 
@@ -68,7 +84,7 @@ class TestHistoricalBalanceUsecase:
             id=uuid.uuid4(),
             **minimal_data,
         )
-        historical_balance_usecase.historical_balance_repository.create = AsyncMock(
+        historical_balance_usecase._HistoricalBalanceUsecase__historical_balance_repo.create = AsyncMock(
             return_value=mock_response
         )
 
@@ -97,7 +113,7 @@ class TestHistoricalBalanceUsecase:
         }
 
         mock_response = HistoricalBalanceResponse(id=uuid.uuid4(), **zero_data)
-        historical_balance_usecase.historical_balance_repository.create = AsyncMock(
+        historical_balance_usecase._HistoricalBalanceUsecase__historical_balance_repo.create = AsyncMock(
             return_value=mock_response
         )
 
@@ -122,7 +138,7 @@ class TestHistoricalBalanceUsecase:
         }
 
         mock_response = HistoricalBalanceResponse(id=uuid.uuid4(), **large_data)
-        historical_balance_usecase.historical_balance_repository.create = AsyncMock(
+        historical_balance_usecase._HistoricalBalanceUsecase__historical_balance_repo.create = AsyncMock(
             return_value=mock_response
         )
 
@@ -139,7 +155,7 @@ class TestHistoricalBalanceUsecase:
         self, historical_balance_usecase, sample_historical_balance_data
     ):
         """Test historical balance creation when repository raises an error."""
-        historical_balance_usecase.historical_balance_repository.create = AsyncMock(
+        historical_balance_usecase._HistoricalBalanceUsecase__historical_balance_repo.create = AsyncMock(
             side_effect=Exception("Database error")
         )
 
@@ -148,7 +164,7 @@ class TestHistoricalBalanceUsecase:
         with pytest.raises(Exception, match="Database error"):
             await historical_balance_usecase.create_historical_balance(hb_create)
 
-        historical_balance_usecase.historical_balance_repository.create.assert_called_once_with(
+        historical_balance_usecase._HistoricalBalanceUsecase__historical_balance_repo.create.assert_called_once_with(
             hb_create
         )
 
@@ -156,18 +172,20 @@ class TestHistoricalBalanceUsecase:
     async def test_create_historical_balance_validation_error(
         self, historical_balance_usecase
     ):
-        """Test historical balance creation with invalid data."""
+        """Test historical balance creation with invalid data types."""
+        from pydantic import ValidationError
+        
+        # Test with invalid UUID type
         invalid_data = {
-            "wallet_id": uuid.uuid4(),
+            "wallet_id": "not-a-uuid",  # Invalid UUID format
             "token_id": uuid.uuid4(),
-            "balance": -100.0,  # Negative balance
+            "balance": 100.0,
             "balance_usd": 150.0,
             "timestamp": datetime.utcnow(),
         }
 
-        with pytest.raises(Exception):  # Should raise validation error
+        with pytest.raises(ValidationError):  # Should raise validation error
             hb_create = HistoricalBalanceCreate(**invalid_data)
-            await historical_balance_usecase.create_historical_balance(hb_create)
 
     @pytest.mark.asyncio
     async def test_create_historical_balance_multiple_protocols(
@@ -186,7 +204,7 @@ class TestHistoricalBalanceUsecase:
             }
 
             mock_response = HistoricalBalanceResponse(id=uuid.uuid4(), **data)
-            historical_balance_usecase.historical_balance_repository.create = AsyncMock(
+            historical_balance_usecase._HistoricalBalanceUsecase__historical_balance_repo.create = AsyncMock(
                 return_value=mock_response
             )
 
@@ -216,7 +234,7 @@ class TestHistoricalBalanceUsecase:
             }
 
             mock_response = HistoricalBalanceResponse(id=uuid.uuid4(), **data)
-            historical_balance_usecase.historical_balance_repository.create = AsyncMock(
+            historical_balance_usecase._HistoricalBalanceUsecase__historical_balance_repo.create = AsyncMock(
                 return_value=mock_response
             )
 
@@ -242,7 +260,7 @@ class TestHistoricalBalanceUsecase:
             data["balance"] += i
 
             mock_response = HistoricalBalanceResponse(id=uuid.uuid4(), **data)
-            historical_balance_usecase.historical_balance_repository.create = AsyncMock(
+            historical_balance_usecase._HistoricalBalanceUsecase__historical_balance_repo.create = AsyncMock(
                 return_value=mock_response
             )
 

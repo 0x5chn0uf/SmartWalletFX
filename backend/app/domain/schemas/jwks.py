@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import List, Literal
 
-from pydantic import BaseModel, Field, constr, validator
+from pydantic import BaseModel, Field, constr, field_validator
 
 # ---------------------------------------------------------------------------
 # Individual JWK schema – supporting RSA public keys ("kty" == "RSA").
@@ -61,7 +61,7 @@ class JWK(BaseModel):
         }
 
     # Basic validator: ensure *n* and *e* are base64url (no padding, url-safe)
-    @validator("n", "e")
+    @field_validator("n", "e")
     def _no_padding(cls, v: str) -> str:  # noqa: N805
         if "=" in v:
             raise ValueError(

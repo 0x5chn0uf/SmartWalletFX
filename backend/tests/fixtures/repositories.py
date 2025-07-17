@@ -101,6 +101,7 @@ def mock_portfolio_snapshot_repository():
     """Mock PortfolioSnapshotRepository with common async methods."""
     mock = Mock()
     mock.get_snapshots_in_range = AsyncMock()
+    mock.get_by_wallet_address = AsyncMock()
     mock.create = AsyncMock()
     mock.update = AsyncMock()
     mock.delete = AsyncMock()
@@ -264,19 +265,17 @@ def token_balance_repository_with_di(mock_database, mock_audit):
 
 
 def create_real_database(db_session):
-    """Create a real CoreDatabase that uses the test database session."""
+    """Create a real database mock for testing that uses the provided session."""
     from unittest.mock import Mock
-
-    from app.core.database import CoreDatabase
-
-    database = Mock(spec=CoreDatabase)
-
+    
+    mock_database = Mock()
+    
     @asynccontextmanager
-    async def get_session():
+    async def mock_get_session():
         yield db_session
-
-    database.get_session = get_session
-    return database
+    
+    mock_database.get_session = mock_get_session
+    return mock_database
 
 
 @pytest.fixture
@@ -381,3 +380,17 @@ def refresh_token_repository_with_real_db(db_session):
     audit = Audit()
 
     return RefreshTokenRepository(database, audit)
+
+
+@pytest.fixture
+def email_verification_repository_with_real_db(db_session):
+    """Create EmailVerificationRepository with real database session for integration tests."""
+    from app.repositories.email_verification_repository import (
+        EmailVerificationRepository,
+    )
+    from app.utils.logging import Audit
+
+    database = create_real_database(db_session)
+    audit = Audit()
+
+    return EmailVerificationRepository(database, audit)

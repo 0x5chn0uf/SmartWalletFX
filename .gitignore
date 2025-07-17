@@ -71,9 +71,6 @@ custom_modes/
 memory-bank/
 .roomodes
 .windsurfrules
-# Ignore symlink versions of Cursor files (no trailing slash)
-.taskmaster
-memory-bank
 
 # Dependencies
 __pycache__/

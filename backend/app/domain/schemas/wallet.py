@@ -2,7 +2,7 @@ import re
 import uuid
 from typing import Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class WalletCreate(BaseModel):
@@ -14,7 +14,7 @@ class WalletCreate(BaseModel):
     address: str = Field(..., description="EVM wallet address")
     name: Optional[str] = Field(None, description="Wallet name")
 
-    @validator("address")
+    @field_validator("address")
     def validate_address(cls, v):
         """
         Validate the wallet address format.

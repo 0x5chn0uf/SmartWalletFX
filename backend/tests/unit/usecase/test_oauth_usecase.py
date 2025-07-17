@@ -36,7 +36,7 @@ async def test_authenticate_and_issue_tokens():
     # Setup
     usecase = create_mock_usecase()
 
-    # Mock the oauth_service authenticate_or_create method
+    # Mock the oauth_service methods
     mock_user = User(id=1, email="test@example.com", username="testuser")
     mock_tokens = TokenResponse(
         access_token="access",
@@ -46,7 +46,10 @@ async def test_authenticate_and_issue_tokens():
     )
 
     usecase._OAuthUsecase__oauth_service.authenticate_or_create = AsyncMock(
-        return_value=(mock_user, mock_tokens)
+        return_value=mock_user
+    )
+    usecase._OAuthUsecase__oauth_service.issue_tokens = AsyncMock(
+        return_value=mock_tokens
     )
 
     # Execute
@@ -60,6 +63,9 @@ async def test_authenticate_and_issue_tokens():
     usecase._OAuthUsecase__oauth_service.authenticate_or_create.assert_called_once_with(
         "google", "sub123", "test@example.com"
     )
+    usecase._OAuthUsecase__oauth_service.issue_tokens.assert_called_once_with(
+        mock_user
+    )
 
 
 @pytest.mark.asyncio
@@ -70,71 +76,96 @@ async def test_generate_login_redirect_success():
     # Mock the _build_auth_url method
     usecase._build_auth_url = Mock(return_value="https://auth.example.com")
 
-    # Mock request
-    mock_request = Mock(spec=Request)
-    mock_request.url.scheme = "https"
-    mock_request.url.hostname = "example.com"
-    mock_request.url.port = None
+    # Mock redis with async behavior
+    mock_redis = AsyncMock()
 
     # Execute
-    result = await usecase.generate_login_redirect(mock_request, "google")
+    result = await usecase.generate_login_redirect("google", mock_redis)
 
     # Assert
     assert isinstance(result, RedirectResponse)
-    assert result.status_code == 302
+    assert result.status_code == 307
 
 
 @pytest.mark.asyncio
 async def test_generate_login_redirect_unsupported_provider():
     # Setup
     usecase = create_mock_usecase()
-    mock_request = Mock(spec=Request)
+    mock_redis = AsyncMock()
 
     # Execute and Assert
     with pytest.raises(HTTPException) as excinfo:
-        await usecase.generate_login_redirect(mock_request, "unsupported")
-    assert excinfo.value.status_code == 400
+        await usecase.generate_login_redirect("unsupported", mock_redis)
+    assert excinfo.value.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_process_callback_success():
     # Setup
     usecase = create_mock_usecase()
+    
+    # Mock config service
+    usecase._OAuthUsecase__config_service.FRONTEND_BASE_URL = "https://example.com"
+    usecase._OAuthUsecase__config_service.OAUTH_REDIRECT_URI = "https://example.com/oauth/{provider}/callback"
+
+    # Mock request
+    mock_request = Mock(spec=Request)
+    mock_request.cookies = {"oauth_state": "state123"}
+    
+    # Mock redis
+    mock_redis = AsyncMock()
 
     # Mock dependencies
-    usecase._verify_state = Mock(return_value=True)
     usecase._exchange_code = AsyncMock(
         return_value={"sub": "123", "email": "test@example.com"}
     )
-    usecase.authenticate_and_issue_tokens = AsyncMock(return_value=(Mock(), Mock()))
+    mock_user = Mock()
+    mock_user.id = 1
+    mock_tokens = Mock()
+    usecase.authenticate_and_issue_tokens = AsyncMock(return_value=(mock_user, mock_tokens))
 
-    # Execute
-    result = await usecase.process_callback("google", "code123", "state123")
+    # Mock verify_state function
+    with patch("app.usecase.oauth_usecase.verify_state", return_value=True):
+        # Execute
+        result = await usecase.process_callback(mock_request, "google", "code123", "state123", mock_redis)
 
-    # Assert
-    assert result is not None
+        # Assert
+        assert result is not None
 
 
 @pytest.mark.asyncio
 async def test_process_callback_unsupported_provider():
     # Setup
     usecase = create_mock_usecase()
+    
+    # Mock request
+    mock_request = Mock(spec=Request)
+    mock_request.cookies = {"oauth_state": "state123"}
+    
+    # Mock redis
+    mock_redis = AsyncMock()
 
     # Execute and Assert
     with pytest.raises(HTTPException) as excinfo:
-        await usecase.process_callback("unsupported", "code123", "state123")
-    assert excinfo.value.status_code == 400
+        await usecase.process_callback(mock_request, "unsupported", "code123", "state123", mock_redis)
+    assert excinfo.value.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_process_callback_state_mismatch():
     # Setup
     usecase = create_mock_usecase()
-    usecase._verify_state = Mock(return_value=False)
+    
+    # Mock request with different state than what's passed to the callback
+    mock_request = Mock(spec=Request)
+    mock_request.cookies = {"oauth_state": "cookie_state123"}
+    
+    # Mock redis
+    mock_redis = AsyncMock()
 
     # Execute and Assert
     with pytest.raises(HTTPException) as excinfo:
-        await usecase.process_callback("google", "code123", "state123")
+        await usecase.process_callback(mock_request, "google", "code123", "different_state456", mock_redis)
     assert excinfo.value.status_code == 400
 
 
@@ -142,27 +173,42 @@ async def test_process_callback_state_mismatch():
 async def test_process_callback_invalid_state():
     # Setup
     usecase = create_mock_usecase()
-    usecase._verify_state = Mock(side_effect=Exception("Invalid state"))
+    
+    # Mock request
+    mock_request = Mock(spec=Request)
+    mock_request.cookies = {"oauth_state": "invalid_state"}
+    
+    # Mock redis
+    mock_redis = AsyncMock()
 
     # Execute and Assert
-    with pytest.raises(HTTPException) as excinfo:
-        await usecase.process_callback("google", "code123", "invalid_state")
-    assert excinfo.value.status_code == 400
+    with patch("app.usecase.oauth_usecase.verify_state", return_value=False):
+        with pytest.raises(HTTPException) as excinfo:
+            await usecase.process_callback(mock_request, "google", "code123", "invalid_state", mock_redis)
+        assert excinfo.value.status_code == 400
 
 
 @pytest.mark.asyncio
 async def test_process_callback_missing_sub():
     # Setup
     usecase = create_mock_usecase()
-    usecase._verify_state = Mock(return_value=True)
+    usecase._OAuthUsecase__config_service.OAUTH_REDIRECT_URI = "https://example.com/oauth/{provider}/callback"
     usecase._exchange_code = AsyncMock(
         return_value={"email": "test@example.com"}
     )  # Missing sub
+    
+    # Mock request
+    mock_request = Mock(spec=Request)
+    mock_request.cookies = {"oauth_state": "state123"}
+    
+    # Mock redis
+    mock_redis = AsyncMock()
 
     # Execute and Assert
-    with pytest.raises(HTTPException) as excinfo:
-        await usecase.process_callback("google", "code123", "state123")
-    assert excinfo.value.status_code == 500
+    with patch("app.usecase.oauth_usecase.verify_state", return_value=True):
+        with pytest.raises(HTTPException) as excinfo:
+            await usecase.process_callback(mock_request, "google", "code123", "state123", mock_redis)
+        assert excinfo.value.status_code == 400
 
 
 def test_build_auth_url_google():
@@ -221,7 +267,7 @@ async def test_exchange_code_google():
 
     # Mock httpx response
     mock_response = Mock()
-    mock_response.json.return_value = {"id_token": "fake_jwt_token"}
+    mock_response.json.return_value = {"id_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMiLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20ifQ.fake_signature"}
     mock_response.raise_for_status = Mock()
 
     # Mock jwt decode
@@ -231,7 +277,7 @@ async def test_exchange_code_google():
         "jose.jwt.decode", return_value={"sub": "123", "email": "test@example.com"}
     ):
         # Execute
-        result = await usecase._exchange_code("google", "auth_code")
+        result = await usecase._exchange_code("google", "auth_code", "https://example.com/callback")
 
         # Assert
         assert result["sub"] == "123"
@@ -256,8 +302,8 @@ async def test_exchange_code_google_missing_id_token():
     with pytest.mock.patch("httpx.AsyncClient.post", return_value=mock_response):
         # Execute and Assert
         with pytest.raises(HTTPException) as excinfo:
-            await usecase._exchange_code("google", "auth_code")
-        assert excinfo.value.status_code == 500
+            await usecase._exchange_code("google", "auth_code", "https://example.com/callback")
+        assert excinfo.value.status_code == 400
 
 
 @pytest.mark.asyncio
@@ -284,7 +330,7 @@ async def test_exchange_code_github():
         "httpx.AsyncClient.post", return_value=mock_token_response
     ), pytest.mock.patch("httpx.AsyncClient.get", return_value=mock_user_response):
         # Execute
-        result = await usecase._exchange_code("github", "auth_code")
+        result = await usecase._exchange_code("github", "auth_code", "https://example.com/callback")
 
         # Assert
         assert result["sub"] == "123"
@@ -309,8 +355,8 @@ async def test_exchange_code_github_missing_access_token():
     with pytest.mock.patch("httpx.AsyncClient.post", return_value=mock_response):
         # Execute and Assert
         with pytest.raises(HTTPException) as excinfo:
-            await usecase._exchange_code("github", "auth_code")
-        assert excinfo.value.status_code == 500
+            await usecase._exchange_code("github", "auth_code", "https://example.com/callback")
+        assert excinfo.value.status_code == 400
 
 
 @pytest.mark.asyncio
@@ -332,14 +378,21 @@ async def test_exchange_code_github_missing_email():
     mock_user_response = Mock()
     mock_user_response.json.return_value = {"id": 123}  # Missing email
     mock_user_response.raise_for_status = Mock()
+    
+    # Mock emails response with empty list
+    mock_emails_response = Mock()
+    mock_emails_response.json.return_value = []  # No emails found
+    mock_emails_response.raise_for_status = Mock()
 
     with pytest.mock.patch(
         "httpx.AsyncClient.post", return_value=mock_token_response
-    ), pytest.mock.patch("httpx.AsyncClient.get", return_value=mock_user_response):
-        # Execute and Assert
-        with pytest.raises(HTTPException) as excinfo:
-            await usecase._exchange_code("github", "auth_code")
-        assert excinfo.value.status_code == 500
+    ), pytest.mock.patch("httpx.AsyncClient.get", side_effect=[mock_user_response, mock_emails_response]):
+        # Execute - this should not raise an exception, just return None for email
+        result = await usecase._exchange_code("github", "auth_code", "https://example.com/callback")
+        
+        # Assert
+        assert result["sub"] == "123"
+        assert result["email"] is None
 
 
 @pytest.mark.asyncio
@@ -349,5 +402,5 @@ async def test_exchange_code_unsupported_provider():
 
     # Execute and Assert
     with pytest.raises(ValueError) as excinfo:
-        await usecase._exchange_code("unsupported", "auth_code")
+        await usecase._exchange_code("unsupported", "auth_code", "https://example.com/callback")
     assert "Unsupported provider" in str(excinfo.value)

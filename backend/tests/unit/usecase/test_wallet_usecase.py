@@ -23,6 +23,8 @@ def mock_wallet_repository():
     mock_repo.create = AsyncMock()
     mock_repo.list_by_user = AsyncMock()
     mock_repo.get_by_id = AsyncMock()
+    mock_repo.get_by_address = AsyncMock()
+    mock_repo.get_by_address_and_user = AsyncMock()
     mock_repo.delete = AsyncMock()
     return mock_repo
 
@@ -42,6 +44,7 @@ def mock_portfolio_snapshot_repository():
     mock_repo = Mock()
     # Make async methods return AsyncMock
     mock_repo.get_snapshots_by_address_and_range = AsyncMock()
+    mock_repo.get_by_wallet_address = AsyncMock()
     return mock_repo
 
 
@@ -76,7 +79,7 @@ def wallet_usecase(
 
 
 @pytest.mark.asyncio
-async def test_create_wallet_success(wallet_usecase, mock_wallet_repository):
+async def test_create_wallet_success(wallet_usecase, mock_wallet_repository, mock_user_repository):
     """Test successful wallet creation."""
     # Arrange
     user = _dummy_user()
@@ -91,9 +94,10 @@ async def test_create_wallet_success(wallet_usecase, mock_wallet_repository):
     )
 
     mock_wallet_repository.create.return_value = expected_wallet
+    mock_user_repository.get_by_id.return_value = user
 
     # Act
-    wallet = await wallet_usecase.create_wallet(user, data)
+    wallet = await wallet_usecase.create_wallet(user.id, data)
 
     # Assert
     assert wallet.address == data.address
@@ -104,7 +108,7 @@ async def test_create_wallet_success(wallet_usecase, mock_wallet_repository):
 
 
 @pytest.mark.asyncio
-async def test_create_wallet_duplicate(wallet_usecase, mock_wallet_repository):
+async def test_create_wallet_duplicate(wallet_usecase, mock_wallet_repository, mock_user_repository):
     """Test wallet creation with duplicate address."""
     # Arrange
     user = _dummy_user()
@@ -114,10 +118,11 @@ async def test_create_wallet_duplicate(wallet_usecase, mock_wallet_repository):
     mock_wallet_repository.create.side_effect = HTTPException(
         status_code=400, detail="Wallet already exists"
     )
+    mock_user_repository.get_by_id.return_value = user
 
     # Act & Assert
     with pytest.raises(HTTPException) as exc:
-        await wallet_usecase.create_wallet(user, data)
+        await wallet_usecase.create_wallet(user.id, data)
 
     assert exc.value.status_code == 400
     assert "already exists" in exc.value.detail
@@ -131,7 +136,7 @@ async def test_create_wallet_invalid_address():
 
 
 @pytest.mark.asyncio
-async def test_list_wallets(wallet_usecase, mock_wallet_repository):
+async def test_list_wallets(wallet_usecase, mock_wallet_repository, mock_user_repository):
     """Test listing wallets."""
     # Arrange
     user = _dummy_user()
@@ -155,9 +160,10 @@ async def test_list_wallets(wallet_usecase, mock_wallet_repository):
     ]
 
     mock_wallet_repository.list_by_user.return_value = expected_wallets
+    mock_user_repository.get_by_id.return_value = user
 
     # Act
-    wallets = await wallet_usecase.list_wallets(user)
+    wallets = await wallet_usecase.list_wallets(user.id)
 
     # Assert
     assert len(wallets) == 2
@@ -165,23 +171,24 @@ async def test_list_wallets(wallet_usecase, mock_wallet_repository):
 
 
 @pytest.mark.asyncio
-async def test_delete_wallet_success(wallet_usecase, mock_wallet_repository):
+async def test_delete_wallet_success(wallet_usecase, mock_wallet_repository, mock_user_repository):
     """Test successful wallet deletion."""
     # Arrange
     user = _dummy_user()
     addr = f"0x{uuid.uuid4().hex:0<40}"[:42]
 
     mock_wallet_repository.delete.return_value = True
+    mock_user_repository.get_by_id.return_value = user
 
     # Act
-    await wallet_usecase.delete_wallet(user, addr)
+    await wallet_usecase.delete_wallet(user.id, addr)
 
     # Assert
     mock_wallet_repository.delete.assert_called_once_with(addr, user_id=user.id)
 
 
 @pytest.mark.asyncio
-async def test_delete_wallet_not_found(wallet_usecase, mock_wallet_repository):
+async def test_delete_wallet_not_found(wallet_usecase, mock_wallet_repository, mock_user_repository):
     """Test wallet deletion when wallet not found."""
     # Arrange
     user = _dummy_user()
@@ -190,52 +197,58 @@ async def test_delete_wallet_not_found(wallet_usecase, mock_wallet_repository):
     mock_wallet_repository.delete.side_effect = HTTPException(
         status_code=404, detail="Wallet not found"
     )
+    mock_user_repository.get_by_id.return_value = user
 
     # Act & Assert
     with pytest.raises(HTTPException) as exc:
-        await wallet_usecase.delete_wallet(user, addr)
+        await wallet_usecase.delete_wallet(user.id, addr)
 
     assert exc.value.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_verify_wallet_ownership_owned_wallet(
-    wallet_usecase, mock_wallet_repository
+    wallet_usecase, mock_wallet_repository, mock_user_repository
 ):
     """Test wallet ownership verification for owned wallet."""
     # Arrange
     user = _dummy_user()
     addr = f"0x{uuid.uuid4().hex:0<40}"[:42]
 
-    mock_wallet_repository.get_by_address_and_user.return_value = (
-        Mock()
-    )  # Wallet exists
+    # Mock wallet exists and is owned by user
+    mock_wallet = Mock()
+    mock_wallet.user_id = user.id
+    mock_wallet_repository.get_by_address.return_value = mock_wallet
+    mock_user_repository.get_by_id.return_value = user
 
     # Act
-    result = await wallet_usecase.verify_wallet_ownership(user, addr)
+    result = await wallet_usecase.verify_wallet_ownership(user.id, addr)
 
     # Assert
     assert result is True
-    mock_wallet_repository.get_by_address_and_user.assert_called_once_with(
-        addr, user.id
+    mock_wallet_repository.get_by_address.assert_called_once_with(
+        address=addr
     )
 
 
 @pytest.mark.asyncio
 async def test_verify_wallet_ownership_not_owned(
-    wallet_usecase, mock_wallet_repository
+    wallet_usecase, mock_wallet_repository, mock_user_repository
 ):
     """Test wallet ownership verification for wallet not owned by user."""
     # Arrange
     user = _dummy_user()
+    other_user_id = uuid.uuid4()
     addr = f"0x{uuid.uuid4().hex:0<40}"[:42]
 
-    mock_wallet_repository.get_by_address_and_user.return_value = (
-        None  # Wallet not found
-    )
+    # Mock wallet exists but is owned by different user
+    mock_wallet = Mock()
+    mock_wallet.user_id = other_user_id
+    mock_wallet_repository.get_by_address.return_value = mock_wallet
+    mock_user_repository.get_by_id.return_value = user
 
     # Act
-    result = await wallet_usecase.verify_wallet_ownership(user, addr)
+    result = await wallet_usecase.verify_wallet_ownership(user.id, addr)
 
     # Assert
     assert result is False
@@ -243,17 +256,18 @@ async def test_verify_wallet_ownership_not_owned(
 
 @pytest.mark.asyncio
 async def test_verify_wallet_ownership_nonexistent_wallet(
-    wallet_usecase, mock_wallet_repository
+    wallet_usecase, mock_wallet_repository, mock_user_repository
 ):
     """Test wallet ownership verification for nonexistent wallet."""
     # Arrange
     user = _dummy_user()
     addr = f"0x{uuid.uuid4().hex:0<40}"[:42]
 
-    mock_wallet_repository.get_by_address_and_user.return_value = None
+    mock_wallet_repository.get_by_address.return_value = None
+    mock_user_repository.get_by_id.return_value = user
 
     # Act
-    result = await wallet_usecase.verify_wallet_ownership(user, addr)
+    result = await wallet_usecase.verify_wallet_ownership(user.id, addr)
 
     # Assert
     assert result is False
@@ -261,16 +275,18 @@ async def test_verify_wallet_ownership_nonexistent_wallet(
 
 @pytest.mark.asyncio
 async def test_get_portfolio_snapshots_success(
-    wallet_usecase, mock_wallet_repository, mock_portfolio_snapshot_repository
+    wallet_usecase, mock_wallet_repository, mock_portfolio_snapshot_repository, mock_user_repository
 ):
     """Test successful portfolio snapshots retrieval."""
     # Arrange
     user = _dummy_user()
     addr = f"0x{uuid.uuid4().hex:0<40}"[:42]
 
-    mock_wallet_repository.get_by_address_and_user.return_value = (
-        Mock()
-    )  # Wallet exists
+    # Mock wallet exists and is owned by user (for verify_wallet_ownership)
+    mock_wallet = Mock()
+    mock_wallet.user_id = user.id
+    mock_wallet_repository.get_by_address.return_value = mock_wallet
+    mock_user_repository.get_by_id.return_value = user
 
     mock_snapshots = [
         {"timestamp": int(datetime.utcnow().timestamp()), "value": 1000.0},
@@ -279,91 +295,105 @@ async def test_get_portfolio_snapshots_success(
             "value": 950.0,
         },
     ]
-    mock_portfolio_snapshot_repository.get_snapshots_by_address_and_range.return_value = (
+    mock_portfolio_snapshot_repository.get_by_wallet_address.return_value = (
         mock_snapshots
     )
 
     # Act
-    result = await wallet_usecase.get_portfolio_snapshots(user, addr)
+    result = await wallet_usecase.get_portfolio_snapshots(user.id, addr)
 
     # Assert
     assert result == mock_snapshots
-    mock_wallet_repository.get_by_address_and_user.assert_called_once_with(
-        addr, user.id
+    mock_wallet_repository.get_by_address.assert_called_once_with(
+        address=addr
     )
 
 
 @pytest.mark.asyncio
 async def test_get_portfolio_snapshots_not_owned(
-    wallet_usecase, mock_wallet_repository
+    wallet_usecase, mock_wallet_repository, mock_user_repository
 ):
     """Test portfolio snapshots retrieval for wallet not owned by user."""
     # Arrange
     user = _dummy_user()
+    other_user_id = uuid.uuid4()
     addr = f"0x{uuid.uuid4().hex:0<40}"[:42]
 
-    mock_wallet_repository.get_by_address_and_user.return_value = (
-        None  # Wallet not owned
-    )
+    # Mock wallet exists but is owned by different user
+    mock_wallet = Mock()
+    mock_wallet.user_id = other_user_id
+    mock_wallet_repository.get_by_address.return_value = mock_wallet
+    mock_user_repository.get_by_id.return_value = user
 
     # Act & Assert
     with pytest.raises(HTTPException) as exc:
-        await wallet_usecase.get_portfolio_snapshots(user, addr)
+        await wallet_usecase.get_portfolio_snapshots(user.id, addr)
 
     assert exc.value.status_code == 404
-    assert "Wallet not found or you do not have permission" in exc.value.detail
+    assert "Wallet not found or access denied" in exc.value.detail
 
 
 @pytest.mark.asyncio
 async def test_get_portfolio_snapshots_nonexistent_wallet(
-    wallet_usecase, mock_wallet_repository
+    wallet_usecase, mock_wallet_repository, mock_user_repository
 ):
     """Test portfolio snapshots retrieval for nonexistent wallet."""
     # Arrange
     user = _dummy_user()
     addr = f"0x{uuid.uuid4().hex:0<40}"[:42]
 
-    mock_wallet_repository.get_by_address_and_user.return_value = None
+    mock_wallet_repository.get_by_address.return_value = None
+    mock_user_repository.get_by_id.return_value = user
 
     # Act & Assert
     with pytest.raises(HTTPException) as exc:
-        await wallet_usecase.get_portfolio_snapshots(user, addr)
+        await wallet_usecase.get_portfolio_snapshots(user.id, addr)
 
     assert exc.value.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_get_portfolio_metrics_not_owned(wallet_usecase, mock_wallet_repository):
+async def test_get_portfolio_metrics_not_owned(wallet_usecase, mock_wallet_repository, mock_user_repository):
     """Test portfolio metrics retrieval for wallet not owned by user."""
     # Arrange
     user = _dummy_user()
+    other_user_id = uuid.uuid4()
     addr = f"0x{uuid.uuid4().hex:0<40}"[:42]
 
-    mock_wallet_repository.get_by_address_and_user.return_value = None
+    # Mock wallet exists but is owned by different user
+    mock_wallet = Mock()
+    mock_wallet.user_id = other_user_id
+    mock_wallet_repository.get_by_address.return_value = mock_wallet
+    mock_user_repository.get_by_id.return_value = user
 
     # Act & Assert
     with pytest.raises(HTTPException) as exc:
-        await wallet_usecase.get_portfolio_metrics(user, addr)
+        await wallet_usecase.get_portfolio_metrics(user.id, addr)
 
     assert exc.value.status_code == 404
-    assert "Wallet not found or you do not have permission" in exc.value.detail
+    assert "Wallet not found or access denied" in exc.value.detail
 
 
 @pytest.mark.asyncio
-async def test_get_portfolio_timeline_not_owned(wallet_usecase, mock_wallet_repository):
+async def test_get_portfolio_timeline_not_owned(wallet_usecase, mock_wallet_repository, mock_user_repository):
     """Test portfolio timeline retrieval for wallet not owned by user."""
     # Arrange
     user = _dummy_user()
+    other_user_id = uuid.uuid4()
     addr = f"0x{uuid.uuid4().hex:0<40}"[:42]
 
-    mock_wallet_repository.get_by_address_and_user.return_value = None
+    # Mock wallet exists but is owned by different user
+    mock_wallet = Mock()
+    mock_wallet.user_id = other_user_id
+    mock_wallet_repository.get_by_address.return_value = mock_wallet
+    mock_user_repository.get_by_id.return_value = user
 
     # Act & Assert
     with pytest.raises(HTTPException) as exc:
-        await wallet_usecase.get_portfolio_timeline(user, addr)
+        await wallet_usecase.get_portfolio_timeline(user.id, addr)
 
     assert exc.value.status_code == 404
-    assert "Wallet not found or you do not have permission" in exc.value.detail
+    assert "Wallet not found or access denied" in exc.value.detail
 
 
 def test_wallet_usecase_constructor_dependencies():

@@ -71,6 +71,8 @@ test-perf: ## Run performance-marked tests
 test-cov: ## Generate HTML coverage report
 	$(TEST_ENV) pytest $(TEST_FLAGS) --cov=app --cov-report=term-missing
 
+test-quiet:
+	$(TEST_ENV) pytest -q -rfE --tb=line --no-header --disable-warnings --color=no --maxfail=15
 # -----------------------------------------------------------------------------
 # Runtime helpers
 # -----------------------------------------------------------------------------
