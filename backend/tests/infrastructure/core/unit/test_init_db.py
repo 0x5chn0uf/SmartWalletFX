@@ -1,6 +1,6 @@
 import pytest
 
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.core.database import CoreDatabase
 from app.utils.logging import Audit
 
@@ -41,7 +41,7 @@ class _DummyEngine:
 @pytest.mark.asyncio
 async def test_init_db_success(monkeypatch):
     """init_db should open a connection and run Base.metadata.create_all."""
-    database = CoreDatabase(ConfigurationService(), Audit())
+    database = CoreDatabase(Configuration(), Audit())
     conn = _DummyConn()
     engine = _DummyEngine(conn)
     monkeypatch.setattr(database, "async_engine", engine)
@@ -59,7 +59,7 @@ async def test_init_db_success(monkeypatch):
 @pytest.mark.asyncio
 async def test_init_db_error_propagation(monkeypatch):
     """If run_sync raises, the exception should propagate."""
-    database = CoreDatabase(ConfigurationService(), Audit())
+    database = CoreDatabase(Configuration(), Audit())
 
     conn = _DummyConn(should_raise=True)
     async_engine = _DummyEngine(conn)

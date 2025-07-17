@@ -7,15 +7,15 @@ import sys
 
 import structlog
 
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 
 
 class CoreLogging:
     """Service for managing application logging configuration."""
 
-    def __init__(self, config_service: ConfigurationService):
+    def __init__(self, config: Configuration):
         """Initialize logging service with configuration."""
-        self.config_service = config_service
+        self.config = config
         self._is_setup = False
 
     def setup_logging(self) -> None:
@@ -24,7 +24,7 @@ class CoreLogging:
             return  # Avoid duplicate setup
 
         # Get log level from config
-        log_level_str = self.config_service.LOG_LEVEL
+        log_level_str = self.config.LOG_LEVEL
         log_level = getattr(logging, log_level_str, logging.INFO)
 
         # Basic stdlib config (structlog will re-use root handlers)

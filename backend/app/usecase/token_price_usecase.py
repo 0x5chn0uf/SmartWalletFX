@@ -1,4 +1,4 @@
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.domain.schemas.token_price import TokenPriceCreate, TokenPriceResponse
 from app.repositories.token_price_repository import TokenPriceRepository
 from app.utils.logging import Audit
@@ -13,11 +13,11 @@ class TokenPriceUsecase:
     def __init__(
         self,
         token_price_repo: TokenPriceRepository,
-        config_service: ConfigurationService,
+        config: Configuration,
         audit: Audit,
     ):
         self.__token_price_repo = token_price_repo
-        self.__config_service = config_service
+        self.__config_service = config
         self.__audit = audit
 
     async def create_token_price(self, tp: TokenPriceCreate) -> TokenPriceResponse:

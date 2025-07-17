@@ -5,7 +5,7 @@ from typing import Optional
 
 from jose import jwt as jose_jwt
 
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.core.security.roles import UserRole
 from app.domain.schemas.auth_token import TokenResponse
 from app.models.user import User
@@ -25,14 +25,14 @@ class OAuthService:
         oauth_account_repo: OAuthAccountRepository,
         refresh_token_repo: RefreshTokenRepository,
         jwt_utils: JWTUtils,
-        config_service: ConfigurationService,
+        config: Configuration,
         audit: Audit,
     ):
         self.__user_repo = user_repo
         self.__oauth_account_repo = oauth_account_repo
         self.__refresh_token_repo = refresh_token_repo
         self.__jwt_utils = jwt_utils
-        self.__config_service = config_service
+        self.__config_service = config
         self.__audit = audit
 
     async def authenticate_or_create(

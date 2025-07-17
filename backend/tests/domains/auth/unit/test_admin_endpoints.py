@@ -328,30 +328,48 @@ async def test_assign_user_role_database_error(admin_endpoint, mock_user_reposit
 @pytest.mark.asyncio
 async def test_get_user_profile():
     # Setup
-    # Mock current user with roles and attributes
+    user_id = uuid.uuid4()
     current_user = User(
-        id=uuid.uuid4(),
+        id=user_id,
         username="testuser",
         email="test@example.com",
         roles=["individual_investor"],
     )
-    # Set roles and attributes for testing
-    current_user._current_roles = ["individual_investor"]
-    current_user._current_attributes = {"portfolio_value": 50000, "kyc_level": "basic"}
 
-    # Execute
-    result = await Admin.get_user_profile(current_user)
+    # Mock request with user_id and token payload
+    payload = {
+        "sub": str(user_id),
+        "roles": ["individual_investor"],
+        "attributes": {"portfolio_value": 50000, "kyc_level": "basic"},
+    }
+    request = Mock(state=Mock(user_id=user_id, token_payload=payload))
 
-    # Assert
-    assert "user_id" in result
-    assert "username" in result
-    assert "email" in result
-    assert "roles" in result
-    assert "attributes" in result
-    assert "permissions" in result
-    assert result["user_id"] == str(current_user.id)
-    assert result["username"] == "testuser"
-    assert result["email"] == "test@example.com"
-    assert "individual_investor" in result["roles"]
-    assert result["attributes"]["portfolio_value"] == 50000
-    assert result["attributes"]["kyc_level"] == "basic"
+    # Mock the DIContainer and database service
+    mock_session_context = AsyncMock()
+    mock_session_context.__aenter__.return_value = Mock(
+        get=AsyncMock(return_value=current_user)
+    )
+
+    mock_database = Mock()
+    mock_database.get_session.return_value = mock_session_context
+
+    mock_di_container = Mock()
+    mock_di_container.get_core.return_value = mock_database
+
+    with patch("app.di.DIContainer", return_value=mock_di_container):
+        # Execute
+        result = await Admin.get_user_profile(request)
+
+        # Assert
+        assert "user_id" in result
+        assert "username" in result
+        assert "email" in result
+        assert "roles" in result
+        assert "attributes" in result
+        assert "permissions" in result
+        assert result["user_id"] == str(current_user.id)
+        assert result["username"] == "testuser"
+        assert result["email"] == "test@example.com"
+        assert "individual_investor" in result["roles"]
+        assert result["attributes"]["portfolio_value"] == 50000
+        assert result["attributes"]["kyc_level"] == "basic"

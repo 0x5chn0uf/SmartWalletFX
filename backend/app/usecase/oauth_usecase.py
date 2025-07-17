@@ -8,7 +8,7 @@ from fastapi import HTTPException, Request
 from fastapi.responses import RedirectResponse
 from jose import jwt
 
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.domain.schemas.auth_token import TokenResponse
 from app.models.user import User
 from app.repositories.oauth_account_repository import OAuthAccountRepository
@@ -34,14 +34,14 @@ class OAuthUsecase:
         user_repo: UserRepository,
         refresh_token_repo: RefreshTokenRepository,
         oauth_service: OAuthService,
-        config_service: ConfigurationService,
+        config: Configuration,
         audit: Audit,
     ) -> None:
         self.__oauth_account_repo = oauth_account_repo
         self.__user_repo = user_repo
         self.__refresh_token_repo = refresh_token_repo
         self.__oauth_service = oauth_service
-        self.__config_service = config_service
+        self.__config_service = config
         self.__audit = audit
 
     async def authenticate_and_issue_tokens(

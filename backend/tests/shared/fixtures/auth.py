@@ -355,7 +355,7 @@ def create_test_auth_service(db_session):
     from contextlib import asynccontextmanager
     from unittest.mock import Mock
 
-    from app.core.config import ConfigurationService
+    from app.core.config import Configuration
     from app.core.database import CoreDatabase
     from app.repositories.email_verification_repository import (
         EmailVerificationRepository,
@@ -377,13 +377,13 @@ def create_test_auth_service(db_session):
     database.get_session = get_session
 
     audit = Audit()
-    config_service = ConfigurationService()
-    jwt_utils = JWTUtils(config_service, audit)
+    config = Configuration()
+    jwt_utils = JWTUtils(config, audit)
 
     user_repo = UserRepository(database, audit)
     email_verification_repo = EmailVerificationRepository(database, audit)
     refresh_token_repo = RefreshTokenRepository(database, audit)
-    email_service = EmailService(config_service, audit)
+    email_service = EmailService(config, audit)
 
     return AuthService(
         user_repository=user_repo,
@@ -391,6 +391,6 @@ def create_test_auth_service(db_session):
         refresh_token_repository=refresh_token_repo,
         email_service=email_service,
         jwt_utils=jwt_utils,
-        config_service=config_service,
+        config=config,
         audit=audit,
     )

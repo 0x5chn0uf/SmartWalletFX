@@ -78,10 +78,10 @@ async def test_create_success(email_verification_repository, mock_session):
     token = "test_token"
     user_id = uuid.uuid4()
     expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
-    
+
     # Act
     result = await email_verification_repository.create(token, user_id, expires_at)
-    
+
     # Assert
     assert isinstance(result, EmailVerification)
     assert result.token_hash == hashlib.sha256(token.encode()).hexdigest()
@@ -99,15 +99,15 @@ async def test_create_exception_handling(email_verification_repository, mock_ses
     # Arrange
     setup_mock_session(email_verification_repository, mock_session)
     mock_session.commit.side_effect = Exception("Database error")
-    
+
     token = "test_token"
     user_id = uuid.uuid4()
     expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
-    
+
     # Act & Assert
     with pytest.raises(Exception, match="Database error"):
         await email_verification_repository.create(token, user_id, expires_at)
-    
+
     email_verification_repository._EmailVerificationRepository__audit.error.assert_called_once()
 
 
@@ -118,20 +118,20 @@ async def test_get_valid_found(email_verification_repository, mock_session):
     setup_mock_session(email_verification_repository, mock_session)
     token = "test_token"
     token_hash = hashlib.sha256(token.encode()).hexdigest()
-    
+
     mock_ev = Mock()
     mock_ev.token_hash = token_hash
     mock_ev.user_id = uuid.uuid4()
     mock_ev.expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
     mock_ev.used = False
-    
+
     mock_result = Mock()
     mock_result.scalar_one_or_none.return_value = mock_ev
     mock_session.execute.return_value = mock_result
-    
+
     # Act
     result = await email_verification_repository.get_valid(token)
-    
+
     # Assert
     assert result == mock_ev
     mock_session.execute.assert_called_once()
@@ -144,14 +144,14 @@ async def test_get_valid_not_found(email_verification_repository, mock_session):
     # Arrange
     setup_mock_session(email_verification_repository, mock_session)
     token = "test_token"
-    
+
     mock_result = Mock()
     mock_result.scalar_one_or_none.return_value = None
     mock_session.execute.return_value = mock_result
-    
+
     # Act
     result = await email_verification_repository.get_valid(token)
-    
+
     # Assert
     assert result is None
     mock_session.execute.assert_called_once()
@@ -159,18 +159,20 @@ async def test_get_valid_not_found(email_verification_repository, mock_session):
 
 
 @pytest.mark.asyncio
-async def test_get_valid_exception_handling(email_verification_repository, mock_session):
+async def test_get_valid_exception_handling(
+    email_verification_repository, mock_session
+):
     """Test exception handling in get_valid method."""
     # Arrange
     setup_mock_session(email_verification_repository, mock_session)
     mock_session.execute.side_effect = Exception("Database error")
-    
+
     token = "test_token"
-    
+
     # Act & Assert
     with pytest.raises(Exception, match="Database error"):
         await email_verification_repository.get_valid(token)
-    
+
     email_verification_repository._EmailVerificationRepository__audit.error.assert_called_once()
 
 
@@ -179,18 +181,18 @@ async def test_mark_used_success(email_verification_repository, mock_session):
     """Test successful marking of email verification token as used."""
     # Arrange
     setup_mock_session(email_verification_repository, mock_session)
-    
+
     mock_ev = Mock()
     mock_ev.token_hash = "test_hash"
     mock_ev.used = False
-    
+
     mock_merged_ev = Mock()
     mock_merged_ev.used = False
     mock_session.merge.return_value = mock_merged_ev
-    
+
     # Act
     await email_verification_repository.mark_used(mock_ev)
-    
+
     # Assert
     mock_session.merge.assert_called_once_with(mock_ev)
     assert mock_merged_ev.used is True
@@ -199,19 +201,21 @@ async def test_mark_used_success(email_verification_repository, mock_session):
 
 
 @pytest.mark.asyncio
-async def test_mark_used_exception_handling(email_verification_repository, mock_session):
+async def test_mark_used_exception_handling(
+    email_verification_repository, mock_session
+):
     """Test exception handling in mark_used method."""
     # Arrange
     setup_mock_session(email_verification_repository, mock_session)
     mock_session.merge.side_effect = Exception("Database error")
-    
+
     mock_ev = Mock()
     mock_ev.token_hash = "test_hash"
-    
+
     # Act & Assert
     with pytest.raises(Exception, match="Database error"):
         await email_verification_repository.mark_used(mock_ev)
-    
+
     email_verification_repository._EmailVerificationRepository__audit.error.assert_called_once()
 
 
@@ -220,14 +224,14 @@ async def test_delete_expired_success(email_verification_repository, mock_sessio
     """Test successful deletion of expired email verification tokens."""
     # Arrange
     setup_mock_session(email_verification_repository, mock_session)
-    
+
     mock_result = Mock()
     mock_result.rowcount = 5
     mock_session.execute.return_value = mock_result
-    
+
     # Act
     count = await email_verification_repository.delete_expired()
-    
+
     # Assert
     assert count == 5
     mock_session.execute.assert_called_once()
@@ -236,16 +240,18 @@ async def test_delete_expired_success(email_verification_repository, mock_sessio
 
 
 @pytest.mark.asyncio
-async def test_delete_expired_exception_handling(email_verification_repository, mock_session):
+async def test_delete_expired_exception_handling(
+    email_verification_repository, mock_session
+):
     """Test exception handling in delete_expired method."""
     # Arrange
     setup_mock_session(email_verification_repository, mock_session)
     mock_session.execute.side_effect = Exception("Database error")
-    
+
     # Act & Assert
     with pytest.raises(Exception, match="Database error"):
         await email_verification_repository.delete_expired()
-    
+
     email_verification_repository._EmailVerificationRepository__audit.error.assert_called_once()
 
 
@@ -255,26 +261,26 @@ async def test_token_hashing_consistency():
     # Arrange
     token = "test_token"
     expected_hash = hashlib.sha256(token.encode()).hexdigest()
-    
+
     mock_database = Mock()
     mock_audit = Mock()
     repository = EmailVerificationRepository(mock_database, mock_audit)
-    
+
     # Mock session for create
     mock_session = Mock()
     mock_session.add = Mock()
     mock_session.commit = AsyncMock()
     mock_session.refresh = AsyncMock()
     mock_session.execute = AsyncMock()
-    
+
     setup_mock_session(repository, mock_session)
-    
+
     user_id = uuid.uuid4()
     expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
-    
+
     # Act
     await repository.create(token, user_id, expires_at)
-    
+
     # Assert - check that the EmailVerification object was created with correct hash
     call_args = mock_session.add.call_args[0][0]
     assert call_args.token_hash == expected_hash
@@ -286,15 +292,15 @@ async def test_audit_logging_patterns(email_verification_repository, mock_sessio
     # Arrange
     setup_mock_session(email_verification_repository, mock_session)
     audit_mock = email_verification_repository._EmailVerificationRepository__audit
-    
+
     # Test create audit logging
     token = "test_token"
     user_id = uuid.uuid4()
     expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
-    
+
     # Act
     await email_verification_repository.create(token, user_id, expires_at)
-    
+
     # Assert
     audit_calls = audit_mock.info.call_args_list
     assert len(audit_calls) == 2  # started and success
@@ -308,20 +314,19 @@ async def test_get_valid_query_structure(email_verification_repository, mock_ses
     # Arrange
     setup_mock_session(email_verification_repository, mock_session)
     token = "test_token"
-    token_hash = hashlib.sha256(token.encode()).hexdigest()
-    
+
     mock_result = Mock()
     mock_result.scalar_one_or_none.return_value = None
     mock_session.execute.return_value = mock_result
-    
+
     # Act
     await email_verification_repository.get_valid(token)
-    
+
     # Assert
     mock_session.execute.assert_called_once()
     call_args = mock_session.execute.call_args[0][0]
     # The query should be a select statement
-    assert hasattr(call_args, 'whereclause')
+    assert hasattr(call_args, "whereclause")
     # Should have proper where conditions for token_hash, expires_at, and used
     where_clause = str(call_args.whereclause)
     assert "token_hash" in where_clause

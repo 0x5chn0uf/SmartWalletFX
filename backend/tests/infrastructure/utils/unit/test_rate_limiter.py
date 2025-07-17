@@ -1,8 +1,5 @@
 from unittest.mock import patch
 
-import pytest
-
-from app.core.config import ConfigurationService
 from app.utils.rate_limiter import InMemoryRateLimiter
 
 

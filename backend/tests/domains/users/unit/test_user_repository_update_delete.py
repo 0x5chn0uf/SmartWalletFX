@@ -1,12 +1,7 @@
 import uuid
-from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-
-from app.models.refresh_token import RefreshToken
-from app.models.user import User
-from app.repositories.user_repository import UserRepository
 
 
 def setup_mock_session(user_repository_with_di, mock_async_session):

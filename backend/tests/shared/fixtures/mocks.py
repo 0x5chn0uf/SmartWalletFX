@@ -14,7 +14,7 @@ def mock_settings(monkeypatch):
     performant solution (like transactional fixtures) is implemented.
     """
     monkeypatch.setattr(
-        "app.core.config.ConfigurationService.ARBITRUM_RPC_URL",
+        "app.core.config.Configuration.ARBITRUM_RPC_URL",
         "http://mock-rpc",
         raising=False,
     )

@@ -17,7 +17,7 @@ def create_mock_usecase():
     user_repo = Mock()
     refresh_token_repo = Mock()
     oauth_service = Mock()
-    config_service = Mock()
+    config = Mock()
     audit = Mock()
 
     return OAuthUsecase(
@@ -25,7 +25,7 @@ def create_mock_usecase():
         user_repo=user_repo,
         refresh_token_repo=refresh_token_repo,
         oauth_service=oauth_service,
-        config_service=config_service,
+        config=config,
         audit=audit,
     )
 

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, mock_open, patch
 import pytest
 from jose import ExpiredSignatureError, JWSError, JWTError
 
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.utils.jwt import (
     _RETIRED_KEYS,
     JWTUtils,
@@ -20,8 +20,8 @@ from app.utils.logging import Audit
 
 @pytest.fixture
 def mock_config():
-    """Return a mocked ConfigurationService instance."""
-    config = MagicMock(spec=ConfigurationService)
+    """Return a mocked Configuration instance."""
+    config = MagicMock(spec=Configuration)
     # Set default values
     config.JWT_ALGORITHM = "HS256"
     config.JWT_KEYS = None
@@ -42,8 +42,8 @@ class TestJWTUtils:
         """Clear retired keys before each test."""
         _RETIRED_KEYS.clear()
         # Clear LRU caches
-        JWTUtils(ConfigurationService(), Audit())._get_sign_key.cache_clear()
-        JWTUtils(ConfigurationService(), Audit())._get_verify_key.cache_clear()
+        JWTUtils(Configuration(), Audit())._get_sign_key.cache_clear()
+        JWTUtils(Configuration(), Audit())._get_verify_key.cache_clear()
 
     def test_get_sign_key_hs256_with_keys(self, mock_config):
         """Test _get_sign_key with HS256 and JWT_KEYS configured."""

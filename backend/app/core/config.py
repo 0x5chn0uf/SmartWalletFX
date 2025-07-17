@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings
 from app.validators.security import SecurityValidator
 
 
-class ConfigurationService(BaseSettings):
+class Configuration(BaseSettings):
     """Configuration service for application settings as singleton."""
 
     PROJECT_NAME: str = "SmartWalletFX"

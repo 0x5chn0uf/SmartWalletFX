@@ -9,7 +9,7 @@ import re
 
 from passlib.context import CryptContext
 
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 
 # ---------------------------------------------------------------------------
 # Password Hasher Utility
@@ -20,11 +20,11 @@ class PasswordHasher:  # noqa: D101 – simple utility wrapper
     """Utility class for hashing & verifying passwords.
 
     Uses *passlib*'s :class:`~passlib.context.CryptContext` under the hood and
-    retrieves the bcrypt cost factor from :data:`config_service.BCRYPT_ROUNDS` so it
+    retrieves the bcrypt cost factor from :data:`config.BCRYPT_ROUNDS` so it
     can be tuned per-environment (e.g. lower in CI).
     """
 
-    _config_service = ConfigurationService()
+    _config_service = Configuration()
     _context = CryptContext(
         schemes=["bcrypt"],
         deprecated="auto",

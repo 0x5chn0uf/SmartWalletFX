@@ -4,16 +4,14 @@ from uuid import uuid4
 import pytest
 from jose.exceptions import JWTError
 
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.domain.errors import InvalidCredentialsError
 from app.utils.jwt import JWTUtils
 
 
 def _configure_hs256(monkeypatch):
-    monkeypatch.setattr(ConfigurationService, "JWT_ALGORITHM", "HS256", raising=False)
-    monkeypatch.setattr(
-        ConfigurationService, "JWT_SECRET_KEY", "test-secret", raising=False
-    )
+    monkeypatch.setattr(Configuration, "JWT_ALGORITHM", "HS256", raising=False)
+    monkeypatch.setattr(Configuration, "JWT_SECRET_KEY", "test-secret", raising=False)
 
 
 def test_jwt_round_trip(mock_jwt_utils):

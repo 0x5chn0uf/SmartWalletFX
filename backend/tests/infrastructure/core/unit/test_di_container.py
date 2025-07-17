@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.core.database import CoreDatabase
 from app.di import DIContainer
 
@@ -16,7 +16,7 @@ class TestDIContainer:
         return DIContainer()
 
     def test_config_service_registration(self, di_container):
-        """Test that ConfigurationService is registered."""
+        """Test that Configuration is registered."""
         config = di_container.get_core("config")
         assert config is not None
         assert hasattr(config, "PROJECT_NAME")
@@ -70,11 +70,11 @@ class TestDIContainer:
         # Test LoggingService has config dependency
         logging = di_container.get_core("logging")
         config = di_container.get_core("config")
-        assert logging.config_service == config
+        assert logging.config == config
 
         # Test CeleryService has config dependency
         celery = di_container.get_core("celery")
-        assert celery.config_service == config
+        assert celery.config == config
 
         # Test ErrorHandlingService has audit dependency
         error_handling = di_container.get_core("error_handling")
@@ -301,11 +301,11 @@ class TestDIContainer:
                 usecase, f"_{usecase.__class__.__name__}__audit"
             ), f"Usecase '{usecase_name}' missing audit"
 
-            # Most usecases have config_service, but portfolio_snapshot doesn't
+            # Most usecases have config, but portfolio_snapshot doesn't
             if usecase_name != "portfolio_snapshot":
                 assert hasattr(
                     usecase, f"_{usecase.__class__.__name__}__config_service"
-                ), f"Usecase '{usecase_name}' missing config_service"
+                ), f"Usecase '{usecase_name}' missing config"
 
     def test_endpoint_router_configuration(self, di_container):
         """Test that endpoints have proper router configuration."""
@@ -485,7 +485,7 @@ class TestDIContainer:
         config1 = di_container1.get_core("config")
         config2 = di_container2.get_core("config")
 
-        # While they're both ConfigurationService instances, they should be different objects
+        # While they're both Configuration instances, they should be different objects
         assert config1 is not config2
 
         # But within the same container, they should be the same (singleton)
@@ -564,28 +564,28 @@ class TestDIContainer:
 
 
 class TestConfigurationService:
-    """Test the ConfigurationService."""
+    """Test the Configuration."""
 
     def test_configuration_service_properties(self):
-        """Test that ConfigurationService properties work correctly."""
-        config_service = ConfigurationService()
+        """Test that Configuration properties work correctly."""
+        config = Configuration()
 
         # Test direct attribute access
-        assert config_service.PROJECT_NAME == "SmartWalletFX"
-        assert config_service.VERSION == "0.1.0"
-        assert config_service.ENVIRONMENT == "development"
-        assert isinstance(config_service.BACKEND_CORS_ORIGINS, list)
-        assert config_service.ACCESS_TOKEN_EXPIRE_MINUTES == 15
-        assert config_service.REFRESH_TOKEN_EXPIRE_DAYS == 7
+        assert config.PROJECT_NAME == "SmartWalletFX"
+        assert config.VERSION == "0.1.0"
+        assert config.ENVIRONMENT == "development"
+        assert isinstance(config.BACKEND_CORS_ORIGINS, list)
+        assert config.ACCESS_TOKEN_EXPIRE_MINUTES == 15
+        assert config.REFRESH_TOKEN_EXPIRE_DAYS == 7
 
     def test_configuration_service_is_pydantic_settings(self):
-        """Test that ConfigurationService is still a proper Pydantic BaseSettings."""
-        config_service = ConfigurationService()
+        """Test that Configuration is still a proper Pydantic BaseSettings."""
+        config = Configuration()
 
         # Should have Pydantic BaseSettings functionality
-        assert hasattr(config_service, "model_config")
-        assert hasattr(config_service, "model_dump")
-        assert hasattr(config_service, "model_validate")
+        assert hasattr(config, "model_config")
+        assert hasattr(config, "model_dump")
+        assert hasattr(config, "model_validate")
 
 
 class TestCoreDatabase:
@@ -602,7 +602,7 @@ class TestCoreDatabase:
         audit = di_container.get_core("audit")
         database = CoreDatabase(config, audit)
 
-        assert database.config_service is config
+        assert database.config is config
         assert hasattr(database, "async_engine")
         assert hasattr(database, "sync_engine")
         assert hasattr(database, "async_session_factory")

@@ -1,4 +1,4 @@
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.domain.schemas.token import TokenCreate, TokenResponse
 from app.repositories.token_repository import TokenRepository
 from app.utils.logging import Audit
@@ -13,11 +13,11 @@ class TokenUsecase:
     def __init__(
         self,
         token_repo: TokenRepository,
-        config_service: ConfigurationService,
+        config: Configuration,
         audit: Audit,
     ):
         self.__token_repo = token_repo
-        self.__config_service = config_service
+        self.__config_service = config
         self.__audit = audit
 
     async def create_token(self, token: TokenCreate) -> TokenResponse:

@@ -14,7 +14,7 @@ import pytest
 
 @pytest.fixture
 def mock_config():
-    """Mock ConfigurationService for testing."""
+    """Mock Configuration for testing."""
     mock = Mock()
     mock.database_url = "sqlite+aiosqlite:///:memory:"
     mock.sync_database_url = "sqlite:///:memory:"
@@ -43,6 +43,13 @@ def mock_database():
     @asynccontextmanager
     async def mock_get_session():
         session = AsyncMock()
+        session.add = Mock()
+        session.commit = AsyncMock()
+        session.refresh = AsyncMock()
+        session.execute = AsyncMock()
+        session.merge = AsyncMock()
+        session.delete = AsyncMock()
+        session.rollback = AsyncMock()
         yield session
 
     mock.get_session = mock_get_session
@@ -74,7 +81,6 @@ def mock_email_service():
     return mock
 
 
-
 @pytest.fixture
 def mock_celery():
     """Mock Celery app for testing."""
@@ -89,7 +95,7 @@ def mock_celery():
 def mock_jwt_utils():
     """Mock JWT utilities for testing."""
     from unittest.mock import AsyncMock
-    
+
     mock = Mock()
     mock.generate_jwt = Mock()
     mock.verify_jwt = Mock()
@@ -97,5 +103,4 @@ def mock_jwt_utils():
     mock.create_access_token = Mock()
     mock.create_refresh_token = Mock()
     mock.verify_token = AsyncMock()
-    mock.get_current_user = AsyncMock()
     return mock

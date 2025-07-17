@@ -6,7 +6,7 @@ import ssl
 from email.message import EmailMessage
 from typing import Final
 
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.utils.logging import Audit
 
 
@@ -23,7 +23,7 @@ def _build_email(
     return msg
 
 
-async def _send_via_smtp(message: EmailMessage, config: ConfigurationService) -> None:
+async def _send_via_smtp(message: EmailMessage, config: Configuration) -> None:
     """Send *message* using SMTP settings from *config*.
 
     This helper runs the blocking smtplib logic in a thread-pool so the
@@ -61,9 +61,9 @@ async def _send_via_smtp(message: EmailMessage, config: ConfigurationService) ->
 class EmailService:
     """Email service with dependency injection support."""
 
-    def __init__(self, config_service: ConfigurationService, audit: Audit):
+    def __init__(self, config: Configuration, audit: Audit):
         """Initialize EmailService with dependencies."""
-        self.__config_service = config_service
+        self.__config_service = config
         self.__audit = audit
 
     async def send_password_reset(

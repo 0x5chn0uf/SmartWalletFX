@@ -1,4 +1,4 @@
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.domain.schemas.token_balance import (
     TokenBalanceCreate,
     TokenBalanceResponse,
@@ -16,11 +16,11 @@ class TokenBalanceUsecase:
     def __init__(
         self,
         token_balance_repo: TokenBalanceRepository,
-        config_service: ConfigurationService,
+        config: Configuration,
         audit: Audit,
     ):
         self.__token_balance_repo = token_balance_repo
-        self.__config_service = config_service
+        self.__config_service = config
         self.__audit = audit
 
     async def create_token_balance(

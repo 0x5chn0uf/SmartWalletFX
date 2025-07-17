@@ -14,7 +14,7 @@ from typing import Optional
 from fastapi import BackgroundTasks
 from sqlalchemy.exc import IntegrityError
 
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.core.security.roles import UserRole
 from app.domain.errors import InvalidCredentialsError
 from app.domain.schemas.auth_token import TokenResponse
@@ -50,7 +50,7 @@ class AuthService:
         refresh_token_repository: RefreshTokenRepository,
         email_service: EmailService,
         jwt_utils: JWTUtils,
-        config_service: ConfigurationService,
+        config: Configuration,
         audit: Audit,
     ):
         """Initialize with injected dependencies."""
@@ -59,7 +59,7 @@ class AuthService:
         self.__refresh_token_repo = refresh_token_repository
         self.__email_service = email_service
         self.__jwt_utils = jwt_utils
-        self.__config_service = config_service
+        self.__config_service = config
         self.__audit = audit
 
     async def register(  # noqa: D401 – business method

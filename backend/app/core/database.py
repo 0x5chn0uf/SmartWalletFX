@@ -10,15 +10,15 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import sessionmaker  # type: ignore
 from sqlalchemy.orm import declarative_base
 
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.utils.logging import Audit
 
 
 class CoreDatabase:
     """Database service managing database connections and sessions."""
 
-    def __init__(self, config_service: ConfigurationService, audit: Audit):
-        self.config_service = config_service
+    def __init__(self, config: Configuration, audit: Audit):
+        self.config = config
         self._setup_async_engine()
         self._setup_sync_engine()
         self._setup_session_factories()
@@ -26,7 +26,7 @@ class CoreDatabase:
 
     def _setup_async_engine(self):
         """Set up the async database engine."""
-        db_url = self.config_service.DATABASE_URL
+        db_url = self.config.DATABASE_URL
 
         # Handle async drivers for different database types
         if db_url.startswith("sqlite:///") and "+aiosqlite" not in db_url:
@@ -41,8 +41,8 @@ class CoreDatabase:
         pool_kwargs = {}
         if "postgresql" in str(db_url):
             pool_kwargs = {
-                "pool_size": self.config_service.DB_POOL_SIZE,
-                "max_overflow": self.config_service.DB_MAX_OVERFLOW,
+                "pool_size": self.config.DB_POOL_SIZE,
+                "max_overflow": self.config.DB_MAX_OVERFLOW,
             }
 
         self.async_engine = create_async_engine(
@@ -53,7 +53,7 @@ class CoreDatabase:
 
     def _setup_sync_engine(self):
         """Set up the sync database engine for Celery tasks."""
-        sync_db_url = self.config_service.DATABASE_URL
+        sync_db_url = self.config.DATABASE_URL
 
         # Convert async drivers back to sync for synchronous operations
         if "+aiosqlite" in sync_db_url:
@@ -121,22 +121,3 @@ class CoreDatabase:
 
 # Create declarative base
 Base = declarative_base()
-
-
-# Temporary compatibility function for legacy auth dependencies
-async def get_db():
-    """
-    Temporary compatibility function for legacy auth dependencies.
-    This provides database sessions for endpoints that haven't been fully migrated.
-    """
-
-    # Local import to avoid circular dependency
-    from app.di import DIContainer
-
-    # Get database service from DIContainer
-    di_container = DIContainer()
-    database = di_container.get_core("database")
-
-    # Yield session from the database service
-    async with database.get_session() as session:
-        yield session

@@ -5,10 +5,9 @@ This module showcases the Role-Based and Attribute-Based Access Control system
 with different permission levels and attribute requirements.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.api.dependencies import (
-    auth_deps,
     require_attributes,
     require_permission,
     require_roles,
@@ -173,9 +172,14 @@ class Admin:
     @staticmethod
     @ep.get("/profile")
     async def get_user_profile(
-        current_user: User = Depends(auth_deps.get_current_user),
+        request: Request,
     ):
         """Get current user's profile with role and attribute information."""
+        # Import here to avoid circular imports
+        from app.api.dependencies import get_user_from_request
+
+        current_user = await get_user_from_request(request)
+
         return {
             "user_id": str(current_user.id),
             "username": current_user.username,
