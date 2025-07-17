@@ -1,18 +1,20 @@
 import time
-from datetime import datetime
+import uuid
+from datetime import datetime, timedelta
 from typing import List
 
 from fastapi import HTTPException, status
 
 from app.core.config import ConfigurationService
+from app.domain.schemas.portfolio_metrics import PortfolioMetrics
+from app.domain.schemas.portfolio_timeline import PortfolioTimeline
+from app.domain.schemas.wallet import WalletCreate, WalletResponse
 from app.models.user import User
 from app.repositories.portfolio_snapshot_repository import (
     PortfolioSnapshotRepository,
 )
+from app.repositories.user_repository import UserRepository
 from app.repositories.wallet_repository import WalletRepository
-from app.schemas.portfolio_metrics import PortfolioMetrics
-from app.schemas.portfolio_timeline import PortfolioTimeline
-from app.schemas.wallet import WalletCreate, WalletResponse
 from app.utils.logging import Audit
 
 
@@ -26,26 +28,37 @@ class WalletUsecase:
     def __init__(
         self,
         wallet_repo: WalletRepository,
+        user_repo: UserRepository,
         portfolio_snapshot_repo: PortfolioSnapshotRepository,
         config_service: ConfigurationService,
         audit: Audit,
     ):
         self.__wallet_repo = wallet_repo
+        self.__user_repo = user_repo
         self.__portfolio_snapshot_repo = portfolio_snapshot_repo
         self.__config_service = config_service
         self.__audit = audit
 
-    async def create_wallet(self, user: User, wallet: WalletCreate) -> WalletResponse:
+    async def create_wallet(
+        self, user_id: uuid.UUID, wallet: WalletCreate
+    ) -> WalletResponse:
         """
         Create a new wallet.
         Args:
-            user: Current user creating the wallet.
+            user_id: ID of the current user creating the wallet.
             wallet: WalletCreate schema with wallet details.
         Returns:
             WalletResponse: The created wallet response object.
         """
         start_time = time.time()
-        user_id = user.id
+
+        # Verify user exists
+        user = await self.__user_repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
 
         self.__audit.info(
             "wallet_usecase_create_wallet_started",
@@ -82,16 +95,23 @@ class WalletUsecase:
             )
             raise
 
-    async def list_wallets(self, user: User) -> List[WalletResponse]:
+    async def list_wallets(self, user_id: uuid.UUID) -> List[WalletResponse]:
         """
         List all wallets from the database.
         Args:
-            user: Current user requesting wallets.
+            user_id: ID of the current user requesting wallets.
         Returns:
             List[WalletResponse]: List of wallet response objects.
         """
         start_time = time.time()
-        user_id = user.id
+
+        # Verify user exists
+        user = await self.__user_repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
 
         self.__audit.info("wallet_usecase_list_wallets_started", user_id=str(user_id))
 
@@ -117,15 +137,22 @@ class WalletUsecase:
             )
             raise
 
-    async def delete_wallet(self, user: User, address: str):
+    async def delete_wallet(self, user_id: uuid.UUID, address: str):
         """
         Delete a wallet by its address.
         Args:
-            user: Current user deleting the wallet.
+            user_id: ID of the current user deleting the wallet.
             address: Wallet address to delete.
         """
         start_time = time.time()
-        user_id = user.id
+
+        # Verify user exists
+        user = await self.__user_repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
 
         self.__audit.info(
             "wallet_usecase_delete_wallet_started",
@@ -154,17 +181,21 @@ class WalletUsecase:
             )
             raise
 
-    async def verify_wallet_ownership(self, user: User, address: str) -> bool:
+    async def verify_wallet_ownership(self, user_id: uuid.UUID, address: str) -> bool:
         """
         Verify that the current user owns the wallet.
         Args:
-            user: Current user to verify ownership for.
+            user_id: ID of the current user to verify ownership for.
             address: Wallet address to verify.
         Returns:
             bool: True if the user owns the wallet, False otherwise.
         """
         start_time = time.time()
-        user_id = user.id
+
+        # Verify user exists
+        user = await self.__user_repo.get_by_id(user_id)
+        if not user:
+            return False
 
         self.__audit.info(
             "wallet_usecase_verify_ownership_started",
@@ -197,17 +228,26 @@ class WalletUsecase:
             )
             raise
 
-    async def get_portfolio_snapshots(self, user: User, address: str) -> List[dict]:
+    async def get_portfolio_snapshots(
+        self, user_id: uuid.UUID, address: str
+    ) -> List[dict]:
         """
         Get portfolio snapshots for a wallet.
         Args:
-            user: Current user requesting snapshots.
+            user_id: ID of the current user requesting snapshots.
             address: Wallet address to get snapshots for.
         Returns:
             List[dict]: List of portfolio snapshots.
         """
         start_time = time.time()
-        user_id = user.id
+
+        # Verify user exists
+        user = await self.__user_repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
 
         self.__audit.info(
             "wallet_usecase_get_portfolio_snapshots_started",
@@ -217,7 +257,7 @@ class WalletUsecase:
 
         try:
             # Verify ownership first
-            if not await self.verify_wallet_ownership(user, address):
+            if not await self.verify_wallet_ownership(user_id, address):
                 self.__audit.warning(
                     "wallet_usecase_get_portfolio_snapshots_unauthorized",
                     user_id=str(user_id),
@@ -255,17 +295,26 @@ class WalletUsecase:
             )
             raise
 
-    async def get_portfolio_metrics(self, user: User, address: str) -> PortfolioMetrics:
+    async def get_portfolio_metrics(
+        self, user_id: uuid.UUID, address: str
+    ) -> PortfolioMetrics:
         """
         Get portfolio metrics for a wallet.
         Args:
-            user: Current user requesting metrics.
+            user_id: ID of the current user requesting metrics.
             address: Wallet address to get metrics for.
         Returns:
             PortfolioMetrics: Portfolio metrics object.
         """
         start_time = time.time()
-        user_id = user.id
+
+        # Verify user exists
+        user = await self.__user_repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
 
         self.__audit.info(
             "wallet_usecase_get_portfolio_metrics_started",
@@ -275,7 +324,7 @@ class WalletUsecase:
 
         try:
             # Verify ownership first
-            if not await self.verify_wallet_ownership(user, address):
+            if not await self.verify_wallet_ownership(user_id, address):
                 self.__audit.warning(
                     "wallet_usecase_get_portfolio_metrics_unauthorized",
                     user_id=str(user_id),
@@ -288,7 +337,7 @@ class WalletUsecase:
 
             # Get latest snapshot
             snapshots = await self.__portfolio_snapshot_repo.get_by_wallet_address(
-                address, limit=1
+                address
             )
             if not snapshots:
                 self.__audit.warning(
@@ -296,27 +345,49 @@ class WalletUsecase:
                     user_id=str(user_id),
                     wallet_address=address,
                 )
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="No portfolio data available",
-                )
+                # Return empty metrics instead of raising an error
 
-            snapshot = snapshots[0]
-            metrics = PortfolioMetrics(
-                total_value_usd=snapshot.get("total_value_usd", 0.0),
-                total_change_24h=snapshot.get("total_change_24h", 0.0),
-                total_change_percentage_24h=snapshot.get(
-                    "total_change_percentage_24h", 0.0
-                ),
-                last_updated=snapshot.get("timestamp", datetime.utcnow()),
-            )
+                metrics = PortfolioMetrics(
+                    user_address=address,
+                    total_collateral=0.0,
+                    total_borrowings=0.0,
+                    total_collateral_usd=0.0,
+                    total_borrowings_usd=0.0,
+                    aggregate_health_score=None,
+                    aggregate_apy=None,
+                    collaterals=[],
+                    borrowings=[],
+                    staked_positions=[],
+                    health_scores=[],
+                    protocol_breakdown={},
+                    timestamp=datetime.now(),
+                )
+            else:
+                # Get the most recent snapshot (assuming the first one is the latest)
+                snapshot = snapshots[0]
+                metrics = PortfolioMetrics(
+                    user_address=address,
+                    total_collateral=snapshot.get("total_collateral", 0.0),
+                    total_borrowings=snapshot.get("total_borrowings", 0.0),
+                    total_collateral_usd=snapshot.get("total_collateral_usd", 0.0),
+                    total_borrowings_usd=snapshot.get("total_borrowings_usd", 0.0),
+                    aggregate_health_score=snapshot.get("aggregate_health_score"),
+                    aggregate_apy=snapshot.get("aggregate_apy"),
+                    collaterals=snapshot.get("collaterals", []),
+                    borrowings=snapshot.get("borrowings", []),
+                    staked_positions=snapshot.get("staked_positions", []),
+                    health_scores=snapshot.get("health_scores", []),
+                    protocol_breakdown=snapshot.get("protocol_breakdown", {}),
+                    timestamp=snapshot.get("timestamp", datetime.now()),
+                )
 
             duration = int((time.time() - start_time) * 1000)
             self.__audit.info(
                 "wallet_usecase_get_portfolio_metrics_success",
                 user_id=str(user_id),
                 wallet_address=address,
-                total_value_usd=metrics.total_value_usd,
+                total_collateral_usd=metrics.total_collateral_usd,
+                total_borrowings_usd=metrics.total_borrowings_usd,
                 duration_ms=duration,
             )
 
@@ -336,7 +407,7 @@ class WalletUsecase:
 
     async def get_portfolio_timeline(
         self,
-        user: User,
+        user_id: uuid.UUID,
         address: str,
         interval: str = "daily",
         limit: int = 30,
@@ -345,7 +416,7 @@ class WalletUsecase:
         """
         Get portfolio timeline for a wallet.
         Args:
-            user: Current user requesting timeline.
+            user_id: ID of the current user requesting timeline.
             address: Wallet address to get timeline for.
             interval: Time interval for the timeline.
             limit: Maximum number of data points to return.
@@ -354,7 +425,14 @@ class WalletUsecase:
             PortfolioTimeline: Portfolio timeline object.
         """
         start_time = time.time()
-        user_id = user.id
+
+        # Verify user exists
+        user = await self.__user_repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
 
         self.__audit.info(
             "wallet_usecase_get_portfolio_timeline_started",
@@ -367,7 +445,7 @@ class WalletUsecase:
 
         try:
             # Verify ownership first
-            if not await self.verify_wallet_ownership(user, address):
+            if not await self.verify_wallet_ownership(user_id, address):
                 self.__audit.warning(
                     "wallet_usecase_get_portfolio_timeline_unauthorized",
                     user_id=str(user_id),
@@ -379,15 +457,28 @@ class WalletUsecase:
                 )
 
             # Get timeline data
+            # Calculate default time range (last 30 days)
+            to_ts = int(datetime.now().timestamp())
+            from_ts = int((datetime.now() - timedelta(days=30)).timestamp())
+
             timeline_data = await self.__portfolio_snapshot_repo.get_timeline(
-                address, interval, limit, offset
+                address, from_ts, to_ts, limit, offset, interval
             )
 
+            # Transform data into PortfolioTimeline format
+            timestamps = []
+            collateral_usd = []
+            borrowings_usd = []
+
+            for snapshot in timeline_data:
+                timestamps.append(int(snapshot.timestamp))
+                collateral_usd.append(float(snapshot.total_collateral_usd or 0.0))
+                borrowings_usd.append(float(snapshot.total_borrowings_usd or 0.0))
+
             timeline = PortfolioTimeline(
-                address=address,
-                interval=interval,
-                data=timeline_data,
-                total_count=len(timeline_data),
+                timestamps=timestamps,
+                collateral_usd=collateral_usd,
+                borrowings_usd=borrowings_usd,
             )
 
             duration = int((time.time() - start_time) * 1000)

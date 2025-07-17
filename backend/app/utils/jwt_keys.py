@@ -15,8 +15,8 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from app.core.config import settings
-from app.schemas.jwks import JWK
+from app.core.config import ConfigurationService
+from app.domain.schemas.jwks import JWK
 from app.utils.jwt_rotation import Key
 
 __all__ = [
@@ -36,7 +36,7 @@ def _b64url_uint(integer: int) -> str:
 def get_verifying_keys() -> list[Key]:
     """Return all keys that are currently valid for verifying signatures.
 
-    This function builds a list of all known keys from ``settings.JWT_KEYS``,
+    This function builds a list of all known keys from ``ConfigurationService.JWT_KEYS``,
     checks their retirement status against the runtime ``_RETIRED_KEYS`` map,
     and returns only those that are not yet expired.  This list is suitable
     for building a JWKS endpoint.
@@ -51,7 +51,7 @@ def get_verifying_keys() -> list[Key]:
     now = datetime.now(timezone.utc)
     valid_keys: list[Key] = []
 
-    for kid, pem_value in settings.JWT_KEYS.items():
+    for kid, pem_value in ConfigurationService().JWT_KEYS.items():
         retired_at = jwt_utils._RETIRED_KEYS.get(
             kid
         )  # pylint: disable=protected-access
@@ -84,7 +84,7 @@ def format_public_key_to_jwk(
     -------
     Dict[str, Any]
         A dictionary representation of the key that validates against
-        :class:`app.schemas.jwks.JWK`.
+        :class:`app.domain.schemas.jwks.JWK`.
     """
 
     if isinstance(public_key_pem, str):

@@ -8,7 +8,11 @@ from app.core.security.roles import (
     has_any_role,
     has_permission,
 )
-from app.schemas.auth_roles import Policy, RoleAssignment, UserAttributes
+from app.domain.schemas.auth_roles import (
+    Policy,
+    RoleAssignment,
+    UserAttributes,
+)
 
 
 class TestRoleUtilityFunctions:

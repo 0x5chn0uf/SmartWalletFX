@@ -13,7 +13,11 @@ def mock_settings(monkeypatch):
     This is a temporary measure to ensure test isolation until a more
     performant solution (like transactional fixtures) is implemented.
     """
-    monkeypatch.setattr("app.core.config.settings.ARBITRUM_RPC_URL", "http://mock-rpc")
+    monkeypatch.setattr(
+        "app.core.config.ConfigurationService.ARBITRUM_RPC_URL",
+        "http://mock-rpc",
+        raising=False,
+    )
     yield
 
 
@@ -102,24 +106,6 @@ def mock_celery():
 
 
 @pytest.fixture
-def mock_s3_client():
-    """
-    Mock S3 client for file storage testing.
-    Provides a mock S3 client for testing file upload/download operations.
-    """
-    mock_s3 = Mock()
-    mock_s3.upload_file = Mock()
-    mock_s3.download_file = Mock()
-    mock_s3.list_objects_v2 = Mock(return_value={"Contents": []})
-    mock_s3.delete_object = Mock(
-        return_value={"ResponseMetadata": {"HTTPStatusCode": 204}}
-    )
-
-    with patch("boto3.client", return_value=mock_s3):
-        yield mock_s3
-
-
-@pytest.fixture
 def mock_jwt_utils():
     """
     Mock JWT utilities for authentication testing.
@@ -151,44 +137,13 @@ def mock_password_hasher():
 
 
 @pytest.fixture
-def mock_external_apis():
-    """
-    Comprehensive mock for all external APIs.
-    Provides mocks for commonly used external services.
-    """
-    with patch(
-        "app.services.blockchain_service.BlockchainService"
-    ) as mock_blockchain, patch(
-        "app.utils.metrics_cache.get_metrics_cache"
-    ) as mock_cache, patch(
-        "app.utils.metrics_cache.set_metrics_cache"
-    ) as mock_set_cache:
-        # Mock blockchain service
-        mock_blockchain.return_value.get_wallet_balances = AsyncMock(return_value={})
-        mock_blockchain.return_value.get_token_price = AsyncMock(return_value=1.0)
-        mock_blockchain.return_value.get_defi_positions = AsyncMock(return_value=[])
-
-        # Mock cache operations
-        mock_cache.return_value = None
-        mock_set_cache.return_value = True
-
-        yield {
-            "blockchain_service": mock_blockchain,
-            "cache": mock_cache,
-            "set_cache": mock_set_cache,
-        }
-
-
-@pytest.fixture
 def mock_all_external_services(
     mock_redis,
     mock_web3,
     mock_httpx_client,
     mock_celery,
-    mock_s3_client,
     mock_jwt_utils,
     mock_password_hasher,
-    mock_external_apis,
 ):
     """
     Comprehensive mock for all external services.
@@ -199,14 +154,6 @@ def mock_all_external_services(
         "web3": mock_web3,
         "httpx": mock_httpx_client,
         "celery": mock_celery,
-        "s3": mock_s3_client,
         "jwt": mock_jwt_utils,
         "password_hasher": mock_password_hasher,
-        "external_apis": mock_external_apis,
     }
-
-
-@pytest.fixture
-def mock_db_session():
-    """Mock database session for usecase/service testing."""
-    return Mock()

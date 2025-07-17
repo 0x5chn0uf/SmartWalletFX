@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Response, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, BackgroundTasks, Response, status
 
-from app.api.dependencies import get_db
-from app.schemas.auth_token import TokenResponse
-from app.schemas.email_verification import (
+from app.domain.schemas.auth_token import TokenResponse
+from app.domain.schemas.email_verification import (
     EmailVerificationRequest,
     EmailVerificationVerify,
 )
@@ -47,37 +45,3 @@ class EmailVerification:
             payload.email, background_tasks, verify_rate_limiter
         )
         return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-# Backward compatibility - create router instance
-# This will be replaced when main.py is updated to use DIContainer
-router = APIRouter()
-
-
-@router.post("/verify-email", response_model=TokenResponse)
-async def verify_email_legacy(
-    payload: EmailVerificationVerify,
-    db: AsyncSession = Depends(get_db),
-):
-    """Verify email using verification token."""
-    verification_uc = EmailVerificationUsecase(db)
-    return await verification_uc.verify_email(payload.token)
-
-
-@router.post(
-    "/resend-verification",
-    status_code=status.HTTP_204_NO_CONTENT,
-    response_class=Response,
-    response_model=None,
-)
-async def resend_verification_email_legacy(
-    payload: EmailVerificationRequest,
-    background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db),
-) -> Response:
-    """Resend verification email."""
-    verification_uc = EmailVerificationUsecase(db)
-    await verification_uc.resend_verification(
-        payload.email, background_tasks, verify_rate_limiter
-    )
-    return Response(status_code=status.HTTP_204_NO_CONTENT)

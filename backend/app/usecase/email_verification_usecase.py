@@ -8,13 +8,13 @@ from jose import jwt as jose_jwt
 
 from app.core.config import ConfigurationService
 from app.core.security.roles import UserRole
+from app.domain.schemas.auth_token import TokenResponse
 from app.models.user import User
 from app.repositories.email_verification_repository import (
     EmailVerificationRepository,
 )
 from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.repositories.user_repository import UserRepository
-from app.schemas.auth_token import TokenResponse
 from app.services.email_service import EmailService
 from app.utils.jwt import JWTUtils
 from app.utils.logging import Audit

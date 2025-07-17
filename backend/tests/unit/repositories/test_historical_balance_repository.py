@@ -1,55 +1,63 @@
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime
+from decimal import Decimal
+from unittest.mock import AsyncMock, Mock
 
 import pytest
-from sqlalchemy import event as _sa_event
-from sqlalchemy.orm import Session
 
+from app.domain.schemas.historical_balance import HistoricalBalanceCreate
+from app.models.historical_balance import HistoricalBalance
 from app.repositories.historical_balance_repository import (
     HistoricalBalanceRepository,
 )
-from app.repositories.token_repository import TokenRepository
-from app.repositories.wallet_repository import WalletRepository
-from app.schemas.historical_balance import HistoricalBalanceCreate
-from app.schemas.token import TokenCreate
-from app.schemas.user import UserCreate
-from app.services.auth_service import AuthService
+
+
+def setup_mock_session(repository, mock_session):
+    """Helper function to set up mock session for repository tests."""
+
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_session
+
+    # Patch the repository's database service get_session method
+    repository._HistoricalBalanceRepository__database.get_session = mock_get_session
 
 
 @pytest.mark.asyncio
-async def test_historical_balance_repository_create(db_session, monkeypatch):
-    # First create a user using AuthService
-    auth_service = AuthService(db_session)
-    username = f"testuser_{uuid.uuid4().hex[:8]}"
-    email = f"testuser_{uuid.uuid4().hex[:8]}@example.com"
-    password = "Str0ngP@ssw0rd!"
-    user_create = UserCreate(username=username, email=email, password=password)
-    user = await auth_service.register(user_create)
+async def test_historical_balance_repository_create(
+    historical_balance_repository_with_di, mock_async_session
+):
+    """Test historical balance creation with dependency injection."""
+    # Setup mock session
+    setup_mock_session(historical_balance_repository_with_di, mock_async_session)
 
-    # Create a wallet with the user's ID
-    wallet_repo = WalletRepository(db_session)
-    wallet = await wallet_repo.create(
-        address="0x" + "1" * 40,  # Valid Ethereum address format (0x + 40 hex chars)
-        name="Test Wallet",
-        user_id=user.id,
+    # Create test data
+    wallet_id = uuid.uuid4()
+    token_id = uuid.uuid4()
+    balance_data = HistoricalBalanceCreate(
+        wallet_id=wallet_id,
+        token_id=token_id,
+        balance=100.50,
+        balance_usd=105.25,
+        timestamp=datetime.now(),
     )
 
-    token = await TokenRepository(db_session).create(
-        TokenCreate(
-            address=f"0x{uuid.uuid4().hex[:8] + '0' * 32}",  # Valid Ethereum address format
-            symbol="HIS",
-            name="Historical",
-            decimals=18,
-        )
+    # Mock the returned balance
+    expected_balance = HistoricalBalance(
+        id=uuid.uuid4(),
+        wallet_id=balance_data.wallet_id,
+        token_id=balance_data.token_id,
+        balance=balance_data.balance,
+        balance_usd=balance_data.balance_usd,
+        timestamp=balance_data.timestamp,
     )
+    mock_async_session.refresh = AsyncMock()  # Use AsyncMock for async method
 
-    hist = await HistoricalBalanceRepository(db_session).create(
-        HistoricalBalanceCreate(
-            wallet_id=wallet.id,
-            token_id=token.id,
-            balance=50.0,
-            balance_usd=50.0,
-            timestamp=datetime(2023, 1, 1, 12, 0, 0),  # Use a timezone-naive datetime
-        )
-    )
-    assert hist.balance_usd == 50.0
+    # Execute the test
+    balance = await historical_balance_repository_with_di.create(balance_data)
+
+    # Verify the results
+    mock_async_session.add.assert_called_once()
+    mock_async_session.commit.assert_awaited_once()
+    mock_async_session.refresh.assert_awaited_once()

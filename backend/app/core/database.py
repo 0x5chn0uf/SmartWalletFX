@@ -11,16 +11,18 @@ from sqlalchemy.orm import sessionmaker  # type: ignore
 from sqlalchemy.orm import declarative_base
 
 from app.core.config import ConfigurationService
+from app.utils.logging import Audit
 
 
-class DatabaseService:
+class CoreDatabase:
     """Database service managing database connections and sessions."""
 
-    def __init__(self, config_service: ConfigurationService):
+    def __init__(self, config_service: ConfigurationService, audit: Audit):
         self.config_service = config_service
         self._setup_async_engine()
         self._setup_sync_engine()
         self._setup_session_factories()
+        self.audit = audit
 
     def _setup_async_engine(self):
         """Set up the async database engine."""
@@ -80,6 +82,32 @@ class DatabaseService:
             autocommit=False, autoflush=False, bind=self.sync_engine
         )
 
+    async def init_db(self) -> None:
+        """
+        Initialize the database tables asynchronously.
+        Creates all tables defined in the SQLAlchemy models if they do not exist.
+        """
+        self.audit.info("database_initialization_started")
+
+        try:
+            async with self.async_engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+
+            self.audit.info("database_initialization_completed")
+        except Exception as e:
+            self.audit.error("database_initialization_failed", error=str(e))
+            raise
+
+    async def check_database_connection(self) -> bool:
+        """Check if database connection is working."""
+        try:
+            async with self.async_engine.begin() as conn:
+                await conn.execute("SELECT 1")
+            return True
+        except Exception as e:
+            self.audit.error("database_connection_check_failed", error=str(e))
+            return False
+
     @asynccontextmanager
     async def get_session(self):
         """Get an async database session."""
@@ -90,43 +118,25 @@ class DatabaseService:
         """Get a sync database session for Celery tasks."""
         return self.sync_session_factory()
 
-    async def init_db(self):
-        """Initialize the database (placeholder for future implementation)."""
-        # This would contain database initialization logic
-        # For now, we'll keep it as a placeholder
-        pass
-
 
 # Create declarative base
 Base = declarative_base()
 
 
-# Keep backward compatibility helpers for transition period
-# These will be removed in Phase 5 when all references are updated
-def get_db():
+# Temporary compatibility function for legacy auth dependencies
+async def get_db():
     """
-    Legacy dependency that provides an async database session.
-    This is kept for backward compatibility during the transition.
+    Temporary compatibility function for legacy auth dependencies.
+    This provides database sessions for endpoints that haven't been fully migrated.
     """
-    # This will be removed once all usages are updated to use DIContainer
-    raise NotImplementedError(
-        "get_db() is deprecated. Use DIContainer.get_service('database')"
-        ".get_session() instead."
-    )
 
+    # Local import to avoid circular dependency
+    from app.di import DIContainer
 
-# Legacy session factory for backward compatibility
-class SyncSessionLocal:
-    """Legacy sync session factory for backward compatibility."""
+    # Get database service from DIContainer
+    di_container = DIContainer()
+    database = di_container.get_core("database")
 
-    def __init__(self):
-        raise NotImplementedError(
-            "SyncSessionLocal is deprecated. Use DIContainer.get_service"
-            "('database').get_sync_session() instead."
-        )
-
-    def __call__(self):
-        raise NotImplementedError(
-            "SyncSessionLocal is deprecated. Use DIContainer.get_service"
-            "('database').get_sync_session() instead."
-        )
+    # Yield session from the database service
+    async with database.get_session() as session:
+        yield session

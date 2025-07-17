@@ -5,14 +5,12 @@ import uuid
 import httpx
 import pytest
 import respx
-from httpx import AsyncClient
-
-from app.core.config import settings
+from fastapi import FastAPI
 
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_google_oauth_callback(async_client_with_db: AsyncClient, monkeypatch):
+async def test_google_oauth_callback(test_app_with_di_container: FastAPI, monkeypatch):
     """OAuth callback should redirect with auth cookies set."""
     state = "abc123"
 
@@ -37,23 +35,26 @@ async def test_google_oauth_callback(async_client_with_db: AsyncClient, monkeypa
 
     monkeypatch.setattr(jwt, "get_unverified_claims", fake)
 
-    resp = await async_client_with_db.get(
-        "/auth/oauth/google/callback",
-        params={"code": "c", "state": state},
-        cookies={"oauth_state": state},
-        follow_redirects=False,
-    )
+    async with httpx.AsyncClient(
+        app=test_app_with_di_container, base_url="http://test"
+    ) as client:
+        resp = await client.get(
+            "/auth/oauth/google/callback",
+            params={"code": "c", "state": state},
+            cookies={"oauth_state": state},
+            follow_redirects=False,
+        )
 
-    assert resp.status_code == 302
-    assert resp.headers["location"].endswith("/defi")
+        assert resp.status_code == 302
+        assert resp.headers["location"].endswith("/defi")
 
-    cookies = resp.headers.get_list("set-cookie")
-    assert any(c.startswith("access_token=") for c in cookies)
-    assert any(c.startswith("refresh_token=") for c in cookies)
+        cookies = resp.headers.get_list("set-cookie")
+        assert any(c.startswith("access_token=") for c in cookies)
+        assert any(c.startswith("refresh_token=") for c in cookies)
 
 
 @pytest.mark.asyncio
-async def test_google_oauth_login(async_client_with_db: AsyncClient, monkeypatch):
+async def test_google_oauth_login(test_app_with_di_container: FastAPI, monkeypatch):
     """Login endpoint should redirect to provider auth URL and set state cookie."""
 
     # Mock both the endpoint and usecase generate_state functions
@@ -67,14 +68,17 @@ async def test_google_oauth_login(async_client_with_db: AsyncClient, monkeypatch
 
     monkeypatch.setattr("app.usecase.oauth_usecase.store_state", _store_state)
 
-    resp = await async_client_with_db.get(
-        "/auth/oauth/google/login",
-        follow_redirects=False,
-    )
+    async with httpx.AsyncClient(
+        app=test_app_with_di_container, base_url="http://test"
+    ) as client:
+        resp = await client.get(
+            "/auth/oauth/google/login",
+            follow_redirects=False,
+        )
 
-    assert resp.status_code == 307
-    assert resp.headers["location"].startswith(
-        "https://accounts.google.com/o/oauth2/v2/auth"
-    )
-    cookies = resp.headers.get_list("set-cookie")
-    assert any("oauth_state=state123" in c for c in cookies)
+        assert resp.status_code == 307
+        assert resp.headers["location"].startswith(
+            "https://accounts.google.com/o/oauth2/v2/auth"
+        )
+        cookies = resp.headers.get_list("set-cookie")
+        assert any("oauth_state=state123" in c for c in cookies)

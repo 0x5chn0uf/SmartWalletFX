@@ -1,6 +1,9 @@
 from app.core.config import ConfigurationService
+from app.domain.schemas.token_balance import (
+    TokenBalanceCreate,
+    TokenBalanceResponse,
+)
 from app.repositories.token_balance_repository import TokenBalanceRepository
-from app.schemas.token_balance import TokenBalanceCreate, TokenBalanceResponse
 from app.utils.logging import Audit
 
 

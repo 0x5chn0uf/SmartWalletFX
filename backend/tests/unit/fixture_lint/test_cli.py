@@ -2,7 +2,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from fixture_lint.cli import app
+from tools.fixture_lint.cli import app
 
 
 def test_check_fails_on_duplicates(tmp_path: Path) -> None:

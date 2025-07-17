@@ -1,75 +1,78 @@
+import uuid
 from typing import Dict
 
+import httpx
 import pytest
-from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import FastAPI
 
-pytestmark = pytest.mark.usefixtures("async_client_with_db")
-
-
-async def _register_user(
-    async_client: AsyncClient, username: str, email: str, password: str
-) -> Dict[str, str]:
-    """Register a user and return the response data."""
-    res = await async_client.post(
-        "/auth/register",
-        json={"username": username, "email": email, "password": password},
-    )
-    assert res.status_code == 201
-    return res.json()
+from app.domain.schemas.user import UserCreate
 
 
 @pytest.mark.asyncio
 async def test_obtain_token_success(
-    async_client_with_db: AsyncClient, db_session: AsyncSession
+    test_app_with_di_container: FastAPI, test_di_container_with_db
 ) -> None:
     """Test successful token acquisition with valid credentials."""
-    username = "dana"
+    unique_id = uuid.uuid4().hex[:8]
+    username = f"dana_{unique_id}"
     password = "Sup3rStr0ng!!"
     email = f"{username}@example.com"
-    await _register_user(async_client_with_db, username, email, password)
 
-    # Mark the user's email as verified directly in the database
-    from app.repositories.user_repository import UserRepository
+    # Get repositories and services from DI container
+    user_repo = test_di_container_with_db.get_repository("user")
+    auth_service = test_di_container_with_db.get_service("auth")
 
-    user_repo = UserRepository(db_session)
-    user = await user_repo.get_by_email(email)
-    user.email_verified = True
-    await db_session.commit()
+    async with httpx.AsyncClient(
+        app=test_app_with_di_container, base_url="http://test"
+    ) as client:
+        # Register user using auth service
+        user_data = UserCreate(username=username, email=email, password=password)
+        user = await auth_service.register(user_data)
 
-    res = await async_client_with_db.post(
-        "/auth/token",
-        data={"username": username, "password": password},
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
-    assert res.status_code == 200
-    body = res.json()
-    assert body["token_type"] == "bearer"
-    assert body["access_token"]
-    assert body["refresh_token"]
+        # Verify email using repository
+        user.email_verified = True
+        await user_repo.save(user)
+
+        res = await client.post(
+            "/auth/token",
+            data={"username": username, "password": password},
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert body["token_type"] == "bearer"
+        assert body["access_token"]
+        assert body["refresh_token"]
 
 
 @pytest.mark.asyncio
 async def test_obtain_token_bad_credentials(
-    async_client_with_db: AsyncClient, db_session: AsyncSession
+    test_app_with_di_container: FastAPI, test_di_container_with_db
 ) -> None:
     """Test token acquisition fails with invalid credentials."""
-    username = "edgar"
+    unique_id = uuid.uuid4().hex[:8]
+    username = f"edgar_{unique_id}"
     password = "GoodPwd1!!"
     email = f"{username}@example.com"
-    await _register_user(async_client_with_db, username, email, password)
 
-    # Mark the user's email as verified directly in the database
-    from app.repositories.user_repository import UserRepository
+    # Get repositories and services from DI container
+    user_repo = test_di_container_with_db.get_repository("user")
+    auth_service = test_di_container_with_db.get_service("auth")
 
-    user_repo = UserRepository(db_session)
-    user = await user_repo.get_by_email(email)
-    user.email_verified = True
-    await db_session.commit()
+    async with httpx.AsyncClient(
+        app=test_app_with_di_container, base_url="http://test"
+    ) as client:
+        # Register user using auth service
+        user_data = UserCreate(username=username, email=email, password=password)
+        user = await auth_service.register(user_data)
 
-    res = await async_client_with_db.post(
-        "/auth/token",
-        data={"username": username, "password": "wrongpass"},
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
-    assert res.status_code == 401
+        # Mark the user's email as verified using repository
+        user.email_verified = True
+        await user_repo.save(user)
+
+        res = await client.post(
+            "/auth/token",
+            data={"username": username, "password": "wrongpass"},
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        assert res.status_code == 401

@@ -1,6 +1,6 @@
 from app.core.config import ConfigurationService
+from app.domain.schemas.token import TokenCreate, TokenResponse
 from app.repositories.token_repository import TokenRepository
-from app.schemas.token import TokenCreate, TokenResponse
 from app.utils.logging import Audit
 
 

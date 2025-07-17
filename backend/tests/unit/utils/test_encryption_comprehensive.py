@@ -7,7 +7,20 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from app.core.config import ConfigurationService
 from app.utils.encryption import GPG_BINARY, EncryptionError, encrypt_file
+
+
+@pytest.fixture
+def mock_settings(monkeypatch):
+    """Return a proxy whose attribute-writes update ConfigurationService."""
+
+    class _Proxy:
+        def __setattr__(self, name, value):
+            monkeypatch.setattr(ConfigurationService, name, value, raising=False)
+
+    # Return an instance that test methods can assign to
+    return _Proxy()
 
 
 class TestEncryptionError:
@@ -28,11 +41,9 @@ class TestEncryptFile:
         self.test_file_path = Path("/tmp/test_file.txt")
         self.encrypted_path = Path("/tmp/test_file.txt.gpg")
 
-    @patch("app.utils.encryption.settings")
     @patch("app.utils.encryption.subprocess.run")
-    def test_encrypt_file_success_with_recipient(self, mock_run, mock_settings):
+    def test_encrypt_file_success_with_recipient(self, mock_run):
         """Test successful file encryption with explicit recipient."""
-        mock_settings.GPG_RECIPIENT_KEY_ID = "default_key"
         mock_run.return_value = Mock(returncode=0)
 
         with patch.object(Path, "exists", return_value=True):
@@ -56,12 +67,11 @@ class TestEncryptFile:
             stderr=subprocess.PIPE,
         )
 
-    @patch("app.utils.encryption.settings")
     @patch("app.utils.encryption.subprocess.run")
     def test_encrypt_file_success_with_default_recipient(self, mock_run, mock_settings):
         """Test successful file encryption with default recipient from settings."""
-        mock_settings.GPG_RECIPIENT_KEY_ID = "default_key"
         mock_run.return_value = Mock(returncode=0)
+        mock_settings.GPG_RECIPIENT_KEY_ID = "default_key"
 
         with patch.object(Path, "exists", return_value=True):
             result = encrypt_file(self.test_file_path)
@@ -84,15 +94,17 @@ class TestEncryptFile:
             stderr=subprocess.PIPE,
         )
 
-    @patch("app.utils.encryption.settings")
     @patch("app.utils.encryption.subprocess.run")
-    def test_encrypt_file_success_with_custom_gpg_binary(self, mock_run, mock_settings):
+    def test_encrypt_file_success_with_custom_gpg_binary(self, mock_run):
         """Test successful file encryption with custom GPG binary."""
-        mock_settings.GPG_RECIPIENT_KEY_ID = "default_key"
         mock_run.return_value = Mock(returncode=0)
 
         with patch.object(Path, "exists", return_value=True):
-            result = encrypt_file(self.test_file_path, gpg_binary="/usr/local/bin/gpg")
+            result = encrypt_file(
+                self.test_file_path,
+                recipient="test_key",
+                gpg_binary="/usr/local/bin/gpg",
+            )
 
         assert result == self.encrypted_path
         mock_run.assert_called_once_with(
@@ -101,7 +113,7 @@ class TestEncryptFile:
                 "--batch",
                 "--yes",
                 "--recipient",
-                "default_key",
+                "test_key",
                 "--output",
                 str(self.encrypted_path),
                 "--encrypt",
@@ -116,78 +128,62 @@ class TestEncryptFile:
         """Test encryption when source file doesn't exist."""
         with patch.object(Path, "exists", return_value=False):
             with pytest.raises(FileNotFoundError):
-                encrypt_file(self.test_file_path)
+                encrypt_file(self.test_file_path, recipient="test_key")
 
-    @patch("app.utils.encryption.settings")
-    def test_encrypt_file_no_recipient_configured(self, mock_settings):
-        """Test encryption when no recipient is configured."""
-        mock_settings.GPG_RECIPIENT_KEY_ID = None
-
+    def test_encrypt_file_no_recipient_configured(self):
+        """Test encryption when no recipient is provided."""
         with patch.object(Path, "exists", return_value=True):
             with pytest.raises(
                 EncryptionError, match="GPG_RECIPIENT_KEY_ID not configured"
             ):
                 encrypt_file(self.test_file_path)
 
-    @patch("app.utils.encryption.settings")
     @patch("app.utils.encryption.subprocess.run")
-    def test_encrypt_file_gpg_command_failure(self, mock_run, mock_settings):
+    def test_encrypt_file_gpg_command_failure(self, mock_run):
         """Test encryption when GPG command fails."""
-        mock_settings.GPG_RECIPIENT_KEY_ID = "default_key"
-
         # Mock CalledProcessError with stderr
         error_output = b"gpg: error: No public key\n"
         mock_run.side_effect = CalledProcessError(
             returncode=2,
-            cmd=["gpg", "--batch", "--yes", "--recipient", "default_key"],
+            cmd=["gpg", "--batch", "--yes", "--recipient", "test_key"],
             stderr=error_output,
         )
 
         with patch.object(Path, "exists", return_value=True):
             with pytest.raises(EncryptionError, match="gpg: error: No public key"):
-                encrypt_file(self.test_file_path)
+                encrypt_file(self.test_file_path, recipient="test_key")
 
-    @patch("app.utils.encryption.settings")
     @patch("app.utils.encryption.subprocess.run")
-    def test_encrypt_file_gpg_command_failure_no_stderr(self, mock_run, mock_settings):
+    def test_encrypt_file_gpg_command_failure_no_stderr(self, mock_run):
         """Test encryption when GPG command fails with no stderr."""
-        mock_settings.GPG_RECIPIENT_KEY_ID = "default_key"
-
         # Mock CalledProcessError without stderr
         mock_run.side_effect = CalledProcessError(
             returncode=2,
-            cmd=["gpg", "--batch", "--yes", "--recipient", "default_key"],
+            cmd=["gpg", "--batch", "--yes", "--recipient", "test_key"],
             stderr=None,
         )
 
         with patch.object(Path, "exists", return_value=True):
-            with pytest.raises(EncryptionError, match=""):
-                encrypt_file(self.test_file_path)
+            with pytest.raises(EncryptionError, match="GPG command failed"):
+                encrypt_file(self.test_file_path, recipient="test_key")
 
-    @patch("app.utils.encryption.settings")
     @patch("app.utils.encryption.subprocess.run")
-    def test_encrypt_file_gpg_command_failure_stderr_not_bytes(
-        self, mock_run, mock_settings
-    ):
+    def test_encrypt_file_gpg_command_failure_stderr_not_bytes(self, mock_run):
         """Test encryption when GPG command fails with non-bytes stderr."""
-        mock_settings.GPG_RECIPIENT_KEY_ID = "default_key"
-
         # Mock CalledProcessError with string stderr
         mock_run.side_effect = CalledProcessError(
             returncode=2,
-            cmd=["gpg", "--batch", "--yes", "--recipient", "default_key"],
+            cmd=["gpg", "--batch", "--yes", "--recipient", "test_key"],
             stderr="error message",
         )
 
         with patch.object(Path, "exists", return_value=True):
             with pytest.raises(EncryptionError, match="error message"):
-                encrypt_file(self.test_file_path)
+                encrypt_file(self.test_file_path, recipient="test_key")
 
-    @patch("app.utils.encryption.settings")
     @patch("app.utils.encryption.subprocess.run")
-    def test_encrypt_file_creates_correct_output_path(self, mock_run, mock_settings):
+    def test_encrypt_file_creates_correct_output_path(self, mock_run):
         """Test that encryption creates the correct output file path."""
-        mock_settings.GPG_RECIPIENT_KEY_ID = "default_key"
         mock_run.return_value = Mock(returncode=0)
 
         # Test with different file extensions
@@ -199,18 +195,16 @@ class TestEncryptFile:
 
         for input_path, expected_output in test_cases:
             with patch.object(Path, "exists", return_value=True):
-                result = encrypt_file(input_path)
+                result = encrypt_file(input_path, recipient="test_key")
                 assert result == expected_output
 
-    @patch("app.utils.encryption.settings")
     @patch("app.utils.encryption.subprocess.run")
-    def test_encrypt_file_command_arguments(self, mock_run, mock_settings):
+    def test_encrypt_file_command_arguments(self, mock_run):
         """Test that GPG command is called with correct arguments."""
-        mock_settings.GPG_RECIPIENT_KEY_ID = "default_key"
         mock_run.return_value = Mock(returncode=0)
 
         with patch.object(Path, "exists", return_value=True):
-            encrypt_file(self.test_file_path)
+            encrypt_file(self.test_file_path, recipient="test_key")
 
         call_args = mock_run.call_args
         cmd = call_args[0][0]
@@ -219,21 +213,19 @@ class TestEncryptFile:
         assert "--batch" in cmd
         assert "--yes" in cmd
         assert "--recipient" in cmd
-        assert "default_key" in cmd
+        assert "test_key" in cmd
         assert "--output" in cmd
         assert str(self.encrypted_path) in cmd
         assert "--encrypt" in cmd
         assert str(self.test_file_path) in cmd
 
-    @patch("app.utils.encryption.settings")
     @patch("app.utils.encryption.subprocess.run")
-    def test_encrypt_file_subprocess_kwargs(self, mock_run, mock_settings):
+    def test_encrypt_file_subprocess_kwargs(self, mock_run):
         """Test that subprocess.run is called with correct kwargs."""
-        mock_settings.GPG_RECIPIENT_KEY_ID = "default_key"
         mock_run.return_value = Mock(returncode=0)
 
         with patch.object(Path, "exists", return_value=True):
-            encrypt_file(self.test_file_path)
+            encrypt_file(self.test_file_path, recipient="test_key")
 
         call_kwargs = mock_run.call_args[1]
         assert call_kwargs["check"] is True

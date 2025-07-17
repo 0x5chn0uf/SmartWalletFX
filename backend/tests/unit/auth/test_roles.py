@@ -17,7 +17,7 @@ from app.api.dependencies import (
 
 # Import modules that will be created
 from app.core.security.roles import Permission, UserRole
-from app.schemas.auth_roles import RoleAssignment, UserAttributes
+from app.domain.schemas.auth_roles import RoleAssignment, UserAttributes
 
 
 class TestUserRole:

@@ -149,7 +149,7 @@ line_length = 79
 exclude = ["abis"]
 
 [project.scripts]
-fixture-lint = "fixture_lint.cli:app"
+fixture-lint = "tools.fixture_lint.cli:app"
 
 [tool.alembic]
 

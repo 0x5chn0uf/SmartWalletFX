@@ -1,6 +1,6 @@
 from app.core.config import ConfigurationService
+from app.domain.schemas.token_price import TokenPriceCreate, TokenPriceResponse
 from app.repositories.token_price_repository import TokenPriceRepository
-from app.schemas.token_price import TokenPriceCreate, TokenPriceResponse
 from app.utils.logging import Audit
 
 

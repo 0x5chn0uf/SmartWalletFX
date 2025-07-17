@@ -15,18 +15,3 @@ class Health:
     async def health_check():
         """Health check endpoint for the API."""
         return {"status": "ok"}
-
-
-# Backward compatibility - create router instance
-# This will be replaced when main.py is updated to use DIContainer
-router = APIRouter()
-
-
-@router.get("/health")
-async def health_check_legacy():
-    """
-    Health check endpoint for the API.
-    Returns:
-        dict: A simple status message.
-    """
-    return {"status": "ok"}

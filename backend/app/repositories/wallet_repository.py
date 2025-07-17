@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from app.core.database import DatabaseService
+from app.core.database import CoreDatabase
 from app.models import Wallet
 from app.utils.logging import Audit
 
@@ -14,8 +14,8 @@ from app.utils.logging import Audit
 class WalletRepository:
     """Repository layer for wallet persistence operations."""
 
-    def __init__(self, database_service: DatabaseService, audit: Audit):
-        self.__database_service = database_service
+    def __init__(self, database: CoreDatabase, audit: Audit):
+        self.__database = database
         self.__audit = audit
 
     async def get_by_address(self, address: str) -> Optional[Wallet]:
@@ -24,7 +24,7 @@ class WalletRepository:
         self.__audit.info("wallet_repository_get_by_address_started", address=address)
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 result = await session.execute(
                     select(Wallet).where(Wallet.address == address)
                 )
@@ -71,7 +71,7 @@ class WalletRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 db_wallet = Wallet(
                     user_id=user_id,
                     address=address,
@@ -131,7 +131,7 @@ class WalletRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 result = await session.execute(
                     select(Wallet).where(Wallet.user_id == user_id)
                 )
@@ -171,7 +171,7 @@ class WalletRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 # Get the wallet first
                 result = await session.execute(
                     select(Wallet).where(Wallet.address == address)

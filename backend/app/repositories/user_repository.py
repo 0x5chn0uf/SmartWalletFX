@@ -14,7 +14,7 @@ from sqlalchemy import delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.future import select
 
-from app.core.database import DatabaseService
+from app.core.database import CoreDatabase
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.utils.logging import Audit
@@ -23,8 +23,8 @@ from app.utils.logging import Audit
 class UserRepository:
     """Asynchronous repository for CRUD operations on :class:`~app.models.user.User`."""
 
-    def __init__(self, database_service: DatabaseService, audit: Audit):
-        self.__database_service = database_service
+    def __init__(self, database: CoreDatabase, audit: Audit):
+        self.__database = database
         self.__audit = audit
 
     # ---------------------------------------------------------------------
@@ -36,7 +36,7 @@ class UserRepository:
         self.__audit.info("user_repository_get_all_started")
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 stmt = select(User)
                 result = await session.execute(stmt)
                 users = result.scalars().all()
@@ -54,7 +54,7 @@ class UserRepository:
         self.__audit.info("user_repository_get_by_username_started", username=username)
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 stmt = select(User).filter_by(username=username)
                 result = await session.execute(stmt)
                 user = result.scalar_one_or_none()
@@ -78,7 +78,7 @@ class UserRepository:
         self.__audit.info("user_repository_get_by_email_started", email=email)
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 stmt = select(User).filter_by(email=email)
                 result = await session.execute(stmt)
                 user = result.scalar_one_or_none()
@@ -104,7 +104,7 @@ class UserRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 stmt = select(User.id)
                 if username is not None:
                     stmt = stmt.filter_by(username=username)
@@ -145,7 +145,7 @@ class UserRepository:
                     # Leave as string for DBs that store UUIDs as TEXT
                     pass
 
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 user = await session.get(User, user_id)
 
                 self.__audit.info(
@@ -167,7 +167,7 @@ class UserRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 session.add(user)
                 try:
                     await session.commit()
@@ -213,7 +213,7 @@ class UserRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 # Merge the user into this session
                 user = await session.merge(user)
 
@@ -249,7 +249,7 @@ class UserRepository:
         self.__audit.info("user_repository_delete_started", user_id=str(user.id))
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 # Delete related refresh tokens first
                 await session.execute(  # type: ignore[arg-type]
                     delete(RefreshToken).where(RefreshToken.user_id == user.id)

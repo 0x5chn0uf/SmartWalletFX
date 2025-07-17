@@ -9,20 +9,21 @@ from app.repositories.password_reset_repository import PasswordResetRepository
 
 
 @pytest.mark.asyncio
-async def test_password_reset_repository_crud(db_session):
-    repo = PasswordResetRepository(db_session)
-    token = "tok123"
-    user_id = uuid.uuid4()
+async def test_password_reset_repository_crud(
+    password_reset_repository_with_real_db, test_user
+):
+    token = f"tok123_{uuid.uuid4().hex[:8]}"  # Use unique token to avoid duplicates
+    user_id = test_user.id  # Use real user ID instead of random UUID
     expires = datetime.now(timezone.utc) + timedelta(minutes=30)
 
-    pr = await repo.create(token, user_id, expires)
+    pr = await password_reset_repository_with_real_db.create(token, user_id, expires)
     assert pr.id
 
-    fetched = await repo.get_valid(token)
+    fetched = await password_reset_repository_with_real_db.get_valid(token)
     assert fetched is not None
 
-    await repo.mark_used(fetched)
+    await password_reset_repository_with_real_db.mark_used(fetched)
     assert fetched.used is True
 
-    deleted = await repo.delete_expired()
+    deleted = await password_reset_repository_with_real_db.delete_expired()
     assert isinstance(deleted, int)

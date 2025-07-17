@@ -134,23 +134,12 @@ db-migrate: ## Apply latest migrations (alias to alembic-upgrade)
 	$(MAKE) alembic-upgrade
 
 # -----------------------------------------------------------------------------
-# Backup & restore helpers (Subtask 8.2 stub)
-# -----------------------------------------------------------------------------
-
-db-backup: ## Create a database dump (stub)
-	$(PYTHON) -m app.cli.db_backup_cli backup $(OUTPUT_DIR) $(LABEL)
-
-db-restore: ## Restore a database dump (stub)
-	$(PYTHON) -m app.cli.db_backup_cli restore $(FILE) --env $(ENV) $(FORCE)
-
-# -----------------------------------------------------------------------------
 # House-keeping
 # -----------------------------------------------------------------------------
 clean: ## Remove caches & artefacts
-	rm -rf __pycache__ .pytest_cache .coverage htmlcov .coverage.* .ruff_cache .hypothesis .benchmarks .uvicorn.log
+	rm -rf __pycache__ .pytest_cache .coverage htmlcov .coverage.* .ruff_cache .hypothesis .benchmarks uvicorn.log
 	find . -type d -name '__pycache__' -exec rm -rf {} +
 
 .PHONY: help install install-dev install-s3 install-perf lint format bandit safety \
 	test test-perf coverage run serve serve-stop celery-worker celery-beat \
-	db-start db-test db-down alembic-upgrade db-migrate clean \
-	db-backup db-restore
+	db-start db-test db-down alembic-upgrade db-migrate clean

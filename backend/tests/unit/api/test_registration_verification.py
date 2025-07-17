@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from fastapi import BackgroundTasks
 
-from app.api.endpoints import auth as ep
-from app.schemas.user import UserCreate
+from app.api.endpoints.auth import Auth
+from app.domain.schemas.user import UserCreate
 
 
 @pytest.mark.asyncio
@@ -22,7 +22,9 @@ async def test_register_user_sends_verification(monkeypatch):
         return user
 
     service.register.side_effect = mock_register
-    monkeypatch.setattr(ep, "AuthService", lambda db: service)
+
+    # Create Auth instance with the mocked service
+    auth_endpoint = Auth(service)
 
     # These mocks are no longer needed as we're handling the email verification in the mock_register function
     # but we'll keep them for completeness
@@ -43,7 +45,7 @@ async def test_register_user_sends_verification(monkeypatch):
     )
     tasks = BackgroundTasks()
 
-    res = await ep.register_user(request, payload, tasks, db=AsyncMock())
+    res = await auth_endpoint.register_user(request, payload, tasks)
 
     assert res is user
     assert tasks.tasks

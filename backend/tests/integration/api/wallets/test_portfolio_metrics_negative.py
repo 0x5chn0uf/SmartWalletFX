@@ -1,51 +1,127 @@
 import uuid
 
+import httpx
 import pytest
-from httpx import AsyncClient
+
+from app.domain.schemas.user import UserCreate
 
 
 @pytest.mark.asyncio
 async def test_portfolio_metrics_unauthorized(
-    authenticated_client: AsyncClient, test_app
+    test_app_with_di_container, test_di_container_with_db
 ):
     """Attempt to access portfolio metrics without authentication should return 401."""
+    # Get repositories and services from DIContainer
+    user_repo = test_di_container_with_db.get_repository("user")
+    auth_service = test_di_container_with_db.get_service("auth")
+    jwt_utils = test_di_container_with_db.get_utility("jwt_utils")
+
+    # Create user using DI pattern
+    user_data = UserCreate(
+        email=f"test.user.{uuid.uuid4()}@example.com",
+        password="Str0ngPassword!",
+        username=f"test.user.{uuid.uuid4()}",
+    )
+    user = await auth_service.register(user_data)
+    user.email_verified = True
+    await user_repo.save(user)
+
+    # Create authenticated client for our user
+    access_token = jwt_utils.create_access_token(
+        subject=str(user.id),
+        additional_claims={
+            "email": user.email,
+            "roles": getattr(user, "roles", ["individual_investor"]),
+            "attributes": {},
+        },
+    )
+    headers = {"Authorization": f"Bearer {access_token}"}
+
     # Create wallet with authenticated user first
     wallet_addr = "0x" + uuid.uuid4().hex + "d" * (40 - len(uuid.uuid4().hex))
-    resp = await authenticated_client.post(
-        "/wallets", json={"address": wallet_addr, "name": "Unauthz"}
-    )
-    assert resp.status_code == 201
+
+    async with httpx.AsyncClient(
+        app=test_app_with_di_container, base_url="http://test", headers=headers
+    ) as authenticated_client:
+        resp = await authenticated_client.post(
+            "/wallets", json={"address": wallet_addr, "name": "Unauthz"}
+        )
+        assert resp.status_code == 201
 
     # Call metrics endpoint WITHOUT auth header
-    async with AsyncClient(app=test_app, base_url="http://test") as ac:
+    async with httpx.AsyncClient(
+        app=test_app_with_di_container, base_url="http://test"
+    ) as ac:
         unauth_resp = await ac.get(f"/wallets/{wallet_addr}/portfolio/metrics")
     assert unauth_resp.status_code == 401
 
 
 @pytest.mark.asyncio
 async def test_portfolio_metrics_wrong_user(
-    authenticated_client: AsyncClient, create_user_and_wallet, test_app, db_session
+    test_app_with_di_container,
+    test_di_container_with_db,
 ):
     """User B should not access User A's wallet metrics (expect 404)."""
-    # User A (authenticated_client) creates a wallet
-    wallet_addr = "0x" + uuid.uuid4().hex + "d" * (40 - len(uuid.uuid4().hex))
-    resp = await authenticated_client.post(
-        "/wallets", json={"address": wallet_addr, "name": "UserA Wallet"}
+    # Get repositories and services from DIContainer
+    user_repo = test_di_container_with_db.get_repository("user")
+    auth_service = test_di_container_with_db.get_service("auth")
+    jwt_utils = test_di_container_with_db.get_utility("jwt_utils")
+
+    # Create User A using DI pattern
+    user_a_data = UserCreate(
+        email=f"test.user.a.{uuid.uuid4()}@example.com",
+        password="Str0ngPassword!",
+        username=f"test.user.a.{uuid.uuid4()}",
     )
-    assert resp.status_code == 201
+    user_a = await auth_service.register(user_a_data)
+    user_a.email_verified = True
+    await user_repo.save(user_a)
 
-    # Create User B and generate auth token
-    from app.services.auth_service import AuthService
+    # Create authenticated client for User A
+    access_token_a = jwt_utils.create_access_token(
+        subject=str(user_a.id),
+        additional_claims={
+            "email": user_a.email,
+            "roles": getattr(user_a, "roles", ["individual_investor"]),
+            "attributes": {},
+        },
+    )
+    headers_a = {"Authorization": f"Bearer {access_token_a}"}
 
-    user_b, _ = await create_user_and_wallet()
+    # User A creates a wallet
+    wallet_addr = "0x" + uuid.uuid4().hex + "d" * (40 - len(uuid.uuid4().hex))
+    async with httpx.AsyncClient(
+        app=test_app_with_di_container, base_url="http://test", headers=headers_a
+    ) as authenticated_client_a:
+        resp = await authenticated_client_a.post(
+            "/wallets", json={"address": wallet_addr, "name": "UserA Wallet"}
+        )
+        assert resp.status_code == 201
 
-    service = AuthService(db_session)
-    token_data = await service.authenticate(user_b.username, "S3cur3!pwd")
-    headers_b = {"Authorization": f"Bearer {token_data.access_token}"}
+    # Create User B using DI pattern
+    user_b_data = UserCreate(
+        email=f"test.user.b.{uuid.uuid4()}@example.com",
+        password="Str0ngPassword!",
+        username=f"test.user.b.{uuid.uuid4()}",
+    )
+    user_b = await auth_service.register(user_b_data)
+    user_b.email_verified = True
+    await user_repo.save(user_b)
+
+    # Create authenticated client for User B
+    access_token_b = jwt_utils.create_access_token(
+        subject=str(user_b.id),
+        additional_claims={
+            "email": user_b.email,
+            "roles": getattr(user_b, "roles", ["individual_investor"]),
+            "attributes": {},
+        },
+    )
+    headers_b = {"Authorization": f"Bearer {access_token_b}"}
 
     # User B tries to access User A's wallet metrics
-    async with AsyncClient(
-        app=test_app, base_url="http://test", headers=headers_b
+    async with httpx.AsyncClient(
+        app=test_app_with_di_container, base_url="http://test", headers=headers_b
     ) as ac_b:
         resp_b = await ac_b.get(f"/wallets/{wallet_addr}/portfolio/metrics")
 

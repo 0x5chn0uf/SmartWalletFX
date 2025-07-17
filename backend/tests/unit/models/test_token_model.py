@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from httpx import AsyncClient
 
@@ -6,8 +8,10 @@ from app.models import Token
 
 @pytest.mark.asyncio
 async def test_create_token(test_app):
+    # Generate a unique address each time to avoid conflicts
+    unique_address = f"0x{uuid.uuid4().hex[:40]}"
     token_data = {
-        "address": "0x123",
+        "address": unique_address,
         "symbol": "TKN",
         "name": "Token",
         "decimals": 18,
@@ -17,7 +21,7 @@ async def test_create_token(test_app):
         assert resp.status_code == 201
         token = resp.json()
     assert token["id"] is not None
-    assert token["address"] == "0x123"
+    assert token["address"] == unique_address
     assert token["symbol"] == "TKN"
     assert token["name"] == "Token"
     assert token["decimals"] == 18

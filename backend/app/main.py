@@ -1,19 +1,12 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import IntegrityError  # local import
 
-from app.api.api import api_router
-from app.core import error_handling
-from app.core.config import ConfigurationService, settings
-from app.core.database import DatabaseService
-from app.core.init_db import init_db
-
 # --- New imports for structured logging & error handling ---
-from app.core.logging import setup_logging  # noqa: F401 – side-effect import
-from app.core.middleware import CorrelationIdMiddleware
+from app.core.middleware import CorrelationIdMiddleware, JWTAuthMiddleware
 from app.di import DIContainer
-from app.schemas.user import WeakPasswordError  # local import
-from app.utils import audit  # noqa: F401
+from app.domain.schemas.user import WeakPasswordError  # local import
 
 
 class ApplicationFactory:
@@ -25,19 +18,20 @@ class ApplicationFactory:
 
     def create_app(self) -> FastAPI:
         """Create and configure the FastAPI application instance using DIContainer."""
-        config_service = self.di_container.get_service("config")
-        database_service = self.di_container.get_service("database")
+        config = self.di_container.get_core("config")
+        core_logging = self.di_container.get_core("logging")
+        core_logging.setup_logging()
 
         app = FastAPI(
-            title=config_service.PROJECT_NAME,
-            version=config_service.VERSION,
+            title=config.PROJECT_NAME,
+            version=config.VERSION,
             openapi_url="/openapi.json",
         )
 
         # Set up CORS
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=config_service.BACKEND_CORS_ORIGINS,
+            allow_origins=config.BACKEND_CORS_ORIGINS,
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=["*"],
@@ -46,7 +40,11 @@ class ApplicationFactory:
         # Correlation-ID middleware (must run early)
         app.add_middleware(CorrelationIdMiddleware)
 
+        # JWT Auth middleware (extract user_id from tokens)
+        app.add_middleware(JWTAuthMiddleware)
+
         # Register global exception handlers
+        error_handling = self.di_container.get_core("error_handling")
         app.add_exception_handler(
             Exception,
             error_handling.generic_exception_handler,  # type: ignore[arg-type]
@@ -55,7 +53,6 @@ class ApplicationFactory:
             HTTPException,
             error_handling.http_exception_handler,  # type: ignore[arg-type]
         )
-        from fastapi.exceptions import RequestValidationError  # local import
 
         app.add_exception_handler(
             RequestValidationError,  # type: ignore[arg-type]
@@ -75,7 +72,7 @@ class ApplicationFactory:
         @app.on_event("startup")
         async def on_startup() -> None:
             """FastAPI startup event handler."""
-            await init_db(database_service)
+            await self.di_container.get_core("database").init_db()
 
         # Register singleton endpoint routers
         self._register_singleton_routers(app)
@@ -84,7 +81,6 @@ class ApplicationFactory:
 
     def _register_singleton_routers(self, app: FastAPI):
         """Register singleton endpoint routers from DIContainer."""
-        # Get singleton endpoint instances from DIContainer
         email_verification_endpoint = self.di_container.get_endpoint(
             "email_verification"
         )
@@ -93,8 +89,9 @@ class ApplicationFactory:
         health_endpoint = self.di_container.get_endpoint("health")
         jwks_endpoint = self.di_container.get_endpoint("jwks")
         users_endpoint = self.di_container.get_endpoint("users")
-        admin_db_endpoint = self.di_container.get_endpoint("admin_db")
         admin_endpoint = self.di_container.get_endpoint("admin")
+        password_reset_endpoint = self.di_container.get_endpoint("password_reset")
+        auth_endpoint = self.di_container.get_endpoint("auth")
 
         # Register the singleton endpoint routers
         if email_verification_endpoint:
@@ -109,93 +106,22 @@ class ApplicationFactory:
             app.include_router(jwks_endpoint.ep, tags=["jwks"])
         if users_endpoint:
             app.include_router(users_endpoint.ep, tags=["users"])
-        if admin_db_endpoint:
-            app.include_router(
-                admin_db_endpoint.ep, prefix="/admin/db", tags=["admin", "database"]
-            )
         if admin_endpoint:
             app.include_router(admin_endpoint.ep, prefix="/admin", tags=["admin"])
-
-        # TODO: Add other singleton endpoints as they are implemented
-        # password_reset_endpoint = self.di_container.get_endpoint("password_reset")
-        # auth_endpoint = self.di_container.get_endpoint("auth")
-        # if password_reset_endpoint:
-        #     app.include_router(password_reset_endpoint.ep, tags=["auth"])
-        # if auth_endpoint:
-        #     app.include_router(auth_endpoint.ep, tags=["auth"])
-
-        # For now, include the legacy API router for endpoints not yet refactored
-        app.include_router(api_router)
+        if password_reset_endpoint:
+            app.include_router(password_reset_endpoint.ep, tags=["auth"])
+        if auth_endpoint:
+            app.include_router(auth_endpoint.ep, tags=["auth"])
 
 
-def create_app() -> FastAPI:
-    """
-    Create and configure the FastAPI application instance.
-    Sets up CORS, database initialization, and API routers.
-    Returns:
-        FastAPI: The configured FastAPI app instance.
-    """
-    app = FastAPI(
-        title=settings.PROJECT_NAME,
-        version=settings.VERSION,
-        openapi_url="/openapi.json",
-    )
-
-    # Set up CORS
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=settings.BACKEND_CORS_ORIGINS,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    # Correlation-ID middleware (must run early)
-    app.add_middleware(CorrelationIdMiddleware)
-
-    # Register global exception handlers
-    app.add_exception_handler(
-        Exception, error_handling.generic_exception_handler  # type: ignore[arg-type]
-    )
-    app.add_exception_handler(
-        HTTPException, error_handling.http_exception_handler  # type: ignore[arg-type]
-    )
-    from fastapi.exceptions import RequestValidationError  # local import
-
-    app.add_exception_handler(
-        RequestValidationError,  # type: ignore[arg-type]
-        error_handling.validation_exception_handler,
-    )
-
-    app.add_exception_handler(
-        IntegrityError, error_handling.integrity_error_handler  # type: ignore[arg-type]
-    )
-
-    app.add_exception_handler(
-        WeakPasswordError, error_handling.weak_password_error_handler
-    )
-
-    # Initialize database tables on startup
-    @app.on_event("startup")
-    async def on_startup() -> None:
-        """
-        FastAPI startup event handler.
-        Initializes the database tables asynchronously.
-        """
-        # Create database service instance for initialization
-        config_service = ConfigurationService()
-        database_service = DatabaseService(config_service)
-        await init_db(database_service)
-
-    # Import and include API routers
-    app.include_router(api_router)
-    return app
-
-
-# Create app using DIContainer (new approach)
+# Create app using DIContainer
 di_container = DIContainer()
 app_factory = ApplicationFactory(di_container)
 app = app_factory.create_app()
 
-# Keep legacy app creation for backward compatibility
-# app = create_app()
+
+def create_app() -> FastAPI:
+    """Module-level function to create FastAPI app (for backwards compatibility)."""
+    container = DIContainer()
+    factory = ApplicationFactory(container)
+    return factory.create_app()

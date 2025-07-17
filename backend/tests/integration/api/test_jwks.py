@@ -5,8 +5,6 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from tests.fixtures.deduplicated import sample_jwks
-
 
 @pytest.mark.asyncio
 async def test_jwks_endpoint_returns_jwks_format(test_app):

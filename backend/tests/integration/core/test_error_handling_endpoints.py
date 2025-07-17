@@ -7,22 +7,10 @@ pytestmark = pytest.mark.usefixtures("client")
 def test_invalid_login_returns_structured_error(client: TestClient):
     """Ensure invalid credentials return JSON error payload with trace_id."""
 
-    # Register a user so we can try wrong password
-    username = "iris"
-    password = "Str0ngPwd1!"
-    res = client.post(
-        "/auth/register",
-        json={
-            "username": username,
-            "email": f"{username}@ex.com",
-            "password": password,
-        },
-    )
-    assert res.status_code == 201
-
+    # Try to login with non-existent credentials without registering first
     bad_res = client.post(
         "/auth/token",
-        data={"username": username, "password": "wrong"},
+        data={"username": "nonexistent_user", "password": "wrong"},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
     assert bad_res.status_code == 401

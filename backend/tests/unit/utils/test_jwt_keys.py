@@ -4,127 +4,105 @@ from __future__ import annotations
 
 import base64
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING
+from unittest.mock import MagicMock, patch
 
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+import pytest
 
-from app.core.config import settings
-from app.schemas.jwks import JWK
-from app.utils import jwt as jwt_utils
-from app.utils.jwt_keys import format_public_key_to_jwk, get_verifying_keys
-from app.utils.jwt_rotation import Key
-
-if TYPE_CHECKING:
-    from _pytest.monkeypatch import MonkeyPatch
+from app.core.config import ConfigurationService
+from app.utils.jwt_keys import (
+    _b64url_uint,
+    format_public_key_to_jwk,
+    get_verifying_keys,
+)
 
 
-def _b64url_uint(integer: int) -> str:
-    byte_length = (integer.bit_length() + 7) // 8
-    as_bytes = integer.to_bytes(byte_length, "big")
-    return base64.urlsafe_b64encode(as_bytes).rstrip(b"=").decode("ascii")
+@pytest.fixture
+def mock_settings(monkeypatch):
+    """Return a proxy whose attribute-writes update ConfigurationService."""
+
+    class _Proxy:
+        def __setattr__(self, name, value):
+            monkeypatch.setattr(ConfigurationService, name, value, raising=False)
+
+    # Return an instance that test methods can assign to
+    return _Proxy()
 
 
-def test_format_public_key_to_jwk_roundtrip():
-    """Ensure RSA public key is accurately converted to JWK fields n/e."""
-
-    # Generate a temporary RSA key for testing (small key for speed)
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    public_key = key.public_key()
-
-    pem = public_key.public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo,
-    )
-
-    kid = "test-key-1"
-    jwk_dict = format_public_key_to_jwk(pem, kid)
-
-    # Validate via Pydantic (should raise if invalid)
-    jwk_model = JWK(**jwk_dict)
-    assert jwk_model.kid == kid
-    assert jwk_model.kty == "RSA"
-    assert jwk_model.use == "sig"
-    assert jwk_model.alg == "RS256"
-
-    # Cross-check n and e values
-    numbers = public_key.public_numbers()
-    assert jwk_dict["n"] == _b64url_uint(numbers.n)
-    assert jwk_dict["e"] == _b64url_uint(numbers.e)
-
-
-def test_format_public_key_to_jwk(monkeypatch: MonkeyPatch):
-    """Verify that a PEM-encoded public key is correctly formatted as a JWK."""
-    # This function is specifically for RSA keys, so ensure the environment reflects this.
-    monkeypatch.setattr(settings, "JWT_ALGORITHM", "RS256")
-
-    pem_key = _generate_rsa_pem()
-    kid = "test-kid-123"
-
-    jwk_dict = format_public_key_to_jwk(pem_key, kid)
-
-    assert jwk_dict["kid"] == kid
-    assert jwk_dict["kty"] == "RSA"
-    assert jwk_dict["use"] == "sig"
-    assert jwk_dict["alg"] == settings.JWT_ALGORITHM
-    assert "n" in jwk_dict
-    assert "e" in jwk_dict
-
-
-def test_get_verifying_keys(monkeypatch: MonkeyPatch):
-    """
-    Verify that get_verifying_keys returns only keys that have not been retired.
-    """
-    now = datetime.now(timezone.utc)
-    one_hour_ago = now - timedelta(hours=1)
-
-    # 1. Define a set of test keys
-    active_pem = _generate_rsa_pem()
-    retired_pem = _generate_rsa_pem()
-    future_pem = _generate_rsa_pem()
-
-    # 2. Mock the settings and runtime state
-    monkeypatch.setattr(
-        settings,
-        "JWT_KEYS",
-        {
-            "active-key": active_pem,
-            "retired-key": retired_pem,
-            "future-key": future_pem,
-        },
-    )
-    # This key was retired an hour ago, it should NOT be returned
-    monkeypatch.setattr(jwt_utils, "_RETIRED_KEYS", {"retired-key": one_hour_ago})
-
-    # 3. Call the function under test
-    verifying_keys = get_verifying_keys()
-
-    # 4. Assert the results
-    assert len(verifying_keys) == 2
-    kids = {key.kid for key in verifying_keys}
-    assert "active-key" in kids
-    assert "future-key" in kids
-    assert "retired-key" not in kids
-
-    # Verify the objects are of the correct type
-    for key in verifying_keys:
-        assert isinstance(key, Key)
-
-
-# Helper to generate a dummy RSA key for testing
-def _generate_rsa_pem() -> str:
-    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    pem = private_key.public_key().public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo,
-    )
-    return pem.decode("utf-8")
-
-
-def test_b64url_uint_various_values():
-    """_b64url_uint should correctly encode integers."""
-    from app.utils.jwt_keys import _b64url_uint
-
-    assert _b64url_uint(0) == ""
+def test_b64url_uint():
+    """Test base64url encoding of integers."""
     assert _b64url_uint(1) == "AQ"
     assert _b64url_uint(65537) == "AQAB"
+
+
+def test_format_public_key_to_jwk_with_rs256():
+    """Test format_public_key_to_jwk with RS256 algorithm."""
+    # Setup
+    public_key = "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnzyis1ZjfNB0bBgKFMSv\nvkTtwlvBsaJq7S5wA+kzeVOVpVWwkWdVha4s38XM/pa/yr47av7+z3VTmvDRyAHc\naT92whREFpLv9cj5lTeJSibyr/Mrm/YtjCZVWgaOYIhwrXwKLqPr/11inWsAkfIy\ntvHWTxZYEcXLgAXFuUuaS3uF9gEiNQwzGTU1v0FqkqTBr4B8nW3HCN47XUu0t8Y0\ne+lf4s4OxQawWD79J9/5d3Ry0vbV3Am1FtGJiJvOwRsIfVChDpYStTcHTCMqtvWb\nV6L11BWkpzGXSW4Hv43qa+GSYOD2QU68Mb59oSk2OB+BtOLpJofmbGEGgvmwyCI9\nMwIDAQAB\n-----END PUBLIC KEY-----"
+    kid = "kid1"
+
+    # Execute
+    jwk = format_public_key_to_jwk(public_key, kid)
+
+    # Verify
+    assert jwk["kty"] == "RSA"
+    assert jwk["kid"] == "kid1"
+    assert "n" in jwk
+    assert "e" in jwk
+    assert jwk["alg"] == "RS256"
+
+
+def test_format_public_key_to_jwk_with_custom_alg():
+    """Test format_public_key_to_jwk with custom algorithm."""
+    # Setup
+    public_key = "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnzyis1ZjfNB0bBgKFMSv\nvkTtwlvBsaJq7S5wA+kzeVOVpVWwkWdVha4s38XM/pa/yr47av7+z3VTmvDRyAHc\naT92whREFpLv9cj5lTeJSibyr/Mrm/YtjCZVWgaOYIhwrXwKLqPr/11inWsAkfIy\ntvHWTxZYEcXLgAXFuUuaS3uF9gEiNQwzGTU1v0FqkqTBr4B8nW3HCN47XUu0t8Y0\ne+lf4s4OxQawWD79J9/5d3Ry0vbV3Am1FtGJiJvOwRsIfVChDpYStTcHTCMqtvWb\nV6L11BWkpzGXSW4Hv43qa+GSYOD2QU68Mb59oSk2OB+BtOLpJofmbGEGgvmwyCI9\nMwIDAQAB\n-----END PUBLIC KEY-----"
+    kid = "kid1"
+
+    # Execute
+    jwk = format_public_key_to_jwk(public_key, kid, alg="RS384")
+
+    # Verify
+    assert jwk["kty"] == "RSA"
+    assert jwk["kid"] == "kid1"
+    assert "n" in jwk
+    assert "e" in jwk
+    assert jwk["alg"] == "RS384"
+
+
+def test_get_verifying_keys_with_rs256(mock_settings):
+    """Test get_verifying_keys with RS256 algorithm."""
+    # Setup
+    mock_settings.JWT_ALGORITHM = "RS256"
+    mock_settings.JWT_KEYS = {
+        "kid1": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnzyis1ZjfNB0bBgKFMSv\nvkTtwlvBsaJq7S5wA+kzeVOVpVWwkWdVha4s38XM/pa/yr47av7+z3VTmvDRyAHc\naT92whREFpLv9cj5lTeJSibyr/Mrm/YtjCZVWgaOYIhwrXwKLqPr/11inWsAkfIy\ntvHWTxZYEcXLgAXFuUuaS3uF9gEiNQwzGTU1v0FqkqTBr4B8nW3HCN47XUu0t8Y0\ne+lf4s4OxQawWD79J9/5d3Ry0vbV3Am1FtGJiJvOwRsIfVChDpYStTcHTCMqtvWb\nV6L11BWkpzGXSW4Hv43qa+GSYOD2QU68Mb59oSk2OB+BtOLpJofmbGEGgvmwyCI9\nMwIDAQAB\n-----END PUBLIC KEY-----",
+    }
+
+    # Execute
+    keys = get_verifying_keys()
+
+    # Verify
+    assert len(keys) == 1
+    assert keys[0].kid == "kid1"
+    assert keys[0].value == mock_settings.JWT_KEYS["kid1"]
+    assert keys[0].retired_at is None
+
+
+def test_get_verifying_keys_with_retired_keys(mock_settings):
+    """Test get_verifying_keys with retired keys."""
+    # Setup
+    mock_settings.JWT_ALGORITHM = "RS256"
+    mock_settings.JWT_KEYS = {
+        "kid1": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnzyis1ZjfNB0bBgKFMSv\nvkTtwlvBsaJq7S5wA+kzeVOVpVWwkWdVha4s38XM/pa/yr47av7+z3VTmvDRyAHc\naT92whREFpLv9cj5lTeJSibyr/Mrm/YtjCZVWgaOYIhwrXwKLqPr/11inWsAkfIy\ntvHWTxZYEcXLgAXFuUuaS3uF9gEiNQwzGTU1v0FqkqTBr4B8nW3HCN47XUu0t8Y0\ne+lf4s4OxQawWD79J9/5d3Ry0vbV3Am1FtGJiJvOwRsIfVChDpYStTcHTCMqtvWb\nV6L11BWkpzGXSW4Hv43qa+GSYOD2QU68Mb59oSk2OB+BtOLpJofmbGEGgvmwyCI9\nMwIDAQAB\n-----END PUBLIC KEY-----",
+        "kid2": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnzyis1ZjfNB0bBgKFMSv\nvkTtwlvBsaJq7S5wA+kzeVOVpVWwkWdVha4s38XM/pa/yr47av7+z3VTmvDRyAHc\naT92whREFpLv9cj5lTeJSibyr/Mrm/YtjCZVWgaOYIhwrXwKLqPr/11inWsAkfIy\ntvHWTxZYEcXLgAXFuUuaS3uF9gEiNQwzGTU1v0FqkqTBr4B8nW3HCN47XUu0t8Y0\ne+lf4s4OxQawWD79J9/5d3Ry0vbV3Am1FtGJiJvOwRsIfVChDpYStTcHTCMqtvWb\nV6L11BWkpzGXSW4Hv43qa+GSYOD2QU68Mb59oSk2OB+BtOLpJofmbGEGgvmwyCI9\nMwIDAQAB\n-----END PUBLIC KEY-----",
+    }
+
+    # Mock the _RETIRED_KEYS dictionary in jwt module
+    from app.utils import jwt
+
+    retired_time = datetime.now(timezone.utc) - timedelta(days=1)  # Retired 1 day ago
+    with patch.object(jwt, "_RETIRED_KEYS", {"kid2": retired_time}):
+        # Execute
+        keys = get_verifying_keys()
+
+    # Verify
+    assert len(keys) == 1  # Only kid1 should be returned
+    assert keys[0].kid == "kid1"

@@ -11,7 +11,7 @@ from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from hypothesis.strategies import composite
 
-from app.schemas.jwks import JWK, JWKSet
+from app.domain.schemas.jwks import JWK, JWKSet
 from app.utils.jwt_rotation import Key
 
 
@@ -173,7 +173,7 @@ async def test_jwks_endpoint_property_based(
     suppress_health_check=[HealthCheck.function_scoped_fixture],
 )  # Reduced examples, added deadline
 @given(cache_ttl=st.integers(min_value=1, max_value=3600))
-async def test_jwks_cache_ttl_property_based(cache_ttl: int):
+async def test_jwks_cache_ttl_property_based(cache_ttl: int, monkeypatch):
     """Property-based test for JWKS cache TTL behavior."""
     from app.main import create_app
 
@@ -186,23 +186,32 @@ async def test_jwks_cache_ttl_property_based(cache_ttl: int):
     mock_redis.setex.return_value = True
     mock_redis.close.return_value = None
 
+    # Patch the ConfigurationService class attribute
+    from app.core.config import ConfigurationService
+
+    # Create a custom config instance with the test TTL value
+    original_init = ConfigurationService.__init__
+
+    def patched_init(self, *args, **kwargs):
+        original_init(self, *args, **kwargs)
+        self.JWKS_CACHE_TTL_SEC = cache_ttl
+
+    monkeypatch.setattr(ConfigurationService, "__init__", patched_init)
+
     with patch("app.api.endpoints.jwks._build_redis_client", return_value=mock_redis):
-        with patch("app.core.config.settings.JWKS_CACHE_TTL_SEC", cache_ttl):
-            import httpx
+        import httpx
 
-            transport = httpx.ASGITransport(app=test_app, raise_app_exceptions=True)
-            async with httpx.AsyncClient(
-                transport=transport, base_url="http://test"
-            ) as ac:
-                resp = await ac.get("/.well-known/jwks.json")
+        transport = httpx.ASGITransport(app=test_app, raise_app_exceptions=True)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as ac:
+            resp = await ac.get("/.well-known/jwks.json")
 
-                # Property: Should always succeed
-                assert resp.status_code == 200
+            # Property: Should always succeed
+            assert resp.status_code == 200
 
-                # Property: Should call setex with correct TTL
-                mock_redis.setex.assert_called_once()
-                call_args = mock_redis.setex.call_args
-                assert call_args[0][1] == cache_ttl  # TTL should match configuration
+            # Property: Should call setex with correct TTL
+            mock_redis.setex.assert_called_once()
+            call_args = mock_redis.setex.call_args
+            assert call_args[0][1] == cache_ttl  # TTL should match configuration
 
 
 @pytest.mark.asyncio

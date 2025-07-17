@@ -10,7 +10,7 @@ from collections import defaultdict
 from time import time
 from typing import DefaultDict, List
 
-from app.core.config import settings
+from app.core.config import ConfigurationService
 
 
 class InMemoryRateLimiter:
@@ -51,10 +51,10 @@ class InMemoryRateLimiter:
 # ----------------------------------------------------------------------
 # Singleton instance configured from settings
 # ----------------------------------------------------------------------
-
+config_service = ConfigurationService()
 login_rate_limiter = InMemoryRateLimiter(
-    max_attempts=settings.AUTH_RATE_LIMIT_ATTEMPTS,
-    window_seconds=settings.AUTH_RATE_LIMIT_WINDOW_SECONDS,
+    max_attempts=config_service.AUTH_RATE_LIMIT_ATTEMPTS,
+    window_seconds=config_service.AUTH_RATE_LIMIT_WINDOW_SECONDS,
 )
 
 __all__ = [

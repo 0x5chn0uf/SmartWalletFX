@@ -1,14 +1,14 @@
-from app.core.database import DatabaseService
+from app.core.database import CoreDatabase
+from app.domain.schemas.token_balance import TokenBalanceCreate
 from app.models.token_balance import TokenBalance
-from app.schemas.token_balance import TokenBalanceCreate
 from app.utils.logging import Audit
 
 
 class TokenBalanceRepository:
     """Repository for :class:`~app.models.token_balance.TokenBalance`."""
 
-    def __init__(self, database_service: DatabaseService, audit: Audit):
-        self.__database_service = database_service
+    def __init__(self, database: CoreDatabase, audit: Audit):
+        self.__database = database
         self.__audit = audit
 
     async def create(self, data: TokenBalanceCreate) -> TokenBalance:
@@ -21,7 +21,7 @@ class TokenBalanceRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 balance = TokenBalance(
                     token_id=data.token_id,
                     wallet_id=data.wallet_id,

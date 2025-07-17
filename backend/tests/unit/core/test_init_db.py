@@ -1,6 +1,8 @@
 import pytest
 
-from app.core import init_db as init_module
+from app.core.config import ConfigurationService
+from app.core.database import CoreDatabase
+from app.utils.logging import Audit
 
 
 class _DummyConn:
@@ -39,13 +41,13 @@ class _DummyEngine:
 @pytest.mark.asyncio
 async def test_init_db_success(monkeypatch):
     """init_db should open a connection and run Base.metadata.create_all."""
-
+    database = CoreDatabase(ConfigurationService(), Audit())
     conn = _DummyConn()
     engine = _DummyEngine(conn)
-    monkeypatch.setattr(init_module, "engine", engine)
+    monkeypatch.setattr(database, "async_engine", engine)
 
     # Run
-    result = await init_module.init_db()
+    result = await database.init_db()
 
     # Assertions
     assert result is None
@@ -57,10 +59,11 @@ async def test_init_db_success(monkeypatch):
 @pytest.mark.asyncio
 async def test_init_db_error_propagation(monkeypatch):
     """If run_sync raises, the exception should propagate."""
+    database = CoreDatabase(ConfigurationService(), Audit())
 
     conn = _DummyConn(should_raise=True)
-    engine = _DummyEngine(conn)
-    monkeypatch.setattr(init_module, "engine", engine)
+    async_engine = _DummyEngine(conn)
+    monkeypatch.setattr(database, "async_engine", async_engine)
 
     with pytest.raises(ValueError):
-        await init_module.init_db()
+        await database.init_db()

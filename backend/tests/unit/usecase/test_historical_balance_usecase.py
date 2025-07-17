@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.schemas.historical_balance import (
+from app.domain.schemas.historical_balance import (
     HistoricalBalanceCreate,
     HistoricalBalanceResponse,
 )
@@ -227,14 +227,6 @@ class TestHistoricalBalanceUsecase:
 
             assert result == mock_response
             assert result.timestamp == data["timestamp"]
-
-    def test_historical_balance_usecase_initialization(self, mock_db_session):
-        """Test HistoricalBalanceUsecase initialization."""
-        usecase = HistoricalBalanceUsecase(mock_db_session)
-
-        assert usecase.db == mock_db_session
-        assert usecase.historical_balance_repository is not None
-        assert usecase.historical_balance_repository.db == mock_db_session
 
     @pytest.mark.asyncio
     async def test_create_historical_balance_concurrent_creation(

@@ -13,7 +13,7 @@ from unittest.mock import Mock, patch
 import pytest
 from structlog.contextvars import bind_contextvars, clear_contextvars
 
-from app.schemas.audit_log import AuditEventBase
+from app.domain.schemas.audit_log import AuditEventBase
 from app.utils import logging as audit_logging
 from app.utils.audit import AuditValidationError
 from app.utils.logging import Audit

@@ -5,7 +5,7 @@ from typing import List
 
 from hypothesis import strategies as st
 
-from app.schemas.defi import (
+from app.domain.schemas.defi import (
     Borrowing,
     Collateral,
     HealthScore,

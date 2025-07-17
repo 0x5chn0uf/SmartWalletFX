@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from fixture_lint.duplication import find_duplicates
-from fixture_lint.parser import parse_paths
+from tools.fixture_lint.duplication import find_duplicates
+from tools.fixture_lint.parser import parse_paths
 
 
 def test_find_duplicates(tmp_path: Path) -> None:
