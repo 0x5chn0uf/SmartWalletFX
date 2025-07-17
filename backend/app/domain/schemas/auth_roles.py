@@ -7,7 +7,7 @@ and related authorization structures.
 
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.core.security.roles import UserRole
 
@@ -28,7 +28,7 @@ class UserAttributes(BaseModel):
         default_factory=list, description="List of DeFi protocols user has positions in"
     )
 
-    @validator("subscription_tier")
+    @field_validator("subscription_tier")
     def validate_subscription_tier(cls, v):
         """Validate subscription tier values."""
         if v is not None and v not in ["basic", "premium", "enterprise"]:
@@ -37,7 +37,7 @@ class UserAttributes(BaseModel):
             )
         return v
 
-    @validator("defi_positions")
+    @field_validator("defi_positions")
     def validate_defi_positions(cls, v):
         """Validate DeFi position protocol names."""
         valid_protocols = [
@@ -63,7 +63,7 @@ class RoleAssignment(BaseModel):
         default_factory=dict, description="User attributes for ABAC"
     )
 
-    @validator("roles")
+    @field_validator("roles")
     def validate_roles(cls, v):
         """Validate that all roles are valid."""
         for role in v:
@@ -71,7 +71,7 @@ class RoleAssignment(BaseModel):
                 raise ValueError(f"Invalid role: {role}")
         return v
 
-    @validator("attributes")
+    @field_validator("attributes")
     def validate_attributes(cls, v):
         """Validate user attributes structure."""
         # Convert to UserAttributes model for validation
@@ -98,7 +98,7 @@ class Policy(BaseModel):
     )
     value: Optional[Any] = Field(default=None, description="Value to compare against")
 
-    @validator("operator")
+    @field_validator("operator")
     def validate_operator(cls, v):
         """Validate policy operator."""
         valid_operators = ["AND", "OR", "condition"]
@@ -106,7 +106,7 @@ class Policy(BaseModel):
             raise ValueError(f"Invalid operator: {v}. Must be one of {valid_operators}")
         return v
 
-    @validator("operator_type")
+    @field_validator("operator_type")
     def validate_operator_type(cls, v):
         """Validate operator type for conditions."""
         if v is not None:

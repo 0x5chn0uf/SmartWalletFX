@@ -130,12 +130,13 @@ class TestEncryptFile:
             with pytest.raises(FileNotFoundError):
                 encrypt_file(self.test_file_path, recipient="test_key")
 
-    def test_encrypt_file_no_recipient_configured(self):
+    def test_encrypt_file_no_recipient_configured(self, monkeypatch):
         """Test encryption when no recipient is provided."""
+        mock_config = ConfigurationService()
+        mock_config.GPG_RECIPIENT_KEY_ID = None
+        monkeypatch.setattr("app.utils.encryption.ConfigurationService", lambda: mock_config)
         with patch.object(Path, "exists", return_value=True):
-            with pytest.raises(
-                EncryptionError, match="GPG_RECIPIENT_KEY_ID not configured"
-            ):
+            with pytest.raises(EncryptionError, match="GPG_RECIPIENT_KEY_ID not configured"):
                 encrypt_file(self.test_file_path)
 
     @patch("app.utils.encryption.subprocess.run")

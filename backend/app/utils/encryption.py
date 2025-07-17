@@ -41,7 +41,7 @@ def encrypt_file(
     if not file_path.exists():
         raise FileNotFoundError(file_path)
 
-    recipient_key = recipient or ConfigurationService.GPG_RECIPIENT_KEY_ID
+    recipient_key = recipient or ConfigurationService().GPG_RECIPIENT_KEY_ID
     if not recipient_key:
         raise EncryptionError("GPG_RECIPIENT_KEY_ID not configured")
 

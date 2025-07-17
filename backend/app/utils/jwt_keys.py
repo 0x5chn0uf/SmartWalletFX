@@ -22,6 +22,7 @@ from app.utils.jwt_rotation import Key
 __all__ = [
     "format_public_key_to_jwk",
     "get_verifying_keys",
+    "get_signing_key",
 ]
 
 
@@ -31,6 +32,27 @@ def _b64url_uint(integer: int) -> str:
     byte_length = (integer.bit_length() + 7) // 8
     as_bytes = integer.to_bytes(byte_length, "big")
     return base64.urlsafe_b64encode(as_bytes).rstrip(b"=").decode("ascii")
+
+
+def get_signing_key() -> tuple[str, str]:
+    """Get the active signing key and algorithm.
+    
+    Returns
+    -------
+    tuple[str, str]
+        A tuple of (key, algorithm) where key is the PEM-encoded signing key
+        and algorithm is the JWT algorithm (e.g., "HS256", "RS256").
+    """
+    config = ConfigurationService()
+    active_kid = config.ACTIVE_JWT_KID
+    
+    if active_kid not in config.JWT_KEYS:
+        raise ValueError(f"Active JWT key ID '{active_kid}' not found in JWT_KEYS")
+    
+    signing_key = config.JWT_KEYS[active_kid]
+    algorithm = config.JWT_ALGORITHM
+    
+    return signing_key, algorithm
 
 
 def get_verifying_keys() -> list[Key]:

@@ -12,7 +12,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Dict, Optional, Set
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 __all__ = [
     "Key",  # Pydantic model representing a single signing key
@@ -33,7 +33,7 @@ class Key(BaseModel):
         "with this key are rejected once *now* >= retired_at.",
     )
 
-    @validator("retired_at")
+    @field_validator("retired_at")
     def _ensure_tz(cls, v: Optional[datetime]) -> Optional[datetime]:  # noqa: N805
         if v and v.tzinfo is None:
             # Always treat naive datetimes as UTC for consistency

@@ -69,8 +69,9 @@ async def test_wallet_repository_create_and_fetch(
 
     # Create a wallet
     address = f"0x{uuid.uuid4().hex:0<40}"[:42]
-    wallet = Wallet(address=address, user_id=saved_user.id, name="Test Wallet")
-    saved_wallet = await wallet_repository.save(wallet)
+    saved_wallet = await wallet_repository.create(
+        address=address, user_id=saved_user.id, name="Test Wallet"
+    )
 
     assert saved_wallet.id is not None
     assert saved_wallet.address == address
@@ -83,26 +84,23 @@ async def test_wallet_repository_create_and_fetch(
 
 
 @pytest.mark.asyncio
-async def test_wallet_repository_list_by_user(wallet_repository, db_session):
+async def test_wallet_repository_list_by_user(wallet_repository_with_real_db, test_user):
     """Test listing wallets by user."""
-    # Setup mock session
-    setup_mock_session(wallet_repository, db_session)
-
-    user_id = uuid.uuid4()
+    user_id = test_user.id
 
     # Create multiple wallets for the user
     wallets = []
     for i in range(3):
         address = f"0x{uuid.uuid4().hex:0<40}"[:42]
         # Call create with the correct signature: address, user_id, name
-        saved_wallet = await wallet_repository.create(
+        saved_wallet = await wallet_repository_with_real_db.create(
             address=address, user_id=user_id, name=f"Wallet {i}"
         )
         wallets.append(saved_wallet)
 
     # List wallets by user
-    user_wallets = await wallet_repository.list_by_user(user_id)
-    assert len(user_wallets) == 3
+    user_wallets = await wallet_repository_with_real_db.list_by_user(user_id)
+    assert len(user_wallets) >= 3  # May have other wallets from other tests
 
     # Verify all wallets belong to the user
     for wallet in user_wallets:

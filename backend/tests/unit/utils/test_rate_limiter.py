@@ -91,19 +91,22 @@ class TestRateLimiterIntegration:
             ),
         )
 
-        # Create a test user
+        # Create a test user with unique username
+        import uuid
+        unique_suffix = str(uuid.uuid4())[:8]
+        username = f"ratelimituser_{unique_suffix}"
         service = create_test_auth_service(db_session)
         await service.register(
             UserCreate(
-                username="ratelimituser",
-                email="ratelimit@example.com",
+                username=username,
+                email=f"ratelimit_{unique_suffix}@example.com",
                 password="Str0ng!pwd",
             )
         )
 
         async with AsyncClient(app=test_app, base_url="http://test") as ac:
             # Make multiple failed login attempts
-            data = {"username": "ratelimituser", "password": "wrong-password"}
+            data = {"username": username, "password": "wrong-password"}
 
             # First few attempts should fail with 401 (wrong password)
             # The rate limit is 5 attempts, so we need 5 attempts to trigger it

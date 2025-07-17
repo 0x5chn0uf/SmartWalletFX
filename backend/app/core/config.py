@@ -72,6 +72,9 @@ class ConfigurationService(BaseSettings):
 
     # Password hashing
     BCRYPT_ROUNDS: int = 12  # Default cost factor for bcrypt
+    
+    # GPG encryption
+    GPG_RECIPIENT_KEY_ID: Optional[str] = None
 
     # JWT configuration
     JWT_ALGORITHM: str = "HS256"
