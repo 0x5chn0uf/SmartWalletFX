@@ -186,17 +186,17 @@ async def test_jwks_cache_ttl_property_based(cache_ttl: int, monkeypatch):
     mock_redis.setex.return_value = True
     mock_redis.close.return_value = None
 
-    # Patch the ConfigurationService class attribute
-    from app.core.config import ConfigurationService
+    # Patch the Configuration class attribute
+    from app.core.config import Configuration
 
     # Create a custom config instance with the test TTL value
-    original_init = ConfigurationService.__init__
+    original_init = Configuration.__init__
 
     def patched_init(self, *args, **kwargs):
         original_init(self, *args, **kwargs)
         self.JWKS_CACHE_TTL_SEC = cache_ttl
 
-    monkeypatch.setattr(ConfigurationService, "__init__", patched_init)
+    monkeypatch.setattr(Configuration, "__init__", patched_init)
 
     with patch("app.api.endpoints.jwks._build_redis_client", return_value=mock_redis):
         import httpx

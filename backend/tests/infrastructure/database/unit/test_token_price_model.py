@@ -3,7 +3,6 @@ from decimal import Decimal
 
 import pytest
 
-from app.domain.schemas.token import TokenCreate
 from app.domain.schemas.token_price import TokenPriceCreate
 from app.models import Token, TokenPrice
 

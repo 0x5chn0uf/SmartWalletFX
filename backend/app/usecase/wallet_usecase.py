@@ -5,7 +5,7 @@ from typing import List
 
 from fastapi import HTTPException, status
 
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.domain.schemas.portfolio_metrics import PortfolioMetrics
 from app.domain.schemas.portfolio_timeline import PortfolioTimeline
 from app.domain.schemas.wallet import WalletCreate, WalletResponse
@@ -29,13 +29,13 @@ class WalletUsecase:
         wallet_repo: WalletRepository,
         user_repo: UserRepository,
         portfolio_snapshot_repo: PortfolioSnapshotRepository,
-        config_service: ConfigurationService,
+        config: Configuration,
         audit: Audit,
     ):
         self.__wallet_repo = wallet_repo
         self.__user_repo = user_repo
         self.__portfolio_snapshot_repo = portfolio_snapshot_repo
-        self.__config_service = config_service
+        self.__config_service = config
         self.__audit = audit
 
     async def create_wallet(

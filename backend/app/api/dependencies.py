@@ -3,17 +3,14 @@ from __future__ import annotations
 import uuid
 from typing import AsyncGenerator
 
-from fastapi import Depends, HTTPException, Request, status
+from fastapi import HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from redis import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import ConfigurationService
-from app.core.database import get_db
+from app.core.config import Configuration
 from app.core.security.roles import ROLE_PERMISSIONS_MAP, UserRole
 from app.models.user import User
 from app.utils.jwks_cache import _build_redis_client
-from app.utils.logging import Audit
 from app.utils.rate_limiter import login_rate_limiter
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
@@ -27,7 +24,7 @@ class AuthDeps:
 
     def __init__(self):
         """Initialize with configuration service."""
-        self.config_service = ConfigurationService()
+        self.config = Configuration()
 
     async def rate_limit_auth_token(  # type: ignore[valid-type]
         self, request: Request
@@ -41,57 +38,9 @@ class AuthDeps:
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Too many login attempts, please try again later.",
                 headers={
-                    "Retry-After": str(
-                        self.config_service.AUTH_RATE_LIMIT_WINDOW_SECONDS
-                    )
+                    "Retry-After": str(self.config.AUTH_RATE_LIMIT_WINDOW_SECONDS)
                 },
             )
-
-    async def get_current_user(
-        self,
-        request: Request,
-        db: AsyncSession = Depends(get_db),
-    ) -> User:
-        """Get user from DB and attach roles/attributes from token payload."""
-        audit = Audit()
-        payload = getattr(request.state, "token_payload", None)
-
-        if payload is None:
-            audit.warning("Token payload not found in request state")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Not authenticated",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        try:
-            pk = uuid.UUID(str(payload["sub"]))
-        except (KeyError, ValueError, TypeError):
-            audit.warning("Invalid subject in token payload")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid subject in token",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        user = await db.get(User, pk)
-        if not user:
-            audit.warning("User not found for pk from token", user_id=str(pk))
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        # Attach roles and attributes from token payload to the user object
-        user._current_roles = payload.get("roles", [])  # type: ignore[attr-defined]
-        user._current_attributes = payload.get(
-            "attributes", {}
-        )  # type: ignore[attr-defined]
-
-        audit.info("User loaded from token payload", user_id=str(user.id))
-
-        return user
 
 
 # Instantiate auth deps singleton
@@ -113,10 +62,59 @@ def get_user_id_from_request(request: Request) -> uuid.UUID:
     return user_id
 
 
+async def get_user_from_request(request: Request) -> User:
+    """
+    Get user from database using user_id from request state (set by JWTAuthMiddleware).
+    Attaches roles and attributes from token payload to the user object.
+    Raises HTTPException if user is not authenticated or not found.
+    """
+    # Get user_id from request state
+    user_id = getattr(request.state, "user_id", None)
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Get token payload for roles and attributes
+    payload = getattr(request.state, "token_payload", None)
+    if payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Get database service from DI container (local import to avoid circular import)
+    from app.di import DIContainer
+
+    di_container = DIContainer()
+    database = di_container.get_core("database")
+
+    async with database.get_session() as db:
+        user = await db.get(User, user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Attach roles and attributes from token payload to the user object
+        user._current_roles = payload.get("roles", [])  # type: ignore[attr-defined]
+        user._current_attributes = payload.get(  # type: ignore[attr-defined]
+            "attributes", {}
+        )
+
+        return user
+
+
 __all__ = [
     "auth_deps",
     "get_redis",
     "get_user_id_from_request",
+    "get_user_from_request",
 ]
 
 
@@ -195,11 +193,18 @@ class AuthorizationDeps:  # noqa: D101
     def require_roles(self, required_roles: list[str]):  # noqa: D401
         """Create a dependency that enforces role requirements (OR logic)."""
 
-        def dependency(user: User = Depends(auth_deps.get_current_user)):
+        def dependency(request: Request):
+            # Get token payload from request state (set by middleware)
+            payload = getattr(request.state, "token_payload", None)
+            if payload is None:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Not authenticated",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
             # Use JWT claims for role checking
-            user_roles = getattr(
-                user, "_current_roles", [UserRole.INDIVIDUAL_INVESTOR.value]
-            )
+            user_roles = payload.get("roles", [UserRole.INDIVIDUAL_INVESTOR.value])
 
             # Check if user has any of the required roles
             if not any(role in user_roles for role in required_roles):
@@ -210,16 +215,25 @@ class AuthorizationDeps:  # noqa: D101
                         % (required_roles, user_roles)
                     ),
                 )
-            return user
+            return request
 
         return dependency
 
     def require_attributes(self, requirements: dict[str, any]):  # noqa: D401
         """Create a dependency that enforces attribute requirements."""
 
-        def dependency(user: User = Depends(auth_deps.get_current_user)):
+        def dependency(request: Request):
+            # Get token payload from request state (set by middleware)
+            payload = getattr(request.state, "token_payload", None)
+            if payload is None:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Not authenticated",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
             # Use JWT claims for attribute checking
-            user_attributes = getattr(user, "_current_attributes", {})
+            user_attributes = payload.get("attributes", {})
 
             for attr_name, requirement in requirements.items():
                 user_value = user_attributes.get(attr_name)
@@ -233,18 +247,25 @@ class AuthorizationDeps:  # noqa: D101
                             "requirement not met." % attr_name
                         ),
                     )
-            return user
+            return request
 
         return dependency
 
     def require_permission(self, required_permission: str):  # noqa: D401
         """Create a dependency that enforces permission requirements."""
 
-        def dependency(user: User = Depends(auth_deps.get_current_user)):
+        def dependency(request: Request):
+            # Get token payload from request state (set by middleware)
+            payload = getattr(request.state, "token_payload", None)
+            if payload is None:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Not authenticated",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+
             # Use JWT claims for permission checking
-            user_roles = getattr(
-                user, "_current_roles", [UserRole.INDIVIDUAL_INVESTOR.value]
-            )
+            user_roles = payload.get("roles", [UserRole.INDIVIDUAL_INVESTOR.value])
 
             if not self.has_permission(user_roles, required_permission):
                 user_permissions = self._expand_permissions(user_roles)
@@ -255,7 +276,7 @@ class AuthorizationDeps:  # noqa: D101
                         % (required_permission, list(user_permissions))
                     ),
                 )
-            return user
+            return request
 
         return dependency
 

@@ -297,7 +297,7 @@ def test_wallet_usecase_constructor_dependencies():
         wallet_repo=mock_wallet_repository,
         user_repo=mock_user_repository,  # Add missing parameter
         portfolio_snapshot_repo=mock_portfolio_snapshot_repository,
-        config_service=mock_config,
+        config=mock_config,
         audit=mock_audit,
     )
 

@@ -5,7 +5,6 @@ from unittest.mock import MagicMock
 import pytest
 from freezegun import freeze_time
 
-from app.core.config import ConfigurationService
 from app.tasks.jwt_rotation import (
     _config_service,
     promote_and_retire_keys_task,

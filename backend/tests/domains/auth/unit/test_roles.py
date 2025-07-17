@@ -119,45 +119,45 @@ class TestRequireRoles:
 
     def test_require_roles_success(self):
         """Test successful role check."""
-        # Mock user with required roles from JWT claims
-        mock_user = Mock()
-        mock_user._current_roles = ["trader", "fund_manager"]
+        # Mock request with JWT payload containing required roles
+        payload = {"roles": ["trader", "fund_manager"]}
+        mock_request = Mock(state=Mock(token_payload=payload))
 
         # Create dependency
         role_dep = require_roles(["trader"])
 
         # Should not raise exception
-        result = role_dep(mock_user)
-        assert result == mock_user
+        result = role_dep(mock_request)
+        assert result == mock_request
 
     def test_require_roles_failure(self):
         """Test role check failure."""
-        # Mock user without required roles
-        mock_user = Mock()
-        mock_user._current_roles = ["individual_investor"]
+        # Mock request with JWT payload without required roles
+        payload = {"roles": ["individual_investor"]}
+        mock_request = Mock(state=Mock(token_payload=payload))
 
         # Create dependency
         role_dep = require_roles(["admin", "trader"])
 
         # Should raise HTTPException
         with pytest.raises(HTTPException) as exc_info:
-            role_dep(mock_user)
+            role_dep(mock_request)
 
         assert exc_info.value.status_code == 403
         assert "Access denied" in exc_info.value.detail
 
     def test_require_roles_multiple(self):
         """Test role check with multiple required roles (OR logic)."""
-        # Mock user with one of multiple required roles
-        mock_user = Mock()
-        mock_user._current_roles = ["fund_manager"]
+        # Mock request with JWT payload containing one of multiple required roles
+        payload = {"roles": ["fund_manager"]}
+        mock_request = Mock(state=Mock(token_payload=payload))
 
         # Create dependency
         role_dep = require_roles(["admin", "fund_manager", "trader"])
 
         # Should not raise exception (OR logic)
-        result = role_dep(mock_user)
-        assert result == mock_user
+        result = role_dep(mock_request)
+        assert result == mock_request
 
 
 class TestRequireAttributes:
@@ -165,13 +165,15 @@ class TestRequireAttributes:
 
     def test_require_attributes_success(self):
         """Test successful attribute check."""
-        # Mock user with required attributes from JWT claims
-        mock_user = Mock()
-        mock_user._current_attributes = {
-            "geography": "US",
-            "portfolio_value": 1000000,
-            "kyc_level": "verified",
+        # Mock request with JWT payload containing required attributes
+        payload = {
+            "attributes": {
+                "geography": "US",
+                "portfolio_value": 1000000,
+                "kyc_level": "verified",
+            }
         }
+        mock_request = Mock(state=Mock(token_payload=payload))
 
         # Create dependency
         attr_dep = require_attributes(
@@ -179,14 +181,14 @@ class TestRequireAttributes:
         )
 
         # Should not raise exception
-        result = attr_dep(mock_user)
-        assert result == mock_user
+        result = attr_dep(mock_request)
+        assert result == mock_request
 
     def test_require_attributes_failure(self):
         """Test attribute check failure."""
-        # Mock user without required attributes
-        mock_user = Mock()
-        mock_user._current_attributes = {"geography": "EU", "portfolio_value": 100000}
+        # Mock request with JWT payload without required attributes
+        payload = {"attributes": {"geography": "EU", "portfolio_value": 100000}}
+        mock_request = Mock(state=Mock(token_payload=payload))
 
         # Create dependency
         attr_dep = require_attributes(
@@ -195,21 +197,23 @@ class TestRequireAttributes:
 
         # Should raise HTTPException
         with pytest.raises(HTTPException) as exc_info:
-            attr_dep(mock_user)
+            attr_dep(mock_request)
 
         assert exc_info.value.status_code == 403
         assert "Access denied" in exc_info.value.detail
 
     def test_require_attributes_complex(self):
         """Test complex attribute requirements."""
-        # Mock user with various attributes from JWT claims
-        mock_user = Mock()
-        mock_user._current_attributes = {
-            "geography": "US",
-            "portfolio_value": 2000000,
-            "risk_tolerance": "high",
-            "account_type": "institutional",
+        # Mock request with JWT payload containing various attributes
+        payload = {
+            "attributes": {
+                "geography": "US",
+                "portfolio_value": 2000000,
+                "risk_tolerance": "high",
+                "account_type": "institutional",
+            }
         }
+        mock_request = Mock(state=Mock(token_payload=payload))
 
         # Create dependency with complex requirements
         attr_dep = require_attributes(
@@ -221,8 +225,8 @@ class TestRequireAttributes:
         )
 
         # Should not raise exception
-        result = attr_dep(mock_user)
-        assert result == mock_user
+        result = attr_dep(mock_request)
+        assert result == mock_request
 
 
 class TestRequirePermission:
@@ -230,29 +234,29 @@ class TestRequirePermission:
 
     def test_require_permission_success(self):
         """Test successful permission check."""
-        # Mock user with trader role (has wallet:read permission) from JWT claims
-        mock_user = Mock()
-        mock_user._current_roles = ["trader"]
+        # Mock request with JWT payload containing trader role (has wallet:read permission)
+        payload = {"roles": ["trader"]}
+        mock_request = Mock(state=Mock(token_payload=payload))
 
         # Create dependency
         perm_dep = require_permission("wallet:read")
 
         # Should not raise exception
-        result = perm_dep(mock_user)
-        assert result == mock_user
+        result = perm_dep(mock_request)
+        assert result == mock_request
 
     def test_require_permission_failure(self):
         """Test permission check failure."""
-        # Mock user with individual_investor role (no admin permissions) from JWT claims
-        mock_user = Mock()
-        mock_user._current_roles = ["individual_investor"]
+        # Mock request with JWT payload containing individual_investor role (no admin permissions)
+        payload = {"roles": ["individual_investor"]}
+        mock_request = Mock(state=Mock(token_payload=payload))
 
         # Create dependency
         perm_dep = require_permission("admin:users")
 
         # Should raise HTTPException
         with pytest.raises(HTTPException) as exc_info:
-            perm_dep(mock_user)
+            perm_dep(mock_request)
 
         assert exc_info.value.status_code == 403
         assert "Access denied" in exc_info.value.detail

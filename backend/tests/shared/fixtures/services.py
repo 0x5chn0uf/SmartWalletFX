@@ -35,6 +35,6 @@ def oauth_service_with_di(
         oauth_account_repo=mock_oauth_account_repository,
         refresh_token_repo=mock_refresh_token_repository,
         jwt_utils=mock_jwt_utils,
-        config_service=mock_config,
+        config=mock_config,
         audit=mock_audit,
     )

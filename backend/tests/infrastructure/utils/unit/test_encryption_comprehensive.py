@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.utils.encryption import GPG_BINARY, EncryptionError, encrypt_file
 
 
@@ -77,10 +77,8 @@ class TestEncryptFile:
         mock_run.return_value = Mock(returncode=0)
         mock_settings.GPG_RECIPIENT_KEY_ID = "default_key"
 
-        # Mock the ConfigurationService to return the test value
-        monkeypatch.setattr(
-            "app.utils.encryption.ConfigurationService", lambda: mock_settings
-        )
+        # Mock the Configuration to return the test value
+        monkeypatch.setattr("app.utils.encryption.Configuration", lambda: mock_settings)
 
         with patch.object(Path, "exists", return_value=True):
             result = encrypt_file(self.test_file_path)
@@ -141,11 +139,9 @@ class TestEncryptFile:
 
     def test_encrypt_file_no_recipient_configured(self, monkeypatch):
         """Test encryption when no recipient is provided."""
-        mock_config = ConfigurationService()
+        mock_config = Configuration()
         mock_config.GPG_RECIPIENT_KEY_ID = None
-        monkeypatch.setattr(
-            "app.utils.encryption.ConfigurationService", lambda: mock_config
-        )
+        monkeypatch.setattr("app.utils.encryption.Configuration", lambda: mock_config)
         with patch.object(Path, "exists", return_value=True):
             with pytest.raises(
                 EncryptionError, match="GPG_RECIPIENT_KEY_ID not configured"

@@ -1,7 +1,7 @@
 from celery.schedules import crontab
 
 from app.celery_app import celery
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 
 
 def test_jwt_rotation_beat_schedule_is_configured():
@@ -15,7 +15,5 @@ def test_jwt_rotation_beat_schedule_is_configured():
     )
 
     # Check that the schedule matches the cron expression from settings
-    expected_schedule = crontab(
-        *ConfigurationService().JWT_ROTATION_SCHEDULE_CRON.split()
-    )
+    expected_schedule = crontab(*Configuration().JWT_ROTATION_SCHEDULE_CRON.split())
     assert schedule_config["schedule"] == expected_schedule

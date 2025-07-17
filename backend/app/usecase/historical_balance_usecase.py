@@ -1,4 +1,4 @@
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.domain.schemas.historical_balance import (
     HistoricalBalanceCreate,
     HistoricalBalanceResponse,
@@ -18,11 +18,11 @@ class HistoricalBalanceUsecase:
     def __init__(
         self,
         historical_balance_repo: HistoricalBalanceRepository,
-        config_service: ConfigurationService,
+        config: Configuration,
         audit: Audit,
     ):
         self.__historical_balance_repo = historical_balance_repo
-        self.__config_service = config_service
+        self.__config_service = config
         self.__audit = audit
 
     async def create_historical_balance(

@@ -5,7 +5,19 @@ import pytest_asyncio
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 
-from app.core.database import get_db
+
+async def get_db_for_testing():
+    """
+    Database dependency for testing that gets the database service from DI container.
+    This can be overridden in test fixtures.
+    """
+    # Local import to avoid circular import
+    from app.di import DIContainer
+
+    di_container = DIContainer()
+    database = di_container.get_core("database")
+    async with database.get_session() as session:
+        yield session
 
 
 @pytest.fixture
@@ -37,12 +49,12 @@ def client_with_db(test_app, db_session):
     async def _override_get_db():
         yield db_session
 
-    test_app.dependency_overrides[get_db] = _override_get_db
+    test_app.dependency_overrides[get_db_for_testing] = _override_get_db
 
     with TestClient(test_app) as client:
         yield client
 
-    test_app.dependency_overrides.pop(get_db, None)
+    test_app.dependency_overrides.pop(get_db_for_testing, None)
 
 
 @pytest_asyncio.fixture
@@ -55,10 +67,10 @@ async def async_client_with_db(test_app, db_session):
     async def _override_get_db():
         yield db_session
 
-    test_app.dependency_overrides[get_db] = _override_get_db
+    test_app.dependency_overrides[get_db_for_testing] = _override_get_db
 
     async with AsyncClient(app=test_app, base_url="http://test") as ac:
         yield ac
 
     # Clean up dependency override
-    test_app.dependency_overrides.pop(get_db, None)
+    test_app.dependency_overrides.pop(get_db_for_testing, None)

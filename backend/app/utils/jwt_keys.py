@@ -15,7 +15,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.domain.schemas.jwks import JWK
 from app.utils.jwt_rotation import Key
 
@@ -43,7 +43,7 @@ def get_signing_key() -> tuple[str, str]:
         A tuple of (key, algorithm) where key is the PEM-encoded signing key
         and algorithm is the JWT algorithm (e.g., "HS256", "RS256").
     """
-    config = ConfigurationService()
+    config = Configuration()
     active_kid = config.ACTIVE_JWT_KID
 
     if active_kid not in config.JWT_KEYS:
@@ -59,7 +59,7 @@ def get_verifying_keys() -> list[Key]:
     """Return all keys that are currently valid for verifying signatures.
 
     This function builds a list of all known keys from
-    ``ConfigurationService.JWT_KEYS``,
+    ``Configuration.JWT_KEYS``,
     checks their retirement status against the runtime ``_RETIRED_KEYS`` map,
     and returns only those that are not yet expired.  This list is suitable
     for building a JWKS endpoint.
@@ -74,7 +74,7 @@ def get_verifying_keys() -> list[Key]:
     now = datetime.now(timezone.utc)
     valid_keys: list[Key] = []
 
-    for kid, pem_value in ConfigurationService().JWT_KEYS.items():
+    for kid, pem_value in Configuration().JWT_KEYS.items():
         retired_at = jwt_utils._RETIRED_KEYS.get(
             kid
         )  # pylint: disable=protected-access

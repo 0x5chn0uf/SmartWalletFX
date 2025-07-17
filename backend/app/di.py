@@ -11,7 +11,7 @@ from app.api.endpoints.password_reset import PasswordReset
 from app.api.endpoints.users import Users
 from app.api.endpoints.wallets import Wallets
 from app.core.celery import CoreCelery
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.core.database import CoreDatabase
 from app.core.error_handling import CoreErrorHandling
 from app.core.logging import CoreLogging
@@ -75,7 +75,7 @@ class DIContainer:
 
     def _initialize_core(self):
         """Initialize and register core services as singletons."""
-        config = ConfigurationService()
+        config = Configuration()
         self.register_core("config", config)
 
         audit = Audit()

@@ -6,7 +6,7 @@ from typing import Optional
 from fastapi import BackgroundTasks, HTTPException
 from jose import jwt as jose_jwt
 
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.core.security.roles import UserRole
 from app.domain.schemas.auth_token import TokenResponse
 from app.models.user import User
@@ -32,7 +32,7 @@ class EmailVerificationUsecase:
         rt_repo: RefreshTokenRepository,
         email_service: EmailService,
         jwt_utils: JWTUtils,
-        config_service: ConfigurationService,
+        config: Configuration,
         audit: Audit,
     ):
         self.__ev_repo = ev_repo
@@ -40,7 +40,7 @@ class EmailVerificationUsecase:
         self.__rt_repo = rt_repo
         self.__email_service = email_service
         self.__jwt_utils = jwt_utils
-        self.__config_service = config_service
+        self.__config_service = config
         self.__audit = audit
 
     async def verify_email(self, token: str) -> TokenResponse:

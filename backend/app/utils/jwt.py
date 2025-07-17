@@ -11,7 +11,7 @@ from typing import Any, Dict
 from jose import ExpiredSignatureError, JWTError, jwt
 from pydantic import ValidationError
 
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.domain.schemas.jwt import JWTPayload
 from app.utils.logging import Audit
 
@@ -31,36 +31,36 @@ def _now_utc() -> datetime:
 def rotate_signing_key(
     new_kid: str,
     new_signing_key: str,
-    config_service: ConfigurationService = None,
+    config: Configuration = None,
     audit: Audit = None,
 ) -> None:
     """Rotate the active signing key.
 
-    This helper updates *config_service* in-memory configuration so that subsequent
+    This helper updates *config* in-memory configuration so that subsequent
     token issuance uses *new_kid*.  The previous active key is preserved in
-    ``config_service.JWT_KEYS`` for a grace-period (configured by
-    ``config_service.JWT_ROTATION_GRACE_PERIOD_SECONDS``) and then considered
+    ``config.JWT_KEYS`` for a grace-period (configured by
+    ``config.JWT_ROTATION_GRACE_PERIOD_SECONDS``) and then considered
     retired/untrusted.
     """
     # Create instances if not provided
-    if config_service is None:
-        config_service = ConfigurationService()
+    if config is None:
+        config = Configuration()
     if audit is None:
         audit = Audit()
 
     # Ensure key map exists
-    if config_service.JWT_KEYS is None:
-        config_service.JWT_KEYS = {}
+    if config.JWT_KEYS is None:
+        config.JWT_KEYS = {}
 
-    old_kid = config_service.ACTIVE_JWT_KID
+    old_kid = config.ACTIVE_JWT_KID
     # Add/overwrite new key in map and switch active kid
-    config_service.JWT_KEYS[new_kid] = new_signing_key
-    config_service.ACTIVE_JWT_KID = new_kid
+    config.JWT_KEYS[new_kid] = new_signing_key
+    config.ACTIVE_JWT_KID = new_kid
 
     # Schedule retirement for old kid (unless same)
-    if old_kid and old_kid != new_kid and old_kid in config_service.JWT_KEYS:
+    if old_kid and old_kid != new_kid and old_kid in config.JWT_KEYS:
         retire_at = _now_utc() + timedelta(
-            seconds=config_service.JWT_ROTATION_GRACE_PERIOD_SECONDS
+            seconds=config.JWT_ROTATION_GRACE_PERIOD_SECONDS
         )
         _RETIRED_KEYS[old_kid] = retire_at
 
@@ -68,16 +68,16 @@ def rotate_signing_key(
         "JWT_KEY_ROTATED",
         new_kid=new_kid,
         old_kid=old_kid,
-        grace_seconds=config_service.JWT_ROTATION_GRACE_PERIOD_SECONDS,
+        grace_seconds=config.JWT_ROTATION_GRACE_PERIOD_SECONDS,
     )
 
 
 class JWTUtils:
     """Helper class encapsulating JWT creation and decoding logic."""
 
-    __config: ConfigurationService
+    __config: Configuration
 
-    def __init__(self, config: ConfigurationService, audit: Audit):
+    def __init__(self, config: Configuration, audit: Audit):
         """Initialize JWTUtils with dependencies."""
         self.__config = config
         self.__audit = audit

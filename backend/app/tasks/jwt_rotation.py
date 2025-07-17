@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from app.celery_app import celery
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.utils.jwt_rotation import (
     Key,
     KeySet,
@@ -23,7 +23,7 @@ from app.utils.logging import Audit
 from app.utils.redis_lock import acquire_lock
 
 # Shared configuration instance for state consistency
-_config_service = ConfigurationService()
+_config_service = Configuration()
 
 # ---------------------------------------------------------------------------
 # Prometheus metrics – gracefully degrade to no-op counters if the optional

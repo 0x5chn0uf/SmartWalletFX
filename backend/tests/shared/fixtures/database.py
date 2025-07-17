@@ -4,23 +4,23 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.core.database import CoreDatabase
 
 
 @pytest.fixture(scope="session")
-def config_service():
+def config():
     """Configuration service for tests."""
-    return ConfigurationService()
+    return Configuration()
 
 
 @pytest.fixture(scope="session")
-def database(config_service):
+def database(config):
     """Database service for tests."""
     from app.utils.logging import Audit
 
     audit = Audit()
-    return CoreDatabase(config_service, audit)
+    return CoreDatabase(config, audit)
 
 
 @pytest_asyncio.fixture

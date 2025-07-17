@@ -17,7 +17,7 @@ from httpx import AsyncClient
 from hypothesis import HealthCheck, given
 from hypothesis import settings as hyp_settings
 
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 
 # Integration test dependencies
 from app.domain.schemas.user import UserCreate
@@ -29,7 +29,7 @@ pytestmark = pytest.mark.nightly
 @pytest.fixture
 def mock_config():
     """Mock configuration service for JWT tests."""
-    config = MagicMock(spec=ConfigurationService)
+    config = MagicMock(spec=Configuration)
     config.JWT_KEYS = {"A": "secretA"}
     config.ACTIVE_JWT_KID = "A"
     config.JWT_ROTATION_GRACE_PERIOD_SECONDS = 60
@@ -62,8 +62,8 @@ def freezer():
 def _clean_state(monkeypatch):
     """Ensure we start each test with a clean key-set state."""
     # Reset settings map
-    ConfigurationService().JWT_KEYS = {"A": "secretA"}
-    ConfigurationService().ACTIVE_JWT_KID = "A"
+    Configuration().JWT_KEYS = {"A": "secretA"}
+    Configuration().ACTIVE_JWT_KID = "A"
     _RETIRED_KEYS.clear()
     yield
     _RETIRED_KEYS.clear()
@@ -79,7 +79,7 @@ def test_rotation_grace_period_allows_old_tokens(freezer, mock_config, mock_audi
     # Rotate to key B
     mock_config.JWT_KEYS = {"A": "secretA", "B": "secretB"}
     mock_config.ACTIVE_JWT_KID = "B"
-    rotate_signing_key("B", "secretB", config_service=mock_config)
+    rotate_signing_key("B", "secretB", config=mock_config)
 
     # Create new JWT utils instance to pick up the rotated key
     jwt_utils_new = JWTUtils(config=mock_config, audit=mock_audit)
@@ -106,9 +106,9 @@ def test_rotation_grace_period_allows_old_tokens(freezer, mock_config, mock_audi
 async def test_key_rotation_lifecycle(test_app, db_session, freezer):
     """End-to-end validation: old token accepted during grace, rejected after."""
 
-    ConfigurationService().JWT_KEYS = {"A": "secretA"}
-    ConfigurationService().ACTIVE_JWT_KID = "A"
-    ConfigurationService().JWT_ROTATION_GRACE_PERIOD_SECONDS = 1  # fast
+    Configuration().JWT_KEYS = {"A": "secretA"}
+    Configuration().ACTIVE_JWT_KID = "A"
+    Configuration().JWT_ROTATION_GRACE_PERIOD_SECONDS = 1  # fast
 
     # Clear helper caches
     if hasattr(JWTUtils, "_get_sign_key") and hasattr(
@@ -139,7 +139,7 @@ async def test_key_rotation_lifecycle(test_app, db_session, freezer):
         token_old = resp_old.json()["access_token"]
 
         # Rotate to key B
-        rotate_signing_key("B", "secretB", config_service=ConfigurationService())
+        rotate_signing_key("B", "secretB", config=Configuration())
 
         # Clear caches if they exist
         if hasattr(JWTUtils, "_get_sign_key") and hasattr(
@@ -233,7 +233,7 @@ def test_retired_key_token_rejected(freezer, mock_config, mock_audit):
     token_old = jwt_utils.create_access_token(user)
 
     # Rotate to NEW with immediate retirement (grace 0)
-    rotate_signing_key("NEW", "newsecret", config_service=mock_config)
+    rotate_signing_key("NEW", "newsecret", config=mock_config)
 
     # Advance time by 1 second so retirement expires
     freezer.tick(timedelta(seconds=1))
@@ -326,7 +326,7 @@ def test_rotate_signing_key_creates_map_when_none(mock_config, mock_audit):
     mock_config.ACTIVE_JWT_KID = None
 
     # Should create the map and set active kid
-    rotate_signing_key("NEW", "newsecret", config_service=mock_config)
+    rotate_signing_key("NEW", "newsecret", config=mock_config)
 
     assert mock_config.JWT_KEYS == {"NEW": "newsecret"}
     assert mock_config.ACTIVE_JWT_KID == "NEW"

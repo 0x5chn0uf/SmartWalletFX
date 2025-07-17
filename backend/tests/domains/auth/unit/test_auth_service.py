@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from app.core.config import ConfigurationService
+from app.core.config import Configuration
 from app.core.security.roles import UserRole
 from app.domain.errors import InactiveUserError, InvalidCredentialsError
 from app.domain.schemas.user import UserCreate, WeakPasswordError
@@ -58,8 +58,8 @@ def mock_jwt_utils():
 
 @pytest.fixture
 def mock_config():
-    """Mock ConfigurationService."""
-    mock = Mock(spec=ConfigurationService)
+    """Mock Configuration."""
+    mock = Mock(spec=Configuration)
     mock.ACTIVE_JWT_KID = "test-kid"
     mock.EMAIL_VERIFICATION_EXPIRE_MINUTES = 1440
     mock.FRONTEND_BASE_URL = "http://test-frontend.com"
@@ -93,7 +93,7 @@ def auth_service(
         refresh_token_repository=mock_refresh_token_repo,
         email_service=mock_email_service,
         jwt_utils=mock_jwt_utils,
-        config_service=mock_config,
+        config=mock_config,
         audit=mock_audit,
     )
 
