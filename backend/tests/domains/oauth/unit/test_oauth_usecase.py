@@ -286,9 +286,7 @@ async def test_exchange_code_google():
     mock_response.raise_for_status = Mock()
 
     # Mock jwt decode
-    with pytest.mock.patch(
-        "httpx.AsyncClient.post", return_value=mock_response
-    ), pytest.mock.patch(
+    with patch("httpx.AsyncClient.post", return_value=mock_response), patch(
         "jose.jwt.decode", return_value={"sub": "123", "email": "test@example.com"}
     ):
         # Execute
@@ -316,7 +314,7 @@ async def test_exchange_code_google_missing_id_token():
     mock_response.json.return_value = {"access_token": "token"}
     mock_response.raise_for_status = Mock()
 
-    with pytest.mock.patch("httpx.AsyncClient.post", return_value=mock_response):
+    with patch("httpx.AsyncClient.post", return_value=mock_response):
         # Execute and Assert
         with pytest.raises(HTTPException) as excinfo:
             await usecase._exchange_code(
@@ -345,9 +343,9 @@ async def test_exchange_code_github():
     mock_user_response.json.return_value = {"id": 123, "email": "test@example.com"}
     mock_user_response.raise_for_status = Mock()
 
-    with pytest.mock.patch(
-        "httpx.AsyncClient.post", return_value=mock_token_response
-    ), pytest.mock.patch("httpx.AsyncClient.get", return_value=mock_user_response):
+    with patch("httpx.AsyncClient.post", return_value=mock_token_response), patch(
+        "httpx.AsyncClient.get", return_value=mock_user_response
+    ):
         # Execute
         result = await usecase._exchange_code(
             "github", "auth_code", "https://example.com/callback"
@@ -373,7 +371,7 @@ async def test_exchange_code_github_missing_access_token():
     mock_response.json.return_value = {"token_type": "bearer"}
     mock_response.raise_for_status = Mock()
 
-    with pytest.mock.patch("httpx.AsyncClient.post", return_value=mock_response):
+    with patch("httpx.AsyncClient.post", return_value=mock_response):
         # Execute and Assert
         with pytest.raises(HTTPException) as excinfo:
             await usecase._exchange_code(
@@ -407,9 +405,7 @@ async def test_exchange_code_github_missing_email():
     mock_emails_response.json.return_value = []  # No emails found
     mock_emails_response.raise_for_status = Mock()
 
-    with pytest.mock.patch(
-        "httpx.AsyncClient.post", return_value=mock_token_response
-    ), pytest.mock.patch(
+    with patch("httpx.AsyncClient.post", return_value=mock_token_response), patch(
         "httpx.AsyncClient.get", side_effect=[mock_user_response, mock_emails_response]
     ):
         # Execute - this should not raise an exception, just return None for email
