@@ -74,61 +74,28 @@ def mock_email_service():
     return mock
 
 
-@pytest.fixture
-def mock_jwt_utils():
-    """Mock JWTUtils for testing."""
-    mock = Mock()
-    mock.create_access_token = Mock()
-    mock.create_refresh_token = Mock()
-    mock.verify_token = Mock()
-    mock.decode_token = Mock()
-    mock.get_current_user = Mock()
-    return mock
-
-
-@pytest.fixture
-def mock_logging():
-    """Mock CoreLogging for testing."""
-    mock = Mock()
-    mock.setup_logging = Mock()
-    mock.get_logger = Mock()
-    return mock
-
 
 @pytest.fixture
 def mock_celery():
-    """Mock CoreCelery for testing."""
+    """Mock Celery app for testing."""
     mock = Mock()
-    mock.app = Mock()
-    mock.get_celery_app = Mock()
+    mock.send_task = Mock()
+    mock.control = Mock()
+    mock.control.purge = Mock()
     return mock
 
 
 @pytest.fixture
-def mock_error_handling():
-    """Mock CoreErrorHandling for testing."""
-    mock = Mock()
-    mock.handle_generic_exception = Mock()
-    mock.handle_http_exception = Mock()
-    mock.handle_validation_exception = Mock()
-    return mock
-
-
-@pytest.fixture
-def mock_middleware():
-    """Mock CoreMiddleware for testing."""
-    mock = Mock()
-    mock.get_correlation_id_middleware = Mock()
-    mock.create_correlation_id_middleware = Mock()
-    return mock
-
-
-@pytest.fixture
-def mock_database_initialization():
-    """Mock CoreDatabase for testing."""
+def mock_jwt_utils():
+    """Mock JWT utilities for testing."""
     from unittest.mock import AsyncMock
-
+    
     mock = Mock()
-    mock.init_db = AsyncMock()
-    mock.create_tables = AsyncMock()
+    mock.generate_jwt = Mock()
+    mock.verify_jwt = Mock()
+    mock.decode_jwt = Mock()
+    mock.create_access_token = Mock()
+    mock.create_refresh_token = Mock()
+    mock.verify_token = AsyncMock()
+    mock.get_current_user = AsyncMock()
     return mock

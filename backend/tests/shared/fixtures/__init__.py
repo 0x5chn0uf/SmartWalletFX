@@ -58,19 +58,11 @@ from .core import (
     mock_config,
     mock_database,
     mock_email_service,
-    mock_error_handling,
-    mock_jwt_utils,
-    mock_logging,
-    mock_middleware,
 )
 from .database import db_session
 from .di_container import (
-    authenticated_integration_client,
     integration_async_client,
-    integration_client,
-    mock_di_container,
     test_app_with_di_container,
-    test_di_container,
     test_di_container_with_db,
 )
 from .endpoints import (
@@ -180,11 +172,7 @@ __all__ = [
     "mock_database",
     "mock_audit",
     "mock_email_service",
-    "mock_jwt_utils",
-    "mock_logging",
     "mock_celery",
-    "mock_middleware",
-    "mock_middleware",
     "mock_database",
     # Repository fixtures
     "mock_user_repository",
@@ -233,11 +221,7 @@ __all__ = [
     "wallets_endpoint_with_di",
     "wallet_endpoint_with_di",
     # DI Container fixtures
-    "mock_di_container",
-    "test_di_container",
     "test_di_container_with_db",
     "test_app_with_di_container",
-    "integration_client",
     "integration_async_client",
-    "authenticated_integration_client",
 ]

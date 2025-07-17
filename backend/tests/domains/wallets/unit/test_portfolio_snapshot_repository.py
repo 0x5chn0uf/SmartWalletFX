@@ -148,3 +148,96 @@ async def test_portfolio_snapshot_repository_delete_old(
     mock_async_session.get.assert_awaited_once_with(PortfolioSnapshot, snapshot_id)
     mock_async_session.delete.assert_awaited_once_with(mock_snapshot)
     mock_async_session.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_create_snapshot_success(
+    portfolio_snapshot_repository_with_di, mock_async_session
+):
+    """Test successful creation of portfolio snapshot."""
+    # Setup mock session
+    setup_mock_session(portfolio_snapshot_repository_with_di, mock_async_session)
+
+    user_address = f"0x{uuid.uuid4().hex:0<40}"[:42]
+    timestamp = int(datetime.utcnow().timestamp())
+
+    snapshot = PortfolioSnapshot(
+        user_address=user_address,
+        timestamp=timestamp,
+        total_collateral=1000.0,
+        total_borrowings=500.0,
+        total_collateral_usd=1000.0,
+        total_borrowings_usd=500.0,
+        aggregate_health_score=2.0,
+        aggregate_apy=5.5,
+        collaterals=[],
+        borrowings=[],
+        staked_positions=[],
+        health_scores={},
+        protocol_breakdown={},
+    )
+
+    # Mock session methods
+    mock_async_session.add = Mock()
+    mock_async_session.commit = AsyncMock()
+    mock_async_session.refresh = AsyncMock()
+
+    # Execute
+    result = await portfolio_snapshot_repository_with_di.create_snapshot(snapshot)
+
+    # Verify
+    assert result == snapshot
+    mock_async_session.add.assert_called_once_with(snapshot)
+    mock_async_session.commit.assert_awaited_once()
+    mock_async_session.refresh.assert_awaited_once_with(snapshot)
+
+
+@pytest.mark.asyncio
+async def test_create_snapshot_exception_handling(
+    portfolio_snapshot_repository_with_di, mock_async_session
+):
+    """Test exception handling in create_snapshot method."""
+    # Setup mock session
+    setup_mock_session(portfolio_snapshot_repository_with_di, mock_async_session)
+
+    snapshot = PortfolioSnapshot(
+        user_address="0x1234567890123456789012345678901234567890",
+        timestamp=int(datetime.utcnow().timestamp()),
+        total_collateral=1000.0,
+        total_borrowings=500.0,
+        total_collateral_usd=1000.0,
+        total_borrowings_usd=500.0,
+        aggregate_health_score=2.0,
+        aggregate_apy=5.5,
+        collaterals=[],
+        borrowings=[],
+        staked_positions=[],
+        health_scores={},
+        protocol_breakdown={},
+    )
+
+    # Mock session to raise exception
+    mock_async_session.commit = AsyncMock(side_effect=Exception("Database error"))
+
+    # Execute & Assert
+    with pytest.raises(Exception, match="Database error"):
+        await portfolio_snapshot_repository_with_di.create_snapshot(snapshot)
+
+
+@pytest.mark.asyncio
+async def test_get_by_wallet_address(
+    portfolio_snapshot_repository_with_di, mock_async_session
+):
+    """Test getting portfolio snapshots by wallet address."""
+    # Setup mock session
+    setup_mock_session(portfolio_snapshot_repository_with_di, mock_async_session)
+
+    wallet_address = "0x1234567890123456789012345678901234567890"
+
+    # Execute
+    result = await portfolio_snapshot_repository_with_di.get_by_wallet_address(
+        wallet_address
+    )
+
+    # Verify - this method currently returns empty list
+    assert result == []
