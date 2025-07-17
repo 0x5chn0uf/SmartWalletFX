@@ -6,18 +6,18 @@ from datetime import timedelta
 import pytest
 from hypothesis import settings
 
-from .fixtures.auth import *
-from .fixtures.base import *
-from .fixtures.client import *
-from .fixtures.core import *
-from .fixtures.database import *
-from .fixtures.di_container import *
-from .fixtures.endpoints import *
-from .fixtures.jwks import *
-from .fixtures.mocks import *
-from .fixtures.repositories import *
-from .fixtures.services import *
-from .fixtures.usecases import *
+from .shared.fixtures.auth import *
+from .shared.fixtures.base import *
+from .shared.fixtures.client import *
+from .shared.fixtures.core import *
+from .shared.fixtures.database import *
+from .shared.fixtures.di_container import *
+from .shared.fixtures.endpoints import *
+from .shared.fixtures.jwks import *
+from .shared.fixtures.mocks import *
+from .shared.fixtures.repositories import *
+from .shared.fixtures.services import *
+from .shared.fixtures.usecases import *
 
 ALEMBIC_CONFIG_PATH = str(pathlib.Path(__file__).parent.parent / "alembic.ini")
 
