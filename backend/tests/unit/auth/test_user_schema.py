@@ -4,7 +4,12 @@ from datetime import datetime
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.user import UserCreate, UserInDB, UserRead, WeakPasswordError
+from app.domain.schemas.user import (
+    UserCreate,
+    UserInDB,
+    UserRead,
+    WeakPasswordError,
+)
 
 
 def test_user_create_valid():

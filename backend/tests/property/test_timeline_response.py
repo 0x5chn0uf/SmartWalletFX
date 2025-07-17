@@ -1,7 +1,7 @@
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from app.schemas.portfolio_timeline import TimelineResponse
+from app.domain.schemas.portfolio_timeline import TimelineResponse
 from tests.property.strategies import portfolio_snapshot_strategy
 
 # NOTE: This is an illustrative property-based test scaffold. It will be

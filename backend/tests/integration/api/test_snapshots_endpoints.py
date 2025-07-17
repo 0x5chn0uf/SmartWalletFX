@@ -1,47 +1,100 @@
 import uuid
 
+import httpx
 import pytest
-from fastapi.testclient import TestClient
-from httpx import AsyncClient
 
-from app.main import app
-from app.models.portfolio_snapshot import PortfolioSnapshot
-from app.models.user import User
-from app.models.wallet import Wallet
-from app.repositories.wallet_repository import WalletRepository
-
-client = TestClient(app)
+from app.domain.schemas.user import UserCreate
 
 
 @pytest.mark.asyncio
 async def test_get_portfolio_snapshots_returns_200(
-    db_session, authenticated_client: AsyncClient, test_user
+    test_app_with_di_container,
+    test_di_container_with_db,
 ):
     """
     Given an authenticated user and a wallet they own,
     When they request portfolio snapshots for that wallet,
     Then the response should be successful (200 OK).
     """
-    # The `authenticated_client` is logged in as the `test_user`
-    # so we can use that user's ID to create the wallet.
-    wallet = await WalletRepository(db_session).create(
-        user_id=test_user.id,
+    # Get repositories and services from DIContainer
+    user_repo = test_di_container_with_db.get_repository("user")
+    wallet_repo = test_di_container_with_db.get_repository("wallet")
+    auth_service = test_di_container_with_db.get_service("auth")
+    jwt_utils = test_di_container_with_db.get_utility("jwt_utils")
+
+    # Create user using DI pattern
+    user_data = UserCreate(
+        email=f"test.user.{uuid.uuid4()}@example.com",
+        password="Str0ngPassword!",
+        username=f"test.user.{uuid.uuid4()}",
+    )
+    user = await auth_service.register(user_data)
+    user.email_verified = True
+    await user_repo.save(user)
+
+    # Create authenticated client for our user
+    access_token = jwt_utils.create_access_token(
+        subject=str(user.id),
+        additional_claims={
+            "email": user.email,
+            "roles": getattr(user, "roles", ["individual_investor"]),
+            "attributes": {},
+        },
+    )
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    # Create wallet using the DIContainer repository
+    wallet = await wallet_repo.create(
+        user_id=user.id,
         address=f"0x{uuid.uuid4().hex[:40]}",
-        name="Test Wallet",
+        name="Test Wallet DI",
     )
-    response = await authenticated_client.get(
-        f"/wallets/{wallet.address}/portfolio/snapshots"
-    )
-    assert response.status_code == 200
-    assert isinstance(response.json(), list)
+
+    async with httpx.AsyncClient(
+        app=test_app_with_di_container, base_url="http://test", headers=headers
+    ) as client:
+        response = await client.get(f"/wallets/{wallet.address}/portfolio/snapshots")
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
 
 @pytest.mark.asyncio
 async def test_get_portfolio_snapshots_for_nonexistent_wallet_returns_404(
-    authenticated_client: AsyncClient,
+    test_app_with_di_container,
+    test_di_container_with_db,
 ):
-    non_existent_address = "0xnotarealaddress"
-    response = await authenticated_client.get(
-        f"/wallets/{non_existent_address}/portfolio/snapshots"
+    """Test 404 response for non-existent wallet."""
+    # Get repositories and services from DIContainer
+    user_repo = test_di_container_with_db.get_repository("user")
+    auth_service = test_di_container_with_db.get_service("auth")
+    jwt_utils = test_di_container_with_db.get_utility("jwt_utils")
+
+    # Create user using DI pattern
+    user_data = UserCreate(
+        email=f"test.user.{uuid.uuid4()}@example.com",
+        password="Str0ngPassword!",
+        username=f"test.user.{uuid.uuid4()}",
     )
-    assert response.status_code == 404
+    user = await auth_service.register(user_data)
+    user.email_verified = True
+    await user_repo.save(user)
+
+    # Create authenticated client for our user
+    access_token = jwt_utils.create_access_token(
+        subject=str(user.id),
+        additional_claims={
+            "email": user.email,
+            "roles": getattr(user, "roles", ["individual_investor"]),
+            "attributes": {},
+        },
+    )
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    non_existent_address = "0xnotarealaddress"
+    async with httpx.AsyncClient(
+        app=test_app_with_di_container, base_url="http://test", headers=headers
+    ) as client:
+        response = await client.get(
+            f"/wallets/{non_existent_address}/portfolio/snapshots"
+        )
+        assert response.status_code == 404

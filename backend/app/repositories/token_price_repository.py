@@ -1,14 +1,14 @@
-from app.core.database import DatabaseService
+from app.core.database import CoreDatabase
+from app.domain.schemas.token_price import TokenPriceCreate
 from app.models.token_price import TokenPrice
-from app.schemas.token_price import TokenPriceCreate
 from app.utils.logging import Audit
 
 
 class TokenPriceRepository:
     """Repository for :class:`~app.models.token_price.TokenPrice`."""
 
-    def __init__(self, database_service: DatabaseService, audit: Audit):
-        self.__database_service = database_service
+    def __init__(self, database: CoreDatabase, audit: Audit):
+        self.__database = database
         self.__audit = audit
 
     async def create(self, data: TokenPriceCreate) -> TokenPrice:
@@ -20,7 +20,7 @@ class TokenPriceRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 price = TokenPrice(
                     token_id=data.token_id,
                     price_usd=data.price_usd,

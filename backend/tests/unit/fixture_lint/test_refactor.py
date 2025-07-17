@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from fixture_lint.duplication import find_duplicates
-from fixture_lint.parser import parse_paths
-from fixture_lint.refactor import apply_deduplication
+from tools.fixture_lint.duplication import find_duplicates
+from tools.fixture_lint.parser import parse_paths
+from tools.fixture_lint.refactor import apply_deduplication
 
 
 def test_apply_deduplication(tmp_path: Path) -> None:

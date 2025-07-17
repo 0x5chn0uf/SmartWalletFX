@@ -10,14 +10,13 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_db
-from app.repositories.password_reset_repository import PasswordResetRepository
-from app.repositories.user_repository import UserRepository
-from app.schemas.password_reset import (
+from app.domain.schemas.password_reset import (
     PasswordResetComplete,
     PasswordResetRequest,
     PasswordResetVerify,
 )
+from app.repositories.password_reset_repository import PasswordResetRepository
+from app.repositories.user_repository import UserRepository
 from app.services.email_service import EmailService
 from app.utils.logging import Audit
 from app.utils.rate_limiter import InMemoryRateLimiter
@@ -57,7 +56,7 @@ class PasswordReset:
     ) -> Response:
         """Request a password reset."""
         # Check rate limiting
-        if not reset_rate_limiter.is_allowed(payload.email):
+        if not reset_rate_limiter.allow(payload.email):
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Too many password reset requests. Please try again later.",
@@ -126,67 +125,3 @@ class PasswordReset:
 
         Audit.info("Password reset completed", token=payload.token[:8] + "...")
         return {"message": "Password reset completed"}
-
-
-# Backward compatibility - create router instance
-# This will be replaced when main.py is updated to use DIContainer
-router = APIRouter()
-
-
-@router.post(
-    "/password-reset-request",
-    status_code=status.HTTP_204_NO_CONTENT,
-    response_class=Response,
-    response_model=None,
-)
-async def request_password_reset_legacy(
-    payload: PasswordResetRequest,
-    background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db),
-) -> Response:
-    """Request a password reset."""
-    # Check rate limiting
-    if not reset_rate_limiter.is_allowed(payload.email):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many password reset requests. Please try again later.",
-        )
-
-    # Find user by email
-    user_repo = UserRepository(db)
-    user = await user_repo.get_by_email(payload.email)
-    if not user:
-        # Don't reveal whether email exists - return success anyway
-        Audit.info(
-            "Password reset requested for non-existent email", email=payload.email
-        )
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-    # Generate reset token
-    # token = generate_token()
-
-    # TODO: Save reset token to database and send email
-    Audit.info("Password reset email sent", email=payload.email)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-
-@router.post("/password-reset-verify")
-async def verify_password_reset_legacy(
-    payload: PasswordResetVerify,
-    db: AsyncSession = Depends(get_db),
-):
-    """Verify password reset token."""
-    # TODO: Implement password reset verification
-    Audit.info("Password reset token verified", token=payload.token[:8] + "...")
-    return {"message": "Token verified"}
-
-
-@router.post("/password-reset-complete")
-async def complete_password_reset_legacy(
-    payload: PasswordResetComplete,
-    db: AsyncSession = Depends(get_db),
-):
-    """Complete password reset with new password."""
-    # TODO: Implement password reset completion
-    Audit.info("Password reset completed", token=payload.token[:8] + "...")
-    return {"message": "Password reset completed"}

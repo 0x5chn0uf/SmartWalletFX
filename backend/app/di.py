@@ -1,9 +1,21 @@
 """Dependency Injection Container for managing singleton instances."""
 
-from sqlalchemy.orm import Session
-
+# Import endpoint classes
+from app.api.endpoints.admin import Admin
+from app.api.endpoints.auth import Auth
+from app.api.endpoints.email_verification import EmailVerification
+from app.api.endpoints.health import Health
+from app.api.endpoints.jwks import JWKS
+from app.api.endpoints.oauth import OAuth
+from app.api.endpoints.password_reset import PasswordReset
+from app.api.endpoints.users import Users
+from app.api.endpoints.wallets import Wallets
+from app.core.celery import CoreCelery
 from app.core.config import ConfigurationService
-from app.core.database import DatabaseService, SyncSessionLocal
+from app.core.database import CoreDatabase
+from app.core.error_handling import CoreErrorHandling
+from app.core.logging import CoreLogging
+from app.core.middleware import Middleware
 from app.repositories.email_verification_repository import (
     EmailVerificationRepository,
 )
@@ -19,10 +31,13 @@ from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.repositories.token_balance_repository import TokenBalanceRepository
 from app.repositories.token_price_repository import TokenPriceRepository
 from app.repositories.token_repository import TokenRepository
-
-# Repository imports
 from app.repositories.user_repository import UserRepository
 from app.repositories.wallet_repository import WalletRepository
+from app.services.auth_service import AuthService
+
+# Repository imports
+from app.services.email_service import EmailService
+from app.services.oauth_service import OAuthService
 
 # Usecase imports
 from app.usecase.email_verification_usecase import EmailVerificationUsecase
@@ -33,6 +48,7 @@ from app.usecase.token_balance_usecase import TokenBalanceUsecase
 from app.usecase.token_price_usecase import TokenPriceUsecase
 from app.usecase.token_usecase import TokenUsecase
 from app.usecase.wallet_usecase import WalletUsecase
+from app.utils.jwt import JWTUtils
 from app.utils.logging import Audit
 
 
@@ -43,99 +59,130 @@ class DIContainer:
     """
 
     def __init__(self):
+        """Initialize the container, register services, and set up dependencies."""
+        self._core = {}
         self._services = {}
         self._repositories = {}
         self._usecases = {}
         self._endpoints = {}
+        self._utilities = {}
+        self._initialize_core()
         self._initialize_services()
+        self._initialize_utilities()
+        self._initialize_repositories()
+        self._initialize_usecases()
+        self._initialize_endpoints()
+
+    def _initialize_core(self):
+        """Initialize and register core services as singletons."""
+        config = ConfigurationService()
+        self.register_core("config", config)
+
+        audit = Audit()
+        self.register_core("audit", audit)
+
+        database = CoreDatabase(config, audit)
+        self.register_core("database", database)
+
+        logging = CoreLogging(config)
+        self.register_core("logging", logging)
+
+        celery = CoreCelery(config)
+        self.register_core("celery", celery)
+
+        error_handling = CoreErrorHandling(audit)
+        self.register_core("error_handling", error_handling)
+
+        middleware = Middleware(audit)
+        self.register_core("middleware", middleware)
 
     def _initialize_services(self):
         """Initialize and register core services as singletons."""
-        # Create and register core services
-        config_service = ConfigurationService()
-        self.register_service("config", config_service)
+        config = self.get_core("config")
+        audit = self.get_core("audit")
 
-        database_service = DatabaseService(config_service)
-        self.register_service("database", database_service)
+        email_service = EmailService(config, audit)
+        self.register_service("email", email_service)
 
-        # Use existing Audit service from app.utils.logging
-        audit_service = Audit()
-        self.register_service("audit", audit_service)
+    def _initialize_utilities(self):
+        """Initialize and register utility classes."""
+        config = self.get_core("config")
+        audit = self.get_core("audit")
 
-        # TODO: Add other services as we refactor them
-        # email_service = EmailService(config_service)
-        # self.register_service("email", email_service)
-
-        # jwt_utils = JWTUtils(config_service)
-        # self.register_service("jwt_utils", jwt_utils)
-
-        # Create and register singleton repositories (Phase 2)
-        self._initialize_repositories()
-
-        # Create and register singleton usecases (Phase 3)
-        self._initialize_usecases()
-
-        # Create and register singleton endpoints (Phase 4)
-        self._initialize_endpoints()
+        jwt_utils = JWTUtils(config, audit)
+        self.register_utility("jwt_utils", jwt_utils)
 
     def _initialize_repositories(self):
         """Initialize and register repository singletons."""
-        database_service = self.get_service("database")
-        audit_service = self.get_service("audit")
+        database = self.get_core("database")
+        audit = self.get_core("audit")
 
         # Register repositories with explicit dependency injection
-        user_repository = UserRepository(database_service, audit_service)
+        user_repository = UserRepository(database, audit)
         self.register_repository("user", user_repository)
 
-        email_verification_repository = EmailVerificationRepository(
-            database_service, audit_service
-        )
+        email_verification_repository = EmailVerificationRepository(database, audit)
         self.register_repository("email_verification", email_verification_repository)
 
-        oauth_account_repository = OAuthAccountRepository(
-            database_service, audit_service
-        )
+        oauth_account_repository = OAuthAccountRepository(database, audit)
         self.register_repository("oauth_account", oauth_account_repository)
 
-        password_reset_repository = PasswordResetRepository(
-            database_service, audit_service
-        )
+        password_reset_repository = PasswordResetRepository(database, audit)
         self.register_repository("password_reset", password_reset_repository)
 
-        refresh_token_repository = RefreshTokenRepository(
-            database_service, audit_service
-        )
+        refresh_token_repository = RefreshTokenRepository(database, audit)
         self.register_repository("refresh_token", refresh_token_repository)
 
-        wallet_repository = WalletRepository(database_service, audit_service)
+        wallet_repository = WalletRepository(database, audit)
         self.register_repository("wallet", wallet_repository)
 
-        portfolio_snapshot_repository = PortfolioSnapshotRepository(
-            database_service, audit_service
-        )
+        portfolio_snapshot_repository = PortfolioSnapshotRepository(database, audit)
         self.register_repository("portfolio_snapshot", portfolio_snapshot_repository)
 
-        historical_balance_repository = HistoricalBalanceRepository(
-            database_service, audit_service
-        )
+        historical_balance_repository = HistoricalBalanceRepository(database, audit)
         self.register_repository("historical_balance", historical_balance_repository)
 
-        token_repository = TokenRepository(database_service, audit_service)
+        token_repository = TokenRepository(database, audit)
         self.register_repository("token", token_repository)
 
-        token_price_repository = TokenPriceRepository(database_service, audit_service)
+        token_price_repository = TokenPriceRepository(database, audit)
         self.register_repository("token_price", token_price_repository)
 
-        token_balance_repository = TokenBalanceRepository(
-            database_service, audit_service
-        )
+        token_balance_repository = TokenBalanceRepository(database, audit)
         self.register_repository("token_balance", token_balance_repository)
+
+        # AuthService depends on repositories, so initialize it here after all repos are created
+        email_service = self.get_service("email")
+        jwt_utils = self.get_utility("jwt_utils")
+        config = self.get_core("config")
+
+        auth_service = AuthService(
+            user_repository,  # Use the local variable
+            email_verification_repository,  # Use the local variable
+            refresh_token_repository,  # Use the local variable
+            email_service,
+            jwt_utils,
+            config,
+            audit,
+        )
+        self.register_service("auth", auth_service)
+
+        # OAuthService
+        oauth_service = OAuthService(
+            user_repository,  # Use the local variable
+            oauth_account_repository,  # Use the local variable
+            refresh_token_repository,  # Use the local variable
+            jwt_utils,
+            config,
+            audit,
+        )
+        self.register_service("oauth", oauth_service)
 
     def _initialize_usecases(self):
         """Initialize and register usecase singletons."""
         # Get required services
-        config_service = self.get_service("config")
-        audit_service = self.get_service("audit")
+        config = self.get_core("config")
+        audit = self.get_core("audit")
 
         # Get repositories
         user_repo = self.get_repository("user")
@@ -149,110 +196,137 @@ class DIContainer:
         token_price_repo = self.get_repository("token_price")
         token_balance_repo = self.get_repository("token_balance")
 
-        # TODO: Add these services when they are refactored
-        # email_service = self.get_service("email")
-        # jwt_utils = self.get_service("jwt_utils")
+        # Get the newly added services
+        email_service = self.get_service("email")
+        jwt_utils = self.get_utility("jwt_utils")
 
         # Create and register usecases
-        # Note: EmailVerificationUsecase needs email_service and jwt_utils
-        # For now, we'll register it with placeholders
         email_verification_uc = EmailVerificationUsecase(
             email_verification_repo,
             user_repo,
             refresh_token_repo,
-            None,  # email_service - TODO: add when refactored
-            None,  # jwt_utils - TODO: add when refactored
-            config_service,
-            audit_service,
+            email_service,
+            jwt_utils,
+            config,
+            audit,
         )
         self.register_usecase("email_verification", email_verification_uc)
 
         wallet_uc = WalletUsecase(
             wallet_repo,
+            user_repo,
             portfolio_snapshot_repo,
-            config_service,
-            audit_service,
+            config,
+            audit,
         )
         self.register_usecase("wallet", wallet_uc)
+
+        # Get OAuthService
+        oauth_service = self.get_service("oauth")
 
         oauth_uc = OAuthUsecase(
             oauth_account_repo,
             user_repo,
             refresh_token_repo,
-            config_service,
-            audit_service,
+            oauth_service,
+            config,
+            audit,
         )
         self.register_usecase("oauth", oauth_uc)
 
         token_price_uc = TokenPriceUsecase(
             token_price_repo,
-            config_service,
-            audit_service,
+            config,
+            audit,
         )
         self.register_usecase("token_price", token_price_uc)
 
         token_uc = TokenUsecase(
             token_repo,
-            config_service,
-            audit_service,
+            config,
+            audit,
         )
         self.register_usecase("token", token_uc)
 
         historical_balance_uc = HistoricalBalanceUsecase(
             historical_balance_repo,
-            config_service,
-            audit_service,
+            config,
+            audit,
         )
         self.register_usecase("historical_balance", historical_balance_uc)
 
         token_balance_uc = TokenBalanceUsecase(
             token_balance_repo,
-            config_service,
-            audit_service,
+            config,
+            audit,
         )
         self.register_usecase("token_balance", token_balance_uc)
 
         portfolio_snapshot_uc = PortfolioSnapshotUsecase(
             portfolio_snapshot_repo,
-            audit_service,
+            wallet_repo,
+            audit,
         )
         self.register_usecase("portfolio_snapshot", portfolio_snapshot_uc)
 
+    def _initialize_utilities(self):
+        """Initialize and register utility singletons."""
+        config = self.get_core("config")
+        audit = self.get_core("audit")
+
+        jwt_utils = JWTUtils(config, audit)
+        self.register_utility("jwt_utils", jwt_utils)
+
     def _initialize_endpoints(self):
         """Initialize and register endpoint singletons."""
-        # Import endpoint classes
-        from app.api.endpoints.admin import Admin
-        from app.api.endpoints.admin_db import AdminDB
-        from app.api.endpoints.email_verification import EmailVerification
-        from app.api.endpoints.health import Health
-        from app.api.endpoints.jwks import JWKS
-        from app.api.endpoints.oauth import OAuth
-        from app.api.endpoints.users import Users
-        from app.api.endpoints.wallets import Wallets
+        # Get core components
+        audit = self.get_core("audit")
 
-        # Get required usecases
+        # Get services
+        auth_service = self.get_service("auth")
+        oauth_service = self.get_service("oauth")
+        email_service = self.get_service("email")
+
+        # Get usecases
         email_verification_uc = self.get_usecase("email_verification")
         oauth_uc = self.get_usecase("oauth")
         wallet_uc = self.get_usecase("wallet")
         token_uc = self.get_usecase("token")
-        historical_balance_uc = self.get_usecase("historical_balance")
-        token_price_uc = self.get_usecase("token_price")
         token_balance_uc = self.get_usecase("token_balance")
+        token_price_uc = self.get_usecase("token_price")
+        historical_balance_uc = self.get_usecase("historical_balance")
         portfolio_snapshot_uc = self.get_usecase("portfolio_snapshot")
 
-        # Get required repositories for endpoints that need them directly
+        # Get repositories
         user_repo = self.get_repository("user")
+        password_reset_repo = self.get_repository("password_reset")
 
-        # TODO: Add these services when they are refactored
-        # email_service = self.get_service("email")
-        # auth_service = self.get_service("auth")
+        # Create and register endpoints
+        admin_endpoint = Admin(user_repo)
+        self.register_endpoint("admin", admin_endpoint)
 
-        # Create and register endpoint singletons
+        auth_endpoint = Auth(auth_service)
+        self.register_endpoint("auth", auth_endpoint)
+
         email_verification_endpoint = EmailVerification(email_verification_uc)
         self.register_endpoint("email_verification", email_verification_endpoint)
 
+        health_endpoint = Health()
+        self.register_endpoint("health", health_endpoint)
+
+        jwks_endpoint = JWKS()
+        self.register_endpoint("jwks", jwks_endpoint)
+
         oauth_endpoint = OAuth(oauth_uc)
         self.register_endpoint("oauth", oauth_endpoint)
+
+        password_reset_endpoint = PasswordReset(
+            password_reset_repo, user_repo, email_service
+        )
+        self.register_endpoint("password_reset", password_reset_endpoint)
+
+        users_endpoint = Users(user_repo)
+        self.register_endpoint("users", users_endpoint)
 
         wallets_endpoint = Wallets(
             wallet_uc,
@@ -264,70 +338,68 @@ class DIContainer:
         )
         self.register_endpoint("wallets", wallets_endpoint)
 
-        # Simple endpoints that don't need dependencies
-        health_endpoint = Health()
-        self.register_endpoint("health", health_endpoint)
-
-        jwks_endpoint = JWKS()
-        self.register_endpoint("jwks", jwks_endpoint)
-
-        admin_db_endpoint = AdminDB()
-        self.register_endpoint("admin_db", admin_db_endpoint)
-
-        # Endpoints that need repository dependencies
-        users_endpoint = Users(user_repo)
-        self.register_endpoint("users", users_endpoint)
-
-        admin_endpoint = Admin(user_repo)
-        self.register_endpoint("admin", admin_endpoint)
-
-        # TODO: Add password_reset_endpoint when EmailService is refactored
-        # password_reset_repo = self.get_repository("password_reset")
-        # password_reset_endpoint = PasswordReset(
-        #     password_reset_repo,
-        #     user_repo,
-        #     email_service,
-        # )
-        # self.register_endpoint("password_reset", password_reset_endpoint)
-
-        # TODO: Add auth_endpoint when AuthService is refactored
-        # auth_endpoint = Auth(auth_service)
-        # self.register_endpoint("auth", auth_endpoint)
+    def register_core(self, name: str, core):
+        """Register a Core instance."""
+        self._core[name] = core
 
     def register_service(self, name: str, service):
-        """Register a service singleton."""
+        """Register a service instance."""
         self._services[name] = service
 
     def register_repository(self, name: str, repository):
-        """Register a repository singleton."""
+        """Register a repository instance."""
         self._repositories[name] = repository
 
     def register_usecase(self, name: str, usecase):
-        """Register a usecase singleton."""
+        """Register a usecase instance."""
         self._usecases[name] = usecase
 
+    def register_utility(self, name: str, utility):
+        """Register an endpoint instance."""
+        self._utilities[name] = utility
+
     def register_endpoint(self, name: str, endpoint):
-        """Register an endpoint singleton."""
+        """Register an endpoint instance."""
         self._endpoints[name] = endpoint
 
+    def get_core(self, name: str):
+        """Get a core instance by name."""
+        core = self._core.get(name)
+        if not core:
+            raise ValueError(f"Core '{name}' not found.")
+        return core
+
     def get_service(self, name: str):
-        """Get a service singleton by name."""
-        return self._services.get(name)
+        """Get a service instance by name."""
+        service = self._services.get(name)
+        if not service:
+            raise ValueError(f"Service '{name}' not found.")
+        return service
 
     def get_repository(self, name: str):
-        """Get a repository singleton by name."""
-        return self._repositories.get(name)
+        """Get a repository instance by name."""
+        repository = self._repositories.get(name)
+        if not repository:
+            raise ValueError(f"Repository '{name}' not found.")
+        return repository
 
     def get_usecase(self, name: str):
-        """Get a usecase singleton by name."""
-        return self._usecases.get(name)
+        """Get a usecase instance by name."""
+        usecase = self._usecases.get(name)
+        if not usecase:
+            raise ValueError(f"Usecase '{name}' not found.")
+        return usecase
+
+    def get_utility(self, name: str):
+        """Get a utility instance by name."""
+        utility = self._utilities.get(name)
+        if not utility:
+            raise ValueError(f"Utility '{name}' not found.")
+        return utility
 
     def get_endpoint(self, name: str):
-        """Get an endpoint singleton by name."""
-        return self._endpoints.get(name)
-
-
-# Keep existing simple DI helpers for backward compatibility during transition
-def get_session_sync() -> Session:  # pragma: no cover
-    """Return a new synchronous SQLAlchemy Session."""
-    return SyncSessionLocal()
+        """Get an endpoint instance by name."""
+        endpoint = self._endpoints.get(name)
+        if not endpoint:
+            raise ValueError(f"Endpoint '{name}' not found.")
+        return endpoint

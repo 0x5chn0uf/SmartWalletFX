@@ -4,14 +4,13 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.schemas.jwks import JWK, JWKSet
+from app.domain.schemas.jwks import JWK, JWKSet
 from app.utils.jwks_cache import (
     JWKS_CACHE_KEY,
     get_jwks_cache,
     invalidate_jwks_cache,
     set_jwks_cache,
 )
-from tests.fixtures.deduplicated import sample_jwks
 
 
 @pytest.fixture

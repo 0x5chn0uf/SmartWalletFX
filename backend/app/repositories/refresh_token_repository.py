@@ -7,7 +7,7 @@ from typing import Optional
 
 from sqlalchemy.future import select
 
-from app.core.database import DatabaseService
+from app.core.database import CoreDatabase
 from app.models.refresh_token import RefreshToken
 from app.utils.logging import Audit
 
@@ -15,8 +15,8 @@ from app.utils.logging import Audit
 class RefreshTokenRepository:
     """Async repository handling refresh token persistence & queries."""
 
-    def __init__(self, database_service: DatabaseService, audit: Audit):
-        self.__database_service = database_service
+    def __init__(self, database: CoreDatabase, audit: Audit):
+        self.__database = database
         self.__audit = audit
 
     async def save(self, token: RefreshToken) -> RefreshToken:
@@ -28,7 +28,7 @@ class RefreshTokenRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 session.add(token)
                 await session.commit()
                 await session.refresh(token)
@@ -55,7 +55,7 @@ class RefreshTokenRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 stmt = select(RefreshToken).filter_by(jti_hash=jti_hash)
                 result = await session.execute(stmt)
                 token = result.scalar_one_or_none()
@@ -83,7 +83,7 @@ class RefreshTokenRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 # Merge the object to attach it to the current session
                 merged_token = await session.merge(token)
                 merged_token.revoked = True
@@ -111,7 +111,7 @@ class RefreshTokenRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 stmt = RefreshToken.__table__.delete().where(
                     RefreshToken.expires_at < cutoff
                 )

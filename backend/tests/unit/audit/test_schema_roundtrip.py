@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.schemas.audit_log import AuditEventBase
+from app.domain.schemas.audit_log import AuditEventBase
 
 
 def test_roundtrip_identity() -> None:

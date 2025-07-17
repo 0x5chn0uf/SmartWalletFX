@@ -7,7 +7,7 @@ from typing import Optional
 
 from sqlalchemy.future import select
 
-from app.core.database import DatabaseService
+from app.core.database import CoreDatabase
 from app.models.password_reset import PasswordReset
 from app.utils.logging import Audit
 
@@ -15,8 +15,8 @@ from app.utils.logging import Audit
 class PasswordResetRepository:
     """Repository for password reset tokens."""
 
-    def __init__(self, database_service: DatabaseService, audit: Audit):
-        self.__database_service = database_service
+    def __init__(self, database: CoreDatabase, audit: Audit):
+        self.__database = database
         self.__audit = audit
 
     async def create(
@@ -28,7 +28,7 @@ class PasswordResetRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 token_hash = hashlib.sha256(token.encode()).hexdigest()
                 pr = PasswordReset(
                     token_hash=token_hash, user_id=user_id, expires_at=expires_at
@@ -57,7 +57,7 @@ class PasswordResetRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 stmt = select(PasswordReset).where(
                     PasswordReset.token_hash == token_hash,
                     PasswordReset.expires_at > datetime.now(timezone.utc),
@@ -88,7 +88,7 @@ class PasswordResetRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 # Merge the object to attach it to the current session
                 merged_pr = await session.merge(pr)
                 merged_pr.used = True
@@ -111,7 +111,7 @@ class PasswordResetRepository:
         self.__audit.info("password_reset_repository_delete_expired_started")
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 stmt = PasswordReset.__table__.delete().where(
                     PasswordReset.expires_at < datetime.now(timezone.utc)
                 )

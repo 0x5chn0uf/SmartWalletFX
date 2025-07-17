@@ -1,14 +1,14 @@
-from app.core.database import DatabaseService
+from app.core.database import CoreDatabase
+from app.domain.schemas.token import TokenCreate
 from app.models.token import Token
-from app.schemas.token import TokenCreate
 from app.utils.logging import Audit
 
 
 class TokenRepository:
     """Repository for :class:`~app.models.token.Token`."""
 
-    def __init__(self, database_service: DatabaseService, audit: Audit):
-        self.__database_service = database_service
+    def __init__(self, database: CoreDatabase, audit: Audit):
+        self.__database = database
         self.__audit = audit
 
     async def create(self, data: TokenCreate) -> Token:
@@ -21,7 +21,7 @@ class TokenRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 token = Token(
                     address=data.address,
                     symbol=data.symbol,

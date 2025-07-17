@@ -6,11 +6,9 @@ with different permission levels and attribute requirements.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import (
     auth_deps,
-    get_db,
     require_attributes,
     require_permission,
     require_roles,
@@ -32,9 +30,7 @@ class Admin:
 
     @staticmethod
     @ep.get("/users", dependencies=[Depends(require_permission("admin:users"))])
-    async def list_users(
-        current_user: User = Depends(auth_deps.get_current_user),
-    ):
+    async def list_users():
         """List all users.
         Requires: admin:users permission (only ADMIN role has this)"""
         users = await Admin.__user_repo.get_all()
@@ -46,10 +42,10 @@ class Admin:
         }
 
     @staticmethod
-    @ep.get(
-        "/analytics", dependencies=[Depends(require_roles(["admin", "fund_manager"]))]
-    )
-    async def get_analytics(current_user: User = Depends(auth_deps.get_current_user)):
+    @ep.get("/analytics")
+    async def get_analytics(
+        current_user: User = Depends(require_roles(["admin", "fund_manager"]))
+    ):
         """Get analytics data. Requires: ADMIN or FUND_MANAGER role (OR logic)"""
         return {
             "user_roles": getattr(current_user, "_current_roles", []),
@@ -108,12 +104,9 @@ class Admin:
             "available_features": features.get(user_geography, ["basic_trading"]),
         }
 
-    @staticmethod
-    @ep.get(
-        "/system-health", dependencies=[Depends(require_permission("admin:system"))]
-    )
+    @ep.get("/system-health")
     async def get_system_health(
-        current_user: User = Depends(auth_deps.get_current_user),
+        current_user: User = Depends(require_permission("admin:system")),
     ):
         """Get system health information.
 
@@ -134,7 +127,7 @@ class Admin:
     async def assign_user_role(
         user_id: str,
         role: str,
-        current_user: User = Depends(auth_deps.get_current_user),
+        current_user: User = Depends(require_permission("admin:users")),
     ):
         """Assign a role to a user.
 
@@ -214,195 +207,3 @@ class Admin:
                 }
             },
         }
-
-
-# Backward compatibility - create router instance
-# This will be replaced when main.py is updated to use DIContainer
-router = APIRouter()
-
-
-@router.get("/users", dependencies=[Depends(require_permission("admin:users"))])
-async def list_users_legacy(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(auth_deps.get_current_user),
-):
-    """List all users. Requires: admin:users permission (only ADMIN role has this)"""
-    user_repo = UserRepository(db)
-    users = await user_repo.get_all()
-    return {
-        "users": [
-            {"id": str(u.id), "username": u.username, "email": u.email} for u in users
-        ]
-    }
-
-
-@router.get(
-    "/analytics", dependencies=[Depends(require_roles(["admin", "fund_manager"]))]
-)
-async def get_analytics_legacy(
-    current_user: User = Depends(auth_deps.get_current_user),
-):
-    """Get analytics data. Requires: ADMIN or FUND_MANAGER role (OR logic)"""
-    return {
-        "user_roles": getattr(current_user, "_current_roles", []),
-        "analytics": {
-            "total_portfolios": 150,
-            "total_volume": 50000000,
-            "active_traders": 89,
-        },
-    }
-
-
-@router.get("/high-value-operations")
-async def high_value_operations_legacy(
-    current_user: User = Depends(
-        require_attributes(
-            {
-                "portfolio_value": {"op": "gte", "value": 1000000},
-                "kyc_level": "verified",
-            }
-        )
-    )
-):
-    """Access high-value operations.
-
-    Requires: portfolio_value >= $1M AND kyc_level = "verified"
-    """
-    return {
-        "user_attributes": getattr(current_user, "_current_attributes", {}),
-        "operations": [
-            {"type": "institutional_trading", "status": "available"},
-            {"type": "large_block_trading", "status": "available"},
-            {"type": "otc_trading", "status": "available"},
-        ],
-    }
-
-
-@router.get("/regional-features")
-async def regional_features_legacy(
-    current_user: User = Depends(
-        require_attributes({"geography": {"op": "in", "value": ["US", "CA", "EU"]}})
-    )
-):
-    """Access regional features. Requires: geography in ["US", "CA", "EU"]"""
-    user_geography = getattr(current_user, "_current_attributes", {}).get(
-        "geography", "unknown"
-    )
-
-    features = {
-        "US": ["advanced_options", "crypto_futures", "margin_trading"],
-        "CA": ["basic_options", "crypto_trading", "tfsa_accounts"],
-        "EU": ["mifid_products", "crypto_trading", "regulated_investing"],
-    }
-
-    return {
-        "geography": user_geography,
-        "available_features": features.get(user_geography, ["basic_trading"]),
-    }
-
-
-@router.get(
-    "/system-health", dependencies=[Depends(require_permission("admin:system"))]
-)
-async def get_system_health_legacy(
-    current_user: User = Depends(auth_deps.get_current_user),
-):
-    """Get system health information.
-
-    Requires: admin:system permission (only ADMIN role has this)
-    """
-    return {
-        "status": "healthy",
-        "uptime": "99.9%",
-        "services": {"database": "up", "redis": "up", "blockchain": "up"},
-        "accessed_by": {
-            "user_id": str(current_user.id),
-            "roles": getattr(current_user, "_current_roles", []),
-        },
-    }
-
-
-@router.post("/user-role", dependencies=[Depends(require_permission("admin:users"))])
-async def assign_user_role_legacy(
-    user_id: str,
-    role: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(auth_deps.get_current_user),
-):
-    """Assign a role to a user.
-
-    Requires: admin:users permission (only ADMIN role has this)
-    """
-    # Validate role
-    try:
-        UserRole(role)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid role: {role}. Valid roles: {[r.value for r in UserRole]}",
-        )
-
-    user_repo = UserRepository(db)
-    try:
-        user = await user_repo.get_by_id(user_id)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
-
-        # Update user roles
-        current_roles = user.roles or []
-        if role not in current_roles:
-            current_roles.append(role)
-            user.roles = current_roles
-            await user_repo.save(user)
-
-        return {
-            "message": f"Role {role} assigned to user {user.username}",
-            "user_roles": current_roles,
-            "assigned_by": str(current_user.id),
-        }
-    except HTTPException:
-        # Re-raise HTTP exceptions as-is
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to assign role: {str(e)}",
-        )
-
-
-@router.get("/profile")
-async def get_user_profile_legacy(
-    current_user: User = Depends(auth_deps.get_current_user),
-):
-    """Get current user's profile with role and attribute information."""
-    return {
-        "user_id": str(current_user.id),
-        "username": current_user.username,
-        "email": current_user.email,
-        "roles": getattr(
-            current_user, "_current_roles", [UserRole.INDIVIDUAL_INVESTOR.value]
-        ),
-        "attributes": getattr(current_user, "_current_attributes", {}),
-        "permissions": {
-            "wallet": {
-                "read": "wallet:read"
-                in [
-                    p.value
-                    for role_name in getattr(current_user, "_current_roles", [])
-                    for role in [UserRole(role_name)]
-                    if role in {UserRole.TRADER, UserRole.FUND_MANAGER, UserRole.ADMIN}
-                    for p in [Permission.WALLET_READ]
-                ],
-                "write": "wallet:write"
-                in [
-                    p.value
-                    for role_name in getattr(current_user, "_current_roles", [])
-                    for role in [UserRole(role_name)]
-                    if role in {UserRole.TRADER, UserRole.FUND_MANAGER, UserRole.ADMIN}
-                    for p in [Permission.WALLET_WRITE]
-                ],
-            }
-        },
-    }

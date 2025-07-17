@@ -7,7 +7,7 @@ from typing import Optional
 
 from sqlalchemy.future import select
 
-from app.core.database import DatabaseService
+from app.core.database import CoreDatabase
 from app.models.email_verification import EmailVerification
 from app.utils.logging import Audit
 
@@ -15,8 +15,8 @@ from app.utils.logging import Audit
 class EmailVerificationRepository:
     """Repository for email verification tokens."""
 
-    def __init__(self, database_service: DatabaseService, audit: Audit):
-        self.__database_service = database_service
+    def __init__(self, database: CoreDatabase, audit: Audit):
+        self.__database = database
         self.__audit = audit
 
     async def create(
@@ -28,7 +28,7 @@ class EmailVerificationRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 token_hash = hashlib.sha256(token.encode()).hexdigest()
                 ev = EmailVerification(
                     token_hash=token_hash, user_id=user_id, expires_at=expires_at
@@ -57,7 +57,7 @@ class EmailVerificationRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 stmt = select(EmailVerification).where(
                     EmailVerification.token_hash == token_hash,
                     EmailVerification.expires_at > datetime.now(timezone.utc),
@@ -88,7 +88,7 @@ class EmailVerificationRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 # Merge the object to attach it to the current session
                 merged_ev = await session.merge(ev)
                 merged_ev.used = True
@@ -111,7 +111,7 @@ class EmailVerificationRepository:
         self.__audit.info("email_verification_repository_delete_expired_started")
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 stmt = EmailVerification.__table__.delete().where(
                     EmailVerification.expires_at < datetime.now(timezone.utc)
                 )

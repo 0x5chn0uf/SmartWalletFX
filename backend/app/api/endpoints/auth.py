@@ -17,14 +17,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 import app.api.dependencies as deps_mod
-from app.core.database import get_db
 from app.domain.errors import (
     InactiveUserError,
     InvalidCredentialsError,
     UnverifiedEmailError,
 )
-from app.schemas.auth_token import TokenResponse
-from app.schemas.user import UserCreate, UserRead, WeakPasswordError
+from app.domain.schemas.auth_token import TokenResponse
+from app.domain.schemas.user import UserCreate, UserRead, WeakPasswordError
 from app.services.auth_service import AuthService, DuplicateError
 from app.utils.logging import Audit
 
@@ -301,188 +300,16 @@ class Auth:
         response.delete_cookie("access_token")
         response.delete_cookie("refresh_token", path="/auth/refresh")
 
-        # TODO: Add refresh token invalidation when implemented
-        # refresh_token = request.cookies.get("refresh_token")
-        # if refresh_token:
-        #     await Auth.__auth_service.revoke_refresh_token(refresh_token)
-
-        Audit.info("User logout completed", client_ip=client_ip)
-
-
-# Backward compatibility - create router instance
-# This will be replaced when main.py is updated to use DIContainer
-router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-@router.post(
-    "/register",
-    status_code=status.HTTP_201_CREATED,
-    response_model=UserRead,
-    summary="Register a new user",
-)
-async def register_user_legacy(
-    request: Request,
-    payload: UserCreate,
-    background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db),
-) -> UserRead:  # type: ignore[valid-type]
-    """Create a new user account.
-
-    Returns the newly-created user object excluding sensitive fields.
-    """
-    client_ip = request.client.host or "unknown"
-
-    Audit.info(
-        "User registration started",
-        username=payload.username,
-        email=payload.email,
-        client_ip=client_ip,
-    )
-
-    service = AuthService(db)
-    try:
-        user = await service.register(payload, background_tasks=background_tasks)
-
-        Audit.info(
-            "User registration completed successfully",
-            user_id=user.id,
-            username=user.username,
-            email=user.email,
-        )
-
-        return user
-    except DuplicateError as dup:
-        Audit.error(
-            "User registration failed - duplicate field",
-            username=payload.username,
-            email=payload.email,
-            duplicate_field=dup.field,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"{dup.field} already exists",
-        ) from dup
-    except WeakPasswordError:
-        Audit.warning(
-            "User registration failed - weak password",
-            username=payload.username,
-            email=payload.email,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password does not meet strength requirements",
-        )
-    except Exception as exc:
-        Audit.error(
-            "User registration failed with unexpected error",
-            username=payload.username,
-            email=payload.email,
-            error=str(exc),
-            exc_info=True,
-        )
-        raise
-
-
-@router.post(
-    "/token",
-    summary="Obtain JWT bearer tokens",
-    response_model=TokenResponse,
-)
-async def login_for_access_token_legacy(
-    request: Request,
-    response: Response,
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: AsyncSession = Depends(get_db),
-) -> TokenResponse:  # type: ignore[valid-type]
-    """OAuth2 Password grant – return access & refresh tokens."""
-    identifier = request.client.host or "unknown"
-    limiter = deps_mod.login_rate_limiter
-
-    Audit.info(
-        "User login attempt started", username=form_data.username, client_ip=identifier
-    )
-
-    service = AuthService(db)
-    try:
-        tokens = await service.authenticate(form_data.username, form_data.password)
-        # Successful login → reset any accumulated failures for this IP
-        limiter.reset(identifier)
-
-        Audit.info(
-            "User login successful",
-            username=form_data.username,
-            client_ip=identifier,
-        )
-
-        Audit.info(
-            "user_login_success", username=form_data.username, client_ip=identifier
-        )
-
-        response.set_cookie(
-            "access_token",
-            tokens.access_token,
-            httponly=True,
-            samesite="lax",
-        )
-        response.set_cookie(
-            "refresh_token",
-            tokens.refresh_token,
-            httponly=True,
-            samesite="lax",
-            path="/auth/refresh",
-        )
-
-        return tokens
-
-    except InvalidCredentialsError:
-        Audit.warning(
-            "User login failed - invalid credentials",
-            username=form_data.username,
-            client_ip=identifier,
-        )
-
-        # Failed credentials → consume one hit and maybe block further attempts
-        if not limiter.allow(identifier):
+        refresh_token = request.cookies.get("refresh_token")
+        if not refresh_token:
             Audit.warning(
-                "Login rate limit exceeded",
-                username=form_data.username,
-                client_ip=identifier,
+                "Logout failed: no refresh token provided", client_ip=client_ip
             )
             raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Too many login attempts, please try again later.",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token not provided",
             )
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail="Invalid username or password",
-        )
-    except InactiveUserError:
-        Audit.warning(
-            "User login failed - inactive account",
-            username=form_data.username,
-            client_ip=identifier,
-        )
 
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive or disabled user account",
-        )
-    except UnverifiedEmailError:
-        Audit.warning(
-            "User login failed - email unverified",
-            username=form_data.username,
-            client_ip=identifier,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Email address not verified",
-        )
-    except Exception as exc:
-        Audit.error(
-            "User login failed with unexpected error",
-            username=form_data.username,
-            client_ip=identifier,
-            error=str(exc),
-            exc_info=True,
-        )
-        raise
+        await Auth.__auth_service.revoke_refresh_token(refresh_token)
+
+        Audit.info("User logout completed", client_ip=client_ip)

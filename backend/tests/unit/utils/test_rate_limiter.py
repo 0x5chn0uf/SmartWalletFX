@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
+from app.core.config import ConfigurationService
 from app.utils.rate_limiter import InMemoryRateLimiter
 
 
@@ -74,22 +75,24 @@ class TestRateLimiterIntegration:
         """Test that auth endpoints respect rate limiting."""
         from httpx import AsyncClient
 
-        from app.core.config import settings
-        from app.schemas.user import UserCreate
-        from app.services.auth_service import AuthService
+        from app.domain.schemas.user import UserCreate
         from app.utils.rate_limiter import InMemoryRateLimiter
+        from tests.fixtures.auth import create_test_auth_service
+
+        # Get configuration
+        config = ConfigurationService()
 
         # Patch the global limiter for this test only to ensure full isolation
         mocker.patch(
             "app.api.dependencies.login_rate_limiter",
             new=InMemoryRateLimiter(
-                settings.AUTH_RATE_LIMIT_ATTEMPTS,
-                settings.AUTH_RATE_LIMIT_WINDOW_SECONDS,
+                config.AUTH_RATE_LIMIT_ATTEMPTS,
+                config.AUTH_RATE_LIMIT_WINDOW_SECONDS,
             ),
         )
 
         # Create a test user
-        service = AuthService(db_session)
+        service = create_test_auth_service(db_session)
         await service.register(
             UserCreate(
                 username="ratelimituser",
@@ -104,7 +107,7 @@ class TestRateLimiterIntegration:
 
             # First few attempts should fail with 401 (wrong password)
             # The rate limit is 5 attempts, so we need 5 attempts to trigger it
-            for i in range(settings.AUTH_RATE_LIMIT_ATTEMPTS):
+            for i in range(config.AUTH_RATE_LIMIT_ATTEMPTS):
                 resp = await ac.post("/auth/token", data=data)
                 assert resp.status_code == 401
 

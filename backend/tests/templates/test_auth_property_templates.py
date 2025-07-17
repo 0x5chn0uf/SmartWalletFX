@@ -10,16 +10,8 @@ import pydantic
 from hypothesis import given, settings
 from pydantic import EmailStr
 
-try:
-    from backend.app.utils import security as sec_utils
-except ModuleNotFoundError:  # pragma: no cover
-    from app.utils import security as sec_utils
-
-try:
-    from backend.tests.strategies import security as strat
-except ModuleNotFoundError:  # pragma: no cover
-    from tests.strategies import security as strat
-
+from app.utils import security as sec_utils
+from tests.strategies import security as strat
 
 # ---------------------------------------------------------------------------
 # Password strength invariants

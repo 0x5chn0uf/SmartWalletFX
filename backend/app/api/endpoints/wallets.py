@@ -1,23 +1,27 @@
 import time
+from datetime import datetime
 from typing import List
 
 from fastapi import APIRouter, Depends, Request, status
 
 # Dependency imports
-from app.api.dependencies import auth_deps
-from app.schemas.historical_balance import (
+from app.api.dependencies import get_user_id_from_request
+from app.domain.schemas.historical_balance import (
     HistoricalBalanceCreate,
     HistoricalBalanceResponse,
 )
-from app.schemas.portfolio_metrics import PortfolioMetrics
-from app.schemas.portfolio_timeline import (
+from app.domain.schemas.portfolio_metrics import PortfolioMetrics
+from app.domain.schemas.portfolio_timeline import (
     PortfolioSnapshotResponse,
     PortfolioTimeline,
 )
-from app.schemas.token import TokenCreate, TokenResponse
-from app.schemas.token_balance import TokenBalanceCreate, TokenBalanceResponse
-from app.schemas.token_price import TokenPriceCreate, TokenPriceResponse
-from app.schemas.wallet import WalletCreate, WalletResponse
+from app.domain.schemas.token import TokenCreate, TokenResponse
+from app.domain.schemas.token_balance import (
+    TokenBalanceCreate,
+    TokenBalanceResponse,
+)
+from app.domain.schemas.token_price import TokenPriceCreate, TokenPriceResponse
+from app.domain.schemas.wallet import WalletCreate, WalletResponse
 from app.usecase.historical_balance_usecase import HistoricalBalanceUsecase
 from app.usecase.portfolio_snapshot_usecase import PortfolioSnapshotUsecase
 from app.usecase.token_balance_usecase import TokenBalanceUsecase
@@ -64,12 +68,13 @@ class Wallets:
     async def create_wallet(
         request: Request,
         wallet: WalletCreate,
-        current_user=Depends(auth_deps.get_current_user),
     ):
         """Create a new wallet."""
         start_time = time.time()
         client_ip = request.client.host or "unknown"
-        user_id = current_user.id
+
+        # Get user_id from request (set by middleware)
+        user_id = get_user_id_from_request(request)
 
         Audit.info(
             "Wallet creation started",
@@ -80,7 +85,7 @@ class Wallets:
         )
 
         try:
-            result = await Wallets.__wallet_uc.create_wallet(current_user, wallet)
+            result = await Wallets.__wallet_uc.create_wallet(user_id, wallet)
 
             duration = int((time.time() - start_time) * 1000)
             Audit.info(
@@ -113,17 +118,16 @@ class Wallets:
     )
     async def list_wallets(
         request: Request,
-        current_user=Depends(auth_deps.get_current_user),
     ):
         """List all wallets."""
         start_time = time.time()
         client_ip = request.client.host or "unknown"
-        user_id = current_user.id
+        user_id = get_user_id_from_request(request)
 
         Audit.info("Wallet listing started", user_id=user_id, client_ip=client_ip)
 
         try:
-            result = await Wallets.__wallet_uc.list_wallets(current_user)
+            result = await Wallets.__wallet_uc.list_wallets(user_id)
 
             duration = int((time.time() - start_time) * 1000)
             Audit.info(
@@ -153,12 +157,11 @@ class Wallets:
     async def delete_wallet(
         request: Request,
         address: str,
-        current_user=Depends(auth_deps.get_current_user),
     ):
         """Delete a wallet by its address."""
         start_time = time.time()
         client_ip = request.client.host or "unknown"
-        user_id = current_user.id
+        user_id = get_user_id_from_request(request)
 
         Audit.info(
             "Wallet deletion started",
@@ -168,7 +171,7 @@ class Wallets:
         )
 
         try:
-            await Wallets.__wallet_uc.delete_wallet(current_user, address)
+            await Wallets.__wallet_uc.delete_wallet(user_id, address)
 
             duration = int((time.time() - start_time) * 1000)
             Audit.info(
@@ -237,13 +240,12 @@ class Wallets:
         response_model=List[PortfolioSnapshotResponse],
     )
     async def get_portfolio_snapshots(
+        request: Request,
         address: str,
-        current_user=Depends(auth_deps.get_current_user),
     ):
         """Get portfolio snapshots for a wallet."""
-        return await Wallets.__portfolio_snapshot_uc.get_portfolio_snapshots(
-            current_user, address
-        )
+        user_id = get_user_id_from_request(request)
+        return await Wallets.__wallet_uc.get_portfolio_snapshots(user_id, address)
 
     @staticmethod
     @ep.get(
@@ -251,14 +253,13 @@ class Wallets:
         response_model=PortfolioMetrics,
     )
     async def get_portfolio_metrics(
+        request: Request,
         address: str,
         interval: str = "daily",
-        current_user=Depends(auth_deps.get_current_user),
     ):
         """Get portfolio metrics for a wallet."""
-        return await Wallets.__portfolio_snapshot_uc.get_portfolio_metrics(
-            current_user, address, interval
-        )
+        user_id = get_user_id_from_request(request)
+        return await Wallets.__wallet_uc.get_portfolio_metrics(user_id, address)
 
     @staticmethod
     @ep.get(
@@ -266,88 +267,14 @@ class Wallets:
         response_model=PortfolioTimeline,
     )
     async def get_portfolio_timeline(
+        request: Request,
         address: str,
         interval: str = "daily",
         limit: int = 30,
         offset: int = 0,
-        current_user=Depends(auth_deps.get_current_user),
     ):
         """Get portfolio timeline for a wallet."""
-        return await Wallets.__portfolio_snapshot_uc.get_portfolio_timeline(
-            current_user, address, interval, limit, offset
+        user_id = get_user_id_from_request(request)
+        return await Wallets.__wallet_uc.get_portfolio_timeline(
+            user_id, address, interval, limit, offset
         )
-
-
-# Backward compatibility - create router instance and old class
-# This will be replaced when main.py is updated to use DIContainer
-class WalletView:
-    """Class-based view for wallet endpoints."""
-
-    def __init__(self):
-        self.router = APIRouter()
-        self._register_routes()
-
-    def _register_routes(self):
-        """Register all wallet-related routes."""
-        from sqlalchemy.ext.asyncio import AsyncSession
-
-        from app.core.database import get_db
-
-        @self.router.post(
-            "/wallets",
-            response_model=WalletResponse,
-            status_code=status.HTTP_201_CREATED,
-        )
-        async def create_wallet(
-            request: Request,
-            wallet: WalletCreate,
-            db: AsyncSession = Depends(get_db),
-            current_user=Depends(auth_deps.get_current_user),
-        ):
-            """Create a new wallet."""
-            start_time = time.time()
-            client_ip = request.client.host or "unknown"
-            user_id = current_user.id
-
-            Audit.info(
-                "Wallet creation started",
-                user_id=user_id,
-                wallet_address=wallet.address,
-                wallet_name=wallet.name,
-                client_ip=client_ip,
-            )
-
-            try:
-                usecase = WalletUsecase(db, current_user)
-                result = await usecase.create_wallet(wallet)
-
-                duration = int((time.time() - start_time) * 1000)
-                Audit.info(
-                    "Wallet created successfully",
-                    user_id=user_id,
-                    wallet_id=str(result.id),
-                    wallet_address=wallet.address,
-                    wallet_name=wallet.name,
-                    duration_ms=duration,
-                )
-
-                return result
-            except Exception as exc:
-                duration = int((time.time() - start_time) * 1000)
-                Audit.error(
-                    "Wallet creation failed",
-                    user_id=user_id,
-                    wallet_address=wallet.address,
-                    wallet_name=wallet.name,
-                    duration_ms=duration,
-                    error=str(exc),
-                    exc_info=True,
-                )
-                raise
-
-        # Add other legacy endpoints here...
-
-
-# Create router instance for backward compatibility
-wallet_view = WalletView()
-router = wallet_view.router

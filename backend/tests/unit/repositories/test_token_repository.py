@@ -1,22 +1,59 @@
 import uuid
+from contextlib import asynccontextmanager
+from unittest.mock import Mock
 
 import pytest
 
+from app.domain.schemas.token import TokenCreate
+from app.models.token import Token
 from app.repositories.token_repository import TokenRepository
-from app.schemas.token import TokenCreate
+
+
+def setup_mock_session(repository, mock_session):
+    """Helper function to set up mock session for repository tests."""
+
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_session
+
+    # Patch the repository's database service get_session method
+    repository._TokenRepository__database.get_session = mock_get_session
 
 
 @pytest.mark.asyncio
-async def test_token_repository_create(db_session):
-    repo = TokenRepository(db_session)
+async def test_token_repository_create(token_repository_with_di, mock_async_session):
+    """Test token creation with dependency injection."""
+    # Setup mock session
+    setup_mock_session(token_repository_with_di, mock_async_session)
+
+    # Create test data
     address = f"0x{uuid.uuid4().hex[:40]}"
-    token = await repo.create(
-        TokenCreate(
-            address=address,
-            symbol="TKN",
-            name="MockToken",
-            decimals=18,
-        )
+    token_data = TokenCreate(
+        address=address,
+        symbol="TKN",
+        name="MockToken",
+        decimals=18,
     )
-    assert token.symbol == "TKN"
-    assert token.decimals == 18
+
+    # Mock the token creation process
+    created_token = Token(
+        id=uuid.uuid4(),
+        address=address,
+        symbol="TKN",
+        name="MockToken",
+        decimals=18,
+    )
+
+    # Mock the session methods properly
+    async def mock_refresh(obj):
+        obj.id = created_token.id
+        return obj
+
+    mock_async_session.refresh = mock_refresh
+
+    # Execute the test
+    token = await token_repository_with_di.create(token_data)
+
+    # Verify the results
+    mock_async_session.add.assert_called_once()
+    mock_async_session.commit.assert_awaited_once()

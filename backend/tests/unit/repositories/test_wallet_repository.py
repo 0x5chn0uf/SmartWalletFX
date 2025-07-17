@@ -1,5 +1,6 @@
 import uuid
-from datetime import datetime
+from contextlib import asynccontextmanager
+from unittest.mock import Mock
 
 import pytest
 from fastapi import HTTPException
@@ -11,43 +12,151 @@ from app.repositories.user_repository import UserRepository
 from app.repositories.wallet_repository import WalletRepository
 
 
+def setup_mock_session(repository, mock_session):
+    """Helper function to set up mock session for repository tests."""
+
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_session
+
+    # Patch the repository's database service get_session method
+    repository_class_name = repository.__class__.__name__
+    setattr(repository, f"_{repository_class_name}__database", Mock())
+    getattr(
+        repository, f"_{repository_class_name}__database"
+    ).get_session = mock_get_session
+
+
+@pytest.fixture
+def mock_database():
+    """Mock CoreDatabase."""
+    return Mock()
+
+
+@pytest.fixture
+def mock_audit():
+    """Mock Audit service."""
+    return Mock()
+
+
+@pytest.fixture
+def user_repository(mock_database, mock_audit):
+    """Create UserRepository with mocked dependencies."""
+    return UserRepository(mock_database, mock_audit)
+
+
+@pytest.fixture
+def wallet_repository(mock_database, mock_audit):
+    """Create WalletRepository with mocked dependencies."""
+    return WalletRepository(mock_database, mock_audit)
+
+
 @pytest.mark.asyncio
-async def test_wallet_repository_crud(db_session):
-    # First create a user
-    user_repo = UserRepository(db_session)
-    user_id = uuid.uuid4()
+async def test_wallet_repository_create_and_fetch(
+    user_repository, wallet_repository, db_session
+):
+    """Test wallet creation and fetching."""
+    # Setup mock sessions
+    setup_mock_session(user_repository, db_session)
+    setup_mock_session(wallet_repository, db_session)
+
+    # Create a user first
     user = User(
-        id=user_id,
-        username=f"test_user_{uuid.uuid4().hex[:8]}",
-        email=f"test_{uuid.uuid4().hex[:8]}@example.com",
-        hashed_password="hashed_password",
-        email_verified=True,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        username=f"user-{uuid.uuid4().hex[:8]}",
+        email=f"user-{uuid.uuid4().hex[:8]}@example.com",
     )
-    await user_repo.save(user)
+    saved_user = await user_repository.save(user)
+
+    # Create a wallet
+    address = f"0x{uuid.uuid4().hex:0<40}"[:42]
+    wallet = Wallet(address=address, user_id=saved_user.id, name="Test Wallet")
+    saved_wallet = await wallet_repository.save(wallet)
+
+    assert saved_wallet.id is not None
+    assert saved_wallet.address == address
+    assert saved_wallet.user_id == saved_user.id
+
+    # Fetch wallet by address
+    fetched_wallet = await wallet_repository.get_by_address(address)
+    assert fetched_wallet is not None
+    assert fetched_wallet.address == address
+
+
+@pytest.mark.asyncio
+async def test_wallet_repository_list_by_user(wallet_repository, db_session):
+    """Test listing wallets by user."""
+    # Setup mock session
+    setup_mock_session(wallet_repository, db_session)
+
+    user_id = uuid.uuid4()
+
+    # Create multiple wallets for the user
+    wallets = []
+    for i in range(3):
+        address = f"0x{uuid.uuid4().hex:0<40}"[:42]
+        # Call create with the correct signature: address, user_id, name
+        saved_wallet = await wallet_repository.create(
+            address=address, user_id=user_id, name=f"Wallet {i}"
+        )
+        wallets.append(saved_wallet)
+
+    # List wallets by user
+    user_wallets = await wallet_repository.list_by_user(user_id)
+    assert len(user_wallets) == 3
+
+    # Verify all wallets belong to the user
+    for wallet in user_wallets:
+        assert wallet.user_id == user_id
+
+
+@pytest.mark.asyncio
+async def test_wallet_repository_crud(
+    wallet_repository_with_real_db,
+    test_user,
+):
+    # Use the test user fixture instead of creating one
+    user_id = test_user.id
 
     # Now create a wallet for this user
-    repo = WalletRepository(db_session)
     addr = "0x1111111111111111111111111111111111111111"
-    created = await repo.create(address=addr, name="Test", user_id=user_id)
+    created = await wallet_repository_with_real_db.create(
+        address=addr, name="Test", user_id=user_id
+    )
     assert created.id is not None
-    fetched = await repo.get_by_address(addr)
+    fetched = await wallet_repository_with_real_db.get_by_address(addr)
     assert fetched is not None and fetched.address == addr
 
     # list all
-    all_wallets = await repo.list_by_user(user_id)
+    all_wallets = await wallet_repository_with_real_db.list_by_user(user_id)
     assert len(all_wallets) >= 1
 
     # delete success - use the actual user_id from the fetched wallet
-    assert await repo.delete(addr, user_id=fetched.user_id) is True
+    assert (
+        await wallet_repository_with_real_db.delete(addr, user_id=fetched.user_id)
+        is True
+    )
     # Skip verification of deletion due to transaction isolation/caching issues
 
 
 @pytest.mark.asyncio
-async def test_wallet_repository_delete_not_found(db_session):
-    repo = WalletRepository(db_session)
+async def test_wallet_repository_delete_not_found(wallet_repository_with_real_db):
     user_id = uuid.uuid4()
     with pytest.raises(HTTPException) as exc:
-        await repo.delete("0x5555555555555555555555555555555555555555", user_id=user_id)
+        await wallet_repository_with_real_db.delete(
+            "0x5555555555555555555555555555555555555555", user_id=user_id
+        )
     assert exc.value.status_code == 404
+
+
+def test_wallet_repository_constructor_dependencies():
+    """Test that WalletRepository properly accepts dependencies in constructor."""
+    # Arrange
+    mock_database = Mock()
+    mock_audit = Mock()
+
+    # Act
+    repository = WalletRepository(mock_database, mock_audit)
+
+    # Assert
+    assert repository._WalletRepository__database == mock_database
+    assert repository._WalletRepository__audit == mock_audit

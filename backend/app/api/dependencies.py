@@ -10,7 +10,7 @@ from redis import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 from web3 import Web3
 
-from app.core.config import settings
+from app.core.config import ConfigurationService
 from app.core.database import get_db
 from app.core.security.roles import ROLE_PERMISSIONS_MAP, UserRole
 from app.models.user import User
@@ -19,18 +19,7 @@ from app.utils.jwt import JWTUtils
 from app.utils.logging import Audit
 from app.utils.rate_limiter import login_rate_limiter
 
-
-class BlockchainDeps:
-    """Group Web3 provider + protocol use-cases."""
-
-    @lru_cache()
-    def get_w3(self):  # noqa: D401 – dep factory
-        default_uri = "https://ethereum-rpc.publicnode.com"
-        uri = getattr(settings, "WEB3_PROVIDER_URI", default_uri)
-        return Web3(Web3.HTTPProvider(uri))
-
-
-blockchain_deps = BlockchainDeps()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 
 class AuthDeps:
@@ -38,6 +27,10 @@ class AuthDeps:
 
     # Standard OAuth2 bearer scheme – requires "Authorization: Bearer <token>" header.
     oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
+
+    def __init__(self):
+        """Initialize with configuration service."""
+        self.config_service = ConfigurationService()
 
     async def rate_limit_auth_token(  # type: ignore[valid-type]
         self, request: Request
@@ -50,32 +43,34 @@ class AuthDeps:
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Too many login attempts, please try again later.",
-                headers={"Retry-After": str(settings.AUTH_RATE_LIMIT_WINDOW_SECONDS)},
+                headers={
+                    "Retry-After": str(
+                        self.config_service.AUTH_RATE_LIMIT_WINDOW_SECONDS
+                    )
+                },
             )
 
     async def get_current_user(
         self,
-        request: Request = None,  # type: ignore[assignment]
-        token: str | None = Depends(oauth2_scheme),
+        request: Request,
         db: AsyncSession = Depends(get_db),
     ) -> User:
-        """Validate JWT *token* and return the associated :class:`User`."""
+        """Get user from DB and attach roles/attributes from token payload."""
+        audit = Audit()
+        payload = getattr(request.state, "token_payload", None)
 
-        Audit.debug("auth_get_current_user_start")
-        try:
-            payload = JWTUtils.decode_token(token)
-        except Exception as exc:  # noqa: BLE001 – translate
-            Audit.warning("Invalid auth token", error=str(exc))
+        if payload is None:
+            audit.warning("Token payload not found in request state")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authentication credentials",
+                detail="Not authenticated",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
         try:
             pk = uuid.UUID(str(payload["sub"]))
-        except Exception:
-            Audit.warning("Invalid subject in token", sub=str(payload.get("sub")))
+        except (KeyError, ValueError, TypeError):
+            audit.warning("Invalid subject in token payload")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid subject in token",
@@ -84,22 +79,18 @@ class AuthDeps:
 
         user = await db.get(User, pk)
         if not user:
-            Audit.warning("User not found", user_id=str(pk))
+            audit.warning("User not found for pk from token", user_id=str(pk))
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        token_roles = payload.get("roles", [])
-        token_attributes = payload.get("attributes", {})
+        # Attach roles and attributes from token payload to the user object
+        user._current_roles = payload.get("roles", [])  # type: ignore[attr-defined]
+        user._current_attributes = payload.get("attributes", {})  # type: ignore[attr-defined]
 
-        # Add extracted claims as runtime attributes (not persisted)
-        # Authorization deps rely on these runtime props for RBAC/ABAC checks
-        user._current_roles = token_roles  # type: ignore[attr-defined]
-        user._current_attributes = token_attributes  # type: ignore[attr-defined]
-
-        Audit.info("User loaded", user_id=str(getattr(user, "id", pk)))
+        audit.info("User loaded from token payload", user_id=str(user.id))
 
         return user
 
@@ -107,15 +98,27 @@ class AuthDeps:
 # Instantiate auth deps singleton
 auth_deps = AuthDeps()
 
+
+def get_user_id_from_request(request: Request) -> uuid.UUID:
+    """
+    Get user_id from request state (set by JWTAuthMiddleware).
+    Raises HTTPException if user is not authenticated.
+    """
+    user_id = getattr(request.state, "user_id", None)
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user_id
+
+
 __all__ = [
-    "blockchain_deps",
     "auth_deps",
     "get_redis",
+    "get_user_id_from_request",
 ]
-
-# ---------------------------------------------------------------------------
-# Redis dependency
-# ---------------------------------------------------------------------------
 
 
 async def get_redis() -> AsyncGenerator["Redis", None]:  # type: ignore[name-defined]

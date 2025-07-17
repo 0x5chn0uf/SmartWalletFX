@@ -106,7 +106,7 @@ def _make_test_db(tmp_path_factory: pytest.TempPathFactory) -> tuple[str, str]:
     return async_url, sync_url
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function")
 async def async_engine(tmp_path_factory: pytest.TempPathFactory):
     """Yield a *brand-new* AsyncEngine bound to a fresh SQLite file."""
 
@@ -150,7 +150,7 @@ async def async_engine(tmp_path_factory: pytest.TempPathFactory):
             admin_engine.dispose()
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function")
 async def test_app(async_engine):
     """Return the *singleton* FastAPI application for tests.
 
@@ -182,7 +182,7 @@ async def test_app(async_engine):
     # use the *patched* engine as well.  Those modules performed
     # `from app.core.database import engine` at import-time and therefore hold
     # a separate reference that needs to be updated manually.
-    import app.core.init_db as _init_db_mod
+    import app.core.database as _init_db_mod
     from app.main import app as _app
 
     _init_db_mod.engine = db_mod.engine

@@ -1,14 +1,14 @@
-from app.core.database import DatabaseService
+from app.core.database import CoreDatabase
+from app.domain.schemas.historical_balance import HistoricalBalanceCreate
 from app.models.historical_balance import HistoricalBalance
-from app.schemas.historical_balance import HistoricalBalanceCreate
 from app.utils.logging import Audit
 
 
 class HistoricalBalanceRepository:
     """Repository for :class:`~app.models.historical_balance.HistoricalBalance`."""
 
-    def __init__(self, database_service: DatabaseService, audit: Audit):
-        self.__database_service = database_service
+    def __init__(self, database: CoreDatabase, audit: Audit):
+        self.__database = database
         self.__audit = audit
 
     async def create(self, data: HistoricalBalanceCreate) -> HistoricalBalance:
@@ -21,7 +21,7 @@ class HistoricalBalanceRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 hist_balance = HistoricalBalance(
                     wallet_id=data.wallet_id,
                     token_id=data.token_id,

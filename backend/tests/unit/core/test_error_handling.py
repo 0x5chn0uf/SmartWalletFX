@@ -10,7 +10,8 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from starlette.requests import Request
 
-from app.core import error_handling as eh
+from app.core.error_handling import CoreErrorHandling
+from app.utils.logging import Audit
 
 # ---------------------------------------------------------------------------
 # Helper – fabricate bare-bones Starlette Request with trace_id
@@ -31,6 +32,7 @@ def _make_request() -> Request:
 
 @pytest.mark.asyncio
 async def test_http_exception_handler_returns_mapped_payload():
+    eh = CoreErrorHandling(Audit())
     req = _make_request()
     exc = HTTPException(status_code=404, detail="not found")
     resp = await eh.http_exception_handler(req, exc)
@@ -46,6 +48,8 @@ async def test_http_exception_handler_returns_mapped_payload():
 
 @pytest.mark.asyncio
 async def test_validation_exception_handler_uses_generic_message():
+    eh = CoreErrorHandling(Audit())
+
     req = _make_request()
     # Fake pydantic validation error wrapper – content is irrelevant for handler
     from fastapi.exceptions import RequestValidationError
@@ -60,6 +64,8 @@ async def test_validation_exception_handler_uses_generic_message():
 
 @pytest.mark.asyncio
 async def test_generic_exception_handler_catches_unexpected_error(caplog):
+    eh = CoreErrorHandling(Audit())
+
     req = _make_request()
     # Capture logs from the dedicated "audit" logger instead of relying on propagation
     with caplog.at_level(logging.ERROR, logger="audit"):
@@ -72,6 +78,8 @@ async def test_generic_exception_handler_catches_unexpected_error(caplog):
 
 @pytest.mark.asyncio
 async def test_integrity_error_handler_maps_to_conflict():
+    eh = CoreErrorHandling(Audit())
+
     req = _make_request()
     resp = await eh.integrity_error_handler(req, IntegrityError("msg", {}, None))
     body = json.loads(resp.body)

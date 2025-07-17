@@ -1,6 +1,6 @@
 import pytest
 
-from app.schemas.auth_token import TokenResponse
+from app.domain.schemas.auth_token import TokenResponse
 
 
 def test_token_response_defaults():

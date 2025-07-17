@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.schemas.jwt import JWTPayload
+from app.domain.schemas.jwt import JWTPayload
 
 
 def test_valid_payload():

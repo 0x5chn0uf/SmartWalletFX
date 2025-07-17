@@ -1,9 +1,12 @@
 import json
 
+from fastapi import HTTPException
+
+from app.domain.schemas.defi import PortfolioSnapshot
 from app.repositories.portfolio_snapshot_repository import (
     PortfolioSnapshotRepository,
 )
-from app.schemas.defi import PortfolioSnapshot
+from app.repositories.wallet_repository import WalletRepository
 from app.utils.logging import Audit
 
 
@@ -16,9 +19,11 @@ class PortfolioSnapshotUsecase:
     def __init__(
         self,
         portfolio_snapshot_repo: PortfolioSnapshotRepository,
+        wallet_repo: WalletRepository,
         audit: Audit,
     ):
         self.__portfolio_snapshot_repo = portfolio_snapshot_repo
+        self.__wallet_repo = wallet_repo
         self.__audit = audit
 
     async def get_snapshots_by_wallet(self, wallet_address: str) -> list[dict]:
@@ -28,6 +33,8 @@ class PortfolioSnapshotUsecase:
             wallet_address: The wallet address to get snapshots for.
         Returns:
             list[dict]: List of portfolio snapshots.
+        Raises:
+            HTTPException: 404 if wallet does not exist.
         """
         self.__audit.info(
             "portfolio_snapshot_usecase_get_by_wallet_started",
@@ -35,6 +42,15 @@ class PortfolioSnapshotUsecase:
         )
 
         try:
+            # First, check if the wallet exists
+            wallet = await self.__wallet_repo.get_by_address(wallet_address)
+            if not wallet:
+                self.__audit.warning(
+                    "portfolio_snapshot_usecase_wallet_not_found",
+                    wallet_address=wallet_address,
+                )
+                raise HTTPException(status_code=404, detail="Wallet not found")
+
             result = await self.__portfolio_snapshot_repo.get_by_wallet_address(
                 wallet_address
             )
@@ -46,6 +62,9 @@ class PortfolioSnapshotUsecase:
             )
 
             return result
+        except HTTPException:
+            # Re-raise HTTP exceptions as-is
+            raise
         except Exception as e:
             self.__audit.error(
                 "portfolio_snapshot_usecase_get_by_wallet_failed",

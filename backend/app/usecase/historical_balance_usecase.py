@@ -1,10 +1,10 @@
 from app.core.config import ConfigurationService
-from app.repositories.historical_balance_repository import (
-    HistoricalBalanceRepository,
-)
-from app.schemas.historical_balance import (
+from app.domain.schemas.historical_balance import (
     HistoricalBalanceCreate,
     HistoricalBalanceResponse,
+)
+from app.repositories.historical_balance_repository import (
+    HistoricalBalanceRepository,
 )
 from app.utils.logging import Audit
 

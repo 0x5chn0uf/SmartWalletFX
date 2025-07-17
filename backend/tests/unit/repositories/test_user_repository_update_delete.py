@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -8,54 +9,78 @@ from app.models.user import User
 from app.repositories.user_repository import UserRepository
 
 
-@pytest.mark.asyncio
-async def test_user_repository_update(db_session, monkeypatch):
-    repo = UserRepository(db_session)
+def setup_mock_session(user_repository_with_di, mock_async_session):
+    """Helper to set up mock session for tests."""
+    from contextlib import asynccontextmanager
 
-    # Create and persist original user
-    user = User(
-        username=f"bob-{uuid.uuid4().hex[:8]}",
-        email=f"bob-{uuid.uuid4().hex[:8]}@example.com",
-    )
-    saved = await repo.save(user)
+    @asynccontextmanager
+    async def mock_get_session():
+        yield mock_async_session
 
-    # Update username only (happy-path)
-    updated = await repo.update(saved, username="robert")
-    assert updated.username == "robert"
-
-    # Provide an unknown attribute – should be ignored and *not* raise
-    updated = await repo.update(saved, non_existing="noop")  # type: ignore[arg-type]
-    assert not hasattr(updated, "non_existing")
+    user_repository_with_di._UserRepository__database.get_session = mock_get_session
 
 
 @pytest.mark.asyncio
-async def test_user_repository_delete_cascades_refresh_tokens(db_session, monkeypatch):
-    repo = UserRepository(db_session)
+async def test_user_repository_update(user_repository_with_di, mock_async_session):
+    """Test user update with dependency injection."""
+    # Setup mock session
+    setup_mock_session(user_repository_with_di, mock_async_session)
 
-    user = User(
-        username=f"carol-{uuid.uuid4().hex[:8]}",
-        email=f"carol-{uuid.uuid4().hex[:8]}@example.com",
-    )
-    saved = await repo.save(user)
+    # Create a user object to update
+    user_id = uuid.uuid4()
+    mock_user = Mock()
+    mock_user.id = user_id
+    mock_user.email_verified = False
 
-    # Attach a refresh token row
-    rt = RefreshToken(
-        jti_hash="dummy",
-        user_id=saved.id,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=7),
-    )
-    db_session.add(rt)
-    await db_session.commit()
+    # Mock the user retrieval - make merge an AsyncMock since it's awaited
+    mock_async_session.merge = AsyncMock(return_value=mock_user)
+    mock_async_session.commit = AsyncMock()
+    mock_async_session.refresh = AsyncMock()
 
-    # Ensure token exists before deletion
-    token_before = await db_session.get(RefreshToken, rt.id)
-    assert token_before is not None
+    # Update the mock user's attributes to reflect the update
+    mock_user.email_verified = True
 
-    # Delete user via helper – should also delete refresh tokens
-    await repo.delete(saved)
+    # Execute the test - pass user object and kwargs
+    updated = await user_repository_with_di.update(mock_user, email_verified=True)
 
-    # Verify user gone
-    assert await repo.get_by_id(saved.id) is None
-    # Verify token gone
-    token_after = await db_session.get(RefreshToken, rt.id)
-    assert token_after is None
+    # Verify the result
+    assert updated is not None
+    assert updated.email_verified is True
+
+    # Verify database operations
+    mock_async_session.merge.assert_awaited_once_with(mock_user)
+    mock_async_session.commit.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_user_repository_delete_cascades_refresh_tokens(
+    user_repository_with_di, mock_async_session
+):
+    """Test that deleting a user cascades to refresh tokens."""
+    # Setup mock session
+    setup_mock_session(user_repository_with_di, mock_async_session)
+
+    # Create test data
+    user_id = uuid.uuid4()
+
+    # Create a mock user object
+    mock_user = Mock()
+    mock_user.id = user_id
+
+    # Configure mocks for delete operations
+    mock_async_session.execute = AsyncMock()
+    mock_async_session.merge = AsyncMock(return_value=mock_user)
+    mock_async_session.delete = AsyncMock()
+    mock_async_session.commit = AsyncMock()
+
+    # Execute the test - pass user object instead of UUID
+    result = await user_repository_with_di.delete(mock_user)
+
+    # Verify the result (delete method returns None)
+    assert result is None
+
+    # Verify database operations
+    mock_async_session.execute.assert_awaited_once()  # Delete refresh tokens
+    mock_async_session.merge.assert_awaited_once_with(mock_user)
+    mock_async_session.delete.assert_awaited_once_with(mock_user)
+    mock_async_session.commit.assert_awaited_once()

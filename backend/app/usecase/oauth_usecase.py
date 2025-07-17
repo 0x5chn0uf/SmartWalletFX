@@ -6,13 +6,14 @@ from urllib.parse import urlencode
 import httpx
 from fastapi import HTTPException, Request
 from fastapi.responses import RedirectResponse
+from jose import jwt
 
 from app.core.config import ConfigurationService
+from app.domain.schemas.auth_token import TokenResponse
 from app.models.user import User
 from app.repositories.oauth_account_repository import OAuthAccountRepository
 from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.repositories.user_repository import UserRepository
-from app.schemas.auth_token import TokenResponse
 from app.services.oauth_service import OAuthService
 from app.utils.logging import Audit
 from app.utils.oauth_state_cache import (
@@ -32,17 +33,16 @@ class OAuthUsecase:
         oauth_account_repo: OAuthAccountRepository,
         user_repo: UserRepository,
         refresh_token_repo: RefreshTokenRepository,
+        oauth_service: OAuthService,
         config_service: ConfigurationService,
         audit: Audit,
     ) -> None:
         self.__oauth_account_repo = oauth_account_repo
         self.__user_repo = user_repo
         self.__refresh_token_repo = refresh_token_repo
+        self.__oauth_service = oauth_service
         self.__config_service = config_service
         self.__audit = audit
-        # Note: OAuthService will need to be refactored separately
-        # For now, we'll keep it for backward compatibility
-        self.__oauth_service = None  # Will be injected when OAuthService is refactored
 
     async def authenticate_and_issue_tokens(
         self, provider: str, sub: str, email: Optional[str] | None
@@ -56,15 +56,6 @@ class OAuthUsecase:
         )
 
         try:
-            # TODO: Implement direct repository calls instead of using OAuthService
-            # This is a placeholder - the actual implementation should use the
-            # injected repositories
-            if not self.__oauth_service:
-                # Temporary fallback to old service pattern
-                # This is a temporary solution until we fully refactor the service layer
-                session = None  # This would need to be passed from the endpoint
-                self.__oauth_service = OAuthService(session)
-
             user = await self.__oauth_service.authenticate_or_create(
                 provider, sub, email
             )
@@ -187,8 +178,6 @@ class OAuthUsecase:
             )
             raise
 
-    # ---------- Internal helpers ------------------------------------------
-
     def _build_auth_url(self, provider: str, state: str) -> str:
         """Build authentication URL for the given provider."""
         if provider == "google":
@@ -238,7 +227,6 @@ class OAuthUsecase:
                 if not id_token:
                     self.__audit.error("oauth_missing_id_token", provider=provider)
                     raise HTTPException(400, "Missing id_token")
-                from jose import jwt
 
                 claims = jwt.get_unverified_claims(id_token)
                 return {"sub": claims.get("sub"), "email": claims.get("email")}

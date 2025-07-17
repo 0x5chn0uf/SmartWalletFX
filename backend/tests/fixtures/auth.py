@@ -1,40 +1,106 @@
 """Authentication fixtures for the test suite."""
 
 import uuid
+from contextlib import asynccontextmanager
+from unittest.mock import Mock
 
+import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db
+from app.domain.schemas.user import UserCreate
 from app.models import Wallet
 from app.models.user import User
-from app.schemas.user import UserCreate
 from app.services.auth_service import AuthService
-from app.utils import security
+from app.services.email_service import EmailService
+from app.services.oauth_service import OAuthService
 
 
 @pytest_asyncio.fixture
-async def test_user(db_session: AsyncSession):
+def auth_service(test_di_container_with_db):
+    """Provides a fully configured AuthService instance."""
+    from app.main import ApplicationFactory
+
+    # Ensure all dependencies are wired up by creating the app
+    # which internally registers all components.
+    app_factory = ApplicationFactory(test_di_container_with_db)
+    app_factory.create_app()
+
+    return test_di_container_with_db.get_service("auth")
+
+
+@pytest_asyncio.fixture
+async def get_auth_headers_for_user_factory(test_di_container_with_db):
+    """Factory fixture to generate auth headers for a user."""
+    from app.main import ApplicationFactory
+
+    app_factory = ApplicationFactory(test_di_container_with_db)
+    app_factory.create_app()
+    jwt_utils = test_di_container_with_db.get_utility("jwt_utils")
+
+    async def _get_auth_headers(user: User, roles: list = None) -> dict:
+        """Generate authentication headers for a specific user with given roles."""
+        # This is a simplified version. In a real app, you would log the user in.
+        # For testing, we can directly create a token.
+
+        token = jwt_utils.create_access_token(
+            subject=str(user.id),
+            additional_claims={"roles": roles or user.roles},
+        )
+        return {"Authorization": f"Bearer {token}"}
+
+    return _get_auth_headers
+
+
+@pytest_asyncio.fixture
+async def get_auth_headers_for_role_factory(
+    db_session: AsyncSession, get_auth_headers_for_user_factory, auth_service
+):
+    """Factory fixture to create a user with a role and get auth headers."""
+
+    async def _get_auth_headers_for_role(role: str) -> dict:
+        """Create a new user with a specific role and get auth headers."""
+        # Create a new user for the role
+        user_in = UserCreate(
+            email=f"test.{role}.{uuid.uuid4()}@example.com",
+            password="Str0ngPassword!",
+            username=f"test.{role[:8]}.{str(uuid.uuid4())[:8]}",
+        )
+
+        user = await auth_service.register(user_in)
+        user.email_verified = True
+        user.roles = [role]
+        db_session.add(user)
+        await db_session.commit()
+        await db_session.refresh(user)
+
+        return await get_auth_headers_for_user_factory(user, roles=[role])
+
+    return _get_auth_headers_for_role
+
+
+@pytest_asyncio.fixture
+async def test_user(db_session: AsyncSession, auth_service: AuthService):
     """
     Creates a new user in the database for testing.
-    Provides a unique test user for each test function.
+    Returns the user without committing the session.
     """
     user_in = UserCreate(
         email=f"test.user.{uuid.uuid4()}@example.com",
         password="Str0ngPassword!",
         username=f"test.user.{uuid.uuid4()}",
     )
-    user = await AuthService(db_session).register(user_in)
+    user = await auth_service.register(user_in)
     # Mark as email verified for tests that require authentication
     user.email_verified = True
-    await db_session.commit()
-    await db_session.refresh(user)
+    db_session.add(user)
+    # Don't commit here - let the test or other fixtures handle it
     return user
 
 
 @pytest_asyncio.fixture
-async def test_user_with_wallet(db_session: AsyncSession):
+async def test_user_with_wallet(db_session: AsyncSession, auth_service):
     """
     Creates a new user with a wallet in the database for testing.
     Provides a test user with an associated wallet.
@@ -45,8 +111,9 @@ async def test_user_with_wallet(db_session: AsyncSession):
         password="Str0ngPassword!",
         username=f"test.user.{uuid.uuid4()}",
     )
-    user = await AuthService(db_session).register(user_in)
+    user = await auth_service.register(user_in)
     user.email_verified = True
+    db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)
 
@@ -62,7 +129,7 @@ async def test_user_with_wallet(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
-async def admin_user(db_session: AsyncSession):
+async def admin_user(db_session: AsyncSession, auth_service):
     """
     Creates an admin user in the database for testing.
     Provides a test user with admin privileges.
@@ -72,8 +139,10 @@ async def admin_user(db_session: AsyncSession):
         password="AdminPassword123!",
         username=f"admin.{uuid.uuid4()}",
     )
-    user = await AuthService(db_session).register(user_in)
+    user = await auth_service.register(user_in)
     user.email_verified = True
+    user.roles = ["admin"]
+    db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)
 
@@ -81,7 +150,7 @@ async def admin_user(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
-async def inactive_user(db_session: AsyncSession):
+async def inactive_user(db_session: AsyncSession, auth_service):
     """
     Creates an inactive user in the database for testing.
     Provides a test user that is not active.
@@ -91,8 +160,10 @@ async def inactive_user(db_session: AsyncSession):
         password="InactivePassword123!",
         username=f"inactive.{uuid.uuid4()}",
     )
-    user = await AuthService(db_session).register(user_in)
+    user = await auth_service.register(user_in)
     user.email_verified = True
+    user.is_active = False
+    db_session.add(user)
     await db_session.commit()
     await db_session.refresh(user)
 
@@ -100,133 +171,119 @@ async def inactive_user(db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
-async def authenticated_client(db_session: AsyncSession, test_app, test_user: User):
-    """
-    Returns an authenticated client for a given user.
-    Provides a fully configured async client with authentication.
-    """
-    from app.utils.jwt import JWTUtils
-
-    async def _override_get_db():
-        yield db_session
-
-    test_app.dependency_overrides[get_db] = _override_get_db
-
-    access_token = JWTUtils.create_access_token(
-        str(test_user.id),
-        additional_claims={
-            "email": test_user.email,
-            "roles": ["individual_investor"],
-            "attributes": {},
-        },
-    )
-    headers = {"Authorization": f"Bearer {access_token}"}
-
-    async with AsyncClient(app=test_app, base_url="http://test", headers=headers) as ac:
-        yield ac
-
-    test_app.dependency_overrides.pop(get_db, None)
-
-
-@pytest_asyncio.fixture
-async def admin_authenticated_client(
-    db_session: AsyncSession, test_app, admin_user: User
+async def authenticated_client(
+    async_client: AsyncClient,
+    test_user: User,
+    auth_service: AuthService,
+    db_session: AsyncSession,
 ):
     """
-    Returns an authenticated client for an admin user.
-    Provides a fully configured async client with admin authentication.
+    Returns an authenticated client for a given user.
+    Commits the user to database and creates auth token.
     """
-    from app.utils.jwt import JWTUtils
+    # Commit the user to database so authentication can work
+    await db_session.commit()
+    await db_session.refresh(test_user)
 
-    async def _override_get_db():
-        yield db_session
-
-    test_app.dependency_overrides[get_db] = _override_get_db
-
-    access_token = JWTUtils.create_access_token(
-        str(admin_user.id),
-        additional_claims={
-            "email": admin_user.email,
-            "roles": ["admin"],
-            "attributes": {},
-        },
+    token_data = await auth_service.authenticate(
+        identity=test_user.email, password="Str0ngPassword!"
     )
-    headers = {"Authorization": f"Bearer {access_token}"}
-
-    async with AsyncClient(app=test_app, base_url="http://test", headers=headers) as ac:
-        yield ac
-
-    test_app.dependency_overrides.pop(get_db, None)
+    async_client.headers = {
+        "Authorization": f"Bearer {token_data.access_token}",
+    }
+    return async_client
 
 
 @pytest_asyncio.fixture
-async def create_user_and_wallet(db_session: AsyncSession):
-    """Factory fixture to create a user and a wallet."""
+def unverified_user_client(
+    client: AsyncClient, unverified_user: User, auth_service: AuthService
+) -> AsyncClient:
+    """Provides an authenticated client for an unverified user."""
+    token_data = auth_service.create_access_token(user_id=unverified_user.id)
+    client.headers = {
+        "Authorization": f"Bearer {token_data.access_token}",
+    }
+    return client
+
+
+@pytest_asyncio.fixture
+async def create_user_and_wallet(db_session: AsyncSession, auth_service):
+    """
+    Provides a factory to create a user and a wallet.
+    This allows creating multiple unique users within a single test.
+    """
 
     async def _factory():
         # Create user
-        user = User(
-            username=f"user-{uuid.uuid4()}",
-            email=f"test.user.{uuid.uuid4()}@example.com",
-            # Use the same test password across fixtures for consistency
-            # Hash it using the application's PasswordHasher so that
-            # AuthService.authenticate can successfully verify it.
-            hashed_password=security.PasswordHasher.hash_password("S3cur3!pwd"),
+        user_in = UserCreate(
+            email=f"factory.user.{uuid.uuid4()}@example.com",
+            password="FactoryPassword123!",
+            username=f"factory.user.{uuid.uuid4()}",
         )
-        db_session.add(user)
+        user = await auth_service.register(user_in)
         user.email_verified = True
+        db_session.add(user)
         await db_session.commit()
         await db_session.refresh(user)
 
         # Create wallet
         wallet = Wallet(
-            user_id=user.id, address=f"0x{uuid.uuid4().hex}"[:42], name="Test Wallet"
+            user_id=user.id,
+            address=f"0x{uuid.uuid4().hex}"[:42],
+            name="Factory Wallet",
         )
         db_session.add(wallet)
         await db_session.commit()
         await db_session.refresh(wallet)
+
         return user, wallet
 
     return _factory
 
 
 @pytest_asyncio.fixture
-async def create_multiple_users(db_session: AsyncSession):
-    """Factory fixture to create multiple users for testing."""
+async def create_multiple_users(db_session: AsyncSession, auth_service):
+    """
+    Provides a factory to create multiple users.
+    Useful for tests involving multiple user interactions.
+    """
 
     async def _factory(count: int = 3):
         users = []
-        for i in range(count):
-            user = User(
-                username=f"user-{uuid.uuid4()}",
-                email=f"test.user.{uuid.uuid4()}@example.com",
-                hashed_password=security.PasswordHasher.hash_password("S3cur3!pwd"),
+        for _ in range(count):
+            user_in = UserCreate(
+                email=f"multi.user.{uuid.uuid4()}@example.com",
+                password="MultiUserPass123!",
+                username=f"multi.user.{uuid.uuid4()}",
             )
+            user = await auth_service.register(user_in)
+            user.email_verified = True
             db_session.add(user)
-            users.append(user)
-
-        await db_session.commit()
-        for user in users:
+            await db_session.commit()
             await db_session.refresh(user)
-
+            users.append(user)
         return users
 
     return _factory
 
 
 @pytest_asyncio.fixture
-async def create_user_with_tokens(db_session: AsyncSession):
-    """Factory fixture to create a user with multiple wallets/tokens."""
+async def create_user_with_tokens(db_session: AsyncSession, auth_service):
+    """
+    Provides a factory to create a user with multiple wallets (tokens).
+    Simulates a user holding different crypto assets.
+    """
 
     async def _factory(wallet_count: int = 2):
         # Create user
-        user = User(
-            username=f"user-{uuid.uuid4()}",
-            email=f"test.user.{uuid.uuid4()}@example.com",
-            hashed_password=security.PasswordHasher.hash_password("S3cur3!pwd"),
+        user_in = UserCreate(
+            email=f"token.user.{uuid.uuid4()}@example.com",
+            password="TokenUserPass123!",
+            username=f"token.user.{uuid.uuid4()}",
         )
-        db_session.add(user)
+        user = await auth_service.register(user_in)
         user.email_verified = True
+        db_session.add(user)
         await db_session.commit()
         await db_session.refresh(user)
 
@@ -236,57 +293,104 @@ async def create_user_with_tokens(db_session: AsyncSession):
             wallet = Wallet(
                 user_id=user.id,
                 address=f"0x{uuid.uuid4().hex}"[:42],
-                name=f"Test Wallet {i+1}",
+                name=f"Token Wallet {i+1}",
             )
             db_session.add(wallet)
-            wallets.append(wallet)
-
-        await db_session.commit()
-        for wallet in wallets:
+            await db_session.commit()
             await db_session.refresh(wallet)
+            wallets.append(wallet)
 
         return user, wallets
 
     return _factory
 
 
-# Auth service specific fixtures
 @pytest_asyncio.fixture
-def mock_user_repo():
-    """Mock user repository for auth service testing."""
-    from unittest.mock import AsyncMock, Mock
-
+async def mock_user_repo(db_session: AsyncSession):
+    """Provides a mock UserRepository that interacts with the test database."""
     from app.repositories.user_repository import UserRepository
 
-    repo = Mock(spec=UserRepository)
-    repo.exists = AsyncMock()
-    repo.save = AsyncMock()
-    repo.get_by_username = AsyncMock()
-    repo.get_by_email = AsyncMock()
-    repo._session = AsyncMock()
-    return repo
+    mock_audit = Mock(spec="app.utils.logging.Audit")
+    mock_db_service = Mock(spec="app.core.database.CoreDatabase")
+
+    @asynccontextmanager
+    async def get_session():
+        yield db_session
+
+    mock_db_service.get_session = get_session
+    return UserRepository(mock_db_service, mock_audit)
 
 
 @pytest_asyncio.fixture
-def mock_refresh_token_repo():
-    """Mock refresh token repository for auth service testing."""
-    from unittest.mock import AsyncMock, Mock
-
+async def mock_refresh_token_repo(db_session: AsyncSession):
+    """
+    Provides a mock RefreshTokenRepository for the test database.
+    """
     from app.repositories.refresh_token_repository import (
         RefreshTokenRepository,
     )
 
-    repo = Mock(spec=RefreshTokenRepository)
-    repo.create_from_jti = AsyncMock()
-    return repo
+    mock_audit = Mock(spec="app.utils.logging.Audit")
+    mock_db_service = Mock(spec="app.core.database.CoreDatabase")
+
+    @asynccontextmanager
+    async def get_session():
+        yield db_session
+
+    mock_db_service.get_session = get_session
+    return RefreshTokenRepository(mock_db_service, mock_audit)
 
 
-@pytest_asyncio.fixture
-def auth_service(mock_user_repo):
-    """Auth service instance for testing."""
-    from app.services.auth_service import AuthService
+def create_test_auth_service(db_session):
+    """Return a fully wired AuthService instance for unit/integration tests.
 
-    # Create service and manually inject the mock repo
-    service = AuthService(mock_user_repo._session)
-    service._repo = mock_user_repo
-    return service
+    This helper mirrors the *auth_service* fixture but can be imported
+    directly inside tests (e.g. rate-limiter integration) without relying on
+    fixture injection.  It initialises a minimal DI container backed by the
+    provided *db_session* and returns the constructed :class:`AuthService`.
+    """
+    # Wrap *db_session* inside a stub CoreDatabase that yields it via
+    # get_session so that repositories operate on the same transactional
+    # context without creating new engine connections.
+    from contextlib import asynccontextmanager
+    from unittest.mock import Mock
+
+    from app.core.config import ConfigurationService
+    from app.core.database import CoreDatabase
+    from app.repositories.email_verification_repository import (
+        EmailVerificationRepository,
+    )
+    from app.repositories.refresh_token_repository import (
+        RefreshTokenRepository,
+    )
+    from app.repositories.user_repository import UserRepository
+    from app.services.email_service import EmailService
+    from app.utils.jwt import JWTUtils
+    from app.utils.logging import Audit
+
+    database = Mock(spec=CoreDatabase)
+
+    @asynccontextmanager
+    async def get_session():
+        yield db_session
+
+    database.get_session = get_session
+
+    audit = Audit()
+    config_service = ConfigurationService()
+    jwt_utils = JWTUtils(config_service, audit)
+
+    user_repo = UserRepository(database, audit)
+    email_verification_repo = EmailVerificationRepository(database, audit)
+    refresh_token_repo = RefreshTokenRepository(database, audit)
+    email_service = EmailService(config_service, audit)
+
+    return AuthService(
+        user_repository=user_repo,
+        email_verification_repository=email_verification_repo,
+        refresh_token_repository=refresh_token_repo,
+        email_service=email_service,
+        jwt_utils=jwt_utils,
+        config_service=config_service,
+        audit=audit,
+    )

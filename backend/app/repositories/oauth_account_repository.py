@@ -5,7 +5,7 @@ from typing import Optional
 
 from sqlalchemy.future import select
 
-from app.core.database import DatabaseService
+from app.core.database import CoreDatabase
 from app.models.oauth_account import OAuthAccount
 from app.utils.logging import Audit
 
@@ -13,8 +13,8 @@ from app.utils.logging import Audit
 class OAuthAccountRepository:
     """Repository for :class:`OAuthAccount` entities."""
 
-    def __init__(self, database_service: DatabaseService, audit: Audit):
-        self.__database_service = database_service
+    def __init__(self, database: CoreDatabase, audit: Audit):
+        self.__database = database
         self.__audit = audit
 
     async def get_by_provider_account(
@@ -28,7 +28,7 @@ class OAuthAccountRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 stmt = select(OAuthAccount).filter_by(
                     provider=provider, provider_account_id=account_id
                 )
@@ -62,7 +62,7 @@ class OAuthAccountRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 stmt = select(OAuthAccount).filter_by(
                     user_id=user_id, provider=provider
                 )
@@ -101,7 +101,7 @@ class OAuthAccountRepository:
         )
 
         try:
-            async with self.__database_service.get_session() as session:
+            async with self.__database.get_session() as session:
                 account = OAuthAccount(
                     user_id=user_id,
                     provider=provider,

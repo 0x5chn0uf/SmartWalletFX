@@ -6,7 +6,6 @@ from typing import List
 __all__: List[str] = []
 
 for _module in [
-    "admin_db",
     "auth",
     "health",
     "jwks",

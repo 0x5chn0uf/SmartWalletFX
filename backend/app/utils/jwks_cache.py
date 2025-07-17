@@ -7,8 +7,8 @@ from typing import Optional
 
 from redis.asyncio import Redis
 
-from app.core.config import settings
-from app.schemas.jwks import JWKSet
+from app.core.config import ConfigurationService
+from app.domain.schemas.jwks import JWKSet
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,8 @@ async def set_jwks_cache(redis: Redis, jwks: JWKSet) -> bool:
         # patch the mock Redis client and introspect positional args—can make
         # the correct assertion about the TTL value being the *third* positional
         # argument (index 2).
-        await redis.setex(JWKS_CACHE_KEY, settings.JWKS_CACHE_TTL_SEC, serialized)
+        config_service = ConfigurationService()
+        await redis.setex(JWKS_CACHE_KEY, config_service.JWKS_CACHE_TTL_SEC, serialized)
         return True
     except Exception as e:
         logger.warning("Failed to store JWKS in cache: %s", e)
@@ -101,13 +102,12 @@ _redis_singleton: Redis | None = None
 
 
 def _build_redis_client() -> Redis:
-    """Return an *async* Redis client using ``settings.REDIS_URL`` if defined."""
-
-    from app.core.config import settings  # local import to avoid cycles
+    """Return an *async* Redis client using ``ConfigurationService.redis_url``."""
 
     global _redis_singleton  # noqa: PLW0603 – module-level singleton
 
     if _redis_singleton is None:
-        redis_url = settings.REDIS_URL or "redis://localhost:6379/0"
+        config_service = ConfigurationService()
+        redis_url = config_service.redis_url
         _redis_singleton = Redis.from_url(redis_url)
     return _redis_singleton

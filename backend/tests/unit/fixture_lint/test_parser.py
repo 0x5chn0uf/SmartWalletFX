@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from fixture_lint.parser import parse_file
+from tools.fixture_lint.parser import parse_file
 
 
 def test_parse_file_extracts_fixtures(tmp_path: Path) -> None:
