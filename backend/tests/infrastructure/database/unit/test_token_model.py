@@ -7,7 +7,7 @@ from app.models import Token
 
 
 @pytest.mark.asyncio
-async def test_create_token(test_app):
+async def test_create_token(test_app_with_di_container):
     # Generate a unique address each time to avoid conflicts
     unique_address = f"0x{uuid.uuid4().hex[:40]}"
     token_data = {
@@ -16,10 +16,18 @@ async def test_create_token(test_app):
         "name": "Token",
         "decimals": 18,
     }
-    async with AsyncClient(app=test_app, base_url="http://test") as ac:
+
+    # Use the DI container app which has better isolation
+    async with AsyncClient(
+        app=test_app_with_di_container,
+        base_url="http://test",
+        timeout=30.0,
+        follow_redirects=True,
+    ) as ac:
         resp = await ac.post("/tokens", json=token_data)
         assert resp.status_code == 201
         token = resp.json()
+
     assert token["id"] is not None
     assert token["address"] == unique_address
     assert token["symbol"] == "TKN"
