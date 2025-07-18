@@ -41,9 +41,7 @@ class TestJWTUtils:
     def setup_method(self):
         """Clear retired keys before each test."""
         _RETIRED_KEYS.clear()
-        # Clear LRU caches
-        JWTUtils(Configuration(), Audit())._get_sign_key.cache_clear()
-        JWTUtils(Configuration(), Audit())._get_verify_key.cache_clear()
+        # LRU caches were removed from JWT methods
 
     def test_get_sign_key_hs256_with_keys(self, mock_config):
         """Test _get_sign_key with HS256 and JWT_KEYS configured."""

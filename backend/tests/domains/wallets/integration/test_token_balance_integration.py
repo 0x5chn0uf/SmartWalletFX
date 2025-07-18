@@ -20,7 +20,7 @@ async def test_create_token_balance_integration(
     """Integration test for creating token balances with authentication."""
     # Get repositories and services from DIContainer
     user_repo = test_di_container_with_db.get_repository("user")
-    auth_service = test_di_container_with_db.get_service("auth")
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
     jwt_utils = test_di_container_with_db.get_utility("jwt_utils")
 
     # Create user using DI pattern
@@ -29,7 +29,7 @@ async def test_create_token_balance_integration(
         password="Str0ngPassword!",
         username=f"test.user.{uuid.uuid4()}",
     )
-    user = await auth_service.register(user_data)
+    user = await auth_usecase.register(user_data)
     user.email_verified = True
     await user_repo.save(user)
 

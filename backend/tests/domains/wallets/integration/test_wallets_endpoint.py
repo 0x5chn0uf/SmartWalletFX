@@ -14,7 +14,7 @@ async def test_wallet_crud_authenticated(
     """Authenticated user can create, list, and delete their wallet."""
     # Get repositories and services from DIContainer
     user_repo = test_di_container_with_db.get_repository("user")
-    auth_service = test_di_container_with_db.get_service("auth")
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
     jwt_utils = test_di_container_with_db.get_utility("jwt_utils")
 
     # Create user using DI pattern
@@ -23,7 +23,7 @@ async def test_wallet_crud_authenticated(
         password="Str0ngPassword!",
         username=f"test.user.{uuid.uuid4()}",
     )
-    user = await auth_service.register(user_data)
+    user = await auth_usecase.register(user_data)
     user.email_verified = True
     await user_repo.save(user)
 
@@ -88,7 +88,7 @@ async def test_wallet_crud_flow(test_app_with_di_container, test_di_container_wi
     """Create -> list -> delete wallet flow works via API."""
     # Get repositories and services from DIContainer
     user_repo = test_di_container_with_db.get_repository("user")
-    auth_service = test_di_container_with_db.get_service("auth")
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
     jwt_utils = test_di_container_with_db.get_utility("jwt_utils")
 
     # Create user using DI pattern
@@ -97,7 +97,7 @@ async def test_wallet_crud_flow(test_app_with_di_container, test_di_container_wi
         password="Str0ngPassword!",
         username=f"test.user.{uuid.uuid4()}",
     )
-    user = await auth_service.register(user_data)
+    user = await auth_usecase.register(user_data)
     user.email_verified = True
     await user_repo.save(user)
 
@@ -151,7 +151,7 @@ async def test_wallet_duplicate_rejected(
     """Creating the same wallet twice should yield 400."""
     # Get repositories and services from DIContainer
     user_repo = test_di_container_with_db.get_repository("user")
-    auth_service = test_di_container_with_db.get_service("auth")
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
     jwt_utils = test_di_container_with_db.get_utility("jwt_utils")
 
     # Create user using DI pattern
@@ -160,7 +160,7 @@ async def test_wallet_duplicate_rejected(
         password="Str0ngPassword!",
         username=f"test.user.{uuid.uuid4()}",
     )
-    user = await auth_service.register(user_data)
+    user = await auth_usecase.register(user_data)
     user.email_verified = True
     await user_repo.save(user)
 
@@ -199,7 +199,7 @@ async def test_wallet_invalid_address_format(
     """API returns 422 for improperly formatted wallet address."""
     # Get repositories and services from DIContainer
     user_repo = test_di_container_with_db.get_repository("user")
-    auth_service = test_di_container_with_db.get_service("auth")
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
     jwt_utils = test_di_container_with_db.get_utility("jwt_utils")
 
     # Create user using DI pattern
@@ -208,7 +208,7 @@ async def test_wallet_invalid_address_format(
         password="Str0ngPassword!",
         username=f"test.user.{uuid.uuid4()}",
     )
-    user = await auth_service.register(user_data)
+    user = await auth_usecase.register(user_data)
     user.email_verified = True
     await user_repo.save(user)
 
@@ -238,7 +238,7 @@ async def test_create_wallet_authenticated(
 ):
     # Get repositories and services from DIContainer
     user_repo = test_di_container_with_db.get_repository("user")
-    auth_service = test_di_container_with_db.get_service("auth")
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
     jwt_utils = test_di_container_with_db.get_utility("jwt_utils")
 
     # Create user using DI pattern
@@ -247,7 +247,7 @@ async def test_create_wallet_authenticated(
         password="Str0ngPassword!",
         username=f"test.user.{uuid.uuid4()}",
     )
-    user = await auth_service.register(user_data)
+    user = await auth_usecase.register(user_data)
     user.email_verified = True
     await user_repo.save(user)
 

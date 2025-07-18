@@ -23,7 +23,10 @@ def mock_settings(monkeypatch):
     settings.JWT_KEYS = {"test_kid": "test_secret"}
     settings.JWT_ROTATION_GRACE_PERIOD_SECONDS = 60
 
-    monkeypatch.setattr("app.utils.jwt_keys.Configuration", lambda: settings)
+    # Mock the default instance instead of the class
+    monkeypatch.setattr(
+        "app.utils.jwt_keys._default_jwt_key_utils._JWTKeyUtils__config", settings
+    )
     yield settings
 
 

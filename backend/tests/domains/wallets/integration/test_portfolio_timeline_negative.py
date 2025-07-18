@@ -13,7 +13,7 @@ async def test_portfolio_timeline_unauthorized(
     """Accessing timeline without auth should return 401."""
     # Get repositories and services from DIContainer
     user_repo = test_di_container_with_db.get_repository("user")
-    auth_service = test_di_container_with_db.get_service("auth")
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
     jwt_utils = test_di_container_with_db.get_utility("jwt_utils")
 
     # Create user using DI pattern
@@ -22,7 +22,7 @@ async def test_portfolio_timeline_unauthorized(
         password="Str0ngPassword!",
         username=f"test.user.{uuid.uuid4()}",
     )
-    user = await auth_service.register(user_data)
+    user = await auth_usecase.register(user_data)
     user.email_verified = True
     await user_repo.save(user)
 
@@ -64,7 +64,7 @@ async def test_portfolio_timeline_wrong_user(
     """User B cannot access User A's timeline."""
     # Get repositories and services from DIContainer
     user_repo = test_di_container_with_db.get_repository("user")
-    auth_service = test_di_container_with_db.get_service("auth")
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
     jwt_utils = test_di_container_with_db.get_utility("jwt_utils")
 
     # Create User A using DI pattern
@@ -73,7 +73,7 @@ async def test_portfolio_timeline_wrong_user(
         password="Str0ngPassword!",
         username=f"test.user.a.{uuid.uuid4()}",
     )
-    user_a = await auth_service.register(user_a_data)
+    user_a = await auth_usecase.register(user_a_data)
     user_a.email_verified = True
     await user_repo.save(user_a)
 
@@ -105,7 +105,7 @@ async def test_portfolio_timeline_wrong_user(
         password="Str0ngPassword!",
         username=f"test.user.b.{uuid.uuid4()}",
     )
-    user_b = await auth_service.register(user_b_data)
+    user_b = await auth_usecase.register(user_b_data)
     user_b.email_verified = True
     await user_repo.save(user_b)
 
@@ -135,7 +135,7 @@ async def test_portfolio_timeline_wallet_not_found(
     """Requesting timeline for non-existing wallet returns 404."""
     # Get repositories and services from DIContainer
     user_repo = test_di_container_with_db.get_repository("user")
-    auth_service = test_di_container_with_db.get_service("auth")
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
     jwt_utils = test_di_container_with_db.get_utility("jwt_utils")
 
     # Create user using DI pattern
@@ -144,7 +144,7 @@ async def test_portfolio_timeline_wallet_not_found(
         password="Str0ngPassword!",
         username=f"test.user.{uuid.uuid4()}",
     )
-    user = await auth_service.register(user_data)
+    user = await auth_usecase.register(user_data)
     user.email_verified = True
     await user_repo.save(user)
 

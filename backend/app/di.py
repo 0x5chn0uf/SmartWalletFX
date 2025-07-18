@@ -33,11 +33,11 @@ from app.repositories.token_price_repository import TokenPriceRepository
 from app.repositories.token_repository import TokenRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.wallet_repository import WalletRepository
-from app.services.auth_service import AuthService
 
 # Repository imports
 from app.services.email_service import EmailService
 from app.services.oauth_service import OAuthService
+from app.usecase.auth_usecase import AuthUsecase
 
 # Usecase imports
 from app.usecase.email_verification_usecase import EmailVerificationUsecase
@@ -48,8 +48,13 @@ from app.usecase.token_balance_usecase import TokenBalanceUsecase
 from app.usecase.token_price_usecase import TokenPriceUsecase
 from app.usecase.token_usecase import TokenUsecase
 from app.usecase.wallet_usecase import WalletUsecase
+from app.utils.encryption import EncryptionUtils
+from app.utils.jwks_cache import JWKSCacheUtils
 from app.utils.jwt import JWTUtils
+from app.utils.jwt_keys import JWTKeyUtils
 from app.utils.logging import Audit
+from app.utils.rate_limiter import RateLimiterUtils
+from app.utils.security import PasswordHasher
 
 
 class DIContainer:
@@ -67,9 +72,9 @@ class DIContainer:
         self._endpoints = {}
         self._utilities = {}
         self._initialize_core()
-        self._initialize_services()
         self._initialize_utilities()
         self._initialize_repositories()
+        self._initialize_services()
         self._initialize_usecases()
         self._initialize_endpoints()
 
@@ -100,6 +105,21 @@ class DIContainer:
         """Initialize and register core services as singletons."""
         config = self.get_core("config")
         audit = self.get_core("audit")
+        user_repo = self.get_repository("user")
+        oauth_account_repo = self.get_repository("oauth_account")
+        refresh_token_repo = self.get_repository("refresh_token")
+        jwt_utils = self.get_utility("jwt_utils")
+
+        # Initialize OAuth service here since it needs jwt_utils
+        oauth_service = OAuthService(
+            user_repo,
+            oauth_account_repo,
+            refresh_token_repo,
+            jwt_utils,
+            config,
+            audit,
+        )
+        self.register_service("oauth", oauth_service)
 
         email_service = EmailService(config, audit)
         self.register_service("email", email_service)
@@ -111,6 +131,21 @@ class DIContainer:
 
         jwt_utils = JWTUtils(config, audit)
         self.register_utility("jwt_utils", jwt_utils)
+
+        encryption_utils = EncryptionUtils(config)
+        self.register_utility("encryption_utils", encryption_utils)
+
+        jwks_cache_utils = JWKSCacheUtils(config)
+        self.register_utility("jwks_cache_utils", jwks_cache_utils)
+
+        jwt_key_utils = JWTKeyUtils(config)
+        self.register_utility("jwt_key_utils", jwt_key_utils)
+
+        rate_limiter_utils = RateLimiterUtils(config)
+        self.register_utility("rate_limiter_utils", rate_limiter_utils)
+
+        password_hasher = PasswordHasher(config)
+        self.register_utility("password_hasher", password_hasher)
 
     def _initialize_repositories(self):
         """Initialize and register repository singletons."""
@@ -151,34 +186,6 @@ class DIContainer:
         token_balance_repository = TokenBalanceRepository(database, audit)
         self.register_repository("token_balance", token_balance_repository)
 
-        # AuthService depends on repositories, so initialize it here after all
-        # repos are created
-        email_service = self.get_service("email")
-        jwt_utils = self.get_utility("jwt_utils")
-        config = self.get_core("config")
-
-        auth_service = AuthService(
-            user_repository,  # Use the local variable
-            email_verification_repository,  # Use the local variable
-            refresh_token_repository,  # Use the local variable
-            email_service,
-            jwt_utils,
-            config,
-            audit,
-        )
-        self.register_service("auth", auth_service)
-
-        # OAuthService
-        oauth_service = OAuthService(
-            user_repository,  # Use the local variable
-            oauth_account_repository,  # Use the local variable
-            refresh_token_repository,  # Use the local variable
-            jwt_utils,
-            config,
-            audit,
-        )
-        self.register_service("oauth", oauth_service)
-
     def _initialize_usecases(self):
         """Initialize and register usecase singletons."""
         # Get required services
@@ -202,6 +209,17 @@ class DIContainer:
         jwt_utils = self.get_utility("jwt_utils")
 
         # Create and register usecases
+        auth_usecase = AuthUsecase(
+            user_repo,
+            email_verification_repo,
+            refresh_token_repo,
+            email_service,
+            jwt_utils,
+            config,
+            audit,
+        )
+        self.register_usecase("auth", auth_usecase)
+
         email_verification_uc = EmailVerificationUsecase(
             email_verification_repo,
             user_repo,
@@ -275,8 +293,8 @@ class DIContainer:
         # Get core components
         self.get_core("audit")
 
-        # Get services
-        auth_service = self.get_service("auth")
+        # Get usecases
+        auth_usecase = self.get_usecase("auth")
         self.get_service("oauth")
         email_service = self.get_service("email")
 
@@ -298,7 +316,7 @@ class DIContainer:
         admin_endpoint = Admin(user_repo)
         self.register_endpoint("admin", admin_endpoint)
 
-        auth_endpoint = Auth(auth_service)
+        auth_endpoint = Auth(auth_usecase)
         self.register_endpoint("auth", auth_endpoint)
 
         email_verification_endpoint = EmailVerification(email_verification_uc)

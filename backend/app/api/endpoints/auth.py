@@ -23,7 +23,7 @@ from app.domain.errors import (
 )
 from app.domain.schemas.auth_token import TokenResponse
 from app.domain.schemas.user import UserCreate, UserRead, WeakPasswordError
-from app.services.auth_service import AuthService, DuplicateError
+from app.usecase.auth_usecase import AuthUsecase, DuplicateError
 from app.utils.logging import Audit
 
 
@@ -35,11 +35,11 @@ class Auth:
     """Authentication endpoint using singleton pattern with dependency injection."""
 
     ep = APIRouter(prefix="/auth", tags=["auth"])
-    __auth_service: AuthService
+    _auth_usecase: AuthUsecase
 
-    def __init__(self, auth_service: AuthService):
+    def __init__(self, auth_usecase: AuthUsecase):
         """Initialize with injected dependencies."""
-        Auth.__auth_service = auth_service
+        Auth._auth_usecase = auth_usecase
 
     @staticmethod
     @ep.post(
@@ -64,7 +64,7 @@ class Auth:
         )
 
         try:
-            user = await Auth.__auth_service.register(
+            user = await Auth._auth_usecase.register(
                 payload, background_tasks=background_tasks
             )
 
@@ -116,7 +116,7 @@ class Auth:
     async def login_for_access_token(
         request: Request,
         response: Response,
-        form_data: OAuth2PasswordRequestForm = Depends(),
+        form_data: OAuth2PasswordRequestForm = Depends(OAuth2PasswordRequestForm),
     ) -> TokenResponse:
         """OAuth2 Password grant – return access & refresh tokens."""
         identifier = request.client.host or "unknown"
@@ -129,7 +129,7 @@ class Auth:
         )
 
         try:
-            tokens = await Auth.__auth_service.authenticate(
+            tokens = await Auth._auth_usecase.authenticate(
                 form_data.username, form_data.password
             )
             # Successful login → reset any accumulated failures for this IP
@@ -247,7 +247,7 @@ class Auth:
         Audit.info("Token refresh attempt started", client_ip=client_ip)
 
         try:
-            tokens = await Auth.__auth_service.refresh_token(refresh_token)
+            tokens = await Auth._auth_usecase.refresh(refresh_token)
 
             Audit.info("Token refresh successful", client_ip=client_ip)
 
@@ -309,6 +309,6 @@ class Auth:
                 detail="Refresh token not provided",
             )
 
-        await Auth.__auth_service.revoke_refresh_token(refresh_token)
+        await Auth._auth_usecase.revoke_refresh_token(refresh_token)
 
         Audit.info("User logout completed", client_ip=client_ip)

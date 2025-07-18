@@ -29,7 +29,7 @@ async def test_register_login_and_me(
 
     # Get repositories and services from DI container
     user_repo = test_di_container_with_db.get_repository("user")
-    test_di_container_with_db.get_service("auth")
+    test_di_container_with_db.get_usecase("auth")
 
     async with httpx.AsyncClient(
         app=test_app_with_di_container, base_url="http://test"

@@ -16,6 +16,7 @@ from app.core.config import Configuration
 
 __all__: Final[list[str]] = [
     "EncryptionError",
+    "EncryptionUtils",
     "encrypt_file",
 ]
 
@@ -27,47 +28,73 @@ class EncryptionError(RuntimeError):
 GPG_BINARY: Final[str] = "gpg"
 
 
+class EncryptionUtils:
+    """Utility class for GPG encryption operations."""
+
+    def __init__(self, config: Configuration):
+        """Initialize EncryptionUtils with dependencies."""
+        self.__config = config
+
+    def encrypt_file(
+        self,
+        file_path: Path,
+        *,
+        recipient: Optional[str] = None,
+        gpg_binary: str = GPG_BINARY,
+    ) -> Path:
+        """Encrypt *file_path* using GPG *--recipient* public-key encryption.
+
+        Returns the path to the encrypted file (original file is **not** removed).
+        """
+
+        if not file_path.exists():
+            raise FileNotFoundError(file_path)
+
+        recipient_key = recipient or self.__config.GPG_RECIPIENT_KEY_ID
+        if not recipient_key:
+            raise EncryptionError("GPG_RECIPIENT_KEY_ID not configured")
+
+        encrypted_path = file_path.with_suffix(file_path.suffix + ".gpg")
+
+        cmd = [
+            gpg_binary,
+            "--batch",
+            "--yes",
+            "--recipient",
+            recipient_key,
+            "--output",
+            str(encrypted_path),
+            "--encrypt",
+            str(file_path),
+        ]
+
+        try:
+            subprocess.run(
+                cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+        except subprocess.CalledProcessError as exc:
+            if exc.stderr is None:
+                error_msg = "GPG command failed"
+            elif isinstance(exc.stderr, bytes):
+                error_msg = exc.stderr.decode().strip()
+            else:
+                error_msg = str(exc.stderr).strip()
+            raise EncryptionError(error_msg) from exc
+
+        return encrypted_path
+
+
+# Default instance for backward compatibility
+_default_encryption_utils = EncryptionUtils(Configuration())
+
+
 def encrypt_file(
     file_path: Path,
     *,
     recipient: Optional[str] = None,
     gpg_binary: str = GPG_BINARY,
 ) -> Path:
-    """Encrypt *file_path* using GPG *--recipient* public-key encryption.
-
-    Returns the path to the encrypted file (original file is **not** removed).
-    """
-
-    if not file_path.exists():
-        raise FileNotFoundError(file_path)
-
-    recipient_key = recipient or Configuration().GPG_RECIPIENT_KEY_ID
-    if not recipient_key:
-        raise EncryptionError("GPG_RECIPIENT_KEY_ID not configured")
-
-    encrypted_path = file_path.with_suffix(file_path.suffix + ".gpg")
-
-    cmd = [
-        gpg_binary,
-        "--batch",
-        "--yes",
-        "--recipient",
-        recipient_key,
-        "--output",
-        str(encrypted_path),
-        "--encrypt",
-        str(file_path),
-    ]
-
-    try:
-        subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    except subprocess.CalledProcessError as exc:
-        if exc.stderr is None:
-            error_msg = "GPG command failed"
-        elif isinstance(exc.stderr, bytes):
-            error_msg = exc.stderr.decode().strip()
-        else:
-            error_msg = str(exc.stderr).strip()
-        raise EncryptionError(error_msg) from exc
-
-    return encrypted_path
+    """Legacy function for backward compatibility."""
+    return _default_encryption_utils.encrypt_file(
+        file_path, recipient=recipient, gpg_binary=gpg_binary
+    )

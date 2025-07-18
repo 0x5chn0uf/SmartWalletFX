@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from functools import lru_cache
 from typing import Any, Dict
 
 from jose import ExpiredSignatureError, JWTError, jwt
@@ -81,10 +80,14 @@ class JWTUtils:
         """Initialize JWTUtils with dependencies."""
         self.__config = config
         self.__audit = audit
+        self.__sign_key_cache = None
+        self.__verify_key_cache = None
 
-    @lru_cache(maxsize=1)
     def _get_sign_key(self) -> str | bytes:  # pragma: no cover
         """Return the key used to sign tokens based on algorithm."""
+        if self.__sign_key_cache is not None:
+            return self.__sign_key_cache
+
         alg = self.__config.JWT_ALGORITHM
         if alg.startswith("HS"):
             # Prefer key-map entry if configured (rotation support)
@@ -93,23 +96,31 @@ class JWTUtils:
                     raise RuntimeError(
                         "ACTIVE_JWT_KID not found in JWT_KEYS – misconfiguration"
                     )
-                return _to_text(self.__config.JWT_KEYS[self.__config.ACTIVE_JWT_KID])
+                key = _to_text(self.__config.JWT_KEYS[self.__config.ACTIVE_JWT_KID])
+                self.__sign_key_cache = key
+                return key
 
             if not self.__config.JWT_SECRET_KEY:
                 raise RuntimeError("JWT_SECRET_KEY must be set for HS* algorithms")
-            return _to_text(self.__config.JWT_SECRET_KEY)
+            key = _to_text(self.__config.JWT_SECRET_KEY)
+            self.__sign_key_cache = key
+            return key
 
         if alg.startswith("RS"):
             if not self.__config.JWT_PRIVATE_KEY_PATH:
                 raise RuntimeError(
                     "JWT_PRIVATE_KEY_PATH must be set for RS* algorithms"
                 )
-            return self._load_key(self.__config.JWT_PRIVATE_KEY_PATH)
+            key = self._load_key(self.__config.JWT_PRIVATE_KEY_PATH)
+            self.__sign_key_cache = key
+            return key
         raise RuntimeError(f"Unsupported JWT_ALGORITHM: {alg}")
 
-    @lru_cache(maxsize=1)
     def _get_verify_key(self) -> str | bytes:  # pragma: no cover
         """Return the key used to verify tokens based on algorithm."""
+        if self.__verify_key_cache is not None:
+            return self.__verify_key_cache
+
         alg = self.__config.JWT_ALGORITHM
         if alg.startswith("HS"):
             # Symmetric key – attempt lookup by kid
@@ -118,13 +129,19 @@ class JWTUtils:
                     self.__config.ACTIVE_JWT_KID,
                     next(iter(self.__config.JWT_KEYS.values())),
                 )
-                return _to_text(verify_key)
+                key = _to_text(verify_key)
+                self.__verify_key_cache = key
+                return key
             # Fall back: reuse signing key
-            return _to_text(self._get_sign_key())
+            key = _to_text(self._get_sign_key())
+            self.__verify_key_cache = key
+            return key
         if alg.startswith("RS"):
             if not self.__config.JWT_PUBLIC_KEY_PATH:
                 raise RuntimeError("JWT_PUBLIC_KEY_PATH must be set for RS* algorithms")
-            return self._load_key(self.__config.JWT_PUBLIC_KEY_PATH)
+            key = self._load_key(self.__config.JWT_PUBLIC_KEY_PATH)
+            self.__verify_key_cache = key
+            return key
         raise RuntimeError(f"Unsupported JWT_ALGORITHM: {alg}")
 
     def _load_key(self, path: str) -> str:
@@ -138,12 +155,7 @@ class JWTUtils:
         expires_delta: timedelta | None = None,
         additional_claims: Dict[str, Any] | None = None,
     ) -> str:
-        # Ensure we always use the latest runtime configuration (tests often
-        # patch `settings.JWT_SECRET_KEY`/`JWT_ALGORITHM`).
-        # Clearing the cache on every call is inexpensive and
-        # prevents stale keys from being reused across test cases.
-        self._get_sign_key.cache_clear()
-        self._get_verify_key.cache_clear()
+        # Use the latest runtime configuration (tests often patch JWT config).
 
         if expires_delta is None:
             expires_delta = timedelta(minutes=self.__config.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -184,12 +196,7 @@ class JWTUtils:
 
     def create_refresh_token(self, subject: str | int) -> str:
         """Create a refresh JWT using the default *REFRESH_TOKEN_EXPIRE_DAYS*."""
-        # Ensure we always use the latest runtime configuration (tests often
-        # patch `settings.JWT_SECRET_KEY`/`JWT_ALGORITHM`).  Clearing the cache
-        # on every call is inexpensive and prevents stale keys from being
-        # reused across test cases.
-        self._get_sign_key.cache_clear()
-        self._get_verify_key.cache_clear()
+        # Use the latest runtime configuration (tests often patch JWT config).
 
         expires_delta = timedelta(days=self.__config.REFRESH_TOKEN_EXPIRE_DAYS)
         now = datetime.now(timezone.utc)
@@ -210,12 +217,7 @@ class JWTUtils:
         return token
 
     def decode_token(self, token: str) -> Dict[str, Any]:
-        # Ensure we always use the latest runtime configuration (tests often
-        # patch `settings.JWT_SECRET_KEY`/`JWT_ALGORITHM`).  Clearing the cache
-        # on every call is inexpensive and prevents stale keys from being
-        # reused across test cases.
-        self._get_sign_key.cache_clear()
-        self._get_verify_key.cache_clear()
+        # Use the latest runtime configuration (tests often patch JWT config).
         """Decode a JWT and validate its integrity.
 
         In a few situations (e.g. when an incorrect *options* dict is

@@ -106,23 +106,6 @@ def mock_celery():
 
 
 @pytest.fixture
-def mock_jwt_utils():
-    """
-    Mock JWT utilities for authentication testing.
-    Provides a mock JWT utilities module for testing authentication flows.
-    """
-    mock_jwt = Mock()
-    mock_jwt.create_access_token = Mock(return_value="mock.jwt.token")
-    mock_jwt.decode_token = Mock(
-        return_value={"sub": "test-user-id", "email": "test@example.com"}
-    )
-    mock_jwt.get_verify_key = Mock(return_value="mock-verify-key")
-
-    with patch("app.utils.jwt.JWTUtils", mock_jwt):
-        yield mock_jwt
-
-
-@pytest.fixture
 def mock_password_hasher():
     """
     Mock password hasher for authentication testing.
@@ -142,7 +125,6 @@ def mock_all_external_services(
     mock_web3,
     mock_httpx_client,
     mock_celery,
-    mock_jwt_utils,
     mock_password_hasher,
 ):
     """
@@ -154,6 +136,5 @@ def mock_all_external_services(
         "web3": mock_web3,
         "httpx": mock_httpx_client,
         "celery": mock_celery,
-        "jwt": mock_jwt_utils,
         "password_hasher": mock_password_hasher,
     }

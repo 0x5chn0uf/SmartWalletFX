@@ -19,8 +19,7 @@ async def _cleanup_auth_state():
     login_rate_limiter.clear()
 
     # Clear cached JWT keys so downstream tests can reconfigure safely
-    JWTUtils(None, None)._get_sign_key.cache_clear()  # type: ignore[attr-defined]
-    JWTUtils(None, None)._get_verify_key.cache_clear()  # type: ignore[attr-defined]
+    # Note: JWTUtils methods are no longer cached, so no cache clearing needed
 
     yield
 
@@ -93,14 +92,14 @@ async def test_obtain_token_success(
 ) -> None:
     # Get repositories and services from DIContainer
     user_repo = test_di_container_with_db.get_repository("user")
-    auth_service = test_di_container_with_db.get_service("auth")
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
 
     username = f"tokenuser-{uuid.uuid4().hex[:8]}"
     password = "Str0ng!pwd"
     email = f"token-{uuid.uuid4().hex[:8]}@ex.com"
 
     # Arrange – create user via service
-    user = await auth_service.register(
+    user = await auth_usecase.register(
         UserCreate(
             username=username,
             email=email,
@@ -124,7 +123,7 @@ async def test_obtain_token_success(
 
 @pytest.mark.asyncio
 async def test_login_rate_limit(
-    integration_async_client: AsyncClient, auth_service, mocker
+    integration_async_client: AsyncClient, auth_usecase, mocker
 ) -> None:
     # This test is more complex due to the global rate limiter.
     # We will skip refactoring it for now as it requires more changes
@@ -139,13 +138,13 @@ async def test_users_me_endpoint(
     """/users/me should require auth and return current profile when token provided."""
     # Get repositories and services from DIContainer
     user_repo = test_di_container_with_db.get_repository("user")
-    auth_service = test_di_container_with_db.get_service("auth")
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
 
     username = f"meuser-{uuid.uuid4().hex[:8]}"
     email = f"me-{uuid.uuid4().hex[:8]}@ex.com"
 
     # Register user & obtain token
-    user = await auth_service.register(
+    user = await auth_usecase.register(
         UserCreate(username=username, email=email, password="Str0ng!pwd")
     )
     # Mark email verified for test login
@@ -195,11 +194,11 @@ async def test_token_inactive_user(
 
     # Get repositories and services from DI container
     user_repo = test_di_container_with_db.get_repository("user")
-    auth_service = test_di_container_with_db.get_service("auth")
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
 
     # Create an inactive user
     user_data = UserCreate(username=username, email=email, password=password)
-    user = await auth_service.register(user_data)
+    user = await auth_usecase.register(user_data)
 
     # Make the user inactive using repository
     user.is_active = False
@@ -225,11 +224,11 @@ async def test_token_unverified_email(
 
     # Get repositories and services from DI container
     user_repo = test_di_container_with_db.get_repository("user")
-    auth_service = test_di_container_with_db.get_service("auth")
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
 
     # Create a user with unverified email
     user_data = UserCreate(username=username, email=email, password=password)
-    user = await auth_service.register(user_data)
+    user = await auth_usecase.register(user_data)
 
     # Make sure email is not verified (this should be the default)
     user.email_verified = False
@@ -259,7 +258,7 @@ async def test_register_weak_password_error(
     async def _raise_weak(self, payload, **kwargs):  # noqa: D401 – stub
         raise WeakPasswordError("Password is too weak")
 
-    monkeypatch.setattr("app.services.auth_service.AuthService.register", _raise_weak)
+    monkeypatch.setattr("app.usecase.auth_usecase.AuthUsecase.register", _raise_weak)
 
     payload = {
         "username": f"user_{uuid.uuid4().hex[:8]}",

@@ -19,7 +19,7 @@ async def test_get_portfolio_snapshots_returns_200(
     # Get repositories and services from DIContainer
     user_repo = test_di_container_with_db.get_repository("user")
     wallet_repo = test_di_container_with_db.get_repository("wallet")
-    auth_service = test_di_container_with_db.get_service("auth")
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
     jwt_utils = test_di_container_with_db.get_utility("jwt_utils")
 
     # Create user using DI pattern
@@ -28,7 +28,7 @@ async def test_get_portfolio_snapshots_returns_200(
         password="Str0ngPassword!",
         username=f"test.user.{uuid.uuid4()}",
     )
-    user = await auth_service.register(user_data)
+    user = await auth_usecase.register(user_data)
     user.email_verified = True
     await user_repo.save(user)
 
@@ -66,7 +66,7 @@ async def test_get_portfolio_snapshots_for_nonexistent_wallet_returns_404(
     """Test 404 response for non-existent wallet."""
     # Get repositories and services from DIContainer
     user_repo = test_di_container_with_db.get_repository("user")
-    auth_service = test_di_container_with_db.get_service("auth")
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
     jwt_utils = test_di_container_with_db.get_utility("jwt_utils")
 
     # Create user using DI pattern
@@ -75,7 +75,7 @@ async def test_get_portfolio_snapshots_for_nonexistent_wallet_returns_404(
         password="Str0ngPassword!",
         username=f"test.user.{uuid.uuid4()}",
     )
-    user = await auth_service.register(user_data)
+    user = await auth_usecase.register(user_data)
     user.email_verified = True
     await user_repo.save(user)
 

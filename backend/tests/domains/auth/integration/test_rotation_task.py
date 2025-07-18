@@ -5,10 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 from freezegun import freeze_time
 
-from app.tasks.jwt_rotation import (
-    _config_service,
-    promote_and_retire_keys_task,
-)
+from app.tasks.jwt_rotation import _config, promote_and_retire_keys_task
 from app.utils import jwt as jwt_utils
 
 # ---------------------------------------------------------------------------
@@ -20,11 +17,11 @@ from app.utils import jwt as jwt_utils
 def _isolate_settings(monkeypatch):
     """Snapshot & restore mutable settings between tests."""
 
-    orig_keys = _config_service.JWT_KEYS.copy()
-    orig_active = _config_service.ACTIVE_JWT_KID
+    orig_keys = _config.JWT_KEYS.copy()
+    orig_active = _config.ACTIVE_JWT_KID
     yield
-    _config_service.JWT_KEYS = orig_keys
-    _config_service.ACTIVE_JWT_KID = orig_active
+    _config.JWT_KEYS = orig_keys
+    _config.ACTIVE_JWT_KID = orig_active
     jwt_utils._RETIRED_KEYS.clear()  # pylint: disable=protected-access
 
 
@@ -59,14 +56,14 @@ def test_noop_run():
     """Task should exit early when no keys require action."""
 
     # Arrange – single active key, no retirements
-    _config_service.JWT_KEYS = {"A": "secret-a"}
-    _config_service.ACTIVE_JWT_KID = "A"
+    _config.JWT_KEYS = {"A": "secret-a"}
+    _config.ACTIVE_JWT_KID = "A"
 
     # Act – run task synchronously (eager mode)
     promote_and_retire_keys_task()
 
     # Assert – state unchanged, no retired keys
-    assert _config_service.ACTIVE_JWT_KID == "A"
+    assert _config.ACTIVE_JWT_KID == "A"
     assert jwt_utils._RETIRED_KEYS == {}
 
 
@@ -77,8 +74,8 @@ def test_retirement_only(monkeypatch):
     now = datetime.now(timezone.utc)
 
     # Arrange – single active key already expired
-    _config_service.JWT_KEYS = {"A": "secret-a"}
-    _config_service.ACTIVE_JWT_KID = "A"
+    _config.JWT_KEYS = {"A": "secret-a"}
+    _config.ACTIVE_JWT_KID = "A"
     # Simulate that grace-period for A expired 1 second ago
     jwt_utils._RETIRED_KEYS["A"] = now - timedelta(
         seconds=1
@@ -99,8 +96,8 @@ def test_promotion_and_retirement(monkeypatch):
     now = datetime.now(timezone.utc)
 
     # Arrange – active key A expired, next key B is valid
-    _config_service.JWT_KEYS = {"A": "secret-a", "B": "secret-b"}
-    _config_service.ACTIVE_JWT_KID = "A"
+    _config.JWT_KEYS = {"A": "secret-a", "B": "secret-b"}
+    _config.ACTIVE_JWT_KID = "A"
     jwt_utils._RETIRED_KEYS["A"] = now - timedelta(
         seconds=1
     )  # pylint: disable=protected-access
@@ -109,7 +106,7 @@ def test_promotion_and_retirement(monkeypatch):
     promote_and_retire_keys_task()
 
     # Assert – B promoted, A retired (timestamp ~ now)
-    assert _config_service.ACTIVE_JWT_KID == "B"
+    assert _config.ACTIVE_JWT_KID == "B"
     retired_at = jwt_utils._RETIRED_KEYS.get("A")  # pylint: disable=protected-access
     assert retired_at is not None and abs((retired_at - now).total_seconds()) < 1.0
 
@@ -119,8 +116,8 @@ def test_lock_contention(monkeypatch):
     """Task should exit quickly when distributed lock is not acquired."""
 
     # Arrange – active key A, next key B
-    _config_service.JWT_KEYS = {"A": "secret-a", "B": "secret-b"}
-    _config_service.ACTIVE_JWT_KID = "A"
+    _config.JWT_KEYS = {"A": "secret-a", "B": "secret-b"}
+    _config.ACTIVE_JWT_KID = "A"
 
     # Override *acquire_lock* to simulate contention (returns False)
     @asynccontextmanager
@@ -138,4 +135,4 @@ def test_lock_contention(monkeypatch):
 
     # Assert – helper never executed, active kid unchanged
     helper_spy.assert_not_called()
-    assert _config_service.ACTIVE_JWT_KID == "A"
+    assert _config.ACTIVE_JWT_KID == "A"

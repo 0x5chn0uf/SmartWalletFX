@@ -16,11 +16,11 @@ async def _register_and_login_with_di(
     password: str,
 ):
     """Register and login using DI container services."""
-    # Get auth service from DI container
-    auth_service = test_di_container_with_db.get_service("auth")
+    # Get auth usecase from DI container
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
 
     # Register user
-    await auth_service.register(
+    await auth_usecase.register(
         UserCreate(username=username, email=email, password=password)
     )
 

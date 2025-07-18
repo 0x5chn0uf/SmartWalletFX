@@ -20,14 +20,14 @@ async def test_obtain_token_success(
 
     # Get repositories and services from DI container
     user_repo = test_di_container_with_db.get_repository("user")
-    auth_service = test_di_container_with_db.get_service("auth")
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
 
     async with httpx.AsyncClient(
         app=test_app_with_di_container, base_url="http://test"
     ) as client:
-        # Register user using auth service
+        # Register user using auth usecase
         user_data = UserCreate(username=username, email=email, password=password)
-        user = await auth_service.register(user_data)
+        user = await auth_usecase.register(user_data)
 
         # Verify email using repository
         user.email_verified = True
@@ -57,14 +57,14 @@ async def test_obtain_token_bad_credentials(
 
     # Get repositories and services from DI container
     user_repo = test_di_container_with_db.get_repository("user")
-    auth_service = test_di_container_with_db.get_service("auth")
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
 
     async with httpx.AsyncClient(
         app=test_app_with_di_container, base_url="http://test"
     ) as client:
-        # Register user using auth service
+        # Register user using auth usecase
         user_data = UserCreate(username=username, email=email, password=password)
-        user = await auth_service.register(user_data)
+        user = await auth_usecase.register(user_data)
 
         # Mark the user's email as verified using repository
         user.email_verified = True

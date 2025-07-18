@@ -38,9 +38,7 @@ class Users:
                 detail="User not found",
             )
 
-        if hasattr(current_user, "is_active") and not getattr(
-            current_user, "is_active"
-        ):
+        if hasattr(current_user, "is_active") and not current_user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Inactive or disabled user account",

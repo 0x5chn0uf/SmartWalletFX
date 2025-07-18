@@ -16,6 +16,22 @@ from app.core.security.roles import Permission, UserRole
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
 
+# Module-level dependency instances to satisfy B008
+_admin_roles_dependency = Depends(lambda: require_roles(["admin", "fund_manager"]))
+_high_value_dependency = Depends(
+    lambda: require_attributes(
+        {
+            "portfolio_value": {"op": "gte", "value": 1000000},
+            "kyc_level": "verified",
+        }
+    )
+)
+_regional_dependency = Depends(
+    lambda: require_attributes({"geography": {"op": "in", "value": ["US", "CA", "EU"]}})
+)
+_admin_system_dependency = Depends(lambda: require_permission("admin:system"))
+_admin_users_dependency = Depends(lambda: require_permission("admin:users"))
+
 
 class Admin:
     """Admin endpoint using singleton pattern with dependency injection."""
@@ -28,7 +44,7 @@ class Admin:
         Admin.__user_repo = user_repository
 
     @staticmethod
-    @ep.get("/users", dependencies=[Depends(require_permission("admin:users"))])
+    @ep.get("/users", dependencies=[Depends(lambda: require_permission("admin:users"))])
     async def list_users():
         """List all users.
         Requires: admin:users permission (only ADMIN role has this)"""
@@ -43,7 +59,7 @@ class Admin:
     @staticmethod
     @ep.get("/analytics")
     async def get_analytics(
-        current_user: User = Depends(require_roles(["admin", "fund_manager"]))
+        current_user: User = Depends(lambda: require_roles(["admin", "fund_manager"]))
     ):
         """Get analytics data. Requires: ADMIN or FUND_MANAGER role (OR logic)"""
         return {
@@ -59,7 +75,7 @@ class Admin:
     @ep.get("/high-value-operations")
     async def high_value_operations(
         current_user: User = Depends(
-            require_attributes(
+            lambda: require_attributes(
                 {
                     "portfolio_value": {"op": "gte", "value": 1000000},
                     "kyc_level": "verified",
@@ -84,7 +100,9 @@ class Admin:
     @ep.get("/regional-features")
     async def regional_features(
         current_user: User = Depends(
-            require_attributes({"geography": {"op": "in", "value": ["US", "CA", "EU"]}})
+            lambda: require_attributes(
+                {"geography": {"op": "in", "value": ["US", "CA", "EU"]}}
+            )
         )
     ):
         """Access regional features. Requires: geography in ["US", "CA", "EU"]"""
@@ -105,7 +123,7 @@ class Admin:
 
     @ep.get("/system-health")
     async def get_system_health(
-        current_user: User = Depends(require_permission("admin:system")),
+        current_user: User = Depends(lambda: require_permission("admin:system")),
     ):
         """Get system health information.
 
@@ -122,11 +140,13 @@ class Admin:
         }
 
     @staticmethod
-    @ep.post("/user-role", dependencies=[Depends(require_permission("admin:users"))])
+    @ep.post(
+        "/user-role", dependencies=[Depends(lambda: require_permission("admin:users"))]
+    )
     async def assign_user_role(
         user_id: str,
         role: str,
-        current_user: User = Depends(require_permission("admin:users")),
+        current_user: User = Depends(lambda: require_permission("admin:users")),
     ):
         """Assign a role to a user.
 

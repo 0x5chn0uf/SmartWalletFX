@@ -77,8 +77,11 @@ class TestEncryptFile:
         mock_run.return_value = Mock(returncode=0)
         mock_settings.GPG_RECIPIENT_KEY_ID = "default_key"
 
-        # Mock the Configuration to return the test value
-        monkeypatch.setattr("app.utils.encryption.Configuration", lambda: mock_settings)
+        # Mock the _default_encryption_utils config directly
+        monkeypatch.setattr(
+            "app.utils.encryption._default_encryption_utils._EncryptionUtils__config",
+            mock_settings,
+        )
 
         with patch.object(Path, "exists", return_value=True):
             result = encrypt_file(self.test_file_path)

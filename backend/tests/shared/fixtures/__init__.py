@@ -37,7 +37,8 @@ Usage:
 
 # Import all fixtures to make them available
 from .auth import (
-    auth_service,
+    admin_user,
+    auth_usecase,
     authenticated_client,
     create_multiple_users,
     create_user_and_wallet,
@@ -54,10 +55,10 @@ from .base import async_engine, test_app
 from .client import async_client, async_client_with_db, client, client_with_db
 from .core import (
     mock_audit,
-    mock_celery,
     mock_config,
     mock_database,
     mock_email_service,
+    mock_jwt_utils,
 )
 from .database import db_session
 from .di_container import (
@@ -133,6 +134,7 @@ __all__ = [
     # Authentication fixtures
     "test_user",
     "test_user_with_wallet",
+    "admin_user",
     "inactive_user",
     "authenticated_client",
     "create_user_and_wallet",
@@ -142,7 +144,7 @@ __all__ = [
     "get_auth_headers_for_role_factory",
     "mock_user_repo",
     "mock_refresh_token_repo",
-    "auth_service",
+    "auth_usecase",
     # Client fixtures
     "client",
     "async_client",
@@ -157,13 +159,7 @@ __all__ = [
     "mock_password_hasher",
     "mock_all_external_services",
     # Sample data fixtures
-    "sample_user",
-    "sample_wallet",
-    "sample_portfolio_snapshot",
-    "sample_historical_balance",
-    "sample_wallet_data",
-    "sample_historical_data",
-    "sample_portfolio_data",
+    "sample_jwks",
     # Service fixtures
     "mock_contract",
     "oauth_service_with_di",
@@ -172,8 +168,7 @@ __all__ = [
     "mock_database",
     "mock_audit",
     "mock_email_service",
-    "mock_celery",
-    "mock_database",
+    "mock_jwt_utils",
     # Repository fixtures
     "mock_user_repository",
     "mock_wallet_repository",

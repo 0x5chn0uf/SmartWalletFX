@@ -41,6 +41,6 @@ def validate_audit_event(event: dict[str, Any]) -> None:
         AuditEventBase.model_validate(event)
     except Exception as exc:  # pragma: no cover – broad catch for pydantic errors
         if _VALIDATION_MODE == "warn":
-            warnings.warn(f"Invalid audit event payload: {exc}")
+            warnings.warn(f"Invalid audit event payload: {exc}", stacklevel=2)
         else:  # hard (default)
             raise AuditValidationError(str(exc)) from exc

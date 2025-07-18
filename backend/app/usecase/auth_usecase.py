@@ -40,7 +40,7 @@ class DuplicateError(Exception):
         self.field = field
 
 
-class AuthService:
+class AuthUsecase:
     """Core authentication service (register, authenticate, tokens…)."""
 
     def __init__(
@@ -163,10 +163,10 @@ class AuthService:
 
             @lru_cache(maxsize=1)
             def _dummy_hash() -> str:  # pragma: no cover – trivial helper
-                return security.PasswordHasher.hash_password("dummypassword123!@#")
+                return security.get_password_hash("dummypassword123!@#")
 
             # Constant-time verification against dummy hash to equalise timing
-            security.PasswordHasher.verify_password(password, _dummy_hash())
+            security.verify_password(password, _dummy_hash())
             self.__audit.error(
                 "AUTH_FAILURE", reason="invalid_credentials", identity=identity_lc
             )
@@ -178,7 +178,7 @@ class AuthService:
             )
             raise InactiveUserError()
 
-        if not security.PasswordHasher.verify_password(password, user.hashed_password):
+        if not security.verify_password(password, user.hashed_password):
             self.__audit.error(
                 "AUTH_FAILURE", reason="invalid_credentials", user_id=str(user.id)
             )

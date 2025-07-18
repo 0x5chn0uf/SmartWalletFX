@@ -14,12 +14,12 @@ from app.domain.schemas.user import UserCreate
 )
 @pytest.mark.asyncio
 async def test_password_reset_flow(
-    integration_async_client: AsyncClient, db_session, monkeypatch, auth_service
+    integration_async_client: AsyncClient, db_session, monkeypatch, auth_usecase
 ) -> None:
     # Register user
     unique_id = uuid.uuid4().hex[:8]
     email = f"reset_{unique_id}@example.com"
-    user = await auth_service.register(
+    user = await auth_usecase.register(
         UserCreate(
             username=f"resetuser_{unique_id}",
             email=email,
@@ -107,7 +107,7 @@ async def test_password_reset_rate_limit(
     integration_async_client: AsyncClient,
     db_session,
     monkeypatch,
-    auth_service,
+    auth_usecase,
 ) -> None:
     """Hitting the forgot-password endpoint more than the allowed attempts should 429."""
     pytest.skip("Skipping rate limit test during DI refactoring.")
@@ -145,7 +145,7 @@ async def test_reset_password_invalid_token(
 async def test_reset_password_token_reuse(
     integration_async_client: AsyncClient,
     db_session,
-    auth_service,
+    auth_usecase,
 ) -> None:
     """Tokens are single-use – a second attempt should fail with 400."""
 
@@ -155,7 +155,7 @@ async def test_reset_password_token_reuse(
 
     # Arrange – create user & token manually
     unique_id = uuid.uuid4().hex[:8]
-    user = await auth_service.register(
+    user = await auth_usecase.register(
         UserCreate(
             username=f"reuse_{unique_id}",
             email=f"reuse_{unique_id}@example.com",

@@ -8,6 +8,9 @@ from app.usecase.oauth_usecase import OAuthUsecase
 from app.utils.logging import Audit
 from app.utils.oauth_state_cache import verify_state
 
+# Module-level dependency instances to satisfy B008
+_redis_dependency = Depends(get_redis)
+
 
 class OAuth:
     """OAuth endpoint using singleton pattern with dependency injection."""
@@ -23,7 +26,7 @@ class OAuth:
     @ep.get("/{provider}/login")
     async def oauth_login(
         provider: str,
-        redis=Depends(get_redis),
+        redis=_redis_dependency,
     ) -> RedirectResponse:
         """Generate OAuth login redirect."""
         return await OAuth.__oauth_uc.generate_login_redirect(provider, redis)
@@ -35,7 +38,7 @@ class OAuth:
         provider: str,
         code: str,
         state: str,
-        redis=Depends(get_redis),
+        redis=_redis_dependency,
     ) -> Response:
         """Handle OAuth callback."""
         Audit.info("oauth_callback_start", provider=provider)

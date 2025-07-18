@@ -48,16 +48,31 @@ class InMemoryRateLimiter:
             self._hits[key].clear()
 
 
+class RateLimiterUtils:
+    """Utility class for rate limiting operations."""
+
+    def __init__(self, config: Configuration):
+        """Initialize RateLimiterUtils with dependencies."""
+        self.__config = config
+        self.__login_rate_limiter = InMemoryRateLimiter(
+            max_attempts=config.AUTH_RATE_LIMIT_ATTEMPTS,
+            window_seconds=config.AUTH_RATE_LIMIT_WINDOW_SECONDS,
+        )
+
+    @property
+    def login_rate_limiter(self) -> InMemoryRateLimiter:
+        """Get the login rate limiter instance."""
+        return self.__login_rate_limiter
+
+
 # ----------------------------------------------------------------------
-# Singleton instance configured from settings
+# Default instance for backward compatibility
 # ----------------------------------------------------------------------
-config = Configuration()
-login_rate_limiter = InMemoryRateLimiter(
-    max_attempts=config.AUTH_RATE_LIMIT_ATTEMPTS,
-    window_seconds=config.AUTH_RATE_LIMIT_WINDOW_SECONDS,
-)
+_default_rate_limiter_utils = RateLimiterUtils(Configuration())
+login_rate_limiter = _default_rate_limiter_utils.login_rate_limiter
 
 __all__ = [
     "InMemoryRateLimiter",
+    "RateLimiterUtils",
     "login_rate_limiter",
 ]

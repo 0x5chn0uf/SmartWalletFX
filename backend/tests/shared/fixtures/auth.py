@@ -12,14 +12,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.domain.schemas.user import UserCreate
 from app.models import Wallet
 from app.models.user import User
-from app.services.auth_service import AuthService
 from app.services.email_service import EmailService
 from app.services.oauth_service import OAuthService
+from app.usecase.auth_usecase import AuthUsecase
 
 
 @pytest_asyncio.fixture
-def auth_service(test_di_container_with_db):
-    """Provides a fully configured AuthService instance."""
+def auth_usecase(test_di_container_with_db):
+    """Provides a fully configured AuthUsecase instance."""
     from app.main import ApplicationFactory
 
     # Ensure all dependencies are wired up by creating the app
@@ -27,7 +27,7 @@ def auth_service(test_di_container_with_db):
     app_factory = ApplicationFactory(test_di_container_with_db)
     app_factory.create_app()
 
-    return test_di_container_with_db.get_service("auth")
+    return test_di_container_with_db.get_usecase("auth")
 
 
 @pytest_asyncio.fixture
@@ -55,7 +55,7 @@ async def get_auth_headers_for_user_factory(test_di_container_with_db):
 
 @pytest_asyncio.fixture
 async def get_auth_headers_for_role_factory(
-    db_session: AsyncSession, get_auth_headers_for_user_factory, auth_service
+    db_session: AsyncSession, get_auth_headers_for_user_factory, auth_usecase
 ):
     """Factory fixture to create a user with a role and get auth headers."""
 
@@ -68,7 +68,7 @@ async def get_auth_headers_for_role_factory(
             username=f"test.{role[:8]}.{str(uuid.uuid4())[:8]}",
         )
 
-        user = await auth_service.register(user_in)
+        user = await auth_usecase.register(user_in)
         user.email_verified = True
         user.roles = [role]
         db_session.add(user)
@@ -81,7 +81,7 @@ async def get_auth_headers_for_role_factory(
 
 
 @pytest_asyncio.fixture
-async def test_user(db_session: AsyncSession, auth_service: AuthService):
+async def test_user(db_session: AsyncSession, auth_usecase: AuthUsecase):
     """
     Creates a new user in the database for testing.
     Returns the user without committing the session.
@@ -91,7 +91,7 @@ async def test_user(db_session: AsyncSession, auth_service: AuthService):
         password="Str0ngPassword!",
         username=f"test.user.{uuid.uuid4()}",
     )
-    user = await auth_service.register(user_in)
+    user = await auth_usecase.register(user_in)
     # Mark as email verified for tests that require authentication
     user.email_verified = True
     db_session.add(user)
@@ -100,7 +100,7 @@ async def test_user(db_session: AsyncSession, auth_service: AuthService):
 
 
 @pytest_asyncio.fixture
-async def test_user_with_wallet(db_session: AsyncSession, auth_service):
+async def test_user_with_wallet(db_session: AsyncSession, auth_usecase):
     """
     Creates a new user with a wallet in the database for testing.
     Provides a test user with an associated wallet.
@@ -111,7 +111,7 @@ async def test_user_with_wallet(db_session: AsyncSession, auth_service):
         password="Str0ngPassword!",
         username=f"test.user.{uuid.uuid4()}",
     )
-    user = await auth_service.register(user_in)
+    user = await auth_usecase.register(user_in)
     user.email_verified = True
     db_session.add(user)
     await db_session.commit()
@@ -129,7 +129,7 @@ async def test_user_with_wallet(db_session: AsyncSession, auth_service):
 
 
 @pytest_asyncio.fixture
-async def admin_user(db_session: AsyncSession, auth_service):
+async def admin_user(db_session: AsyncSession, auth_usecase):
     """
     Creates an admin user in the database for testing.
     Provides a test user with admin privileges.
@@ -139,7 +139,7 @@ async def admin_user(db_session: AsyncSession, auth_service):
         password="AdminPassword123!",
         username=f"admin.{uuid.uuid4()}",
     )
-    user = await auth_service.register(user_in)
+    user = await auth_usecase.register(user_in)
     user.email_verified = True
     user.roles = ["admin"]
     db_session.add(user)
@@ -150,7 +150,7 @@ async def admin_user(db_session: AsyncSession, auth_service):
 
 
 @pytest_asyncio.fixture
-async def inactive_user(db_session: AsyncSession, auth_service):
+async def inactive_user(db_session: AsyncSession, auth_usecase):
     """
     Creates an inactive user in the database for testing.
     Provides a test user that is not active.
@@ -160,7 +160,7 @@ async def inactive_user(db_session: AsyncSession, auth_service):
         password="InactivePassword123!",
         username=f"inactive.{uuid.uuid4()}",
     )
-    user = await auth_service.register(user_in)
+    user = await auth_usecase.register(user_in)
     user.email_verified = True
     user.is_active = False
     db_session.add(user)
@@ -174,7 +174,7 @@ async def inactive_user(db_session: AsyncSession, auth_service):
 async def authenticated_client(
     async_client: AsyncClient,
     test_user: User,
-    auth_service: AuthService,
+    auth_usecase: AuthUsecase,
     db_session: AsyncSession,
 ):
     """
@@ -185,7 +185,7 @@ async def authenticated_client(
     await db_session.commit()
     await db_session.refresh(test_user)
 
-    token_data = await auth_service.authenticate(
+    token_data = await auth_usecase.authenticate(
         identity=test_user.email, password="Str0ngPassword!"
     )
     async_client.headers = {
@@ -196,10 +196,10 @@ async def authenticated_client(
 
 @pytest_asyncio.fixture
 def unverified_user_client(
-    client: AsyncClient, unverified_user: User, auth_service: AuthService
+    client: AsyncClient, unverified_user: User, auth_usecase: AuthUsecase
 ) -> AsyncClient:
     """Provides an authenticated client for an unverified user."""
-    token_data = auth_service.create_access_token(user_id=unverified_user.id)
+    token_data = auth_usecase.create_access_token(user_id=unverified_user.id)
     client.headers = {
         "Authorization": f"Bearer {token_data.access_token}",
     }
@@ -207,7 +207,7 @@ def unverified_user_client(
 
 
 @pytest_asyncio.fixture
-async def create_user_and_wallet(db_session: AsyncSession, auth_service):
+async def create_user_and_wallet(db_session: AsyncSession, auth_usecase):
     """
     Provides a factory to create a user and a wallet.
     This allows creating multiple unique users within a single test.
@@ -220,7 +220,7 @@ async def create_user_and_wallet(db_session: AsyncSession, auth_service):
             password="FactoryPassword123!",
             username=f"factory.user.{uuid.uuid4()}",
         )
-        user = await auth_service.register(user_in)
+        user = await auth_usecase.register(user_in)
         user.email_verified = True
         db_session.add(user)
         await db_session.commit()
@@ -242,7 +242,7 @@ async def create_user_and_wallet(db_session: AsyncSession, auth_service):
 
 
 @pytest_asyncio.fixture
-async def create_multiple_users(db_session: AsyncSession, auth_service):
+async def create_multiple_users(db_session: AsyncSession, auth_usecase):
     """
     Provides a factory to create multiple users.
     Useful for tests involving multiple user interactions.
@@ -256,7 +256,7 @@ async def create_multiple_users(db_session: AsyncSession, auth_service):
                 password="MultiUserPass123!",
                 username=f"multi.user.{uuid.uuid4()}",
             )
-            user = await auth_service.register(user_in)
+            user = await auth_usecase.register(user_in)
             user.email_verified = True
             db_session.add(user)
             await db_session.commit()
@@ -268,7 +268,7 @@ async def create_multiple_users(db_session: AsyncSession, auth_service):
 
 
 @pytest_asyncio.fixture
-async def create_user_with_tokens(db_session: AsyncSession, auth_service):
+async def create_user_with_tokens(db_session: AsyncSession, auth_usecase):
     """
     Provides a factory to create a user with multiple wallets (tokens).
     Simulates a user holding different crypto assets.
@@ -281,7 +281,7 @@ async def create_user_with_tokens(db_session: AsyncSession, auth_service):
             password="TokenUserPass123!",
             username=f"token.user.{uuid.uuid4()}",
         )
-        user = await auth_service.register(user_in)
+        user = await auth_usecase.register(user_in)
         user.email_verified = True
         db_session.add(user)
         await db_session.commit()
@@ -341,13 +341,13 @@ async def mock_refresh_token_repo(db_session: AsyncSession):
     return RefreshTokenRepository(mock_db_service, mock_audit)
 
 
-def create_test_auth_service(db_session):
-    """Return a fully wired AuthService instance for unit/integration tests.
+def create_test_auth_usecase(db_session):
+    """Return a fully wired AuthUsecase instance for unit/integration tests.
 
-    This helper mirrors the *auth_service* fixture but can be imported
+    This helper mirrors the *auth_usecase* fixture but can be imported
     directly inside tests (e.g. rate-limiter integration) without relying on
     fixture injection.  It initialises a minimal DI container backed by the
-    provided *db_session* and returns the constructed :class:`AuthService`.
+    provided *db_session* and returns the constructed :class:`AuthUsecase`.
     """
     # Wrap *db_session* inside a stub CoreDatabase that yields it via
     # get_session so that repositories operate on the same transactional
@@ -385,7 +385,7 @@ def create_test_auth_service(db_session):
     refresh_token_repo = RefreshTokenRepository(database, audit)
     email_service = EmailService(config, audit)
 
-    return AuthService(
+    return AuthUsecase(
         user_repository=user_repo,
         email_verification_repository=email_verification_repo,
         refresh_token_repository=refresh_token_repo,
