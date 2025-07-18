@@ -22,16 +22,7 @@ def setup_mock_session(repository, mock_session):
     repository._UserRepository__database.get_session = mock_get_session
 
 
-@pytest.fixture
-def mock_database():
-    """Mock CoreDatabase."""
-    return Mock()
-
-
-@pytest.fixture
-def mock_audit():
-    """Mock Audit service."""
-    return Mock()
+# Using shared fixtures from tests.shared.fixtures.core for mock_database and mock_audit
 
 
 @pytest.fixture

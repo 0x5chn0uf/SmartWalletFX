@@ -59,6 +59,7 @@ from .core import (
     mock_database,
     mock_email_service,
     mock_jwt_utils,
+    mock_session,
 )
 from .database import db_session
 from .di_container import (
@@ -169,6 +170,7 @@ __all__ = [
     "mock_audit",
     "mock_email_service",
     "mock_jwt_utils",
+    "mock_session",
     # Repository fixtures
     "mock_user_repository",
     "mock_wallet_repository",

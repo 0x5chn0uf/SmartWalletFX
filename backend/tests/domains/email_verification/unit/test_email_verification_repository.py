@@ -26,28 +26,10 @@ def setup_mock_session(repository, mock_session):
     repository._EmailVerificationRepository__database.get_session = mock_get_session
 
 
-@pytest.fixture
-def mock_database():
-    """Mock CoreDatabase."""
-    return Mock()
+# Using shared fixtures from tests.shared.fixtures.core for mock_database and mock_audit
 
 
-@pytest.fixture
-def mock_audit():
-    """Mock Audit service."""
-    return Mock()
-
-
-@pytest.fixture
-def mock_session():
-    """Mock database session."""
-    session = Mock()
-    session.add = Mock()
-    session.commit = AsyncMock()
-    session.refresh = AsyncMock()
-    session.execute = AsyncMock()
-    session.merge = AsyncMock()
-    return session
+# Using shared fixtures from tests.shared.fixtures.core for mock_session
 
 
 @pytest.fixture

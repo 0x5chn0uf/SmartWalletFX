@@ -54,10 +54,7 @@ def mock_config():
     return Mock()
 
 
-@pytest.fixture
-def mock_audit():
-    """Mock Audit service."""
-    return Mock()
+# Using shared fixtures from tests.shared.fixtures.core for mock_audit
 
 
 @pytest.fixture

@@ -23,37 +23,7 @@ def setup_mock_session(repository, mock_session):
     repository._RefreshTokenRepository__database.get_session = mock_get_session
 
 
-@pytest.fixture
-def mock_database():
-    """Mock CoreDatabase."""
-    from contextlib import asynccontextmanager
-    from unittest.mock import AsyncMock, Mock
-
-    mock = Mock()
-
-    # Create a proper async context manager mock for get_session
-    @asynccontextmanager
-    async def mock_get_session():
-        session = AsyncMock()
-        session.add = Mock()
-        session.commit = AsyncMock()
-        session.refresh = AsyncMock()
-        session.execute = AsyncMock()
-        session.merge = AsyncMock()
-        session.delete = AsyncMock()
-        session.rollback = AsyncMock()
-        yield session
-
-    mock.get_session = mock_get_session
-    mock.async_engine = Mock()
-    mock.sync_engine = Mock()
-    return mock
-
-
-@pytest.fixture
-def mock_audit():
-    """Mock Audit service."""
-    return Mock()
+# Using shared fixtures from tests.shared.fixtures.core for mock_database and mock_audit
 
 
 @pytest.fixture

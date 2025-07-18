@@ -81,6 +81,22 @@ def mock_audit():
 
 
 @pytest.fixture
+def mock_session():
+    """Mock database session for testing."""
+    from unittest.mock import AsyncMock, Mock
+
+    session = Mock()
+    session.add = Mock()
+    session.commit = AsyncMock()
+    session.refresh = AsyncMock()
+    session.execute = AsyncMock()
+    session.merge = AsyncMock()
+    session.delete = AsyncMock()
+    session.rollback = AsyncMock()
+    return session
+
+
+@pytest.fixture
 def mock_email_service():
     """Mock EmailService for testing."""
     from unittest.mock import AsyncMock
