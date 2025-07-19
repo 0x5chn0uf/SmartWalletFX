@@ -251,6 +251,461 @@ encrypted_backup = encryption_utils.encrypt_file(
 5. **Return encrypted file paths** for further processing
 6. **Never store encryption keys** in source code
 
+## React Frontend Security Patterns
+
+### Overview
+
+The React frontend implements a comprehensive security architecture that integrates with the backend authentication system while providing client-side protection against common web vulnerabilities.
+
+### Frontend Authentication State Management
+
+#### 1. Redux-Based Authentication State
+
+```typescript
+// Centralized authentication state management
+interface AuthState {
+  isAuthenticated: boolean;
+  user: UserProfile | null;
+  status: "idle" | "loading" | "succeeded" | "failed";
+  error: AuthError | null;
+}
+
+export const fetchCurrentUser = createAsyncThunk(
+  "auth/fetchCurrentUser",
+  async () => {
+    const resp = await apiClient.get("/users/me", { withCredentials: true });
+    localStorage.setItem("session_active", "1");
+    return resp.data as UserProfile;
+  },
+);
+```
+
+#### 2. Secure Session Management Pattern
+
+```typescript
+// Silent session refresh with evidence-based checks
+const hasSessionEvidence = localStorage.getItem("session_active") === "1";
+
+if (hasSessionEvidence) {
+  dispatch(sessionCheckStarted());
+
+  apiClient
+    .post("/auth/refresh", {}, { withCredentials: true })
+    .then((resp) => {
+      const newToken = resp.data?.access_token;
+      if (newToken) {
+        apiClient.defaults.headers.common["Authorization"] =
+          `Bearer ${newToken}`;
+        localStorage.setItem("access_token", newToken);
+        dispatch(fetchCurrentUser());
+      }
+    })
+    .catch(() => {
+      localStorage.removeItem("session_active");
+      dispatch(sessionCheckFinished());
+    });
+}
+```
+
+### Secure Token Storage and Handling
+
+#### 1. JWT Token Management Strategy
+
+```typescript
+// Secure token storage with automatic cleanup
+export const logoutUser = createAsyncThunk("auth/logout", async () => {
+  try {
+    await apiClient.post("/auth/logout", {}, { withCredentials: true });
+  } catch (error) {
+    console.warn(
+      "Backend logout failed, clearing frontend state anyway:",
+      error,
+    );
+  }
+  delete apiClient.defaults.headers.common["Authorization"];
+  localStorage.removeItem("session_active");
+  localStorage.removeItem("access_token");
+});
+```
+
+#### 2. Automatic Token Refresh Implementation
+
+```typescript
+// Response interceptor with refresh token loop prevention
+let isRefreshing = false;
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    const isAuthEndpoint = originalRequest.url?.includes("/auth/");
+    const hasAuthHeader = Boolean(originalRequest.headers?.Authorization);
+    const hasActiveSession = localStorage.getItem("session_active") === "1";
+
+    if (
+      error.response?.status === 401 &&
+      hasAuthHeader &&
+      hasActiveSession &&
+      !isRefreshing &&
+      !isAuthEndpoint
+    ) {
+      isRefreshing = true;
+      // Perform refresh logic
+    }
+  },
+);
+```
+
+### Route Protection and Authorization
+
+#### 1. Protected Route Component Pattern
+
+```typescript
+interface ProtectedRouteProps {
+  children: React.ReactElement;
+  roles?: string[];
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, roles }) => {
+  const { isAuthenticated, status, user } = useSelector((state: RootState) => state.auth);
+
+  if (status === 'loading' || status === 'idle') {
+    return null; // Wait for auth resolution
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login-register" replace />;
+  }
+
+  if (roles && user && !roles.includes(user.role)) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+
+  return children;
+};
+```
+
+#### 2. Role-Based Access Control Integration
+
+```typescript
+// Route protection with role validation
+<Route
+  path="/admin"
+  element={
+    <ProtectedRoute roles={['admin']}>
+      <AdminDashboard />
+    </ProtectedRoute>
+  }
+/>
+```
+
+### Input Sanitization and Validation Security
+
+#### 1. Form Input Validation Pattern
+
+```typescript
+// Client-side validation with secure error handling
+const handleRegister = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (registerPassword !== registerConfirm) {
+    setRegisterError("Passwords do not match");
+    return;
+  }
+
+  // Additional client-side validation
+  if (registerPassword.length < 8) {
+    setRegisterError("Password must be at least 8 characters");
+    return;
+  }
+
+  try {
+    await dispatch(
+      registerUser({
+        email: registerEmail,
+        password: registerPassword,
+      }),
+    ).unwrap();
+  } catch (err: any) {
+    const status = err?.status ?? err?.response?.status;
+    if (status === 400) {
+      setRegisterError("Password does not meet strength requirements");
+    } else if (status === 409) {
+      setRegisterError("Email already registered");
+    }
+  }
+};
+```
+
+#### 2. HTML Input Security
+
+```typescript
+// Secure form inputs with proper attributes
+<Input
+  type="email"
+  id="register-email"
+  name="email"
+  placeholder="Enter your email"
+  value={registerEmail}
+  onChange={e => setRegisterEmail(e.target.value)}
+  required
+  autoComplete="email"
+/>
+```
+
+### XSS Protection Strategies
+
+#### 1. React's Built-in XSS Protection
+
+```typescript
+// React automatically escapes content - safe by default
+const UserProfile: React.FC<{ user: UserProfile }> = ({ user }) => (
+  <div>
+    <h1>Welcome, {user.username}!</h1> {/* Automatically escaped */}
+    <p>Email: {user.email}</p> {/* Automatically escaped */}
+  </div>
+);
+```
+
+#### 2. Dangerous Content Handling
+
+```typescript
+// When HTML content must be rendered, use DOMPurify
+import DOMPurify from 'dompurify';
+
+const SafeHtmlContent: React.FC<{ content: string }> = ({ content }) => (
+  <div
+    dangerouslySetInnerHTML={{
+      __html: DOMPurify.sanitize(content)
+    }}
+  />
+);
+```
+
+### CSRF Protection Implementation
+
+#### 1. SameSite Cookie Configuration
+
+```typescript
+// API client configured for CSRF protection
+const apiClient = axios.create({
+  baseURL: API_URL,
+  withCredentials: true, // Include SameSite cookies
+});
+```
+
+#### 2. Double Submit Cookie Pattern
+
+```typescript
+// CSRF token handling in requests
+apiClient.interceptors.request.use(
+  (config) => {
+    const csrfToken = document
+      .querySelector('meta[name="csrf-token"]')
+      ?.getAttribute("content");
+    if (csrfToken) {
+      config.headers["X-CSRF-Token"] = csrfToken;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+```
+
+### Content Security Policy Configuration
+
+#### 1. CSP Headers Implementation
+
+```html
+<!-- Strict CSP configuration in index.html -->
+<meta
+  http-equiv="Content-Security-Policy"
+  content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline' https://apis.google.com;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' https://fonts.gstatic.com;
+  img-src 'self' data: https:;
+  connect-src 'self' https://api.github.com https://accounts.google.com;
+  frame-src https://accounts.google.com;
+"
+/>
+```
+
+#### 2. CSP Violation Reporting
+
+```typescript
+// CSP violation reporting endpoint
+window.addEventListener("securitypolicyviolation", (event) => {
+  console.warn("CSP Violation:", event.violatedDirective, event.blockedURI);
+  // Report to monitoring service
+  fetch("/api/csp-report", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      violatedDirective: event.violatedDirective,
+      blockedURI: event.blockedURI,
+      documentURI: event.documentURI,
+    }),
+  });
+});
+```
+
+### Secure API Communication Patterns
+
+#### 1. Environment-Based Configuration
+
+```typescript
+// Secure API URL configuration
+const API_URL =
+  (import.meta as any).env.VITE_API_URL || "http://localhost:8000";
+
+// Validate API URL in production
+if (import.meta.env.PROD && !API_URL.startsWith("https://")) {
+  throw new Error("Production API must use HTTPS");
+}
+```
+
+#### 2. Request/Response Validation
+
+```typescript
+// Type-safe API responses with validation
+interface ApiResponse<T> {
+  data: T;
+  status: number;
+  message?: string;
+}
+
+const validateApiResponse = <T>(response: any): ApiResponse<T> => {
+  if (!response.data) {
+    throw new Error("Invalid API response format");
+  }
+  return response;
+};
+```
+
+### OAuth Security Best Practices
+
+#### 1. Secure OAuth Flow Implementation
+
+```typescript
+// OAuth button with secure redirect handling
+export const OAuthButton: React.FC<Props> = ({ provider }) => {
+  const handleClick = () => {
+    // Validate API URL before redirect
+    if (!API_URL.startsWith('https://') && import.meta.env.PROD) {
+      throw new Error('OAuth requires HTTPS in production');
+    }
+
+    // Generate state parameter for CSRF protection
+    const state = crypto.getRandomValues(new Uint32Array(4)).join('');
+    sessionStorage.setItem('oauth_state', state);
+
+    window.location.href = `${API_URL}/auth/oauth/${provider}/login?state=${state}`;
+  };
+
+  return (
+    <button onClick={handleClick} type="button">
+      Continue with {provider}
+    </button>
+  );
+};
+```
+
+#### 2. OAuth Callback Validation
+
+```typescript
+// OAuth callback state validation
+useEffect(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const state = urlParams.get("state");
+  const storedState = sessionStorage.getItem("oauth_state");
+
+  if (state && storedState && state === storedState) {
+    sessionStorage.removeItem("oauth_state");
+    // Process OAuth callback
+  } else if (state) {
+    // Invalid state - potential CSRF attack
+    console.error("OAuth state mismatch");
+    navigate("/login-register?error=oauth_failed");
+  }
+}, []);
+```
+
+### Client-Side Security Monitoring
+
+#### 1. Error Boundary Security
+
+```typescript
+class SecurityErrorBoundary extends React.Component {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    // Log security-relevant errors
+    if (error.message.includes('CSP') || error.message.includes('XSS')) {
+      fetch('/api/security-incident', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          error: error.message,
+          stack: error.stack,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent,
+        }),
+      });
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <div>Something went wrong. Please refresh the page.</div>;
+    }
+    return this.props.children;
+  }
+}
+```
+
+#### 2. Performance and Security Monitoring
+
+```typescript
+// Monitor for suspicious activity patterns
+const useSecurityMonitoring = () => {
+  useEffect(() => {
+    let loginAttempts = 0;
+    const maxAttempts = 5;
+
+    const handleFailedLogin = () => {
+      loginAttempts++;
+      if (loginAttempts >= maxAttempts) {
+        // Temporarily disable login form
+        console.warn("Too many failed login attempts");
+        // Could implement temporary account lockout UI
+      }
+    };
+
+    // Reset counter on successful login
+    const handleSuccessfulLogin = () => {
+      loginAttempts = 0;
+    };
+
+    return () => {
+      // Cleanup monitoring
+    };
+  }, []);
+};
+```
+
+### Frontend Security Guidelines for Claude Code
+
+1. **Always validate authentication state** before rendering protected content
+2. **Use TypeScript** for type safety and reduce runtime errors
+3. **Implement proper error boundaries** to catch and handle security exceptions
+4. **Validate all user inputs** on both client and server sides
+5. **Use HTTPS in production** for all API communications
+6. **Implement CSP headers** to prevent XSS attacks
+7. **Store sensitive data securely** using appropriate browser APIs
+8. **Monitor for security violations** and implement incident reporting
+9. **Use secure OAuth flows** with state validation
+10. **Keep dependencies updated** and audit for vulnerabilities
+
 ## Security Best Practices Summary
 
 ### For JWT Implementation
@@ -280,3 +735,14 @@ encrypted_backup = encryption_utils.encrypt_file(
 - Manage keys through secure configuration
 - Encrypt sensitive data at rest and in transit
 - Implement proper error handling for encryption failures
+
+### For Frontend Security
+
+- Implement secure authentication state management with Redux
+- Use automatic token refresh with loop prevention
+- Apply role-based route protection at the component level
+- Validate all user inputs with client-side and server-side checks
+- Configure strict Content Security Policy headers
+- Use secure OAuth flows with state parameter validation
+- Monitor for security violations and implement incident reporting
+- Keep all dependencies updated and regularly audit for vulnerabilities

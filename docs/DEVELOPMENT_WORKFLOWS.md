@@ -351,7 +351,748 @@ async with db_session() as session:
     user = result.scalar_one_or_none()
 ```
 
+## 5. Frontend Development Workflows
+
+### Frontend Architecture Overview
+
+The frontend follows a modern React architecture with clear separation of concerns:
+
+```
+frontend/src/
+├── components/          # Reusable UI components
+│   ├── home/           # Domain-specific components
+│   ├── auth/           # Authentication components
+│   └── design-system/  # Design system components
+├── pages/              # Page-level components (route handlers)
+├── hooks/              # Custom React hooks
+├── services/           # API service layer
+├── store/              # Redux Toolkit slices
+├── theme/              # Design system theme
+├── types/              # TypeScript type definitions
+└── utils/              # Utility functions
+```
+
+### Workflow: Adding a New Feature
+
+**Step 1**: Define TypeScript interfaces
+
+```typescript
+// types/myFeature.ts
+export interface MyFeatureData {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+}
+
+export interface MyFeatureCreateRequest {
+  name: string;
+  description?: string;
+}
+
+export interface MyFeatureState {
+  items: MyFeatureData[];
+  loading: boolean;
+  error: string | null;
+}
+```
+
+**Step 2**: Create service layer
+
+```typescript
+// services/myFeature.ts
+import apiClient from "./api";
+import { MyFeatureData, MyFeatureCreateRequest } from "../types/myFeature";
+
+export const myFeatureService = {
+  async getAll(): Promise<MyFeatureData[]> {
+    const response = await apiClient.get("/my-features");
+    return response.data;
+  },
+
+  async create(data: MyFeatureCreateRequest): Promise<MyFeatureData> {
+    const response = await apiClient.post("/my-features", data);
+    return response.data;
+  },
+
+  async getById(id: string): Promise<MyFeatureData> {
+    const response = await apiClient.get(`/my-features/${id}`);
+    return response.data;
+  },
+
+  async update(
+    id: string,
+    data: Partial<MyFeatureCreateRequest>,
+  ): Promise<MyFeatureData> {
+    const response = await apiClient.put(`/my-features/${id}`, data);
+    return response.data;
+  },
+
+  async delete(id: string): Promise<void> {
+    await apiClient.delete(`/my-features/${id}`);
+  },
+};
+```
+
+**Step 3**: Create Redux slice
+
+```typescript
+// store/myFeatureSlice.ts
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { myFeatureService } from "../services/myFeature";
+import { MyFeatureState, MyFeatureData } from "../types/myFeature";
+
+const initialState: MyFeatureState = {
+  items: [],
+  loading: false,
+  error: null,
+};
+
+export const fetchMyFeatures = createAsyncThunk(
+  "myFeature/fetchAll",
+  async (_, { rejectWithValue }) => {
+    try {
+      return await myFeatureService.getAll();
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch features",
+      );
+    }
+  },
+);
+
+export const createMyFeature = createAsyncThunk(
+  "myFeature/create",
+  async (data: MyFeatureCreateRequest, { rejectWithValue }) => {
+    try {
+      return await myFeatureService.create(data);
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to create feature",
+      );
+    }
+  },
+);
+
+const myFeatureSlice = createSlice({
+  name: "myFeature",
+  initialState,
+  reducers: {
+    clearError: (state) => {
+      state.error = null;
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchMyFeatures.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchMyFeatures.fulfilled, (state, action) => {
+        state.loading = false;
+        state.items = action.payload;
+      })
+      .addCase(fetchMyFeatures.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(createMyFeature.fulfilled, (state, action) => {
+        state.items.push(action.payload);
+      });
+  },
+});
+
+export const { clearError } = myFeatureSlice.actions;
+export default myFeatureSlice.reducer;
+```
+
+**Step 4**: Create custom hook
+
+```typescript
+// hooks/useMyFeature.ts
+import { useSelector, useDispatch } from "react-redux";
+import { useCallback } from "react";
+import { RootState } from "../store";
+import {
+  fetchMyFeatures,
+  createMyFeature,
+  clearError,
+} from "../store/myFeatureSlice";
+import { MyFeatureCreateRequest } from "../types/myFeature";
+
+export const useMyFeature = () => {
+  const dispatch = useDispatch();
+  const { items, loading, error } = useSelector(
+    (state: RootState) => state.myFeature,
+  );
+
+  const loadFeatures = useCallback(() => {
+    dispatch(fetchMyFeatures());
+  }, [dispatch]);
+
+  const createFeature = useCallback(
+    (data: MyFeatureCreateRequest) => {
+      return dispatch(createMyFeature(data));
+    },
+    [dispatch],
+  );
+
+  const clearErrorMessage = useCallback(() => {
+    dispatch(clearError());
+  }, [dispatch]);
+
+  return {
+    features: items,
+    loading,
+    error,
+    loadFeatures,
+    createFeature,
+    clearError: clearErrorMessage,
+  };
+};
+```
+
+**Step 5**: Create UI components
+
+```typescript
+// components/MyFeatureCard.tsx
+import React from 'react';
+import { Card, CardContent, Typography, CardActions, Button } from '@mui/material';
+import { MyFeatureData } from '../types/myFeature';
+
+interface MyFeatureCardProps {
+  feature: MyFeatureData;
+  onEdit?: (feature: MyFeatureData) => void;
+  onDelete?: (id: string) => void;
+}
+
+export const MyFeatureCard: React.FC<MyFeatureCardProps> = ({
+  feature,
+  onEdit,
+  onDelete,
+}) => {
+  return (
+    <Card sx={{ mb: 2 }}>
+      <CardContent>
+        <Typography variant="h6" component="h3" gutterBottom>
+          {feature.name}
+        </Typography>
+        {feature.description && (
+          <Typography variant="body2" color="text.secondary">
+            {feature.description}
+          </Typography>
+        )}
+        <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+          Created: {new Date(feature.createdAt).toLocaleDateString()}
+        </Typography>
+      </CardContent>
+      <CardActions>
+        {onEdit && (
+          <Button size="small" onClick={() => onEdit(feature)}>
+            Edit
+          </Button>
+        )}
+        {onDelete && (
+          <Button size="small" color="error" onClick={() => onDelete(feature.id)}>
+            Delete
+          </Button>
+        )}
+      </CardActions>
+    </Card>
+  );
+};
+```
+
+**Step 6**: Create page component
+
+```typescript
+// pages/MyFeaturePage.tsx
+import React, { useEffect } from 'react';
+import { Container, Typography, Box, Alert } from '@mui/material';
+import { useMyFeature } from '../hooks/useMyFeature';
+import { MyFeatureCard } from '../components/MyFeatureCard';
+
+const MyFeaturePage: React.FC = () => {
+  const { features, loading, error, loadFeatures } = useMyFeature();
+
+  useEffect(() => {
+    loadFeatures();
+  }, [loadFeatures]);
+
+  if (loading) {
+    return (
+      <Container>
+        <Typography>Loading...</Typography>
+      </Container>
+    );
+  }
+
+  return (
+    <Container maxWidth="md">
+      <Typography variant="h4" component="h1" gutterBottom>
+        My Features
+      </Typography>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
+      <Box>
+        {features.map(feature => (
+          <MyFeatureCard
+            key={feature.id}
+            feature={feature}
+            onEdit={feature => console.log('Edit:', feature)}
+            onDelete={id => console.log('Delete:', id)}
+          />
+        ))}
+      </Box>
+    </Container>
+  );
+};
+
+export default MyFeaturePage;
+```
+
+**Step 7**: Register slice in store
+
+```typescript
+// store/index.ts
+import { configureStore } from "@reduxjs/toolkit";
+import authSlice from "./authSlice";
+import myFeatureSlice from "./myFeatureSlice"; // Add this import
+
+export const store = configureStore({
+  reducer: {
+    auth: authSlice,
+    myFeature: myFeatureSlice, // Add this line
+    // ... other slices
+  },
+});
+
+export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;
+```
+
+### Component Development Patterns
+
+#### Material-UI Component Pattern
+
+```typescript
+// components/design-system/StyledButton.tsx
+import React from 'react';
+import { Button, ButtonProps, styled } from '@mui/material';
+
+interface StyledButtonProps extends ButtonProps {
+  variant?: 'primary' | 'secondary' | 'danger';
+}
+
+const CustomButton = styled(Button, {
+  shouldForwardProp: prop => prop !== 'variant',
+})<StyledButtonProps>(({ theme, variant }) => ({
+  ...(variant === 'primary' && {
+    backgroundColor: theme.palette.primary.main,
+    color: theme.palette.primary.contrastText,
+    '&:hover': {
+      backgroundColor: theme.palette.primary.dark,
+    },
+  }),
+  ...(variant === 'danger' && {
+    backgroundColor: theme.palette.error.main,
+    color: theme.palette.error.contrastText,
+    '&:hover': {
+      backgroundColor: theme.palette.error.dark,
+    },
+  }),
+}));
+
+export const StyledButton: React.FC<StyledButtonProps> = props => {
+  return <CustomButton {...props} />;
+};
+```
+
+#### Form Component Pattern
+
+```typescript
+// components/MyFeatureForm.tsx
+import React, { useState } from 'react';
+import { Box, TextField, Button, Alert } from '@mui/material';
+import { useMyFeature } from '../hooks/useMyFeature';
+
+interface MyFeatureFormProps {
+  onSuccess?: () => void;
+}
+
+export const MyFeatureForm: React.FC<MyFeatureFormProps> = ({ onSuccess }) => {
+  const [formData, setFormData] = useState({ name: '', description: '' });
+  const [validationError, setValidationError] = useState('');
+  const { createFeature, loading, error } = useMyFeature();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.name.trim()) {
+      setValidationError('Name is required');
+      return;
+    }
+
+    try {
+      await createFeature(formData);
+      setFormData({ name: '', description: '' });
+      setValidationError('');
+      onSuccess?.();
+    } catch (err) {
+      console.error('Failed to create feature:', err);
+    }
+  };
+
+  return (
+    <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
+      {(error || validationError) && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error || validationError}
+        </Alert>
+      )}
+
+      <TextField
+        label="Name"
+        value={formData.name}
+        onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
+        fullWidth
+        margin="normal"
+        required
+      />
+
+      <TextField
+        label="Description"
+        value={formData.description}
+        onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
+        fullWidth
+        margin="normal"
+        multiline
+        rows={3}
+      />
+
+      <Button
+        type="submit"
+        variant="contained"
+        disabled={loading}
+        sx={{ mt: 2 }}
+      >
+        {loading ? 'Creating...' : 'Create Feature'}
+      </Button>
+    </Box>
+  );
+};
+```
+
+### Testing Frontend Components
+
+#### Component Unit Test
+
+```typescript
+// __tests__/components/MyFeatureCard.test.tsx
+import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { MyFeatureCard } from '../../components/MyFeatureCard';
+import { MyFeatureData } from '../../types/myFeature';
+
+const mockFeature: MyFeatureData = {
+  id: '1',
+  name: 'Test Feature',
+  description: 'Test description',
+  createdAt: '2025-01-01T00:00:00Z',
+};
+
+describe('MyFeatureCard', () => {
+  it('renders feature information correctly', () => {
+    render(<MyFeatureCard feature={mockFeature} />);
+
+    expect(screen.getByText('Test Feature')).toBeInTheDocument();
+    expect(screen.getByText('Test description')).toBeInTheDocument();
+    expect(screen.getByText(/Created:/)).toBeInTheDocument();
+  });
+
+  it('calls onEdit when edit button is clicked', () => {
+    const onEdit = jest.fn();
+    render(<MyFeatureCard feature={mockFeature} onEdit={onEdit} />);
+
+    fireEvent.click(screen.getByText('Edit'));
+    expect(onEdit).toHaveBeenCalledWith(mockFeature);
+  });
+
+  it('calls onDelete when delete button is clicked', () => {
+    const onDelete = jest.fn();
+    render(<MyFeatureCard feature={mockFeature} onDelete={onDelete} />);
+
+    fireEvent.click(screen.getByText('Delete'));
+    expect(onDelete).toHaveBeenCalledWith('1');
+  });
+});
+```
+
+#### Redux Slice Test
+
+```typescript
+// __tests__/store/myFeatureSlice.test.ts
+import { configureStore } from "@reduxjs/toolkit";
+import myFeatureSlice, {
+  fetchMyFeatures,
+  clearError,
+} from "../../store/myFeatureSlice";
+
+const createTestStore = () => {
+  return configureStore({
+    reducer: {
+      myFeature: myFeatureSlice,
+    },
+  });
+};
+
+describe("myFeatureSlice", () => {
+  it("should handle fetchMyFeatures.pending", () => {
+    const store = createTestStore();
+    const action = { type: fetchMyFeatures.pending.type };
+
+    store.dispatch(action);
+    const state = store.getState().myFeature;
+
+    expect(state.loading).toBe(true);
+    expect(state.error).toBe(null);
+  });
+
+  it("should handle clearError", () => {
+    const store = createTestStore();
+
+    // First set an error
+    store.dispatch({
+      type: fetchMyFeatures.rejected.type,
+      payload: "Test error",
+    });
+    expect(store.getState().myFeature.error).toBe("Test error");
+
+    // Then clear it
+    store.dispatch(clearError());
+    expect(store.getState().myFeature.error).toBe(null);
+  });
+});
+```
+
+#### Custom Hook Test
+
+```typescript
+// __tests__/hooks/useMyFeature.test.tsx
+import React from 'react';
+import { renderHook, act } from '@testing-library/react';
+import { Provider } from 'react-redux';
+import { configureStore } from '@reduxjs/toolkit';
+import { useMyFeature } from '../../hooks/useMyFeature';
+import myFeatureSlice from '../../store/myFeatureSlice';
+
+const createWrapper = () => {
+  const store = configureStore({
+    reducer: { myFeature: myFeatureSlice },
+  });
+
+  return ({ children }: { children: React.ReactNode }) => (
+    <Provider store={store}>{children}</Provider>
+  );
+};
+
+describe('useMyFeature', () => {
+  it('should provide initial state', () => {
+    const { result } = renderHook(() => useMyFeature(), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current.features).toEqual([]);
+    expect(result.current.loading).toBe(false);
+    expect(result.current.error).toBe(null);
+  });
+
+  it('should provide action functions', () => {
+    const { result } = renderHook(() => useMyFeature(), {
+      wrapper: createWrapper(),
+    });
+
+    expect(typeof result.current.loadFeatures).toBe('function');
+    expect(typeof result.current.createFeature).toBe('function');
+    expect(typeof result.current.clearError).toBe('function');
+  });
+});
+```
+
+### Design System Integration
+
+#### Creating Theme-Aware Components
+
+```typescript
+// components/design-system/ThemedCard.tsx
+import React from 'react';
+import { Card, CardProps, styled } from '@mui/material';
+
+const StyledCard = styled(Card)(({ theme }) => ({
+  backgroundColor: theme.palette.background.paper,
+  borderRadius: theme.shape.borderRadius,
+  boxShadow: theme.shadows[2],
+  transition: theme.transitions.create(['box-shadow', 'transform'], {
+    duration: theme.transitions.duration.short,
+  }),
+  '&:hover': {
+    boxShadow: theme.shadows[4],
+    transform: 'translateY(-2px)',
+  },
+}));
+
+export const ThemedCard: React.FC<CardProps> = props => {
+  return <StyledCard {...props} />;
+};
+```
+
+#### Using Design Tokens
+
+```typescript
+// components/TokenExample.tsx
+import React from 'react';
+import { Box, Typography } from '@mui/material';
+import * as tokens from '../theme/generated';
+
+export const TokenExample: React.FC = () => {
+  return (
+    <Box
+      sx={{
+        padding: tokens.SizeSpacingMd,
+        borderRadius: tokens.SizeRadiiMd,
+        backgroundColor: tokens.ColorBackgroundSurface,
+        border: `1px solid ${tokens.ColorBorderDefault}`,
+      }}
+    >
+      <Typography
+        sx={{
+          fontSize: tokens.FontSizeH3,
+          fontWeight: tokens.FontWeightSemibold,
+          lineHeight: tokens.FontLineheightHeading,
+          color: tokens.ColorTextPrimary,
+        }}
+      >
+        Design Token Example
+      </Typography>
+    </Box>
+  );
+};
+```
+
+### Performance Optimization Patterns
+
+#### Memoization Pattern
+
+```typescript
+// components/OptimizedFeatureList.tsx
+import React, { memo, useMemo } from 'react';
+import { Box } from '@mui/material';
+import { MyFeatureCard } from './MyFeatureCard';
+import { MyFeatureData } from '../types/myFeature';
+
+interface OptimizedFeatureListProps {
+  features: MyFeatureData[];
+  searchTerm: string;
+  onEdit: (feature: MyFeatureData) => void;
+  onDelete: (id: string) => void;
+}
+
+export const OptimizedFeatureList = memo<OptimizedFeatureListProps>(({
+  features,
+  searchTerm,
+  onEdit,
+  onDelete,
+}) => {
+  const filteredFeatures = useMemo(() => {
+    if (!searchTerm) return features;
+
+    return features.filter(feature =>
+      feature.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      feature.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [features, searchTerm]);
+
+  return (
+    <Box>
+      {filteredFeatures.map(feature => (
+        <MyFeatureCard
+          key={feature.id}
+          feature={feature}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
+      ))}
+    </Box>
+  );
+});
+
+OptimizedFeatureList.displayName = 'OptimizedFeatureList';
+```
+
+#### Lazy Loading Pattern
+
+```typescript
+// components/LazyFeatureComponent.tsx
+import React, { Suspense, lazy } from 'react';
+import { CircularProgress, Box } from '@mui/material';
+
+const HeavyFeatureComponent = lazy(() => import('./HeavyFeatureComponent'));
+
+export const LazyFeatureComponent: React.FC = () => {
+  return (
+    <Suspense
+      fallback={
+        <Box display="flex" justifyContent="center" p={4}>
+          <CircularProgress />
+        </Box>
+      }
+    >
+      <HeavyFeatureComponent />
+    </Suspense>
+  );
+};
+```
+
+### Frontend Development Commands
+
+```bash
+# Start development server
+cd frontend
+npm run dev
+
+# Run tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run linting
+npm run lint
+
+# Fix linting issues
+npm run lint:fix
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+
+# Generate design tokens
+npm run tokens:build
+
+# Run type checking
+npm run type-check
+```
+
 ## Key Development Principles
+
+### Backend Principles
 
 1. **Follow the Layer Pattern**: Domain → Model → Repository → Usecase → Endpoint
 2. **Use DI Container**: Register all new components in the dependency injection container
@@ -360,7 +1101,19 @@ async with db_session() as session:
 5. **Validate Input**: Use Pydantic schemas for all API inputs and outputs
 6. **Handle Errors**: Use the centralized error handling for consistent responses
 
+### Frontend Principles
+
+1. **Component Composition**: Build complex UIs from simple, reusable components
+2. **State Management**: Use Redux for global state, local state for component-specific data
+3. **Type Safety**: Leverage TypeScript for compile-time error detection
+4. **Performance First**: Use memoization, lazy loading, and code splitting
+5. **Design System**: Follow Material-UI patterns and design tokens
+6. **Test Coverage**: Unit test components, hooks, and slices thoroughly
+7. **API Integration**: Use service layer for clean separation between UI and data
+
 ## Common Debugging Commands
+
+### Backend
 
 ```bash
 # Check application logs
@@ -379,6 +1132,31 @@ make test-cov
 # Check for security issues
 make bandit
 make safety
+```
+
+### Frontend
+
+```bash
+# Check React DevTools in browser
+# Install: https://react-devtools.netlify.app/
+
+# Check Redux DevTools in browser
+# Install: https://github.com/reduxjs/redux-devtools
+
+# Debug build issues
+npm run build -- --debug
+
+# Analyze bundle size
+npm run build && npx vite-bundle-analyzer dist
+
+# Check TypeScript issues
+npm run type-check
+
+# Debug test failures
+npm test -- --verbose
+
+# Check for unused dependencies
+npx depcheck
 ```
 
 ---
