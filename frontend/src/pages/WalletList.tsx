@@ -82,11 +82,11 @@ const WalletList: React.FC = () => {
       </Box>
 
       <Grid container spacing={3}>
-        <Grid item xs={12} md={8}>
+        <Grid component="div" item xs={12} md={8}>
           <WalletTable wallets={wallets} />
           <Pagination page={page} total={total} limit={limit} onPageChange={handlePageChange} />
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid component="div" item xs={12} md={4}>
           <PortfolioDistributionChart data={wallets} />
         </Grid>
       </Grid>

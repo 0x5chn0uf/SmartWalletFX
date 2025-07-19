@@ -1,26 +1,32 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { CssBaseline } from '@mui/material';
-import LandingPage from './pages/LandingPage';
-import DashboardPage from './pages/DashboardPage';
-import WalletDetailPage from './pages/WalletDetailPage';
-import WalletList from './pages/WalletList';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
-import EmailVerificationPage from './pages/EmailVerificationPage';
-import VerifyEmailNoticePage from './pages/VerifyEmailNoticePage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { Provider, useDispatch as useReduxDispatch } from 'react-redux';
 import { ThemeProvider } from './providers/ThemeProvider';
 import { store, AppDispatch } from './store';
 import NotificationManager from './components/NotificationManager';
 import ErrorBoundary from './components/ErrorBoundary';
-import DeFiDashboardPage from './pages/DeFiDashboardPage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import LoginRegisterPage from './pages/LoginRegisterPage';
 import NavBar from './components/NavBar';
+import PageSkeleton from './components/PageSkeleton';
 import { fetchCurrentUser, sessionCheckStarted, sessionCheckFinished } from './store/authSlice';
 import apiClient from './services/api';
+
+// Lazy load all pages for code splitting
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const WalletDetailPage = lazy(() => import('./pages/WalletDetailPage'));
+const WalletList = lazy(() => import('./pages/WalletList'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const EmailVerificationPage = lazy(() => import('./pages/EmailVerificationPage'));
+const VerifyEmailNoticePage = lazy(() => import('./pages/VerifyEmailNoticePage'));
+const DeFiDashboardPage = lazy(() => import('./pages/DeFiDashboardPage'));
+const LoginRegisterPage = lazy(() => import('./pages/LoginRegisterPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const UnauthorizedPage = lazy(() => import('./pages/UnauthorizedPage'));
 
 const queryClient = new QueryClient();
 
@@ -38,29 +44,38 @@ const App: React.FC = () => {
       dispatch(fetchCurrentUser());
     }
 
-    // If there is no stored token we attempt a silent refresh once – if the
-    // browser carries a valid refresh_token cookie the call will succeed.
+    // If there is no stored token, check if we have evidence of a previous session
+    // before attempting a silent refresh
     if (!storedToken) {
-      // Indicate that we are performing a silent session check
-      dispatch(sessionCheckStarted());
+      const hasSessionEvidence = localStorage.getItem('session_active') === '1';
 
-      apiClient
-        .post('/auth/refresh', {}, { withCredentials: true })
-        .then(resp => {
-          const newToken = resp.data?.access_token as string | undefined;
-          if (newToken) {
-            apiClient.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-            localStorage.setItem('access_token', newToken);
-            dispatch(fetchCurrentUser());
-          } else {
-            // No token in response – finish session check without session
+      // Only attempt silent refresh if there's evidence of a previous session
+      if (hasSessionEvidence) {
+        // Indicate that we are performing a silent session check
+        dispatch(sessionCheckStarted());
+
+        apiClient
+          .post('/auth/refresh', {}, { withCredentials: true })
+          .then(resp => {
+            const newToken = resp.data?.access_token as string | undefined;
+            if (newToken) {
+              apiClient.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+              localStorage.setItem('access_token', newToken);
+              dispatch(fetchCurrentUser());
+            } else {
+              // No token in response – finish session check without session
+              dispatch(sessionCheckFinished());
+            }
+          })
+          .catch(() => {
+            // Silent refresh failed – clear session evidence and finish check
+            localStorage.removeItem('session_active');
             dispatch(sessionCheckFinished());
-          }
-        })
-        .catch(() => {
-          // Silent refresh failed – finish session check so UI can redirect
-          dispatch(sessionCheckFinished());
-        });
+          });
+      } else {
+        // No session evidence, skip silent refresh
+        dispatch(sessionCheckFinished());
+      }
     }
   }, [dispatch]);
 
@@ -72,47 +87,59 @@ const App: React.FC = () => {
           <QueryClientProvider client={queryClient}>
             <Router>
               <NavBar />
-              <Routes>
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/login-register" element={<LoginRegisterPage />} />
-                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="/reset-password" element={<ResetPasswordPage />} />
-                <Route path="/verify-email" element={<EmailVerificationPage />} />
-                <Route path="/verify-email-sent" element={<VerifyEmailNoticePage />} />
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <DashboardPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="/defi/:address" element={<DeFiDashboardPage />} />
-                <Route
-                  path="/defi"
-                  element={
-                    <ProtectedRoute>
-                      <DeFiDashboardPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/wallets"
-                  element={
-                    <ProtectedRoute>
-                      <WalletList />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/wallets/:id"
-                  element={
-                    <ProtectedRoute>
-                      <WalletDetailPage />
-                    </ProtectedRoute>
-                  }
-                />
-              </Routes>
+              <Suspense fallback={<PageSkeleton />}>
+                <Routes>
+                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/login-register" element={<LoginRegisterPage />} />
+                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="/reset-password" element={<ResetPasswordPage />} />
+                  <Route path="/verify-email" element={<EmailVerificationPage />} />
+                  <Route path="/verify-email-sent" element={<VerifyEmailNoticePage />} />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <ProtectedRoute>
+                        <DashboardPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="/defi/:address" element={<DeFiDashboardPage />} />
+                  <Route
+                    path="/defi"
+                    element={
+                      <ProtectedRoute>
+                        <DeFiDashboardPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/wallets"
+                    element={
+                      <ProtectedRoute>
+                        <WalletList />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/wallets/:id"
+                    element={
+                      <ProtectedRoute>
+                        <WalletDetailPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/settings"
+                    element={
+                      <ProtectedRoute>
+                        <SettingsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="/unauthorized" element={<UnauthorizedPage />} />
+                  <Route path="*" element={<NotFoundPage />} />
+                </Routes>
+              </Suspense>
             </Router>
             <NotificationManager />
           </QueryClientProvider>

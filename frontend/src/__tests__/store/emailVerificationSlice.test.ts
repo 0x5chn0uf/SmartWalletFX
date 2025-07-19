@@ -1,4 +1,3 @@
-// @ts-nocheck
 import reducer from '../../store/emailVerificationSlice';
 
 describe('emailVerificationSlice reducer', () => {

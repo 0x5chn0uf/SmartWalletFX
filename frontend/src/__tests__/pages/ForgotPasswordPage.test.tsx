@@ -4,6 +4,7 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter } from 'react-router-dom';
 import passwordResetReducer, { requestReset } from '../../store/passwordResetSlice';
+import authReducer from '../../store/authSlice';
 import ForgotPasswordPage from '../../pages/ForgotPasswordPage';
 import { vi } from 'vitest';
 
@@ -15,7 +16,12 @@ vi.mock('../../store/passwordResetSlice', async () => {
   };
 });
 
-const store = configureStore({ reducer: { passwordReset: passwordResetReducer } });
+const store = configureStore({
+  reducer: {
+    passwordReset: passwordResetReducer,
+    auth: authReducer,
+  },
+});
 
 describe('ForgotPasswordPage', () => {
   it('dispatches requestReset on submit', () => {
