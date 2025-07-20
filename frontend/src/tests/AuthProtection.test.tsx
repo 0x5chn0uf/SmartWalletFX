@@ -35,7 +35,7 @@ describe('Authentication Protection', () => {
   });
 
   describe('LoginRegisterPage', () => {
-    it('should redirect authenticated users to /defi', () => {
+    it('should redirect authenticated users to /dashboard', () => {
       const authenticatedStore = createMockStore({
         isAuthenticated: true,
         status: 'succeeded',
@@ -51,7 +51,7 @@ describe('Authentication Protection', () => {
         </Provider>
       );
 
-      expect(mockNavigate).toHaveBeenCalledWith('/defi', { replace: true });
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true });
     });
 
     it('should render login form for unauthenticated users', () => {
@@ -97,7 +97,7 @@ describe('Authentication Protection', () => {
   });
 
   describe('ForgotPasswordPage', () => {
-    it('should redirect authenticated users to /defi', () => {
+    it('should redirect authenticated users to /dashboard', () => {
       const authenticatedStore = createMockStore({
         isAuthenticated: true,
         status: 'succeeded',
@@ -113,7 +113,7 @@ describe('Authentication Protection', () => {
         </Provider>
       );
 
-      expect(mockNavigate).toHaveBeenCalledWith('/defi', { replace: true });
+      expect(mockNavigate).toHaveBeenCalledWith('/dashboard', { replace: true });
     });
 
     it('should render forgot password form for unauthenticated users', () => {

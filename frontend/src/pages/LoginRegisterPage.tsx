@@ -17,7 +17,7 @@ const LoginRegisterPage: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated && status === 'succeeded') {
-      navigate('/dashboard');
+      navigate('/dashboard', { replace: true });
     }
   }, [isAuthenticated, status, navigate]);
 

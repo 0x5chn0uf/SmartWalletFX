@@ -202,7 +202,7 @@ const ForgotPasswordPage = () => {
   // Redirect authenticated users away from forgot password page
   useEffect(() => {
     if (isAuthenticated && status === 'succeeded') {
-      navigate('/defi', { replace: true });
+      navigate('/dashboard', { replace: true });
     }
   }, [isAuthenticated, status, navigate]);
 
