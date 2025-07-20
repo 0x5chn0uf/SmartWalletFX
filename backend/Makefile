@@ -77,7 +77,7 @@ test-quiet:
 # Runtime helpers
 # -----------------------------------------------------------------------------
 run: ## Start uvicorn (0.0.0.0:8000)
-	uvicorn app.main:app --host 0.0.0.0 --port 8000
+	uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 serve: ## Start DB (if needed) then uvicorn with readiness probe
 	@$(MAKE) -s db-start || true

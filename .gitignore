@@ -62,18 +62,21 @@ dev-debug.log
 *.sln
 *.sw?
 
-# Cursor Files
+# IDE Files
 .cursor/
 .cursor
 .taskmaster/
+.claude/
 .roo/
 custom_modes/
 memory-bank/
 .roomodes
 .windsurfrules
+.mcp.json
 
 # GTD Personal Task Management (exclude from repo)
 gtd/
+
 
 # Dependencies
 __pycache__/
