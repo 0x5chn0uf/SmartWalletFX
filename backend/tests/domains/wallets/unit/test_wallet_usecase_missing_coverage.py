@@ -564,7 +564,7 @@ class TestWalletUsecaseMissingCoverage:
         with patch("app.usecase.wallet_usecase.datetime") as mock_datetime:
             mock_now = datetime(2023, 1, 1, 12, 0, 0)
             mock_datetime.now.return_value = mock_now
-            result = await usecase.get_portfolio_timeline(
+            await usecase.get_portfolio_timeline(
                 user_id, address, interval, limit, offset
             )
 

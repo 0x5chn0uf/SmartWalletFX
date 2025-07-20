@@ -84,9 +84,10 @@ class TestAuthLoginEndpoints:
         mock_limiter = Mock()
         mock_limiter.allow.return_value = True  # Not rate limited
 
-        with patch(
-            "app.api.endpoints.auth.deps_mod.login_rate_limiter", mock_limiter
-        ), patch("app.api.endpoints.auth.Audit") as mock_audit:
+        # Mock the rate limiter on the Auth class
+        Auth._rate_limiter_utils.login_rate_limiter = mock_limiter
+
+        with patch("app.api.endpoints.auth.Audit") as mock_audit:
             # Execute and Assert
             with pytest.raises(HTTPException) as excinfo:
                 await Auth.login_for_access_token(request, response, form_data)
