@@ -29,7 +29,8 @@ const UnauthorizedPage = lazy(() => import('./pages/UnauthorizedPage'));
 
 const queryClient = new QueryClient();
 
-const App: React.FC = () => {
+// AppContent component for testing - contains all App logic except Router
+export const AppContent: React.FC = () => {
   const dispatch = useReduxDispatch<AppDispatch>();
 
   useEffect(() => {
@@ -78,6 +79,68 @@ const App: React.FC = () => {
     }
   }, [dispatch]);
 
+  return (
+    <>
+      <NavBar />
+      <Suspense fallback={<PageSkeleton />}>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login-register" element={<LoginRegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/verify-email" element={<EmailVerificationPage />} />
+          <Route path="/verify-email-sent" element={<VerifyEmailNoticePage />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/defi/:address" element={<DeFiDashboardPage />} />
+          <Route
+            path="/defi"
+            element={
+              <ProtectedRoute>
+                <DeFiDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/wallets"
+            element={
+              <ProtectedRoute>
+                <WalletList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/wallets/:id"
+            element={
+              <ProtectedRoute>
+                <WalletDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/unauthorized" element={<UnauthorizedPage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </Suspense>
+      <NotificationManager />
+    </>
+  );
+};
+
+const App: React.FC = () => {
   // Global CSS baseline styles
   const globalStyles = css`
     * {
@@ -128,62 +191,8 @@ const App: React.FC = () => {
         <Global styles={globalStyles} />
         <QueryClientProvider client={queryClient}>
           <Router>
-            <NavBar />
-            <Suspense fallback={<PageSkeleton />}>
-              <Routes>
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/login-register" element={<LoginRegisterPage />} />
-                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="/reset-password" element={<ResetPasswordPage />} />
-                <Route path="/verify-email" element={<EmailVerificationPage />} />
-                <Route path="/verify-email-sent" element={<VerifyEmailNoticePage />} />
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <DashboardPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="/defi/:address" element={<DeFiDashboardPage />} />
-                <Route
-                  path="/defi"
-                  element={
-                    <ProtectedRoute>
-                      <DeFiDashboardPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/wallets"
-                  element={
-                    <ProtectedRoute>
-                      <WalletList />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/wallets/:id"
-                  element={
-                    <ProtectedRoute>
-                      <WalletDetailPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/settings"
-                  element={
-                    <ProtectedRoute>
-                      <SettingsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route path="/unauthorized" element={<UnauthorizedPage />} />
-                <Route path="*" element={<NotFoundPage />} />
-              </Routes>
-            </Suspense>
+            <AppContent />
           </Router>
-          <NotificationManager />
         </QueryClientProvider>
       </Provider>
     </ErrorBoundary>
