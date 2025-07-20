@@ -166,7 +166,7 @@ class OAuthUsecase:
                 tokens.refresh_token,
                 httponly=True,
                 samesite="lax",
-                path="/auth/refresh",
+                path="/auth",
             )
 
             return resp

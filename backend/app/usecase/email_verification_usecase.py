@@ -64,6 +64,7 @@ class EmailVerificationUsecase:
                 raise HTTPException(status_code=400, detail="User not found")
 
             user.email_verified = True
+            await self.__user_repo.save(user)
             await self.__ev_repo.mark_used(token_obj)
 
             # Build claims
