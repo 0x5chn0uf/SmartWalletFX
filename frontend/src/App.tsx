@@ -34,48 +34,32 @@ export const AppContent: React.FC = () => {
   const dispatch = useReduxDispatch<AppDispatch>();
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('access_token');
+    const hasSessionEvidence = localStorage.getItem('session_active') === '1';
 
-    if (storedToken) {
-      apiClient.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-      localStorage.setItem('access_token', storedToken);
+    if (hasSessionEvidence) {
+      // We have evidence of a previous session, try to fetch current user
+      // The httpOnly cookies should handle authentication automatically
+      dispatch(fetchCurrentUser())
+        .unwrap()
+        .catch(() => {
+          // If fetching user fails, attempt silent refresh
+          dispatch(sessionCheckStarted());
 
-      // Token is ready – fetch current user to populate store
-      dispatch(fetchCurrentUser());
-    }
-
-    // If there is no stored token, check if we have evidence of a previous session
-    // before attempting a silent refresh
-    if (!storedToken) {
-      const hasSessionEvidence = localStorage.getItem('session_active') === '1';
-
-      // Only attempt silent refresh if there's evidence of a previous session
-      if (hasSessionEvidence) {
-        // Indicate that we are performing a silent session check
-        dispatch(sessionCheckStarted());
-
-        apiClient
-          .post('/auth/refresh', {}, { withCredentials: true })
-          .then(resp => {
-            const newToken = resp.data?.access_token as string | undefined;
-            if (newToken) {
-              apiClient.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-              localStorage.setItem('access_token', newToken);
+          apiClient
+            .post('/auth/refresh', {}, { withCredentials: true })
+            .then(() => {
+              // Refresh successful, try fetching user again
               dispatch(fetchCurrentUser());
-            } else {
-              // No token in response – finish session check without session
+            })
+            .catch(() => {
+              // Silent refresh failed – clear session evidence and finish check
+              localStorage.removeItem('session_active');
               dispatch(sessionCheckFinished());
-            }
-          })
-          .catch(() => {
-            // Silent refresh failed – clear session evidence and finish check
-            localStorage.removeItem('session_active');
-            dispatch(sessionCheckFinished());
-          });
-      } else {
-        // No session evidence, skip silent refresh
-        dispatch(sessionCheckFinished());
-      }
+            });
+        });
+    } else {
+      // No session evidence, finish session check immediately
+      dispatch(sessionCheckFinished());
     }
   }, [dispatch]);
 

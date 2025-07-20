@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { validateApiResponse, ValidationError } from '../utils/validation';
+import { TokenResponseSchema } from '../schemas/api';
 
 const API_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:8000';
 
@@ -6,12 +8,6 @@ const apiClient = axios.create({
   baseURL: API_URL,
   withCredentials: true,
 });
-
-// Rehydrate access token from storage on page load
-const storedToken = localStorage.getItem('access_token');
-if (storedToken) {
-  apiClient.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-}
 
 // Flag to prevent refresh token loops
 let isRefreshing = false;
@@ -29,16 +25,11 @@ apiClient.interceptors.response.use(
       originalRequest.url?.includes('/auth/register') ||
       originalRequest.url?.includes('/auth/refresh');
 
-    const hasAuthHeader = Boolean(
-      originalRequest.headers?.Authorization || apiClient.defaults.headers.common['Authorization']
-    );
-
     // Check if there's evidence of an active session
     const hasActiveSession = localStorage.getItem('session_active') === '1';
 
     if (
       error.response?.status === 401 &&
-      hasAuthHeader &&
       hasActiveSession &&
       !isRefreshing &&
       !isAuthEndpoint &&
@@ -47,20 +38,15 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshResp = await apiClient.post('/auth/refresh', {}, { withCredentials: true });
+        // Attempt to refresh using httpOnly cookies
+        await apiClient.post('/auth/refresh', {}, { withCredentials: true });
 
-        const newToken = refreshResp.data?.access_token as string | undefined;
-        if (newToken) {
-          apiClient.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-          localStorage.setItem('access_token', newToken);
-        }
         isRefreshing = false;
+        // Retry the original request - the new access token is now in the httpOnly cookie
         return apiClient(originalRequest);
       } catch (err) {
         isRefreshing = false;
         // Clear stale authentication state
-        delete apiClient.defaults.headers.common['Authorization'];
-        localStorage.removeItem('access_token');
         localStorage.removeItem('session_active');
         // Handle refresh failure (redirect to login, etc.)
         window.location.href = '/login-register';
@@ -69,9 +55,7 @@ apiClient.interceptors.response.use(
     }
 
     // If we get a 401 but no active session, clear any stale auth state
-    if (error.response?.status === 401 && hasAuthHeader && !hasActiveSession) {
-      delete apiClient.defaults.headers.common['Authorization'];
-      localStorage.removeItem('access_token');
+    if (error.response?.status === 401 && !hasActiveSession) {
       localStorage.removeItem('session_active');
     }
 

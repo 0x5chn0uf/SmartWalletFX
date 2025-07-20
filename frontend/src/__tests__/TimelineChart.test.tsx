@@ -13,7 +13,6 @@ beforeAll(() => {
   } as any;
 });
 
-
 describe('TimelineChart', () => {
   it('renders without crashing', () => {
     const mockData: PortfolioSnapshot[] = [

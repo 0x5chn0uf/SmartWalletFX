@@ -18,7 +18,9 @@ describe('useTimeline', () => {
 
   it('fetches timeline data when enabled', async () => {
     (getTimeline as any).mockResolvedValue([{ timestamp: 1 }]);
-    const { result } = renderHook(() => useTimeline({ address: 'a', from: 1, to: 2, enabled: true }));
+    const { result } = renderHook(() =>
+      useTimeline({ address: 'a', from: 1, to: 2, enabled: true })
+    );
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.data).toEqual([{ timestamp: 1 }]);
     expect(result.current.error).toBeNull();
@@ -26,7 +28,9 @@ describe('useTimeline', () => {
 
   it('handles fetch errors', async () => {
     (getTimeline as any).mockRejectedValue(new Error('fail'));
-    const { result } = renderHook(() => useTimeline({ address: 'a', from: 1, to: 2, enabled: true }));
+    const { result } = renderHook(() =>
+      useTimeline({ address: 'a', from: 1, to: 2, enabled: true })
+    );
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBe('fail');
     expect(result.current.data).toBeNull();

@@ -16,19 +16,8 @@ export const verifyEmail = createAsyncThunk(
   'emailVerification/verify',
   async (token: string, { rejectWithValue }) => {
     try {
-      const resp = await apiClient.post('/auth/verify-email', { token }, { withCredentials: true });
-      const { access_token: accessToken, refresh_token: refreshToken } = resp.data as {
-        access_token: string;
-        refresh_token: string;
-      };
-
-      if (accessToken) {
-        apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-        localStorage.setItem('access_token', accessToken);
-      }
-      if (refreshToken) {
-        localStorage.setItem('refresh_token', refreshToken);
-      }
+      // Email verification request - tokens will be set as httpOnly cookies by the backend
+      await apiClient.post('/auth/verify-email', { token }, { withCredentials: true });
 
       // Fetch user profile to update auth state
       const meResp = await apiClient.get('/users/me', { withCredentials: true });

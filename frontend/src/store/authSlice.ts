@@ -2,20 +2,15 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import apiClient from '../services/api';
 import { verifyEmail } from './emailVerificationSlice';
+import { validateApiResponse, ValidationError, formatValidationError } from '../utils/validation';
+import {
+  UserProfileSchema,
+  TokenResponseSchema,
+  type UserProfile,
+  type AuthError,
+} from '../schemas/api';
 
-export interface UserProfile {
-  id: string;
-  username: string;
-  email: string;
-  email_verified: boolean;
-  role?: string;
-}
-
-export interface AuthError {
-  status?: number | null;
-  data?: any;
-  message?: string;
-}
+// UserProfile and AuthError types are now imported from schemas/api.ts
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -31,12 +26,38 @@ const initialState: AuthState = {
   error: null,
 };
 
-export const fetchCurrentUser = createAsyncThunk('auth/fetchCurrentUser', async () => {
-  const resp = await apiClient.get('/users/me', { withCredentials: true });
-  // mark session present
-  localStorage.setItem('session_active', '1');
-  return resp.data as UserProfile;
-});
+export const fetchCurrentUser = createAsyncThunk(
+  'auth/fetchCurrentUser',
+  async (_, { rejectWithValue }) => {
+    try {
+      const resp = await apiClient.get('/users/me', { withCredentials: true });
+
+      // Validate the response using zod schema
+      const validatedData = validateApiResponse(resp, UserProfileSchema);
+
+      // mark session present
+      localStorage.setItem('session_active', '1');
+      return validatedData;
+    } catch (err: any) {
+      if (err instanceof ValidationError) {
+        console.error('Validation error in fetchCurrentUser:', formatValidationError(err));
+        return rejectWithValue({
+          status: err.response.status,
+          data: err.response.data,
+          message: formatValidationError(err),
+        });
+      }
+      if (axios.isAxiosError(err)) {
+        return rejectWithValue({
+          status: err.response?.status,
+          data: err.response?.data,
+          message: 'Failed to fetch user profile',
+        });
+      }
+      throw err;
+    }
+  }
+);
 
 export const login = createAsyncThunk(
   'auth/login',
@@ -45,21 +66,32 @@ export const login = createAsyncThunk(
     form.append('username', credentials.email);
     form.append('password', credentials.password);
     try {
-      const tokenResp = await apiClient.post('/auth/token', form, { withCredentials: true });
-      const accessToken = tokenResp.data?.access_token as string | undefined;
-      if (accessToken) {
-        apiClient.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-        localStorage.setItem('access_token', accessToken);
-      }
+      // Login request - tokens will be set as httpOnly cookies by the backend
+      await apiClient.post('/auth/token', form, { withCredentials: true });
+
+      // Fetch user profile to confirm authentication and populate state
       const resp = await apiClient.get('/users/me', { withCredentials: true });
-      // mark session present
+
+      // Validate user profile response
+      const validatedUserData = validateApiResponse(resp, UserProfileSchema);
+
+      // mark session present for refresh token logic
       localStorage.setItem('session_active', '1');
-      return resp.data as UserProfile;
+      return validatedUserData;
     } catch (err: any) {
+      if (err instanceof ValidationError) {
+        console.error('Validation error in login:', formatValidationError(err));
+        return rejectWithValue({
+          status: err.response.status,
+          data: err.response.data,
+          message: formatValidationError(err),
+        });
+      }
       if (axios.isAxiosError(err)) {
         return rejectWithValue({
           status: err.response?.status,
           data: err.response?.data,
+          message: 'Login failed',
         });
       }
       throw err;
@@ -99,9 +131,8 @@ export const logoutUser = createAsyncThunk('auth/logout', async () => {
     // Even if backend logout fails, clear frontend state
     console.warn('Backend logout failed, clearing frontend state anyway:', error);
   }
-  delete apiClient.defaults.headers.common['Authorization'];
+  // Clear session flag - cookies will be cleared by the backend
   localStorage.removeItem('session_active');
-  localStorage.removeItem('access_token');
 });
 
 const authSlice = createSlice({

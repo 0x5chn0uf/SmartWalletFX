@@ -42,7 +42,7 @@ const ErrorDetails = styled.details`
   border-radius: 0.5rem;
   text-align: left;
   max-width: 600px;
-  
+
   summary {
     cursor: pointer;
     font-weight: 600;
@@ -74,8 +74,10 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   cursor: pointer;
   transition: all 0.2s;
   border: 2px solid;
-  
-  ${props => props.variant === 'primary' ? `
+
+  ${props =>
+    props.variant === 'primary'
+      ? `
     background: #3b82f6;
     color: white;
     border-color: #3b82f6;
@@ -84,7 +86,8 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
       background: #2563eb;
       border-color: #2563eb;
     }
-  ` : `
+  `
+      : `
     background: transparent;
     color: #6b7280;
     border-color: #d1d5db;
@@ -136,14 +139,15 @@ class ErrorBoundary extends Component<Props, State> {
       }
 
       const isDevelopment = process.env.NODE_ENV === 'development';
-      
+
       return (
         <ErrorContainer>
           <ErrorTitle>Oops! Something went wrong</ErrorTitle>
           <ErrorMessage>
-            We're sorry, but something unexpected happened. You can try to recover by resetting the component or reloading the page.
+            We're sorry, but something unexpected happened. You can try to recover by resetting the
+            component or reloading the page.
           </ErrorMessage>
-          
+
           {isDevelopment && this.state.error && (
             <ErrorDetails>
               <summary>Error Details (Development)</summary>
@@ -153,7 +157,7 @@ class ErrorBoundary extends Component<Props, State> {
               </ErrorCode>
             </ErrorDetails>
           )}
-          
+
           <ButtonGroup>
             <Button variant="primary" onClick={this.handleReset}>
               Try Again

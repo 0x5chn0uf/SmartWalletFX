@@ -41,14 +41,14 @@ describe('App root', () => {
     vi.clearAllMocks();
   });
 
-  it('dispatches fetchCurrentUser when access_token exists', async () => {
-    localStorage.setItem('access_token', 'token-value');
+  it('dispatches fetchCurrentUser when session_active flag exists', async () => {
+    localStorage.setItem('session_active', '1');
 
-    const store = configureStore({ 
-      reducer: { 
+    const store = configureStore({
+      reducer: {
         auth: authReducer,
         notification: notificationReducer,
-      } 
+      },
     });
     const spy = vi.spyOn(store, 'dispatch');
 
@@ -63,17 +63,31 @@ describe('App root', () => {
       </Provider>
     );
 
-    await waitFor(() => expect(spy).toHaveBeenCalled());
+    await waitFor(() => {
+      const fetchCurrentUserActions = spy.mock.calls.filter(
+        call =>
+          call[0]?.type === fetchCurrentUser.pending.type ||
+          call[0]?.type === fetchCurrentUser.fulfilled.type
+      );
+      expect(fetchCurrentUserActions.length).toBeGreaterThan(0);
+    });
   });
 
-  it('attempts silent refresh when session_active flag present', async () => {
+  it('attempts fallback silent refresh when fetchCurrentUser fails', async () => {
     localStorage.setItem('session_active', '1');
 
-    const store = configureStore({ 
-      reducer: { 
+    // Mock fetchCurrentUser to fail initially
+    const apiClient = await import('../../../services/api');
+    apiClient.default.get = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Auth failed'))
+      .mockResolvedValueOnce({ data: { id: '1', username: 'joe', email: 'j@e.com' } });
+
+    const store = configureStore({
+      reducer: {
         auth: authReducer,
         notification: notificationReducer,
-      } 
+      },
     });
 
     render(
@@ -87,7 +101,13 @@ describe('App root', () => {
       </Provider>
     );
 
-    // wait for async post mock to resolve and the new token to be stored
-    await waitFor(() => expect(localStorage.getItem('access_token')).toBe('new.token'));
+    // Wait for the refresh process to complete
+    await waitFor(() => {
+      expect(apiClient.default.post).toHaveBeenCalledWith(
+        '/auth/refresh',
+        {},
+        { withCredentials: true }
+      );
+    });
   });
 });

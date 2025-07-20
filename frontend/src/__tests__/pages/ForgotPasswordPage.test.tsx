@@ -13,7 +13,7 @@ vi.mock('../../store/passwordResetSlice', async () => {
   const actual = await vi.importActual('../../store/passwordResetSlice');
   return {
     ...actual,
-    requestReset: vi.fn((email) => ({
+    requestReset: vi.fn(email => ({
       type: 'passwordReset/request/pending',
       payload: undefined,
       meta: {
@@ -54,16 +54,16 @@ describe('ForgotPasswordPage', () => {
         </MemoryRouter>
       </Provider>
     );
-    
+
     const emailInput = screen.getByLabelText(/email/i);
     const submitButton = screen.getByRole('button', { name: /send reset link/i });
-    
+
     fireEvent.change(emailInput, {
       target: { value: 'test@example.com' },
     });
-    
+
     fireEvent.click(submitButton);
-    
+
     await waitFor(() => {
       expect(requestReset).toHaveBeenCalledWith('test@example.com');
     });
