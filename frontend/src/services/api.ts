@@ -33,9 +33,13 @@ apiClient.interceptors.response.use(
       originalRequest.headers?.Authorization || apiClient.defaults.headers.common['Authorization']
     );
 
+    // Check if there's evidence of an active session
+    const hasActiveSession = localStorage.getItem('session_active') === '1';
+
     if (
       error.response?.status === 401 &&
       hasAuthHeader &&
+      hasActiveSession &&
       !isRefreshing &&
       !isAuthEndpoint &&
       originalRequest
@@ -54,10 +58,21 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest);
       } catch (err) {
         isRefreshing = false;
+        // Clear stale authentication state
+        delete apiClient.defaults.headers.common['Authorization'];
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('session_active');
         // Handle refresh failure (redirect to login, etc.)
         window.location.href = '/login-register';
         return Promise.reject(err);
       }
+    }
+
+    // If we get a 401 but no active session, clear any stale auth state
+    if (error.response?.status === 401 && hasAuthHeader && !hasActiveSession) {
+      delete apiClient.defaults.headers.common['Authorization'];
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('session_active');
     }
 
     return Promise.reject(error);

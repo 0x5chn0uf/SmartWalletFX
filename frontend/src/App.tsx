@@ -1,9 +1,8 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { CssBaseline } from '@mui/material';
+import { Global, css } from '@emotion/react';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { Provider, useDispatch as useReduxDispatch } from 'react-redux';
-import { ThemeProvider } from './providers/ThemeProvider';
 import { store, AppDispatch } from './store';
 import NotificationManager from './components/NotificationManager';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -79,71 +78,113 @@ const App: React.FC = () => {
     }
   }, [dispatch]);
 
+  // Global CSS baseline styles
+  const globalStyles = css`
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      font-family:
+        -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell',
+        'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      line-height: 1.5;
+      background-color: #ffffff;
+      color: #1f2937;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      margin: 0;
+      font-weight: 600;
+    }
+
+    p {
+      margin: 0;
+    }
+
+    button {
+      font-family: inherit;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+  `;
+
   return (
     <ErrorBoundary>
       <Provider store={store}>
-        <ThemeProvider>
-          <CssBaseline />
-          <QueryClientProvider client={queryClient}>
-            <Router>
-              <NavBar />
-              <Suspense fallback={<PageSkeleton />}>
-                <Routes>
-                  <Route path="/" element={<LandingPage />} />
-                  <Route path="/login-register" element={<LoginRegisterPage />} />
-                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                  <Route path="/reset-password" element={<ResetPasswordPage />} />
-                  <Route path="/verify-email" element={<EmailVerificationPage />} />
-                  <Route path="/verify-email-sent" element={<VerifyEmailNoticePage />} />
-                  <Route
-                    path="/dashboard"
-                    element={
-                      <ProtectedRoute>
-                        <DashboardPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route path="/defi/:address" element={<DeFiDashboardPage />} />
-                  <Route
-                    path="/defi"
-                    element={
-                      <ProtectedRoute>
-                        <DeFiDashboardPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/wallets"
-                    element={
-                      <ProtectedRoute>
-                        <WalletList />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/wallets/:id"
-                    element={
-                      <ProtectedRoute>
-                        <WalletDetailPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/settings"
-                    element={
-                      <ProtectedRoute>
-                        <SettingsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route path="/unauthorized" element={<UnauthorizedPage />} />
-                  <Route path="*" element={<NotFoundPage />} />
-                </Routes>
-              </Suspense>
-            </Router>
-            <NotificationManager />
-          </QueryClientProvider>
-        </ThemeProvider>
+        <Global styles={globalStyles} />
+        <QueryClientProvider client={queryClient}>
+          <Router>
+            <NavBar />
+            <Suspense fallback={<PageSkeleton />}>
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/login-register" element={<LoginRegisterPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/verify-email" element={<EmailVerificationPage />} />
+                <Route path="/verify-email-sent" element={<VerifyEmailNoticePage />} />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/defi/:address" element={<DeFiDashboardPage />} />
+                <Route
+                  path="/defi"
+                  element={
+                    <ProtectedRoute>
+                      <DeFiDashboardPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/wallets"
+                  element={
+                    <ProtectedRoute>
+                      <WalletList />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/wallets/:id"
+                  element={
+                    <ProtectedRoute>
+                      <WalletDetailPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute>
+                      <SettingsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/unauthorized" element={<UnauthorizedPage />} />
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+            </Suspense>
+          </Router>
+          <NotificationManager />
+        </QueryClientProvider>
       </Provider>
     </ErrorBoundary>
   );

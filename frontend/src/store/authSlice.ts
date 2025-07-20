@@ -93,7 +93,12 @@ export const registerUser = createAsyncThunk(
 );
 
 export const logoutUser = createAsyncThunk('auth/logout', async () => {
-  await apiClient.post('/auth/logout', {}, { withCredentials: true });
+  try {
+    await apiClient.post('/auth/logout', {}, { withCredentials: true });
+  } catch (error) {
+    // Even if backend logout fails, clear frontend state
+    console.warn('Backend logout failed, clearing frontend state anyway:', error);
+  }
   delete apiClient.defaults.headers.common['Authorization'];
   localStorage.removeItem('session_active');
   localStorage.removeItem('access_token');
@@ -165,6 +170,12 @@ const authSlice = createSlice({
         state.status = 'succeeded';
       })
       .addCase(logoutUser.fulfilled, state => {
+        state.isAuthenticated = false;
+        state.user = null;
+        state.status = 'idle';
+      })
+      .addCase(logoutUser.rejected, state => {
+        // Even if logout fails, clear frontend state
         state.isAuthenticated = false;
         state.user = null;
         state.status = 'idle';

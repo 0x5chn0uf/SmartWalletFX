@@ -1,7 +1,86 @@
 import React from 'react';
-import { Box, Typography, Button, Container } from '@mui/material';
+import styled from '@emotion/styled';
 import { useNavigate } from 'react-router-dom';
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import { FiAlertTriangle } from 'react-icons/fi';
+
+const Container = styled.div`
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 0 1rem;
+`;
+
+const Box = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  text-align: center;
+  gap: 1.5rem;
+`;
+
+const IconWrapper = styled.div`
+  font-size: 120px;
+  color: #ef4444;
+`;
+
+const Title = styled.h1`
+  font-size: 4rem;
+  font-weight: bold;
+  margin: 0;
+  color: #1f2937;
+`;
+
+const Subtitle = styled.h2`
+  font-size: 1.5rem;
+  margin: 0 0 1rem 0;
+  color: #374151;
+`;
+
+const Description = styled.p`
+  color: #6b7280;
+  margin-bottom: 2rem;
+  font-size: 1rem;
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+`;
+
+const Button = styled.button<{ variant?: 'contained' | 'outlined' }>`
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid;
+
+  ${props =>
+    props.variant === 'contained'
+      ? `
+    background: #3b82f6;
+    color: white;
+    border-color: #3b82f6;
+    
+    &:hover {
+      background: #2563eb;
+      border-color: #2563eb;
+    }
+  `
+      : `
+    background: transparent;
+    color: #3b82f6;
+    border-color: #3b82f6;
+    
+    &:hover {
+      background: #eff6ff;
+    }
+  `}
+`;
 
 const NotFoundPage: React.FC = () => {
   const navigate = useNavigate();
@@ -15,41 +94,27 @@ const NotFoundPage: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="sm">
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100vh',
-          textAlign: 'center',
-          gap: 3,
-        }}
-      >
-        <ErrorOutlineIcon sx={{ fontSize: 120, color: 'error.main' }} />
+    <Container>
+      <Box>
+        <IconWrapper>
+          <FiAlertTriangle />
+        </IconWrapper>
 
-        <Typography variant="h1" component="h1" sx={{ fontSize: '4rem', fontWeight: 'bold' }}>
-          404
-        </Typography>
+        <Title>404</Title>
 
-        <Typography variant="h4" component="h2" gutterBottom>
-          Page Not Found
-        </Typography>
+        <Subtitle>Page Not Found</Subtitle>
 
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-          The page you're looking for doesn't exist or has been moved.
-        </Typography>
+        <Description>The page you're looking for doesn't exist or has been moved.</Description>
 
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
-          <Button variant="contained" color="primary" onClick={handleGoHome} size="large">
+        <ButtonGroup>
+          <Button variant="contained" onClick={handleGoHome}>
             Go Home
           </Button>
 
-          <Button variant="outlined" color="primary" onClick={handleGoBack} size="large">
+          <Button variant="outlined" onClick={handleGoBack}>
             Go Back
           </Button>
-        </Box>
+        </ButtonGroup>
       </Box>
     </Container>
   );
