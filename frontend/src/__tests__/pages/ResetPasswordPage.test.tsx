@@ -26,15 +26,15 @@ vi.mock('../../hooks/useAuth', () => ({
 }));
 
 describe('ResetPasswordPage', () => {
-  beforeEach(() => {
+  let mockApiClient: any;
+
+  beforeEach(async () => {
     vi.clearAllMocks();
+    mockApiClient = await import('../../services/api');
+    mockApiClient.default.post.mockResolvedValue({ data: {} });
   });
 
   it('dispatches resetPassword on submit', async () => {
-    // Mock the API calls to succeed
-    const mockApiClient = await import('../../services/api');
-    mockApiClient.default.post.mockResolvedValue({ data: {} });
-
     const store = configureStore({
       reducer: {
         passwordReset: passwordResetReducer,
@@ -43,7 +43,7 @@ describe('ResetPasswordPage', () => {
       preloadedState: {
         passwordReset: {
           status: 'idle',
-          tokenValidationStatus: 'idle',
+          tokenValidationStatus: 'succeeded', // Pre-set token as valid to skip validation
           error: null,
         },
         auth: {
