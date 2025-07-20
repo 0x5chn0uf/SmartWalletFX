@@ -16,6 +16,7 @@ from app.services.email_service import EmailService
 from app.usecase.auth_usecase import AuthUsecase
 from app.utils.jwt import JWTUtils
 from app.utils.logging import Audit
+from app.utils.rate_limiter import RateLimiterUtils
 
 
 @pytest.fixture
@@ -132,6 +133,17 @@ def mock_auth_usecase():
 
 
 @pytest.fixture
-def auth_endpoint(mock_auth_usecase):
+def mock_rate_limiter_utils():
+    """Mock RateLimiterUtils."""
+    mock = Mock(spec=RateLimiterUtils)
+    mock.login_rate_limiter = Mock()
+    mock.login_rate_limiter.allow = Mock(return_value=True)
+    mock.login_rate_limiter.reset = Mock()
+    mock.login_rate_limiter.clear = Mock()
+    return mock
+
+
+@pytest.fixture
+def auth_endpoint(mock_auth_usecase, mock_rate_limiter_utils):
     """Create Auth endpoint instance with mocked dependencies."""
-    return Auth(mock_auth_usecase)
+    return Auth(mock_auth_usecase, mock_rate_limiter_utils)

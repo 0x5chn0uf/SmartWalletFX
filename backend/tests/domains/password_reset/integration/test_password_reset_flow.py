@@ -9,79 +9,88 @@ from httpx import AsyncClient
 from app.domain.schemas.user import UserCreate
 
 
-@pytest.mark.skip(
-    reason="Test requires application fixes for session isolation between DI container and test database"
-)
 @pytest.mark.asyncio
 async def test_password_reset_flow(
-    integration_async_client: AsyncClient, db_session, monkeypatch, auth_usecase
+    test_app_with_di_container, test_di_container_with_db
 ) -> None:
-    # Register user
+    # Use DI container for consistent session handling
+    from httpx import AsyncClient
+
+    # Register user using DI container
     unique_id = uuid.uuid4().hex[:8]
     email = f"reset_{unique_id}@example.com"
+    username = f"resetuser_{unique_id}"
+
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
     user = await auth_usecase.register(
         UserCreate(
-            username=f"resetuser_{unique_id}",
+            username=username,
             email=email,
             password="Str0ng!pwd",
         )
     )
 
-    # Query the user in our test session and mark email as verified
-    from sqlalchemy import select
+    # Mark email as verified using DI container
+    user_repo = test_di_container_with_db.get_repository("user")
+    db_user = await user_repo.get_by_email(email)
+    if db_user:
+        db_user.email_verified = True
+        await user_repo.save(db_user)
 
-    from app.models.user import User
+    # Use async client with the DI container app
+    async with AsyncClient(
+        app=test_app_with_di_container, base_url="http://test"
+    ) as client:
+        # Small delay to ensure all transactions are committed
+        import asyncio
 
-    result = await db_session.execute(select(User).where(User.email == email))
-    test_user = result.scalar_one()
-    test_user.email_verified = True
-    await db_session.commit()
+        await asyncio.sleep(0.1)
 
-    # Small delay to ensure all transactions are committed
-    import asyncio
+        # Patch token generator to return fixed token with unique hash
+        fixed_token = f"fixed-token-{unique_id}"
+        token_hash = f"hash-{unique_id}"
 
-    await asyncio.sleep(0.1)
+        async def dummy_send(self, email: str, reset_link: str) -> None:
+            assert fixed_token in reset_link
 
-    # Patch token generator to return fixed token
-    fixed_token = "fixed-token"
+        from unittest.mock import patch
 
-    async def dummy_send(self, email: str, reset_link: str) -> None:
-        assert fixed_token in reset_link
+        from app.api.endpoints import password_reset as ep
 
-    from app.api.endpoints import password_reset as ep
+        # This direct patching is not ideal with DI, but we'll keep it for now
+        # to minimize the scope of changes.
+        with patch.object(
+            ep,
+            "generate_token",
+            return_value=(
+                fixed_token,
+                token_hash,
+                datetime.now(timezone.utc) + timedelta(minutes=30),
+            ),
+        ):
+            # Patch email service
+            with patch.object(ep.EmailService, "send_password_reset", dummy_send):
+                resp = await client.post(
+                    "/auth/password-reset-request", json={"email": email}
+                )
+                assert resp.status_code == 204
 
-    # This direct patching is not ideal with DI, but we'll keep it for now
-    # to minimize the scope of changes.
-    ep.generate_token = lambda: (
-        fixed_token,
-        "hash",
-        datetime.now(timezone.utc) + timedelta(minutes=30),
-    )
-    # Patch using monkeypatch to ensure cleanup after the test
-    monkeypatch.setattr(
-        ep.EmailService, "send_password_reset", dummy_send, raising=False
-    )
+                # Reset password
+                new_password = "N3wPass!123"
+                resp = await client.post(
+                    "/auth/password-reset-complete",
+                    json={"token": fixed_token, "password": new_password},
+                )
+                assert resp.status_code == 200
 
-    resp = await integration_async_client.post(
-        "/auth/forgot-password", json={"email": email}
-    )
-    assert resp.status_code == 204
-
-    # Reset password
-    new_password = "N3wPass!123"
-    resp = await integration_async_client.post(
-        "/auth/reset-password", json={"token": fixed_token, "password": new_password}
-    )
-    assert resp.status_code == 200
-
-    # Login with new password should succeed
-    form = {"username": user.username, "password": new_password}
-    login_resp = await integration_async_client.post(
-        "/auth/token",
-        data=form,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
-    assert login_resp.status_code == 200
+                # Login with new password should succeed
+                form = {"username": user.username, "password": new_password}
+                login_resp = await client.post(
+                    "/auth/token",
+                    data=form,
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                )
+                assert login_resp.status_code == 200
 
 
 # ---------------------------------------------------------------------------
@@ -93,65 +102,94 @@ async def test_password_reset_flow(
 async def test_forgot_password_unknown_email(
     integration_async_client: AsyncClient,
 ) -> None:
-    """Unknown email addresses should return 204 without leaking info (BUG: currently returns 404)."""
+    """Unknown email addresses should return 204 without leaking info."""
 
     resp = await integration_async_client.post(
-        "/auth/forgot-password", json={"email": "unknown@example.com"}
+        "/auth/password-reset-request", json={"email": "unknown@example.com"}
     )
-    # BUG: Should return 204 to avoid leaking email info, but currently returns 404
-    assert resp.status_code == 404
+    # Should return 204 to avoid leaking email info
+    assert resp.status_code == 204
 
 
 @pytest.mark.asyncio
 async def test_password_reset_rate_limit(
-    integration_async_client: AsyncClient,
-    db_session,
-    monkeypatch,
-    auth_usecase,
+    test_app_with_di_container, test_di_container_with_db
 ) -> None:
     """Hitting the forgot-password endpoint more than the allowed attempts should 429."""
-    pytest.skip("Skipping rate limit test during DI refactoring.")
+    # Get the rate limiter from DI container to control it for testing
+    rate_limiter_utils = test_di_container_with_db.get_utility("rate_limiter_utils")
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
+
+    # Clear any existing rate limit state
+    rate_limiter_utils.login_rate_limiter.clear()
+
+    # Create a test user
+    unique_id = uuid.uuid4().hex[:8]
+    email = f"ratelimit_{unique_id}@example.com"
+    user_create = UserCreate(
+        username=f"ratelimituser_{unique_id}",
+        email=email,
+        password="StrongPassword123!",
+    )
+    user = await auth_usecase.register(user_create)
+    user.email_verified = True
+
+    # Commit the user to the database
+    user_repo = test_di_container_with_db.get_repository("user")
+    await user_repo.save(user)
+
+    async with AsyncClient(
+        app=test_app_with_di_container, base_url="http://test"
+    ) as client:
+        # Make password reset requests up to the limit (5 attempts)
+        for i in range(5):
+            resp = await client.post(
+                "/auth/password-reset-request", json={"email": email}
+            )
+            assert resp.status_code == 204  # Should succeed
+
+        # Next attempt should be rate limited
+        resp = await client.post("/auth/password-reset-request", json={"email": email})
+        assert resp.status_code == 429  # Rate limited
 
 
 @pytest.mark.asyncio
 async def test_verify_invalid_token(integration_async_client: AsyncClient) -> None:
-    """/verify-reset-token should return `{valid: False}` for unknown tokens (BUG: currently returns 404)."""
+    """/password-reset-verify should return 400 for unknown tokens."""
 
     resp = await integration_async_client.post(
-        "/auth/verify-reset-token", json={"token": "does-not-exist"}
+        "/auth/password-reset-verify", json={"token": "does-not-exist"}
     )
-    # BUG: Should return 200 with {valid: False}, but currently returns 404
-    assert resp.status_code == 404
+    # Should return 400 for invalid token
+    assert resp.status_code == 400
+    assert "Invalid or expired token" in resp.json()["detail"]
 
 
 @pytest.mark.asyncio
 async def test_reset_password_invalid_token(
     integration_async_client: AsyncClient,
 ) -> None:
-    """/reset-password should reject invalid or expired tokens (BUG: currently returns 404)."""
+    """/password-reset-complete should reject invalid or expired tokens."""
 
     resp = await integration_async_client.post(
-        "/auth/reset-password",
+        "/auth/password-reset-complete",
         json={"token": "doesnotexist1", "password": "NewValid1!"},
     )
-    # BUG: Should return 400 for invalid token, but currently returns 404
-    assert resp.status_code == 404
+    # Should return 400 for invalid token
+    assert resp.status_code == 400
+    assert "Invalid or expired token" in resp.json()["detail"]
 
 
-@pytest.mark.skip(
-    reason="Test requires refactoring to use DI container for PasswordResetRepository and fix session isolation"
-)
 @pytest.mark.asyncio
 async def test_reset_password_token_reuse(
-    integration_async_client: AsyncClient,
-    db_session,
-    auth_usecase,
+    test_app_with_di_container, test_di_container_with_db
 ) -> None:
     """Tokens are single-use – a second attempt should fail with 400."""
+    from httpx import AsyncClient
 
-    from app.repositories.password_reset_repository import (
-        PasswordResetRepository,
-    )
+    # Get services from DI container
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
+    password_reset_repo = test_di_container_with_db.get_repository("password_reset")
 
     # Arrange – create user & token manually
     unique_id = uuid.uuid4().hex[:8]
@@ -163,27 +201,30 @@ async def test_reset_password_token_reuse(
         )
     )
 
-    # Mark the user's email as verified
+    # Mark the user's email as verified and save
     user.email_verified = True
-    await db_session.commit()
+    user_repo = test_di_container_with_db.get_repository("user")
+    await user_repo.save(user)
 
-    # We need a password reset repository. In a pure DI world, we would get this
-    # from the container. For now, we instantiate it directly for the test.
-    password_reset_repo = PasswordResetRepository(db_session)
-    token = "single-use-token"
+    # Create a password reset token
+    token = f"single-use-token-{unique_id}"
     expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
     await password_reset_repo.create(token, user.id, expires_at)
 
-    # First successful reset
-    ok = await integration_async_client.post(
-        "/auth/reset-password",
-        json={"token": token, "password": "BrandN3w!pwd"},
-    )
-    assert ok.status_code == 200
+    async with AsyncClient(
+        app=test_app_with_di_container, base_url="http://test"
+    ) as client:
+        # First successful reset
+        ok = await client.post(
+            "/auth/password-reset-complete",
+            json={"token": token, "password": "BrandN3w!pwd"},
+        )
+        assert ok.status_code == 200
 
-    # Second attempt should now fail (token marked as used)
-    fail = await integration_async_client.post(
-        "/auth/reset-password",
-        json={"token": token, "password": "Another1!pwd"},
-    )
-    assert fail.status_code == 400
+        # Second attempt should now fail (token marked as used)
+        fail = await client.post(
+            "/auth/password-reset-complete",
+            json={"token": token, "password": "Another1!pwd"},
+        )
+        assert fail.status_code == 400
+        assert "Invalid or expired token" in fail.json()["detail"]

@@ -202,3 +202,36 @@ async def test_link_account_with_session_exception(
         await oauth_account_repository_with_di.link_account(
             user_id, "google", "123", "test@example.com"
         )
+
+
+@pytest.mark.asyncio
+async def test_get_by_provider_account_exception(
+    oauth_account_repository_with_di, mock_async_session
+):
+    """Test get_by_provider_account with database exception."""
+    # Setup mock session
+    setup_mock_session(oauth_account_repository_with_di, mock_async_session)
+
+    # Mock the execute method to raise an exception
+    mock_async_session.execute.side_effect = Exception("Database error")
+
+    # Execute and Assert
+    with pytest.raises(Exception, match="Database error"):
+        await oauth_account_repository_with_di.get_by_provider_account("google", "123")
+
+
+@pytest.mark.asyncio
+async def test_get_by_user_provider_exception(
+    oauth_account_repository_with_di, mock_async_session
+):
+    """Test get_by_user_provider with database exception."""
+    # Setup mock session
+    setup_mock_session(oauth_account_repository_with_di, mock_async_session)
+    user_id = uuid.uuid4()
+
+    # Mock the execute method to raise an exception
+    mock_async_session.execute.side_effect = Exception("Database error")
+
+    # Execute and Assert
+    with pytest.raises(Exception, match="Database error"):
+        await oauth_account_repository_with_di.get_by_user_provider(user_id, "google")

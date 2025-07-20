@@ -11,8 +11,6 @@ from unittest.mock import Mock
 import httpx
 import pytest
 import pytest_asyncio
-from fastapi.testclient import TestClient
-from httpx import AsyncClient
 
 from app.core.database import CoreDatabase
 from app.di import DIContainer

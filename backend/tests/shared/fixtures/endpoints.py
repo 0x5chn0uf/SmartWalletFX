@@ -55,6 +55,9 @@ def password_reset_endpoint_with_di(
     mock_password_reset_repository,
     mock_user_repository,
     mock_email_service,
+    mock_rate_limiter_utils,
+    mock_password_hasher,
+    mock_config,
 ):
     """Create PasswordReset endpoint with mocked dependencies."""
     from app.api.endpoints.password_reset import PasswordReset
@@ -63,6 +66,9 @@ def password_reset_endpoint_with_di(
         mock_password_reset_repository,
         mock_user_repository,
         mock_email_service,
+        mock_rate_limiter_utils,
+        mock_password_hasher,
+        mock_config,
     )
 
 

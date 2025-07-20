@@ -4,7 +4,6 @@ import uuid
 from contextlib import asynccontextmanager
 from unittest.mock import Mock
 
-import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,8 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.domain.schemas.user import UserCreate
 from app.models import Wallet
 from app.models.user import User
-from app.services.email_service import EmailService
-from app.services.oauth_service import OAuthService
 from app.usecase.auth_usecase import AuthUsecase
 
 
@@ -179,17 +176,17 @@ async def authenticated_client(
 ):
     """
     Returns an authenticated client for a given user.
-    Commits the user to database and creates auth token.
+    Creates auth token directly without authentication.
     """
-    # Commit the user to database so authentication can work
-    await db_session.commit()
-    await db_session.refresh(test_user)
-
-    token_data = await auth_usecase.authenticate(
-        identity=test_user.email, password="Str0ngPassword!"
+    # Create token directly using JWT utils instead of authenticating
+    jwt_utils = auth_usecase._AuthUsecase__jwt_utils
+    token = jwt_utils.create_access_token(
+        subject=str(test_user.id),
+        additional_claims={"roles": test_user.roles},
     )
+
     async_client.headers = {
-        "Authorization": f"Bearer {token_data.access_token}",
+        "Authorization": f"Bearer {token}",
     }
     return async_client
 

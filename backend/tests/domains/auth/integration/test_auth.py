@@ -123,12 +123,63 @@ async def test_obtain_token_success(
 
 @pytest.mark.asyncio
 async def test_login_rate_limit(
-    integration_async_client: AsyncClient, auth_usecase, mocker
+    test_app_with_di_container, test_di_container_with_db
 ) -> None:
-    # This test is more complex due to the global rate limiter.
-    # We will skip refactoring it for now as it requires more changes
-    # to the rate limiter itself to be injectable.
-    pytest.skip("Skipping rate limit test during DI refactoring")
+    """Test that login rate limiting works correctly."""
+    # Get the rate limiter from DI container to control it for testing
+    rate_limiter_utils = test_di_container_with_db.get_utility("rate_limiter_utils")
+    auth_usecase = test_di_container_with_db.get_usecase("auth")
+
+    # Clear any existing rate limit state
+    rate_limiter_utils.login_rate_limiter.clear()
+
+    # Create a test user
+    user_create = UserCreate(
+        username=f"ratetest-{uuid.uuid4().hex[:8]}",
+        email=f"ratetest-{uuid.uuid4().hex[:8]}@example.com",
+        password="StrongPassword123!",
+    )
+    user = await auth_usecase.register(user_create)
+    user.email_verified = True
+
+    # Commit the user to the database
+    user_repo = test_di_container_with_db.get_repository("user")
+    await user_repo.save(user)
+
+    async with AsyncClient(
+        app=test_app_with_di_container, base_url="http://test"
+    ) as client:
+        # Test successful logins don't trigger rate limit
+        form_data = {"username": user.username, "password": "StrongPassword123!"}
+        resp = await client.post(
+            "/auth/token",
+            data=form_data,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        assert resp.status_code == 200
+
+        # Clear rate limiter again to start fresh
+        rate_limiter_utils.login_rate_limiter.clear()
+
+        # Test failed logins trigger rate limit
+        bad_form_data = {"username": user.username, "password": "WrongPassword"}
+
+        # Should allow initial failed attempts (up to max_attempts)
+        for i in range(5):  # AUTH_RATE_LIMIT_ATTEMPTS default is 5
+            resp = await client.post(
+                "/auth/token",
+                data=bad_form_data,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            assert resp.status_code == 401  # Wrong credentials
+
+        # Next attempt should be rate limited
+        resp = await client.post(
+            "/auth/token",
+            data=bad_form_data,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        assert resp.status_code == 429  # Rate limited
 
 
 @pytest.mark.asyncio

@@ -31,9 +31,7 @@ class TestAuthLogoutEndpoints:
             assert result is None
             # Verify cookies are cleared
             response.delete_cookie.assert_any_call("access_token")
-            response.delete_cookie.assert_any_call(
-                "refresh_token", path="/auth/refresh"
-            )
+            response.delete_cookie.assert_any_call("refresh_token", path="/auth")
             # Verify audit logging
             mock_audit.info.assert_any_call(
                 "User logout started", client_ip="127.0.0.1"

@@ -4,7 +4,6 @@ Service-specific test fixtures.
 This module provides fixtures for testing service classes and their dependencies.
 """
 
-from datetime import datetime
 from unittest.mock import Mock
 
 import pytest
@@ -38,3 +37,11 @@ def oauth_service_with_di(
         config=mock_config,
         audit=mock_audit,
     )
+
+
+@pytest.fixture
+def email_service_with_di(mock_config, mock_audit):
+    """Create EmailService with mocked dependencies."""
+    from app.services.email_service import EmailService
+
+    return EmailService(config=mock_config, audit=mock_audit)

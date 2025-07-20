@@ -120,6 +120,19 @@ def mock_password_hasher():
 
 
 @pytest.fixture
+def mock_rate_limiter_utils():
+    """
+    Mock rate limiter utils for testing.
+    Provides a mock rate limiter for testing rate limiting functionality.
+    """
+    mock_rate_limiter = Mock()
+    mock_rate_limiter.login_rate_limiter = Mock()
+    mock_rate_limiter.login_rate_limiter.allow = Mock(return_value=True)
+
+    return mock_rate_limiter
+
+
+@pytest.fixture
 def mock_all_external_services(
     mock_redis,
     mock_web3,

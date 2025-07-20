@@ -21,15 +21,13 @@ from app.domain.schemas.password_reset import (
 
 @pytest.mark.asyncio
 async def test_request_password_reset_rate_limited(
-    password_reset_endpoint_with_di, monkeypatch
+    password_reset_endpoint_with_di, mock_rate_limiter_utils
 ):
     """Test password reset request when rate limited."""
     endpoint = password_reset_endpoint_with_di
 
     # Mock rate limiter to deny request
-    monkeypatch.setattr(
-        "app.api.endpoints.password_reset.reset_rate_limiter.allow", lambda _: False
-    )
+    mock_rate_limiter_utils.login_rate_limiter.allow.return_value = False
 
     payload = PasswordResetRequest(email="foo@example.com")
     with pytest.raises(HTTPException) as exc_info:
@@ -42,15 +40,13 @@ async def test_request_password_reset_rate_limited(
 async def test_request_password_reset_unknown_email(
     password_reset_endpoint_with_di,
     mock_user_repository,
-    monkeypatch,
+    mock_rate_limiter_utils,
 ):
     """Test password reset request for unknown email."""
     endpoint = password_reset_endpoint_with_di
 
     # Mock rate limiter to allow request
-    monkeypatch.setattr(
-        "app.api.endpoints.password_reset.reset_rate_limiter.allow", lambda _: True
-    )
+    mock_rate_limiter_utils.login_rate_limiter.allow.return_value = True
 
     # Mock user repository to return None (user not found)
     mock_user_repository.get_by_email.return_value = None
@@ -66,7 +62,7 @@ async def test_request_password_reset_unknown_email(
 async def test_request_password_reset_email_failure(
     password_reset_endpoint_with_di,
     mock_user_repository,
-    monkeypatch,
+    mock_rate_limiter_utils,
 ):
     """Test password reset request when email sending fails.
 
@@ -76,9 +72,7 @@ async def test_request_password_reset_email_failure(
     endpoint = password_reset_endpoint_with_di
 
     # Mock rate limiter to allow request
-    monkeypatch.setattr(
-        "app.api.endpoints.password_reset.reset_rate_limiter.allow", lambda _: True
-    )
+    mock_rate_limiter_utils.login_rate_limiter.allow.return_value = True
 
     # Mock user found
     mock_user = Mock(id=1, email="e@example.com")
@@ -97,7 +91,7 @@ async def test_request_password_reset_email_failure(
 async def test_request_password_reset_success(
     password_reset_endpoint_with_di,
     mock_user_repository,
-    monkeypatch,
+    mock_rate_limiter_utils,
 ):
     """Test successful password reset request.
 
@@ -107,9 +101,7 @@ async def test_request_password_reset_success(
     endpoint = password_reset_endpoint_with_di
 
     # Mock rate limiter to allow request
-    monkeypatch.setattr(
-        "app.api.endpoints.password_reset.reset_rate_limiter.allow", lambda _: True
-    )
+    mock_rate_limiter_utils.login_rate_limiter.allow.return_value = True
 
     # Mock user found
     mock_user = Mock(id=2, email="ok@example.com")
@@ -144,7 +136,7 @@ async def test_verify_reset_token(
     payload = PasswordResetVerify(token="tok1234567")
     result = await endpoint.verify_password_reset(payload)
 
-    assert result == {"message": "Token verified"}
+    assert result == {"valid": True, "message": "Token verified"}
     # Current implementation doesn't actually check tokens (TODO)
     # mock_password_reset_repository.get_valid.assert_awaited_once_with("tok1234567")
 
@@ -161,12 +153,14 @@ async def test_verify_reset_token_invalid(
     mock_password_reset_repository.get_valid.return_value = None
 
     payload = PasswordResetVerify(token="tok1234567")
-    result = await endpoint.verify_password_reset(payload)
 
-    # Current implementation doesn't actually validate tokens (TODO) - always returns success
-    assert result == {"message": "Token verified"}
-    # Current implementation doesn't actually check repository (TODO)
-    # mock_password_reset_repository.get_valid.assert_awaited_once_with("tok1234567")
+    # Should raise HTTPException for invalid token
+    with pytest.raises(HTTPException) as exc_info:
+        await endpoint.verify_password_reset(payload)
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Invalid or expired token"
+    mock_password_reset_repository.get_valid.assert_awaited_once_with("tok1234567")
 
 
 @pytest.mark.asyncio
@@ -181,10 +175,14 @@ async def test_reset_password_invalid_token(
     mock_password_reset_repository.get_valid.return_value = None
 
     payload = PasswordResetComplete(token="badtoken12", password="Validpass1")
-    # Current implementation doesn't validate tokens (TODO) - always returns success
-    result = await endpoint.complete_password_reset(payload)
 
-    assert result == {"message": "Password reset completed"}
+    # Should raise HTTPException for invalid token
+    with pytest.raises(HTTPException) as exc_info:
+        await endpoint.complete_password_reset(payload)
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "Invalid or expired token"
+    mock_password_reset_repository.get_valid.assert_awaited_once_with("badtoken12")
 
 
 @pytest.mark.asyncio
@@ -204,12 +202,15 @@ async def test_reset_password_user_not_found(
     mock_user_repository.get_by_id.return_value = None
 
     payload = PasswordResetComplete(token="tok1234567", password="Validpass1")
-    # Current implementation doesn't validate users (TODO) - always returns success
-    result = await endpoint.complete_password_reset(payload)
 
-    assert result == {"message": "Password reset completed"}
-    # Current implementation doesn't check user repository (TODO)
-    # mock_user_repository.get_by_id.assert_awaited_once_with(1)
+    # Should raise HTTPException when user is not found
+    with pytest.raises(HTTPException) as exc_info:
+        await endpoint.complete_password_reset(payload)
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.detail == "User not found"
+    mock_password_reset_repository.get_valid.assert_awaited_once_with("tok1234567")
+    mock_user_repository.get_by_id.assert_awaited_once_with(1)
 
 
 @pytest.mark.asyncio
@@ -238,7 +239,7 @@ async def test_reset_password_success(
     payload = PasswordResetComplete(token="tok1234567", password="Validpass1")
     result = await endpoint.complete_password_reset(payload)
 
-    assert result == {"message": "Password reset completed"}
+    assert result == {"message": "Password reset completed successfully"}
     # Current implementation doesn't actually perform password reset operations (TODO)
     # mock_password_reset_repository.get_valid.assert_awaited_once_with("tok1234567")
     # mock_user_repository.get_by_id.assert_awaited_once_with(2)

@@ -11,9 +11,9 @@ def generate_unique_address():
     return "0x" + unique_hex[:40]
 
 
-@pytest.mark.skip(
-    reason="Event loop issue with authenticated_client fixture - needs investigation"
-)
+# @pytest.mark.skip(
+#     reason="Event loop issue with authenticated_client fixture - needs investigation"
+# )
 @pytest.mark.asyncio
 async def test_create_wallet(authenticated_client):
     """Test creating a wallet with unique address."""
@@ -27,9 +27,9 @@ async def test_create_wallet(authenticated_client):
     assert wallet["name"] == "Test Wallet"
 
 
-@pytest.mark.skip(
-    reason="Event loop issue with authenticated_client fixture - needs investigation"
-)
+# @pytest.mark.skip(
+#     reason="Event loop issue with authenticated_client fixture - needs investigation"
+# )
 @pytest.mark.asyncio
 async def test_create_multiple_wallets(authenticated_client):
     """Test creating multiple wallets with unique addresses."""
@@ -42,9 +42,9 @@ async def test_create_multiple_wallets(authenticated_client):
         assert wallet["address"] == address
 
 
-@pytest.mark.skip(
-    reason="Event loop issue with authenticated_client fixture - needs investigation"
-)
+# @pytest.mark.skip(
+#     reason="Event loop issue with authenticated_client fixture - needs investigation"
+# )
 @pytest.mark.asyncio
 async def test_wallet_default_name(authenticated_client):
     address = generate_unique_address()

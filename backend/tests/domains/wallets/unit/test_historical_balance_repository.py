@@ -61,3 +61,34 @@ async def test_historical_balance_repository_create(
     mock_async_session.add.assert_called_once()
     mock_async_session.commit.assert_awaited_once()
     mock_async_session.refresh.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_historical_balance_repository_create_exception(
+    historical_balance_repository_with_di, mock_async_session
+):
+    """Test historical balance creation with exception handling."""
+    # Setup mock session
+    setup_mock_session(historical_balance_repository_with_di, mock_async_session)
+
+    # Create test data
+    wallet_id = uuid.uuid4()
+    token_id = uuid.uuid4()
+    balance_data = HistoricalBalanceCreate(
+        wallet_id=wallet_id,
+        token_id=token_id,
+        balance=100.50,
+        balance_usd=105.25,
+        timestamp=datetime.now(),
+    )
+
+    # Mock session to raise exception during commit
+    mock_async_session.commit = AsyncMock(side_effect=Exception("Database error"))
+
+    # Execute the test and verify exception is raised
+    with pytest.raises(Exception, match="Database error"):
+        await historical_balance_repository_with_di.create(balance_data)
+
+    # Verify the operations that should have been called
+    mock_async_session.add.assert_called_once()
+    mock_async_session.commit.assert_awaited_once()

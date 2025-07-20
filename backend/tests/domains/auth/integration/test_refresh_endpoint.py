@@ -42,7 +42,7 @@ async def _register_and_login_with_di(
     return body["access_token"], body["refresh_token"]
 
 
-@pytest.mark.skip(reason="Application issue: AuthService missing refresh_token method")
+# @pytest.mark.skip(reason="Application issue: AuthService missing refresh_token method")
 @pytest.mark.asyncio
 async def test_refresh_success(
     test_app_with_di_container: FastAPI, test_di_container_with_db
@@ -67,6 +67,7 @@ async def test_refresh_success(
         # Ensure the new access token is valid JWT
         decoded = jwt.decode(
             body["access_token"],
+            key="dummy",  # Not used since verify_signature=False
             options={"verify_signature": False, "verify_exp": False},
         )
         assert "sub" in decoded

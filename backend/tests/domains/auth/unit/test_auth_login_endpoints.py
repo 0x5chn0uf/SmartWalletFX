@@ -21,7 +21,7 @@ class TestAuthLoginEndpoints:
 
     @pytest.mark.asyncio
     async def test_login_for_access_token_success(
-        self, auth_endpoint, mock_auth_usecase
+        self, auth_endpoint, mock_auth_usecase, mock_rate_limiter_utils
     ):
         """Test successful login."""
         # Setup
@@ -44,20 +44,20 @@ class TestAuthLoginEndpoints:
 
         mock_auth_usecase.authenticate.return_value = tokens
 
-        mock_limiter = Mock()
-
-        with patch(
-            "app.api.endpoints.auth.deps_mod.login_rate_limiter", mock_limiter
-        ), patch("app.api.endpoints.auth.Audit") as mock_audit:
+        with patch("app.api.endpoints.auth.Audit") as mock_audit:
             # Execute
-            result = await Auth.login_for_access_token(request, response, form_data)
+            result = await auth_endpoint.login_for_access_token(
+                request, response, form_data
+            )
 
             # Assert
             assert result == tokens
             mock_auth_usecase.authenticate.assert_awaited_once_with(
                 form_data.username, form_data.password
             )
-            mock_limiter.reset.assert_called_once_with("127.0.0.1")
+            mock_rate_limiter_utils.login_rate_limiter.reset.assert_called_once_with(
+                "127.0.0.1"
+            )
             mock_audit.info.assert_called()
 
             # Check that cookies were set
@@ -119,19 +119,19 @@ class TestAuthLoginEndpoints:
         mock_limiter = Mock()
         mock_limiter.allow.return_value = False  # Rate limited
 
-        with patch(
-            "app.api.endpoints.auth.deps_mod.login_rate_limiter", mock_limiter
-        ), patch("app.api.endpoints.auth.Audit") as mock_audit:
-            # Execute and Assert
-            with pytest.raises(HTTPException) as excinfo:
-                await Auth.login_for_access_token(request, response, form_data)
+        with patch.object(Auth, "_rate_limiter_utils") as mock_rate_limiter_utils:
+            mock_rate_limiter_utils.login_rate_limiter = mock_limiter
+            with patch("app.api.endpoints.auth.Audit") as mock_audit:
+                # Execute and Assert
+                with pytest.raises(HTTPException) as excinfo:
+                    await Auth.login_for_access_token(request, response, form_data)
 
-            assert excinfo.value.status_code == status.HTTP_429_TOO_MANY_REQUESTS
-            assert "Too many login attempts" in excinfo.value.detail
-            mock_auth_usecase.authenticate.assert_awaited_once_with(
-                form_data.username, form_data.password
-            )
-            mock_audit.warning.assert_called()
+                assert excinfo.value.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+                assert "Too many login attempts" in excinfo.value.detail
+                mock_auth_usecase.authenticate.assert_awaited_once_with(
+                    form_data.username, form_data.password
+                )
+                mock_audit.warning.assert_called()
 
     @pytest.mark.asyncio
     async def test_login_for_access_token_inactive_user(

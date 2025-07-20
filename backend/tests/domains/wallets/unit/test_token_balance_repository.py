@@ -59,3 +59,32 @@ async def test_token_balance_repository_create(
 
     # NOTE: Since we're mocking the session, we can't test the actual returned value
     # In a real integration test, we would check balance properties
+
+
+@pytest.mark.asyncio
+async def test_token_balance_repository_create_exception(
+    token_balance_repository_with_di, mock_async_session
+):
+    """Test token balance creation with database exception handling."""
+    # Setup mock session
+    setup_mock_session(token_balance_repository_with_di, mock_async_session)
+
+    # Create test data
+    balance_data = TokenBalanceCreate(
+        wallet_id=uuid.uuid4(),
+        token_id=uuid.uuid4(),
+        balance=Decimal("100.50"),
+        balance_usd=Decimal("150.75"),
+    )
+
+    # Configure mock to raise exception during commit
+    mock_async_session.add = Mock()
+    mock_async_session.commit = AsyncMock(side_effect=Exception("Database error"))
+
+    # Execute and verify exception is raised
+    with pytest.raises(Exception, match="Database error"):
+        await token_balance_repository_with_di.create(balance_data)
+
+    # Verify the operations that should have been called
+    mock_async_session.add.assert_called_once()
+    mock_async_session.commit.assert_awaited_once()

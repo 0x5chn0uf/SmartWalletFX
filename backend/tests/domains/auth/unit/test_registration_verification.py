@@ -23,8 +23,15 @@ async def test_register_user_sends_verification(monkeypatch):
 
     service.register.side_effect = mock_register
 
-    # Create Auth instance with the mocked service
-    auth_endpoint = Auth(service)
+    # Create Auth instance with the mocked service and rate limiter
+    from app.utils.rate_limiter import RateLimiterUtils
+
+    mock_rate_limiter_utils = Mock(spec=RateLimiterUtils)
+    mock_rate_limiter_utils.login_rate_limiter = Mock()
+    mock_rate_limiter_utils.login_rate_limiter.allow = Mock(return_value=True)
+    mock_rate_limiter_utils.login_rate_limiter.reset = Mock()
+
+    auth_endpoint = Auth(service, mock_rate_limiter_utils)
 
     # These mocks are no longer needed as we're handling the email verification in the mock_register function
     # but we'll keep them for completeness
