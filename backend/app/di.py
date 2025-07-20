@@ -316,7 +316,8 @@ class DIContainer:
         admin_endpoint = Admin(user_repo)
         self.register_endpoint("admin", admin_endpoint)
 
-        auth_endpoint = Auth(auth_usecase)
+        rate_limiter_utils = self.get_utility("rate_limiter_utils")
+        auth_endpoint = Auth(auth_usecase, rate_limiter_utils)
         self.register_endpoint("auth", auth_endpoint)
 
         email_verification_endpoint = EmailVerification(email_verification_uc)
@@ -331,8 +332,15 @@ class DIContainer:
         oauth_endpoint = OAuth(oauth_uc)
         self.register_endpoint("oauth", oauth_endpoint)
 
+        password_hasher = self.get_utility("password_hasher")
+        config = self.get_core("config")
         password_reset_endpoint = PasswordReset(
-            password_reset_repo, user_repo, email_service
+            password_reset_repo,
+            user_repo,
+            email_service,
+            rate_limiter_utils,
+            password_hasher,
+            config,
         )
         self.register_endpoint("password_reset", password_reset_endpoint)
 

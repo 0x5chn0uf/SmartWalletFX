@@ -302,7 +302,7 @@ class JWTUtils:
                         signature = jose_utils.base64url_decode(signature_b64.encode())
 
                         key_obj = jose_jwk.construct(
-                            _to_text(verify_key), self.__config_service.JWT_ALGORITHM
+                            _to_text(verify_key), self.__config.JWT_ALGORITHM
                         )
                         if not key_obj.verify(signing_input, signature):
                             raise inner_exc  # Signature invalid

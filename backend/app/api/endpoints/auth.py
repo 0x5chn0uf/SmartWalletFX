@@ -15,7 +15,6 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, Field
 from starlette.status import HTTP_401_UNAUTHORIZED
 
-import app.api.dependencies as deps_mod
 from app.domain.errors import (
     InactiveUserError,
     InvalidCredentialsError,
@@ -25,6 +24,7 @@ from app.domain.schemas.auth_token import TokenResponse
 from app.domain.schemas.user import UserCreate, UserRead, WeakPasswordError
 from app.usecase.auth_usecase import AuthUsecase, DuplicateError
 from app.utils.logging import Audit
+from app.utils.rate_limiter import RateLimiterUtils
 
 
 class _RefreshRequest(BaseModel):
@@ -36,10 +36,12 @@ class Auth:
 
     ep = APIRouter(prefix="/auth", tags=["auth"])
     _auth_usecase: AuthUsecase
+    _rate_limiter_utils: RateLimiterUtils
 
-    def __init__(self, auth_usecase: AuthUsecase):
+    def __init__(self, auth_usecase: AuthUsecase, rate_limiter_utils: RateLimiterUtils):
         """Initialize with injected dependencies."""
         Auth._auth_usecase = auth_usecase
+        Auth._rate_limiter_utils = rate_limiter_utils
 
     @staticmethod
     @ep.post(
@@ -120,7 +122,7 @@ class Auth:
     ) -> TokenResponse:
         """OAuth2 Password grant – return access & refresh tokens."""
         identifier = request.client.host or "unknown"
-        limiter = deps_mod.login_rate_limiter
+        limiter = Auth._rate_limiter_utils.login_rate_limiter
 
         Audit.info(
             "User login attempt started",
@@ -152,7 +154,7 @@ class Auth:
                 tokens.refresh_token,
                 httponly=True,
                 samesite="lax",
-                path="/auth/refresh",
+                path="/auth",
             )
 
             return tokens
@@ -262,7 +264,7 @@ class Auth:
                 tokens.refresh_token,
                 httponly=True,
                 samesite="lax",
-                path="/auth/refresh",
+                path="/auth",
             )
 
             return tokens
@@ -297,7 +299,7 @@ class Auth:
 
         # Clear cookies
         response.delete_cookie("access_token")
-        response.delete_cookie("refresh_token", path="/auth/refresh")
+        response.delete_cookie("refresh_token", path="/auth")
 
         refresh_token = request.cookies.get("refresh_token")
         if not refresh_token:
