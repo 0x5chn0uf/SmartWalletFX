@@ -189,8 +189,12 @@ Before marking any backend task complete:
 - [ ] Linting passes: `make lint`
 - [ ] No security issues: `make bandit`
 - [ ] Changes committed with conventional commit message
-- [ ] GTD files updated with progress
+- [ ] Task Master updated: mark task as done
+- [ ] Memory Bank updated: - Archive created: .taskmaster/memory-bank/archive/archive-<task-id>.md - Reflection created: .taskmaster/memory-bank/reflection/reflection-<task-id>.md - Progress & activeContext updated
+
+```
 
 ---
 
 _Backend workflow - Last updated: 20 July 2025_
+```

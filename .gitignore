@@ -74,10 +74,6 @@ memory-bank/
 .windsurfrules
 .mcp.json
 
-# GTD Personal Task Management (exclude from repo)
-gtd/
-
-
 # Dependencies
 __pycache__/
 *.pyc

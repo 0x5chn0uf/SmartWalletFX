@@ -243,7 +243,12 @@ Before marking any frontend task complete:
 - [ ] Linting passes: `npm run lint`
 - [ ] Code properly formatted: `npm run format`
 - [ ] Changes committed with conventional commit message
-- [ ] GTD files updated with progress
+- [ ] Task Master updated: mark task as done
+- [ ] Memory Bank updated: - Archive created: .taskmaster/memory-bank/archive/archive-<task-id>.md - Reflection created: .taskmaster/memory-bank/reflection/reflection-<task-id>.md - Progress & activeContext updated
+
+```bash
+.taskmaster/integration/scripts/complete-task.sh <task-id> "<task-title>" [context]
+```
 
 ---
 
