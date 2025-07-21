@@ -3,6 +3,7 @@
 # Import endpoint classes
 from app.api.endpoints.admin import Admin
 from app.api.endpoints.auth import Auth
+from app.api.endpoints.defi import DeFi
 from app.api.endpoints.email_verification import EmailVerification
 from app.api.endpoints.health import Health
 from app.api.endpoints.jwks import JWKS
@@ -356,6 +357,9 @@ class DIContainer:
             portfolio_snapshot_uc,
         )
         self.register_endpoint("wallets", wallets_endpoint)
+
+        defi_endpoint = DeFi(wallet_uc)
+        self.register_endpoint("defi", defi_endpoint)
 
     def register_core(self, name: str, core):
         """Register a Core instance."""

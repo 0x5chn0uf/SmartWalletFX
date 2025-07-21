@@ -86,6 +86,7 @@ class ApplicationFactory:
         )
         oauth_endpoint = self.di_container.get_endpoint("oauth")
         wallets_endpoint = self.di_container.get_endpoint("wallets")
+        defi_endpoint = self.di_container.get_endpoint("defi")
         health_endpoint = self.di_container.get_endpoint("health")
         jwks_endpoint = self.di_container.get_endpoint("jwks")
         users_endpoint = self.di_container.get_endpoint("users")
@@ -100,6 +101,8 @@ class ApplicationFactory:
             app.include_router(oauth_endpoint.ep, tags=["auth"])
         if wallets_endpoint:
             app.include_router(wallets_endpoint.ep, tags=["wallets"])
+        if defi_endpoint:
+            app.include_router(defi_endpoint.ep, tags=["defi"])
         if health_endpoint:
             app.include_router(health_endpoint.ep, tags=["health"])
         if jwks_endpoint:
