@@ -9,7 +9,7 @@ describe('getWallets', () => {
     // WalletListSchema expects array of strings (wallet addresses)
     const mockData = [
       '0x1234567890abcdef1234567890abcdef12345678',
-      '0xabcdef1234567890abcdef1234567890abcdef12'
+      '0xabcdef1234567890abcdef1234567890abcdef12',
     ];
     (apiClient.get as vi.Mock).mockResolvedValue({ data: mockData });
     const result = await wallets.getWallets();
@@ -27,7 +27,7 @@ describe('getWalletDetails', () => {
       balance: '1000.50',
       token: 'ETH',
       usd_value: 2500.75,
-      portfolio_percentage: 45.5
+      portfolio_percentage: 45.5,
     };
     (apiClient.get as vi.Mock).mockResolvedValue({ data: mockData });
     const result = await wallets.getWalletDetails('2');
@@ -49,7 +49,7 @@ describe('getWalletTransactions', () => {
         timestamp: 1640995200000,
         status: 'confirmed',
         gas_used: '21000',
-        gas_price: '20000000000'
+        gas_price: '20000000000',
       },
       {
         id: 'tx-456',
@@ -58,8 +58,8 @@ describe('getWalletTransactions', () => {
         to: '0x4444444444444444444444444444444444444444',
         value: '500000000000000000',
         timestamp: 1640995260000,
-        status: 'pending'
-      }
+        status: 'pending',
+      },
     ];
     (apiClient.get as vi.Mock).mockResolvedValue({ data: mockData });
     const result = await wallets.getWalletTransactions('3');
