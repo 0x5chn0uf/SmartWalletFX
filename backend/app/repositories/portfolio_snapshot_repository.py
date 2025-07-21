@@ -136,7 +136,9 @@ class PortfolioSnapshotRepository:
             )
             raise
 
-    async def get_by_wallet_address(self, wallet_address: str) -> list[dict]:
+    async def get_by_wallet_address(
+        self, wallet_address: str
+    ) -> List[PortfolioSnapshot]:
         """Get portfolio snapshots for a specific wallet address."""
         self.__audit.info(
             "portfolio_snapshot_repository_get_by_wallet_address_started",
@@ -144,16 +146,20 @@ class PortfolioSnapshotRepository:
         )
 
         try:
-            # For now, return empty list to make the test pass
-            # TODO: Implement proper logic to get snapshots by wallet address
-            result = []
+            async with self.__database.get_session() as session:
+                result = await session.execute(
+                    select(PortfolioSnapshot)
+                    .where(PortfolioSnapshot.user_address == wallet_address)
+                    .order_by(desc(PortfolioSnapshot.timestamp))
+                )
+                snapshots = result.scalars().all()
 
-            self.__audit.info(
-                "portfolio_snapshot_repository_get_by_wallet_address_success",
-                wallet_address=wallet_address,
-                count=len(result),
-            )
-            return result
+                self.__audit.info(
+                    "portfolio_snapshot_repository_get_by_wallet_address_success",
+                    wallet_address=wallet_address,
+                    count=len(snapshots),
+                )
+                return snapshots
         except Exception as e:
             self.__audit.error(
                 "portfolio_snapshot_repository_get_by_wallet_address_failed",

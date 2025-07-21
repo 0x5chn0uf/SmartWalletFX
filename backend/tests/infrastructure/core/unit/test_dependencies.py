@@ -55,7 +55,7 @@ async def test_get_user_from_request_success():
     mock_di_container = Mock()
     mock_di_container.get_core.return_value = mock_database
 
-    with patch("app.di.DIContainer", return_value=mock_di_container):
+    with patch("app.main.di_container", mock_di_container):
         result = await get_user_from_request(request=request)
 
         assert result is user
@@ -91,7 +91,7 @@ async def test_get_user_from_request_error_paths(
     mock_di_container = Mock()
     mock_di_container.get_core.return_value = mock_database
 
-    with patch("app.di.DIContainer", return_value=mock_di_container):
+    with patch("app.main.di_container", mock_di_container):
         with pytest.raises(HTTPException) as exc:
             await get_user_from_request(request=request)
 

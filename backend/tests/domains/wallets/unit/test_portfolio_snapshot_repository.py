@@ -234,13 +234,19 @@ async def test_get_by_wallet_address(
 
     wallet_address = "0x1234567890123456789012345678901234567890"
 
+    # Mock the database query result
+    mock_result = Mock()
+    mock_result.scalars.return_value.all.return_value = []
+    mock_async_session.execute.return_value = mock_result
+
     # Execute
     result = await portfolio_snapshot_repository_with_di.get_by_wallet_address(
         wallet_address
     )
 
-    # Verify - this method currently returns empty list
+    # Verify - method now properly queries database and returns snapshots
     assert result == []
+    mock_async_session.execute.assert_awaited_once()
 
 
 @pytest.mark.asyncio

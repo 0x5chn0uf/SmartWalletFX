@@ -87,9 +87,8 @@ async def get_user_from_request(request: Request) -> User:
         )
 
     # Get database service from DI container (local import to avoid circular import)
-    from app.di import DIContainer
+    from app.main import di_container
 
-    di_container = DIContainer()
     database = di_container.get_core("database")
 
     async with database.get_session() as db:

@@ -356,7 +356,7 @@ async def test_get_user_profile():
     mock_di_container = Mock()
     mock_di_container.get_core.return_value = mock_database
 
-    with patch("app.di.DIContainer", return_value=mock_di_container):
+    with patch("app.main.di_container", mock_di_container):
         # Execute
         result = await Admin.get_user_profile(request)
 
