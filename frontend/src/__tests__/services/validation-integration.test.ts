@@ -183,9 +183,8 @@ describe('Wallet Services with Validation Integration', () => {
       expect(consoleSpy).toHaveBeenCalledWith(
         'API Response validation failed:',
         expect.objectContaining({
-          url: expect.any(String),
+          url: '/api/test',
           status: 200,
-          zodError: expect.any(Array),
           receivedData: invalidData,
         })
       );

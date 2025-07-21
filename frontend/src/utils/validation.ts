@@ -23,7 +23,7 @@ export function validateApiResponse<T>(response: AxiosResponse, schema: z.ZodSch
       console.error('API Response validation failed:', {
         url: response.config?.url,
         status: response.status,
-        zodError: error.errors,
+        zodError: error.issues,
         receivedData: response.data,
       });
       throw new ValidationError(error, response);
@@ -55,7 +55,7 @@ export function safeValidateApiResponse<T>(
   console.error('API Response validation failed (safe):', {
     url: response.config?.url,
     status: response.status,
-    zodError: result.error.errors,
+    zodError: result.error.issues,
     receivedData: response.data,
   });
 
@@ -64,7 +64,7 @@ export function safeValidateApiResponse<T>(
 
 // Utility to format validation errors for user display
 export function formatValidationError(error: ValidationError): string {
-  const issues = error.zodError.errors.map(err => {
+  const issues = error.zodError.issues.map(err => {
     const path = err.path.length > 0 ? ` at ${err.path.join('.')}` : '';
     return `${err.message}${path}`;
   });
