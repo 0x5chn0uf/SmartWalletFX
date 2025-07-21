@@ -15,17 +15,13 @@ const mockUser = {
   role: 'user',
 };
 
-const mockTokenResponse = {
-  access_token: 'new-access-token',
-  refresh_token: 'new-refresh-token',
-  token_type: 'bearer',
-};
+// Note: With httpOnly cookies, tokens are managed automatically by the browser
+// No need for mockTokenResponse
 
-describe('Token Refresh Mechanism Integration Tests', () => {
+describe('Token Refresh Mechanism Integration Tests (httpOnly Cookies)', () => {
   beforeEach(() => {
-    // Clear localStorage and auth headers
+    // Clear localStorage (no auth headers to clear with httpOnly cookies)
     localStorage.clear();
-    delete apiClient.defaults.headers.common['Authorization'];
 
     // Reset MSW handlers
     server.resetHandlers();
@@ -50,13 +46,19 @@ describe('Token Refresh Mechanism Integration Tests', () => {
         }),
         // Refresh token call succeeds
         http.post(`${API_URL}/auth/refresh`, () => {
-          return HttpResponse.json(mockTokenResponse);
+          return new HttpResponse(null, { 
+            status: 200,
+            headers: {
+              'Set-Cookie': [
+                'access_token=new-access-token; Path=/; HttpOnly; SameSite=Lax; Secure',
+                'refresh_token=new-refresh-token; Path=/auth; HttpOnly; SameSite=Lax; Secure'
+              ].join(', ')
+            }
+          });
         })
       );
 
-      // Set up initial state with expired token
-      apiClient.defaults.headers.common['Authorization'] = 'Bearer expired-token';
-      localStorage.setItem('access_token', 'expired-token');
+      // Set up initial state with session active (no token storage with httpOnly cookies)
       localStorage.setItem('session_active', '1');
 
       const response = await apiClient.get('/users/me');
@@ -64,10 +66,6 @@ describe('Token Refresh Mechanism Integration Tests', () => {
       expect(response.status).toBe(200);
       expect(response.data).toEqual(mockUser);
       expect(callCount).toBe(2); // Initial failed call + retry after refresh
-
-      // Verify new token is stored and set in headers
-      expect(localStorage.getItem('access_token')).toBe('new-access-token');
-      expect(apiClient.defaults.headers.common['Authorization']).toBe('Bearer new-access-token');
     });
 
     it('should not attempt refresh for auth endpoints', async () => {
@@ -77,12 +75,11 @@ describe('Token Refresh Mechanism Integration Tests', () => {
         }),
         http.post(`${API_URL}/auth/refresh`, () => {
           // This should not be called
-          return HttpResponse.json(mockTokenResponse);
+          return new HttpResponse(null, { status: 200 });
         })
       );
 
-      // Set up state with token
-      apiClient.defaults.headers.common['Authorization'] = 'Bearer some-token';
+      // Set up state with session active
       localStorage.setItem('session_active', '1');
 
       try {
@@ -105,14 +102,12 @@ describe('Token Refresh Mechanism Integration Tests', () => {
         }),
         http.post(`${API_URL}/auth/refresh`, () => {
           // This should not be called
-          return HttpResponse.json(mockTokenResponse);
+          return new HttpResponse(null, { status: 200 });
         })
       );
 
-      // Set up state with token but no active session
-      apiClient.defaults.headers.common['Authorization'] = 'Bearer stale-token';
-      localStorage.setItem('access_token', 'stale-token');
-      // No session_active flag set
+      // Set up state with no active session (no session_active flag set)
+      // No token storage needed with httpOnly cookies
 
       try {
         await apiClient.get('/users/me');
@@ -120,9 +115,8 @@ describe('Token Refresh Mechanism Integration Tests', () => {
       } catch (error: any) {
         expect(error.response.status).toBe(401);
 
-        // Verify stale auth state is cleared
-        expect(localStorage.getItem('access_token')).toBeNull();
-        expect(apiClient.defaults.headers.common['Authorization']).toBeUndefined();
+        // Verify session flag remains cleared
+        expect(localStorage.getItem('session_active')).toBeNull();
       }
     });
 
@@ -144,9 +138,7 @@ describe('Token Refresh Mechanism Integration Tests', () => {
         })
       );
 
-      // Set up initial state
-      apiClient.defaults.headers.common['Authorization'] = 'Bearer expired-token';
-      localStorage.setItem('access_token', 'expired-token');
+      // Set up initial state with session active
       localStorage.setItem('session_active', '1');
 
       try {
@@ -154,9 +146,7 @@ describe('Token Refresh Mechanism Integration Tests', () => {
         fail('Should have thrown an error');
       } catch (error) {
         // Verify auth state is cleared
-        expect(localStorage.getItem('access_token')).toBeNull();
         expect(localStorage.getItem('session_active')).toBeNull();
-        expect(apiClient.defaults.headers.common['Authorization']).toBeUndefined();
         expect(window.location.href).toBe('/login-register');
       }
 
@@ -177,9 +167,7 @@ describe('Token Refresh Mechanism Integration Tests', () => {
         })
       );
 
-      // Set up initial state
-      apiClient.defaults.headers.common['Authorization'] = 'Bearer expired-token';
-      localStorage.setItem('access_token', 'expired-token');
+      // Set up initial state with session active
       localStorage.setItem('session_active', '1');
 
       // Make multiple concurrent requests
@@ -211,13 +199,19 @@ describe('Token Refresh Mechanism Integration Tests', () => {
           refreshCallCount++;
           // Simulate some delay in refresh
           await new Promise(resolve => setTimeout(resolve, 100));
-          return HttpResponse.json(mockTokenResponse);
+          return new HttpResponse(null, { 
+            status: 200,
+            headers: {
+              'Set-Cookie': [
+                'access_token=new-access-token; Path=/; HttpOnly; SameSite=Lax; Secure',
+                'refresh_token=new-refresh-token; Path=/auth; HttpOnly; SameSite=Lax; Secure'
+              ].join(', ')
+            }
+          });
         })
       );
 
-      // Set up initial state
-      apiClient.defaults.headers.common['Authorization'] = 'Bearer expired-token';
-      localStorage.setItem('access_token', 'expired-token');
+      // Set up initial state with session active
       localStorage.setItem('session_active', '1');
 
       // Make multiple concurrent requests
@@ -245,13 +239,10 @@ describe('Token Refresh Mechanism Integration Tests', () => {
         })
       );
 
-      // Simulate stored token from previous session
-      localStorage.setItem('access_token', 'stored-token');
+      // Simulate session evidence from previous session
+      localStorage.setItem('session_active', '1');
 
-      // Simulate app startup by reinitializing API client
-      apiClient.defaults.headers.common['Authorization'] =
-        `Bearer ${localStorage.getItem('access_token')}`;
-
+      // With httpOnly cookies, no manual token setup needed
       await store.dispatch(fetchCurrentUser());
 
       const authState = store.getState().auth;
