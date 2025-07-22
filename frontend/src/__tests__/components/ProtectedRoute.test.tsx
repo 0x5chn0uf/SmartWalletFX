@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+ 
 
 import React from 'react';
 import { render, screen } from '@testing-library/react';
