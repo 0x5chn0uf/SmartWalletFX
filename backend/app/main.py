@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import IntegrityError  # local import
 
 # Import models to register them with SQLAlchemy Base
-import app.models  # noqa: F401
+import app.models as models  # noqa: F401
 
 # --- New imports for structured logging & error handling ---
 from app.core.middleware import CorrelationIdMiddleware, JWTAuthMiddleware
