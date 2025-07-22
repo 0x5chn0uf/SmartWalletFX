@@ -12,6 +12,7 @@ services:
       service: backend
     # Disable bind mounts, use image built from context for reproducibility
     volumes: []
+    env_file: []
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
 
   frontend:
@@ -19,6 +20,7 @@ services:
       file: docker-compose.yml
       service: frontend
     volumes: []
+    env_file: []
     # Build static artefacts then serve via the same container for smoke tests
     command: >-
       sh -c "npm ci --no-audit --fund=false \
