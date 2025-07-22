@@ -75,7 +75,16 @@ class ApplicationFactory:
         @app.on_event("startup")
         async def on_startup() -> None:
             """FastAPI startup event handler."""
-            await self.di_container.get_core("database").init_db()
+            try:
+                logging = self.di_container.get_core("logging")
+                logging.info("Starting database initialization...")
+                await self.di_container.get_core("database").init_db()
+                logging.info("Database initialization completed successfully")
+            except Exception as e:
+                logging = self.di_container.get_core("logging")
+                logging.error(f"Database initialization failed: {str(e)}")
+                print(f"STARTUP ERROR: {str(e)}")  # Also print to stdout for Docker logs
+                raise
 
         # Register singleton endpoint routers
         self._register_singleton_routers(app)
