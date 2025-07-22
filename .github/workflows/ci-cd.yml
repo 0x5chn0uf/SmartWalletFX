@@ -486,6 +486,12 @@ jobs:
             fi
             echo "Waiting for backend..." && sleep 2;
           done
+          # If backend failed, capture container logs for debugging
+          if ! curl -s http://localhost:8000/health > /dev/null; then
+            echo "Backend health check failed. Capturing container logs:"
+            docker compose -f docker-compose.ci.yml logs backend
+            exit 1
+          fi
 
       - name: Run Cypress tests (${{ matrix.viewport }})
         working-directory: ./frontend
