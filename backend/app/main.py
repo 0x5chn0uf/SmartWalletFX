@@ -83,7 +83,7 @@ class ApplicationFactory:
             except Exception as e:
                 logging = self.di_container.get_core("logging")
                 logging.error(f"Database initialization failed: {str(e)}")
-                print(f"STARTUP ERROR: {str(e)}")  # Also print to stdout for Docker logs
+                print(f"STARTUP ERROR: {str(e)}")  # Also print stdout for Docker logs
                 raise
 
         # Register singleton endpoint routers
