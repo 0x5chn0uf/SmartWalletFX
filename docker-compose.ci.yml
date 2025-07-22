@@ -35,5 +35,10 @@ services:
       file: docker-compose.yml
       service: redis
 
+  mailhog:
+    extends:
+      file: docker-compose.yml
+      service: mailhog
+
 volumes:
   postgres-dev-data:
