@@ -55,16 +55,50 @@ class ResizeObserver {
 // @ts-ignore
 global.ResizeObserver = ResizeObserver;
 
-// Mock axios to avoid ESM parsing issues in tests
-vi.mock('axios', () => ({
-  __esModule: true,
-  default: {
-    get: vi.fn(),
-    post: vi.fn(),
-    put: vi.fn(),
-    delete: vi.fn(),
+// Mock window.location for redirect tests
+(globalThis as any).mockLocationHref = 'http://localhost:3000';
+
+// Store original location
+const originalLocation = window.location;
+
+// Create a simple mock that just tracks href changes
+delete (window as any).location;
+(window as any).location = {
+  get href() { 
+    return (globalThis as any).mockLocationHref || 'http://localhost:3000';
   },
-}));
+  set href(value) { 
+    (globalThis as any).mockLocationHref = value;
+  },
+  assign: vi.fn(),
+  reload: vi.fn(),
+  replace: vi.fn(),
+  origin: 'http://localhost:3000',
+  pathname: '/',
+  search: '',
+  hash: '',
+};
+
+// Mock redirect function for API client - always available
+(window as any).__TEST_REDIRECT__ = (url: string) => {
+  (globalThis as any).mockLocationHref = url;
+};
+
+// Ensure test redirect is always available and works correctly
+beforeEach(() => {
+  // Reset location href
+  (globalThis as any).mockLocationHref = 'http://localhost:3000';
+  
+  // Ensure test redirect function is available
+  (window as any).__TEST_REDIRECT__ = (url: string) => {
+    (globalThis as any).mockLocationHref = url;
+  };
+});
+
+// Mock import.meta.env for tests
+if (typeof import.meta === 'undefined') {
+  (global as any).import = { meta: { env: { VITE_API_URL: 'http://localhost:8000' } } };
+}
 
 // MSW – mock API requests at network level
 import { server } from './mocks/server';

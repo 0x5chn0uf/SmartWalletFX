@@ -1,13 +1,17 @@
 from fastapi import APIRouter
 
-router = APIRouter()
 
+class Health:
+    """Health endpoint using singleton pattern with dependency injection."""
 
-@router.get("/health")
-async def health_check():
-    """
-    Health check endpoint for the API.
-    Returns:
-        dict: A simple status message.
-    """
-    return {"status": "ok"}
+    ep = APIRouter(tags=["health"])
+
+    def __init__(self):
+        """Initialize health endpoint."""
+        pass
+
+    @staticmethod
+    @ep.get("/health")
+    async def health_check():
+        """Health check endpoint for the API."""
+        return {"status": "ok"}

@@ -10,9 +10,7 @@ describe('VerifyEmailNoticePage', () => {
         <VerifyEmailNoticePage />
       </MemoryRouter>
     );
-    expect(
-      screen.getByText(/verification email has been sent/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/verification email has been sent/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /back to login/i }));
   });
 });

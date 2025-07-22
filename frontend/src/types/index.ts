@@ -1,21 +1,20 @@
-// API Response Types
+// Re-export validated types from schemas
+export type { UserProfile, AuthError, TokenResponse, ApiError } from '../schemas/api';
+
+export type {
+  WalletBalance,
+  WalletDetails,
+  WalletList,
+  Transaction,
+  ChartData,
+  PortfolioMetrics,
+} from '../schemas/wallet';
+
+// Legacy API Response Types (consider migrating to zod schemas)
 export interface ApiResponse<T> {
   data: T;
   status: number;
   message?: string;
-}
-
-// Wallet Types
-export interface WalletBalance {
-  address: string;
-  balance: string;
-  token: string;
-}
-
-// Chart Types
-export interface ChartData {
-  timestamp: number;
-  value: number;
 }
 
 // User Settings

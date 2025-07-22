@@ -1,4 +1,3 @@
-// @ts-nocheck
 import reducer from '../../store/passwordResetSlice';
 
 describe('passwordResetSlice reducer', () => {

@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y build-essential libpq-dev curl && rm -r
 WORKDIR /app
 
 COPY pyproject.toml ./
-RUN pip install --upgrade pip && pip install .[dev]
+RUN pip install --upgrade pip && pip install --verbose .[dev]
 
 COPY . /app
 
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"] 
+CMD ["sh", "-c", "python -c 'from app.main import app; print(\"App import successful\")' && uvicorn app.main:app --host 0.0.0.0 --port 8000 --log-level debug"] 

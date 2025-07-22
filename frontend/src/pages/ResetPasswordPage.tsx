@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
 import { keyframes } from '@emotion/react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { AppDispatch } from '../store';
-import { resetPassword } from '../store/passwordResetSlice';
+import { AppDispatch, RootState } from '../store';
+import { resetPassword, verifyResetToken, resetState } from '../store/passwordResetSlice';
+import { useAuth } from '../hooks/useAuth';
 
 const moveDots = keyframes`
   0% { background-position: 0 0, 20px 20px; }
@@ -138,11 +139,17 @@ const Input = styled('input')`
   outline: none;
   transition:
     border 0.2s,
-    box-shadow 0.2s;
+    box-shadow 0.2s,
+    opacity 0.2s;
   box-shadow: 0 1px 4px rgba(79, 209, 199, 0.05);
+  opacity: ${props => (props.disabled ? 0.6 : 1)};
+  cursor: ${props => (props.disabled ? 'not-allowed' : 'text')};
   &:focus {
     border: 1.5px solid #4fd1c7;
     box-shadow: 0 0 0 2px #4fd1c733;
+  }
+  &:disabled {
+    pointer-events: none;
   }
 `;
 
@@ -154,16 +161,50 @@ const SubmitBtn = styled('button')`
   padding: 14px 0;
   font-size: 16px;
   font-weight: 700;
-  cursor: pointer;
+  cursor: ${props => (props.disabled ? 'not-allowed' : 'pointer')};
   margin-top: 8px;
   box-shadow: 0 2px 8px rgba(79, 209, 199, 0.15);
   transition:
     transform 0.18s,
-    box-shadow 0.18s;
+    box-shadow 0.18s,
+    opacity 0.2s;
+  opacity: ${props => (props.disabled ? 0.6 : 1)};
   &:hover {
-    transform: scale(1.04);
-    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.18);
+    transform: ${props => (props.disabled ? 'none' : 'scale(1.04)')};
+    box-shadow: ${props =>
+      props.disabled
+        ? '0 2px 8px rgba(79, 209, 199, 0.15)'
+        : '0 4px 16px rgba(99, 102, 241, 0.18)'};
   }
+  &:disabled {
+    pointer-events: none;
+  }
+`;
+
+interface MessageProps {
+  type: 'success' | 'error';
+}
+
+const Message = styled('div')<MessageProps>`
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  ${props =>
+    props.type === 'success' &&
+    `
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+  `}
+  ${props =>
+    props.type === 'error' &&
+    `
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+  `}
 `;
 
 const ResetPasswordPage = () => {
@@ -172,11 +213,87 @@ const ResetPasswordPage = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';
   const [password, setPassword] = useState('');
+  const { isAuthenticated } = useAuth();
+
+  const passwordReset = useSelector((state: RootState) => state.passwordReset);
+  const isLoading = passwordReset.status === 'loading';
+  const isSuccess = passwordReset.status === 'succeeded';
+  const isError = passwordReset.status === 'failed';
+  const isValidatingToken = passwordReset.tokenValidationStatus === 'loading';
+  const isTokenValid = passwordReset.tokenValidationStatus === 'succeeded';
+  const tokenValidationError = passwordReset.tokenValidationStatus === 'failed';
+
+  // Redirect authenticated users
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
+
+  // Validate token on page load
+  useEffect(() => {
+    if (token && !isAuthenticated) {
+      dispatch(verifyResetToken(token));
+    } else if (!token) {
+      navigate('/forgot-password');
+    }
+
+    // Reset state when component mounts
+    return () => {
+      dispatch(resetState());
+    };
+  }, [token, dispatch, navigate, isAuthenticated]);
+
+  // Redirect to login after successful password reset
+  useEffect(() => {
+    if (isSuccess) {
+      setTimeout(() => {
+        navigate('/login-register');
+      }, 3000);
+    }
+  }, [isSuccess, navigate]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!password.trim() || !isTokenValid) return;
     dispatch(resetPassword({ token, password }));
   };
+
+  // Show loading state while validating token
+  if (isValidatingToken) {
+    return (
+      <Container>
+        <BgDots />
+        <GlassCard>
+          <Logo>SmartWalletFX</Logo>
+          <Subtitle>Validating reset token...</Subtitle>
+        </GlassCard>
+      </Container>
+    );
+  }
+
+  // Show error if token validation failed
+  if (tokenValidationError) {
+    return (
+      <Container>
+        <BgDots />
+        <BackBtn onClick={() => navigate('/forgot-password')}>← Request New Reset</BackBtn>
+        <GlassCard>
+          <Logo>SmartWalletFX</Logo>
+          <Subtitle>Reset token is invalid or expired.</Subtitle>
+          <Message type="error">
+            {passwordReset.error ||
+              'The password reset link is invalid or has expired. Please request a new one.'}
+          </Message>
+        </GlassCard>
+      </Container>
+    );
+  }
+
+  // Don't render form if token is not valid
+  if (!isTokenValid) {
+    return null;
+  }
 
   return (
     <Container>
@@ -184,18 +301,39 @@ const ResetPasswordPage = () => {
       <BackBtn onClick={() => navigate('/login-register')}>← Back to Login</BackBtn>
       <GlassCard>
         <Logo>SmartWalletFX</Logo>
-        <Subtitle>Enter a new password to complete the reset.</Subtitle>
-        <Form onSubmit={handleSubmit}>
-          <Label htmlFor="password">New Password</Label>
-          <Input
-            id="password"
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            required
-          />
-          <SubmitBtn type="submit">Reset Password</SubmitBtn>
-        </Form>
+        <Subtitle>
+          {isSuccess ? 'Password reset complete!' : 'Enter a new password to complete the reset.'}
+        </Subtitle>
+
+        {isSuccess && (
+          <Message type="success">
+            Your password has been reset successfully! Redirecting to login...
+          </Message>
+        )}
+
+        {isError && <Message type="error">{passwordReset.error}</Message>}
+
+        {!isSuccess && (
+          <Form onSubmit={handleSubmit}>
+            <Label htmlFor="password">New Password</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              disabled={isLoading}
+              required
+              minLength={8}
+              placeholder="Enter your new password"
+            />
+            <SubmitBtn
+              type="submit"
+              disabled={isLoading || !password.trim() || password.length < 8}
+            >
+              {isLoading ? 'Resetting...' : 'Reset Password'}
+            </SubmitBtn>
+          </Form>
+        )}
       </GlassCard>
     </Container>
   );

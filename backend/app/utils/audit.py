@@ -1,7 +1,7 @@
 """Audit-event validation helper.
 
 This utility is responsible for ensuring that runtime *audit* log payloads are
-well-formed and comply with the canonical :pymod:`app.schemas.audit_log` models.
+well-formed and comply with the canonical :pymod:`app.domain.schemas.audit_log` models.
 It is lightweight so that it can be imported inside the hot path of
 :pyfunc:`app.utils.logging.audit` without noticeable overhead.
 """
@@ -11,7 +11,7 @@ import os
 import warnings
 from typing import Any
 
-from app.schemas.audit_log import AuditEventBase
+from app.domain.schemas.audit_log import AuditEventBase
 
 # ---------------------------------------------------------------------------
 # Configuration – behaviour can be tuned via environment variables:
@@ -29,7 +29,7 @@ class AuditValidationError(ValueError):
 
 
 def validate_audit_event(event: dict[str, Any]) -> None:
-    """Validate *event* against :class:`~app.schemas.audit_log.AuditEventBase`.
+    """Validate *event* against :class:`~app.domain.schemas.audit_log.AuditEventBase`.
 
     Behaviour is controlled by ``AUDIT_VALIDATION`` environment variable.
     """
@@ -41,6 +41,6 @@ def validate_audit_event(event: dict[str, Any]) -> None:
         AuditEventBase.model_validate(event)
     except Exception as exc:  # pragma: no cover – broad catch for pydantic errors
         if _VALIDATION_MODE == "warn":
-            warnings.warn(f"Invalid audit event payload: {exc}")
+            warnings.warn(f"Invalid audit event payload: {exc}", stacklevel=2)
         else:  # hard (default)
             raise AuditValidationError(str(exc)) from exc

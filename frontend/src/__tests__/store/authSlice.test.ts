@@ -1,4 +1,3 @@
-// @ts-nocheck
 import authReducer, { logout } from '../../store/authSlice';
 
 // Inline AuthState type for test

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
 import { keyframes } from '@emotion/react';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '../store';
-import { requestReset } from '../store/passwordResetSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '../store';
+import { requestReset, resetState } from '../store/passwordResetSlice';
+import { useAuth } from '../hooks/useAuth';
 
 const moveDots = keyframes`
   0% { background-position: 0 0, 20px 20px; }
@@ -138,15 +139,21 @@ const Input = styled('input')`
   outline: none;
   transition:
     border 0.2s,
-    box-shadow 0.2s;
+    box-shadow 0.2s,
+    opacity 0.2s;
   box-shadow: 0 1px 4px rgba(79, 209, 199, 0.05);
+  opacity: ${props => (props.disabled ? 0.6 : 1)};
+  cursor: ${props => (props.disabled ? 'not-allowed' : 'text')};
   &:focus {
     border: 1.5px solid #4fd1c7;
     box-shadow: 0 0 0 2px #4fd1c733;
   }
+  &:disabled {
+    pointer-events: none;
+  }
 `;
 
-const SubmitBtn = styled('button')`
+const SubmitBtn = styled('button')<{ disabled?: boolean }>`
   background: linear-gradient(90deg, #4fd1c7 0%, #6366f1 100%);
   color: #1f2937;
   border: none;
@@ -154,27 +161,71 @@ const SubmitBtn = styled('button')`
   padding: 14px 0;
   font-size: 16px;
   font-weight: 700;
-  cursor: pointer;
+  cursor: ${props => (props.disabled ? 'not-allowed' : 'pointer')};
   margin-top: 8px;
   box-shadow: 0 2px 8px rgba(79, 209, 199, 0.15);
+  opacity: ${props => (props.disabled ? 0.6 : 1)};
   transition:
     transform 0.18s,
-    box-shadow 0.18s;
+    box-shadow 0.18s,
+    opacity 0.18s;
   &:hover {
-    transform: scale(1.04);
-    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.18);
+    transform: ${props => (props.disabled ? 'none' : 'scale(1.04)')};
+    box-shadow: ${props =>
+      props.disabled
+        ? '0 2px 8px rgba(79, 209, 199, 0.15)'
+        : '0 4px 16px rgba(99, 102, 241, 0.18)'};
   }
+`;
+
+const Message = styled('div')<{ type: 'success' | 'error' }>`
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 16px;
+  text-align: center;
+  background: ${props =>
+    props.type === 'success' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)'};
+  color: ${props => (props.type === 'success' ? '#22c55e' : '#ef4444')};
+  border: 1px solid
+    ${props => (props.type === 'success' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)')};
 `;
 
 const ForgotPasswordPage = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
+  const { isAuthenticated, status } = useAuth();
+  const passwordReset = useSelector((state: RootState) => state.passwordReset);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Redirect authenticated users away from forgot password page
+  useEffect(() => {
+    if (isAuthenticated && status === 'succeeded') {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, status, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    dispatch(requestReset(email));
+    if (!email.trim()) return;
+
+    try {
+      await dispatch(requestReset(email.trim())).unwrap();
+    } catch (error) {
+      // Error handling is done by Redux state management
+      console.error('Password reset request failed:', error);
+    }
   };
+
+  const isLoading = passwordReset.status === 'loading';
+  const isSuccess = passwordReset.status === 'succeeded';
+  const isError = passwordReset.status === 'failed';
+
+  // Show nothing while redirecting authenticated users
+  if (isAuthenticated && status === 'succeeded') {
+    return null;
+  }
 
   return (
     <Container>
@@ -189,10 +240,27 @@ const ForgotPasswordPage = () => {
             id="email"
             type="email"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={e => {
+              setEmail(e.target.value);
+              // Reset state when user starts typing again
+              if (passwordReset.status !== 'idle' && passwordReset.status !== 'loading') {
+                dispatch(resetState());
+              }
+            }}
+            disabled={isLoading}
             required
           />
-          <SubmitBtn type="submit">Send Reset Link</SubmitBtn>
+          <SubmitBtn type="submit" disabled={isLoading || !email.trim()}>
+            {isLoading ? 'Sending...' : 'Send Reset Link'}
+          </SubmitBtn>
+
+          {isSuccess && (
+            <Message type="success">
+              If an account with this email exists, you will receive a password reset link shortly.
+            </Message>
+          )}
+
+          {isError && <Message type="error">{passwordReset.error}</Message>}
         </Form>
       </GlassCard>
     </Container>

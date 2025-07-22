@@ -126,6 +126,14 @@ const handlers = [
   http.get('/health', () => {
     return new HttpResponse(null, { status: 200 });
   }),
+  // Default fallback handler for users/me to prevent MSW warnings
+  http.get(`${API_URL}/users/me`, () => {
+    return HttpResponse.json({ detail: 'Unauthorized' }, { status: 401 });
+  }),
+  // Default handler for dashboard redirects in OAuth tests
+  http.get(`${API_URL}/dashboard`, () => {
+    return HttpResponse.text('Dashboard page', { status: 200 });
+  }),
 ];
 
 export default handlers;

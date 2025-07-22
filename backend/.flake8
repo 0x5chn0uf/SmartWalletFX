@@ -6,3 +6,4 @@ per-file-ignores =
     app/abi/*.py:E501
     migrations/env.py:E402,F403,F405
     tests/**/*.py:F401,F811,E501
+    app/api/endpoints/*.py:B008

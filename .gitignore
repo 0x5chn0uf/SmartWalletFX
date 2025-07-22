@@ -62,22 +62,17 @@ dev-debug.log
 *.sln
 *.sw?
 
-# Git Worktrees
-gitworktrees/
-create_worktree.sh
-
-# Cursor Files
+# IDE Files
 .cursor/
 .cursor
 .taskmaster/
+.claude/
 .roo/
 custom_modes/
 memory-bank/
 .roomodes
 .windsurfrules
-# Ignore symlink versions of Cursor files (no trailing slash)
-.taskmaster
-memory-bank
+.mcp.json
 
 # Dependencies
 __pycache__/

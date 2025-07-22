@@ -6,44 +6,46 @@ import ssl
 from email.message import EmailMessage
 from typing import Final
 
-from app.core.config import settings
+from app.core.config import Configuration
 from app.utils.logging import Audit
 
 
-def _build_email(subject: str, recipient: str, body: str) -> EmailMessage:
+def _build_email(
+    subject: str, recipient: str, body: str, email_from: str
+) -> EmailMessage:
     """Return a fully-formed *plain-text* email message."""
 
     msg = EmailMessage()
     msg["Subject"] = subject
-    msg["From"] = settings.EMAIL_FROM
+    msg["From"] = email_from
     msg["To"] = recipient
     msg.set_content(body)
     return msg
 
 
-async def _send_via_smtp(message: EmailMessage) -> None:
-    """Send *message* using SMTP settings from *settings*.
+async def _send_via_smtp(message: EmailMessage, config: Configuration) -> None:
+    """Send *message* using SMTP settings from *config*.
 
     This helper runs the blocking smtplib logic in a thread-pool so the
     async API of *EmailService* remains fully asynchronous.
     """
 
     def _sync_send() -> None:  # executed in a worker thread
-        host: Final = settings.SMTP_HOST
-        port: Final = settings.SMTP_PORT
+        host: Final = config.SMTP_HOST
+        port: Final = config.SMTP_PORT
 
-        if settings.SMTP_USE_SSL:
+        if config.SMTP_USE_SSL:
             context = ssl.create_default_context()
             server = smtplib.SMTP_SSL(host, port, context=context)
         else:
             server = smtplib.SMTP(host, port)
 
         try:
-            if settings.SMTP_USE_TLS and not settings.SMTP_USE_SSL:
+            if config.SMTP_USE_TLS and not config.SMTP_USE_SSL:
                 server.starttls(context=ssl.create_default_context())
 
-            if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
-                server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+            if config.SMTP_USERNAME and config.SMTP_PASSWORD:
+                server.login(config.SMTP_USERNAME, config.SMTP_PASSWORD)
 
             server.send_message(message)
         finally:
@@ -57,7 +59,12 @@ async def _send_via_smtp(message: EmailMessage) -> None:
 
 
 class EmailService:
-    """Simplified email service that logs reset links."""
+    """Email service with dependency injection support."""
+
+    def __init__(self, config: Configuration, audit: Audit):
+        """Initialize EmailService with dependencies."""
+        self.__config_service = config
+        self.__audit = audit
 
     async def send_password_reset(
         self, email: str, reset_link: str
@@ -73,9 +80,9 @@ class EmailService:
             "Regards,\nSmartWalletFx Team"
         )
 
-        msg = _build_email(subject, email, body)
-        await _send_via_smtp(msg)
-        Audit.info("send_password_reset", email=email)
+        msg = _build_email(subject, email, body, self.__config_service.EMAIL_FROM)
+        await _send_via_smtp(msg, self.__config_service)
+        self.__audit.info("send_password_reset", email=email)
 
     async def send_email_verification(
         self, email: str, verify_link: str
@@ -91,6 +98,6 @@ class EmailService:
             "Regards,\nSmartWalletFx Team"
         )
 
-        msg = _build_email(subject, email, body)
-        await _send_via_smtp(msg)
-        Audit.info("send_email_verification", email=email)
+        msg = _build_email(subject, email, body, self.__config_service.EMAIL_FROM)
+        await _send_via_smtp(msg, self.__config_service)
+        self.__audit.info("send_email_verification", email=email)

@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from app.celery_app import celery
-from app.core.config import settings
+from app.core.config import Configuration
 from app.utils.jwt_rotation import (
     Key,
     KeySet,
@@ -21,6 +21,9 @@ from app.utils.jwt_rotation import (
 )
 from app.utils.logging import Audit
 from app.utils.redis_lock import acquire_lock
+
+# Shared configuration instance for state consistency
+_config = Configuration()
 
 # ---------------------------------------------------------------------------
 # Prometheus metrics – gracefully degrade to no-op counters if the optional
@@ -92,7 +95,7 @@ def _gather_current_key_set() -> KeySet:
     keys: dict[str, Key] = {}
 
     # 1. In-memory map from settings
-    for kid, val in settings.JWT_KEYS.items():
+    for kid, val in _config.JWT_KEYS.items():
         retired_at = jwt_utils._RETIRED_KEYS.get(
             kid
         )  # pylint: disable=protected-access
@@ -101,15 +104,15 @@ def _gather_current_key_set() -> KeySet:
     # 2. Derive *next_kid* naively: first non-active key in insertion order.
     next_kid: Optional[str] = None
     for kid in keys:
-        if kid != settings.ACTIVE_JWT_KID:
+        if kid != _config.ACTIVE_JWT_KID:
             next_kid = kid
             break
 
     return KeySet(
         keys=keys,
-        active_kid=settings.ACTIVE_JWT_KID,
+        active_kid=_config.ACTIVE_JWT_KID,
         next_kid=next_kid,
-        grace_period_seconds=settings.JWT_ROTATION_GRACE_PERIOD_SECONDS,
+        grace_period_seconds=_config.JWT_ROTATION_GRACE_PERIOD_SECONDS,
     )
 
 
@@ -126,8 +129,8 @@ def _apply_key_set_update(update: KeySetUpdate) -> None:
 
     # Promote new active key
     if update.new_active_kid:
-        old_kid = settings.ACTIVE_JWT_KID
-        settings.ACTIVE_JWT_KID = update.new_active_kid
+        old_kid = _config.ACTIVE_JWT_KID
+        _config.ACTIVE_JWT_KID = update.new_active_kid
         Audit.info("JWT key promoted", new_kid=update.new_active_kid, old_kid=old_kid)
         METRICS["promote"].inc()
 
@@ -165,7 +168,7 @@ def _build_redis_client():  # pragma: no cover – isolation for patching
         Redis,  # imported lazily to avoid heavy dep at import
     )
 
-    redis_url = settings.REDIS_URL or "redis://localhost:6379/0"
+    redis_url = _config.REDIS_URL or "redis://localhost:6379/0"
     return Redis.from_url(redis_url)
 
 
@@ -191,7 +194,7 @@ def promote_and_retire_keys_task(self):  # noqa: D401 – Celery signature
             async with acquire_lock(
                 redis,
                 "jwt_key_rotation",
-                timeout=settings.JWT_ROTATION_LOCK_TTL_SEC,
+                timeout=_config.JWT_ROTATION_LOCK_TTL_SEC,
             ) as got_lock:
                 if not got_lock:
                     Audit.debug("JWT key rotation: lock not acquired – skipping run.")
