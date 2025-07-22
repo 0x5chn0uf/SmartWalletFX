@@ -4,6 +4,8 @@ import pathlib
 from datetime import timedelta
 
 import pytest
+from alembic import command
+from alembic.config import Config
 from hypothesis import settings
 
 from .shared.fixtures.auth import *
@@ -18,9 +20,6 @@ from .shared.fixtures.mocks import *
 from .shared.fixtures.repositories import *
 from .shared.fixtures.services import *
 from .shared.fixtures.usecases import *
-from alembic import command
-from alembic.config import Config
-
 
 ALEMBIC_CONFIG_PATH = str(pathlib.Path(__file__).parent.parent / "alembic.ini")
 

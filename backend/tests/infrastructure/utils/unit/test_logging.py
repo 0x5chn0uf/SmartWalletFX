@@ -29,12 +29,12 @@ def test_audit_logging_includes_trace_id(monkeypatch):
     handler = logging.StreamHandler(stream)
     handler.setLevel(logging.INFO)  # Ensure handler captures INFO level
     audit_logger = audit_logging._AUDIT_LOGGER  # pylint: disable=protected-access
-    
+
     # Remove existing handlers temporarily
     original_handlers = audit_logger.handlers[:]
     for h in original_handlers:
         audit_logger.removeHandler(h)
-    
+
     audit_logger.addHandler(handler)
 
     try:
@@ -44,7 +44,7 @@ def test_audit_logging_includes_trace_id(monkeypatch):
         log_output = stream.getvalue().strip()
         if not log_output:
             pytest.skip("No log output captured - logger configuration issue")
-            
+
         log_json = json.loads(log_output)
         assert log_json["action"] == "unit_test"
         assert log_json["trace_id"] == "abc"
@@ -62,14 +62,14 @@ class TestStructuredAuditLogging:
         event = AuditEventBase(
             id="123", timestamp=datetime.now(timezone.utc), action="test_event"
         )
-        
+
         # Mock the audit logger's info method to capture what gets logged
-        with patch.object(audit_logging._AUDIT_LOGGER, 'info') as mock_info:
+        with patch.object(audit_logging._AUDIT_LOGGER, "info") as mock_info:
             Audit.log_structured_audit_event(event)
-            
+
             # Verify the logger was called
             assert mock_info.called, "Expected audit logger info method to be called"
-            
+
             # Get the logged message and verify JSON structure
             logged_message = mock_info.call_args[0][0]
             payload = json.loads(logged_message)
@@ -88,12 +88,14 @@ class TestStructuredAuditLogging:
             )
 
             # Mock the audit logger's info method to capture what gets logged
-            with patch.object(audit_logging._AUDIT_LOGGER, 'info') as mock_info:
+            with patch.object(audit_logging._AUDIT_LOGGER, "info") as mock_info:
                 Audit.log_structured_audit_event(event)
-                
+
                 # Verify the logger was called
-                assert mock_info.called, "Expected audit logger info method to be called"
-                
+                assert (
+                    mock_info.called
+                ), "Expected audit logger info method to be called"
+
                 # Get the logged message and verify trace_id is included
                 logged_message = mock_info.call_args[0][0]
                 payload = json.loads(logged_message)
@@ -119,12 +121,12 @@ class TestAuditLogging:
     def test_audit_basic(self, caplog):
         """Test basic audit logging."""
         # Mock the audit logger's info method to capture what gets logged
-        with patch.object(audit_logging._AUDIT_LOGGER, 'info') as mock_info:
+        with patch.object(audit_logging._AUDIT_LOGGER, "info") as mock_info:
             Audit.info("user_action", user_id="123", action_type="login")
 
             # Verify the logger was called
             assert mock_info.called, "Expected audit logger info method to be called"
-            
+
             # Get the logged message and verify JSON structure
             logged_message = mock_info.call_args[0][0]
             payload = json.loads(logged_message)
@@ -140,12 +142,14 @@ class TestAuditLogging:
 
         try:
             # Mock the audit logger's info method to capture what gets logged
-            with patch.object(audit_logging._AUDIT_LOGGER, 'info') as mock_info:
+            with patch.object(audit_logging._AUDIT_LOGGER, "info") as mock_info:
                 Audit.info("test_event")
 
                 # Verify the logger was called
-                assert mock_info.called, "Expected audit logger info method to be called"
-                
+                assert (
+                    mock_info.called
+                ), "Expected audit logger info method to be called"
+
                 # Get the logged message and verify trace_id is included
                 logged_message = mock_info.call_args[0][0]
                 payload = json.loads(logged_message)
@@ -168,13 +172,13 @@ class TestAuditLogging:
         mock_get_contextvars.side_effect = Exception("Context error")
 
         # Mock the audit logger's info method to capture what gets logged
-        with patch.object(audit_logging._AUDIT_LOGGER, 'info') as mock_info:
+        with patch.object(audit_logging._AUDIT_LOGGER, "info") as mock_info:
             # Should still log without trace ID
             Audit.info("test_event")
 
             # Verify the logger was called
             assert mock_info.called, "Expected audit logger info method to be called"
-            
+
             # Get the logged message and verify no trace_id
             logged_message = mock_info.call_args[0][0]
             payload = json.loads(logged_message)
