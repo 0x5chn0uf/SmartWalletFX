@@ -18,6 +18,9 @@ from .shared.fixtures.mocks import *
 from .shared.fixtures.repositories import *
 from .shared.fixtures.services import *
 from .shared.fixtures.usecases import *
+from alembic import command
+from alembic.config import Config
+
 
 ALEMBIC_CONFIG_PATH = str(pathlib.Path(__file__).parent.parent / "alembic.ini")
 
@@ -102,3 +105,16 @@ def _patch_email_service(monkeypatch):
         raising=False,
     )
     yield
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _apply_migrations() -> None:
+    """Ensure the database schema is up-to-date for the test session.
+
+    Runs ``alembic upgrade head`` against the *configured* database before the
+    first test executes.  This avoids "relation ... does not exist" errors when
+    the CI database is freshly created.
+    """
+
+    cfg = Config(ALEMBIC_CONFIG_PATH)
+    command.upgrade(cfg, "head")
