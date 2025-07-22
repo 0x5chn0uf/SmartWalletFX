@@ -1,12 +1,14 @@
+import React from 'react';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { vi } from 'vitest';
 import { OAuthButton } from '../../components/oauth/OAuthButton';
 
 const API_URL = 'http://localhost:8000';
 
 // Mock window.location.href for OAuth redirects
-const mockLocationAssign = jest.fn();
+const mockLocationAssign = vi.fn();
 Object.defineProperty(window, 'location', {
   value: {
     href: 'http://localhost:3000',
@@ -54,7 +56,7 @@ describe('OAuth Integration Tests', () => {
     });
 
     it('should call onClick handler if provided', () => {
-      const mockOnClick = jest.fn();
+      const mockOnClick = vi.fn();
       render(<OAuthButton provider="github" onClick={mockOnClick} />);
       
       const button = screen.getByRole('button');
