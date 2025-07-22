@@ -9,7 +9,7 @@ import re
 
 from passlib.context import CryptContext
 
-from app.core.config import settings
+from app.core.config import Configuration
 
 # ---------------------------------------------------------------------------
 # Password Hasher Utility
@@ -20,33 +20,33 @@ class PasswordHasher:  # noqa: D101 – simple utility wrapper
     """Utility class for hashing & verifying passwords.
 
     Uses *passlib*'s :class:`~passlib.context.CryptContext` under the hood and
-    retrieves the bcrypt cost factor from :data:`settings.BCRYPT_ROUNDS` so it
+    retrieves the bcrypt cost factor from :data:`config.BCRYPT_ROUNDS` so it
     can be tuned per-environment (e.g. lower in CI).
     """
 
-    _context = CryptContext(
-        schemes=["bcrypt"],
-        deprecated="auto",
-        bcrypt__rounds=settings.BCRYPT_ROUNDS,
-    )
+    def __init__(self, config: Configuration):
+        """Initialize PasswordHasher with dependencies."""
+        self.__config = config
+        self.__context = CryptContext(
+            schemes=["bcrypt"],
+            deprecated="auto",
+            bcrypt__rounds=config.BCRYPT_ROUNDS,
+        )
 
-    @classmethod
-    def hash_password(cls, plain: str) -> str:  # pragma: no cover – thin wrapper
+    def hash_password(self, plain: str) -> str:  # pragma: no cover – thin wrapper
         """Return a bcrypt hash for *plain* password."""
 
-        return cls._context.hash(plain)
+        return self.__context.hash(plain)
 
-    @classmethod
-    def verify_password(cls, plain: str, hashed: str) -> bool:  # pragma: no cover
+    def verify_password(self, plain: str, hashed: str) -> bool:  # pragma: no cover
         """Verify *plain* password against *hashed* digest."""
 
-        return cls._context.verify(plain, hashed)
+        return self.__context.verify(plain, hashed)
 
-    @classmethod
-    def needs_update(cls, hashed: str) -> bool:  # pragma: no cover
+    def needs_update(self, hashed: str) -> bool:  # pragma: no cover
         """Return *True* if *hashed* should be re-hashed with stronger params."""
 
-        return cls._context.needs_update(hashed)
+        return self.__context.needs_update(hashed)
 
 
 # ---------------------------------------------------------------------------
@@ -55,11 +55,14 @@ class PasswordHasher:  # noqa: D101 – simple utility wrapper
 
 _PASSWORD_REGEX = re.compile(r"^(?=.*[A-Za-z])(?=.*\d).{8,100}$")
 
+# Default instance for backward compatibility
+_default_hasher = PasswordHasher(Configuration())
+
 
 def get_password_hash(password: str) -> str:  # pragma: no cover — legacy alias
     """Legacy helper – delegates to :pyclass:`PasswordHasher`."""
 
-    return PasswordHasher.hash_password(password)
+    return _default_hasher.hash_password(password)
 
 
 def verify_password(
@@ -67,7 +70,7 @@ def verify_password(
 ) -> bool:  # pragma: no cover – legacy alias
     """Legacy helper delegating to :pyclass:`PasswordHasher`."""
 
-    return PasswordHasher.verify_password(plain_password, hashed_password)
+    return _default_hasher.verify_password(plain_password, hashed_password)
 
 
 def validate_password_strength(password: str) -> bool:

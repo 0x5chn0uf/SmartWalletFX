@@ -16,7 +16,9 @@ beforeAll(() => {
     unobserve() {}
     disconnect() {}
   } as any;
-  vi.spyOn(apiClient, 'get').mockResolvedValue({ data: { wallets: [], total: 0, page: 1, limit: 10 } });
+  vi.spyOn(apiClient, 'get').mockResolvedValue({
+    data: { wallets: [], total: 0, page: 1, limit: 10 },
+  });
 });
 
 describe('WalletList Page', () => {

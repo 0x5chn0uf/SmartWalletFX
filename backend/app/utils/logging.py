@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from uuid import uuid4
 
-from app.schemas.audit_log import AuditEventBase
+from app.domain.schemas.audit_log import AuditEventBase
 from app.utils.audit import validate_audit_event
 
 _AUDIT_LOGGER = logging.getLogger("audit")

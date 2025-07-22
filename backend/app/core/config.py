@@ -6,10 +6,13 @@ from pydantic_settings import BaseSettings
 from app.validators.security import SecurityValidator
 
 
-class Settings(BaseSettings):
-    PROJECT_NAME: str = "Wallet Tracker"
+class Configuration(BaseSettings):
+    """Configuration service for application settings as singleton."""
+
+    PROJECT_NAME: str = "SmartWalletFX"
     VERSION: str = "0.1.0"
     ENVIRONMENT: str = "development"
+    LOG_LEVEL: str = "INFO"  # Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:5173",  # Vite default port
@@ -70,6 +73,9 @@ class Settings(BaseSettings):
     # Password hashing
     BCRYPT_ROUNDS: int = 12  # Default cost factor for bcrypt
 
+    # GPG encryption
+    GPG_RECIPIENT_KEY_ID: Optional[str] = None
+
     # JWT configuration
     JWT_ALGORITHM: str = "HS256"
     JWT_PRIVATE_KEY_PATH: Optional[str] = None
@@ -116,6 +122,15 @@ class Settings(BaseSettings):
     # remain valid after rotation.  When 0, rotation is immediate.
     JWT_ROTATION_GRACE_PERIOD_SECONDS: int = 300
 
+    # Email configuration
+    SMTP_HOST: str = "localhost"
+    SMTP_PORT: int = 1025
+    SMTP_USERNAME: str | None = None
+    SMTP_PASSWORD: str | None = None
+    SMTP_USE_TLS: bool = False  # STARTTLS
+    SMTP_USE_SSL: bool = False  # SMTPS (implicit TLS)
+    EMAIL_FROM: str = "no-reply@smartwalletfx.local"  # Default From header
+
     # --- Celery Beat Schedules & Locks ---------------------------------
     # Cron expression for the automated JWT key rotation task.
     JWT_ROTATION_SCHEDULE_CRON: str = "*/5 * * * *"  # default: every 5 minutes
@@ -143,24 +158,6 @@ class Settings(BaseSettings):
 
         return SecurityValidator.bcrypt_rounds(v)
 
-    # --- Backup settings ----------------------------------------------------
-    BACKUP_DIR: str = "backups"  # default relative directory for CLI backups
-    BACKUP_PGDUMP_PATH: str = "pg_dump"  # override if binary in custom path
-    BACKUP_PGRESTORE_PATH: str = "pg_restore"  # override if binary in custom path
-    BACKUP_RETENTION_DAYS: int = 7  # how many days of dumps to keep
-    BACKUP_SCHEDULE_CRON: str = "0 2 * * *"  # default daily at 02:00 UTC
-    BACKUP_STORAGE_ADAPTER: str = "local"  # 'local' or 's3'
-    BACKUP_ENCRYPTION_ENABLED: bool = False  # set to True to enable GPG encryption
-    GPG_RECIPIENT_KEY_ID: str | None = None  # required when encryption enabled
-    # --- S3 / AWS (optional) ---
-    BACKUP_S3_BUCKET: str | None = (
-        None  # S3 bucket for backups when using the S3 adapter
-    )
-    AWS_ACCESS_KEY_ID: str | None = None
-    AWS_SECRET_ACCESS_KEY: str | None = None
-    AWS_DEFAULT_REGION: str | None = "us-east-1"
-    AWS_S3_ENDPOINT_URL: str | None = None  # allow custom endpoint / MinIO
-
     # --- Monitoring & Alerting Settings ------------------------------------
     # Prometheus metrics endpoint configuration
     PROMETHEUS_ENABLED: bool = True  # Enable/disable Prometheus metrics
@@ -183,10 +180,7 @@ class Settings(BaseSettings):
     SMTP_USE_SSL: bool = False  # SMTPS (implicit TLS)
     EMAIL_FROM: str = "no-reply@smartwalletfx.local"  # Default From header
 
-
-settings = Settings()
-
-"""
-CoinGecko is used as the price oracle for live USD values
-in the Radiant adapter.
-"""
+    @property
+    def redis_url(self) -> str:
+        """Get Redis URL with fallback to default localhost."""
+        return self.REDIS_URL or "redis://localhost:6379/0"

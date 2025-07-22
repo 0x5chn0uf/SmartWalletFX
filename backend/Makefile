@@ -71,11 +71,13 @@ test-perf: ## Run performance-marked tests
 test-cov: ## Generate HTML coverage report
 	$(TEST_ENV) pytest $(TEST_FLAGS) --cov=app --cov-report=term-missing
 
+test-quiet:
+	$(TEST_ENV) pytest -q -rfE --tb=line --no-header --disable-warnings --color=no --maxfail=15
 # -----------------------------------------------------------------------------
 # Runtime helpers
 # -----------------------------------------------------------------------------
 run: ## Start uvicorn (0.0.0.0:8000)
-	uvicorn app.main:app --host 0.0.0.0 --port 8000
+	uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 serve: ## Start DB (if needed) then uvicorn with readiness probe
 	@$(MAKE) -s db-start || true
@@ -134,23 +136,12 @@ db-migrate: ## Apply latest migrations (alias to alembic-upgrade)
 	$(MAKE) alembic-upgrade
 
 # -----------------------------------------------------------------------------
-# Backup & restore helpers (Subtask 8.2 stub)
-# -----------------------------------------------------------------------------
-
-db-backup: ## Create a database dump (stub)
-	$(PYTHON) -m app.cli.db_backup_cli backup $(OUTPUT_DIR) $(LABEL)
-
-db-restore: ## Restore a database dump (stub)
-	$(PYTHON) -m app.cli.db_backup_cli restore $(FILE) --env $(ENV) $(FORCE)
-
-# -----------------------------------------------------------------------------
 # House-keeping
 # -----------------------------------------------------------------------------
 clean: ## Remove caches & artefacts
-	rm -rf __pycache__ .pytest_cache .coverage htmlcov .coverage.* .ruff_cache .hypothesis .benchmarks .uvicorn.log
+	rm -rf __pycache__ .pytest_cache .coverage htmlcov .coverage.* .ruff_cache .hypothesis .benchmarks uvicorn.log
 	find . -type d -name '__pycache__' -exec rm -rf {} +
 
 .PHONY: help install install-dev install-s3 install-perf lint format bandit safety \
 	test test-perf coverage run serve serve-stop celery-worker celery-beat \
-	db-start db-test db-down alembic-upgrade db-migrate clean \
-	db-backup db-restore
+	db-start db-test db-down alembic-upgrade db-migrate clean

@@ -1,103 +1,157 @@
 from __future__ import annotations
 
-from fastapi import (
-    APIRouter,
-    BackgroundTasks,
-    Depends,
-    HTTPException,
-    Response,
-    status,
-)
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Response, status
 
-from app.core.database import get_db
-from app.repositories.password_reset_repository import PasswordResetRepository
-from app.repositories.user_repository import UserRepository
-from app.schemas.password_reset import (
+from app.core.config import Configuration
+from app.domain.schemas.password_reset import (
     PasswordResetComplete,
     PasswordResetRequest,
     PasswordResetVerify,
 )
+from app.repositories.password_reset_repository import PasswordResetRepository
+from app.repositories.user_repository import UserRepository
 from app.services.email_service import EmailService
 from app.utils.logging import Audit
-from app.utils.rate_limiter import InMemoryRateLimiter
+from app.utils.rate_limiter import RateLimiterUtils
 from app.utils.security import PasswordHasher
 from app.utils.token import generate_token
 
-router = APIRouter(prefix="/auth")
 
-reset_rate_limiter = InMemoryRateLimiter(max_attempts=5, window_seconds=3600)
+class PasswordReset:
+    """Password reset endpoint using singleton pattern with dependency injection."""
 
+    ep = APIRouter(prefix="/auth", tags=["auth"])
+    __password_reset_repo: PasswordResetRepository
+    __user_repo: UserRepository
+    __email_service: EmailService
+    __rate_limiter_utils: RateLimiterUtils
+    __password_hasher: PasswordHasher
+    __config: Configuration
 
-@router.post(
-    "/forgot-password",
-    status_code=status.HTTP_204_NO_CONTENT,
-    response_class=Response,
-    response_model=None,
-)
-async def request_password_reset(
-    payload: PasswordResetRequest,
-    background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db),
-) -> Response:
-    identifier = payload.email.lower()
-    if not reset_rate_limiter.allow(identifier):
-        Audit.error("Password reset rate limited", email=payload.email)
-        raise HTTPException(status_code=429, detail="Too many requests")
+    def __init__(
+        self,
+        password_reset_repository: PasswordResetRepository,
+        user_repository: UserRepository,
+        email_service: EmailService,
+        rate_limiter_utils: RateLimiterUtils,
+        password_hasher: PasswordHasher,
+        config: Configuration,
+    ):
+        """Initialize with injected dependencies."""
+        PasswordReset.__password_reset_repo = password_reset_repository
+        PasswordReset.__user_repo = user_repository
+        PasswordReset.__email_service = email_service
+        PasswordReset.__rate_limiter_utils = rate_limiter_utils
+        PasswordReset.__password_hasher = password_hasher
+        PasswordReset.__config = config
 
-    repo = UserRepository(db)
-    user = await repo.get_by_email(payload.email)
-    if not user:
-        Audit.warning("Password reset requested unknown email", email=payload.email)
-        return
+    @staticmethod
+    @ep.post(
+        "/password-reset-request",
+        status_code=status.HTTP_204_NO_CONTENT,
+        response_class=Response,
+        response_model=None,
+    )
+    async def request_password_reset(
+        payload: PasswordResetRequest,
+        background_tasks: BackgroundTasks,
+    ) -> Response:
+        """Request a password reset."""
+        # Check rate limiting
+        if not PasswordReset.__rate_limiter_utils.login_rate_limiter.allow(
+            payload.email
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many password reset requests. Please try again later.",
+            )
 
-    token, _, expires_at = generate_token()
-    pr_repo = PasswordResetRepository(db)
-    await pr_repo.create(token, user.id, expires_at)
+        # Find user by email
+        user = await PasswordReset.__user_repo.get_by_email(payload.email)
+        if not user:
+            # Don't reveal whether email exists - return success anyway
+            Audit.warning(
+                "Password reset requested for non-existent email", email=payload.email
+            )
+            return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-    reset_link = f"https://example.com/reset-password?token={token}"
-    service = EmailService()
-    try:
-        background_tasks.add_task(service.send_password_reset, user.email, reset_link)
-    except Exception as exc:  # pragma: no cover - network errors aren't common
-        Audit.error("password_reset_email_failed", error=str(exc))
-        raise HTTPException(status_code=500, detail="Email send failed")
-    Audit.info("password_reset_requested", user_id=user.id)
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+        # Generate reset token (expires in 30 minutes)
+        token, _, expires_at = generate_token(expiration_minutes=30)
 
+        # Save reset token to database
+        await PasswordReset.__password_reset_repo.create(token, user.id, expires_at)
 
-@router.post("/verify-reset-token")
-async def verify_reset_token(
-    payload: PasswordResetVerify,
-    db: AsyncSession = Depends(get_db),
-) -> dict[str, bool]:
-    repo = PasswordResetRepository(db)
-    valid = await repo.get_valid(payload.token) is not None
-    Audit.info("password_reset_token_verification", valid=valid)
-    return {"valid": valid}
+        # Build reset link
+        frontend_url = (
+            PasswordReset.__config.FRONTEND_BASE_URL or "http://localhost:3000"
+        )
+        reset_link = f"{frontend_url}/reset-password?token={token}"
 
+        # Send email with reset token
+        background_tasks.add_task(
+            PasswordReset.__email_service.send_password_reset, user.email, reset_link
+        )
 
-@router.post("/reset-password")
-async def reset_password(
-    payload: PasswordResetComplete,
-    db: AsyncSession = Depends(get_db),
-) -> dict[str, str]:
-    repo = PasswordResetRepository(db)
-    pr = await repo.get_valid(payload.token)
-    if not pr:
-        Audit.error("Invalid reset token")
-        raise HTTPException(status_code=400, detail="Invalid or expired token")
+        Audit.info(
+            "Password reset email sent", email=payload.email, user_id=str(user.id)
+        )
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-    user_repo = UserRepository(db)
-    user = await user_repo.get_by_id(pr.user_id)
-    if not user:
-        Audit.error("User not found", user_id=str(pr.user_id))
-        raise HTTPException(status_code=400, detail="User not found")
+    @staticmethod
+    @ep.post("/password-reset-verify")
+    async def verify_password_reset(payload: PasswordResetVerify):
+        """Verify password reset token."""
+        reset_record = await PasswordReset.__password_reset_repo.get_valid(
+            payload.token
+        )
+        if not reset_record:
+            Audit.warning(
+                "Password reset token verification failed",
+                token=payload.token[:8] + "...",
+            )
+            raise HTTPException(status_code=400, detail="Invalid or expired token")
 
-    user.hashed_password = PasswordHasher.hash_password(payload.password)
-    await db.commit()
+        Audit.info(
+            "Password reset token verified",
+            token=payload.token[:8] + "...",
+            user_id=str(reset_record.user_id),
+        )
+        return {"valid": True, "message": "Token verified"}
 
-    await repo.mark_used(pr)
+    @staticmethod
+    @ep.post("/password-reset-complete")
+    async def complete_password_reset(payload: PasswordResetComplete):
+        """Complete password reset with new password."""
+        reset_record = await PasswordReset.__password_reset_repo.get_valid(
+            payload.token
+        )
+        if not reset_record:
+            Audit.warning(
+                "Password reset completion failed - invalid token",
+                token=payload.token[:8] + "...",
+            )
+            raise HTTPException(status_code=400, detail="Invalid or expired token")
 
-    Audit.info("Password reset completed", user_id=user.id)
-    return {"status": "success"}
+        user = await PasswordReset.__user_repo.get_by_id(reset_record.user_id)
+        if not user:
+            Audit.error(
+                "Password reset completion failed - user not found",
+                user_id=str(reset_record.user_id),
+            )
+            raise HTTPException(status_code=400, detail="User not found")
+
+        # Update password
+        hashed_password = PasswordReset.__password_hasher.hash_password(
+            payload.password
+        )
+        await PasswordReset.__user_repo.update(user, hashed_password=hashed_password)
+
+        # Mark reset token as used
+        await PasswordReset.__password_reset_repo.mark_used(reset_record)
+
+        Audit.info(
+            "Password reset completed",
+            token=payload.token[:8] + "...",
+            user_id=str(user.id),
+        )
+        return {"message": "Password reset completed successfully"}

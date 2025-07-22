@@ -176,7 +176,7 @@ const EmailVerificationPage = () => {
         <Form
           onSubmit={e => {
             e.preventDefault();
-            navigate('/defi');
+            navigate('/dashboard');
           }}
         >
           <SubmitBtn type="submit">Go to Dashboard</SubmitBtn>

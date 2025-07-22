@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import time
-
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -15,328 +13,304 @@ from fastapi import (
 )
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_401_UNAUTHORIZED
 
-import app.api.dependencies as deps_mod
-from app.core.config import settings
-from app.core.database import get_db
 from app.domain.errors import (
     InactiveUserError,
     InvalidCredentialsError,
     UnverifiedEmailError,
 )
-from app.schemas.auth_token import TokenResponse
-from app.schemas.user import UserCreate, UserRead, WeakPasswordError
-from app.services.auth_service import AuthService, DuplicateError
+from app.domain.schemas.auth_token import TokenResponse
+from app.domain.schemas.user import UserCreate, UserRead, WeakPasswordError
+from app.usecase.auth_usecase import AuthUsecase, DuplicateError
 from app.utils.logging import Audit
-
-router = APIRouter(prefix="/auth", tags=["auth"])
-
-
-@router.post(
-    "/register",
-    status_code=status.HTTP_201_CREATED,
-    response_model=UserRead,
-    summary="Register a new user",
-)
-async def register_user(
-    request: Request,
-    payload: UserCreate,
-    background_tasks: BackgroundTasks,
-    db: AsyncSession = Depends(get_db),
-) -> UserRead:  # type: ignore[valid-type]
-    """Create a new user account.
-
-    Returns the newly-created user object excluding sensitive fields.
-    """
-    client_ip = request.client.host or "unknown"
-
-    Audit.info(
-        "User registration started",
-        username=payload.username,
-        email=payload.email,
-        client_ip=client_ip,
-    )
-
-    service = AuthService(db)
-    try:
-        user = await service.register(payload, background_tasks=background_tasks)
-
-        Audit.info(
-            "User registration completed successfully",
-            user_id=user.id,
-            username=user.username,
-            email=user.email,
-        )
-
-        return user
-    except DuplicateError as dup:
-        Audit.error(
-            "User registration failed - duplicate field",
-            username=payload.username,
-            email=payload.email,
-            duplicate_field=dup.field,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"{dup.field} already exists",
-        ) from dup
-    except WeakPasswordError:
-        Audit.warning(
-            "User registration failed - weak password",
-            username=payload.username,
-            email=payload.email,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password does not meet strength requirements",
-        )
-    except Exception as exc:
-        Audit.error(
-            "User registration failed with unexpected error",
-            username=payload.username,
-            email=payload.email,
-            error=str(exc),
-            exc_info=True,
-        )
-        raise
-
-
-@router.post(
-    "/token",
-    summary="Obtain JWT bearer tokens",
-    response_model=TokenResponse,
-)
-async def login_for_access_token(
-    request: Request,
-    response: Response,
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: AsyncSession = Depends(get_db),
-) -> TokenResponse:  # type: ignore[valid-type]
-    """OAuth2 Password grant – return access & refresh tokens."""
-    identifier = request.client.host or "unknown"
-    limiter = deps_mod.login_rate_limiter
-
-    Audit.info(
-        "User login attempt started", username=form_data.username, client_ip=identifier
-    )
-
-    service = AuthService(db)
-    try:
-        tokens = await service.authenticate(form_data.username, form_data.password)
-        # Successful login → reset any accumulated failures for this IP
-        limiter.reset(identifier)
-
-        Audit.info(
-            "User login successful",
-            username=form_data.username,
-            client_ip=identifier,
-        )
-
-        Audit.info(
-            "user_login_success", username=form_data.username, client_ip=identifier
-        )
-
-        response.set_cookie(
-            "access_token",
-            tokens.access_token,
-            httponly=True,
-            samesite="lax",
-        )
-        response.set_cookie(
-            "refresh_token",
-            tokens.refresh_token,
-            httponly=True,
-            samesite="lax",
-            path="/auth/refresh",
-        )
-
-        return tokens
-
-    except InvalidCredentialsError:
-        Audit.warning(
-            "User login failed - invalid credentials",
-            username=form_data.username,
-            client_ip=identifier,
-        )
-
-        # Failed credentials → consume one hit and maybe block further attempts
-        if not limiter.allow(identifier):
-            Audit.warning(
-                "Login rate limit exceeded",
-                username=form_data.username,
-                client_ip=identifier,
-            )
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Too many login attempts, please try again later.",
-            )
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail="Invalid username or password",
-        )
-    except InactiveUserError:
-        Audit.warning(
-            "User login failed - inactive account",
-            username=form_data.username,
-            client_ip=identifier,
-        )
-
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive or disabled user account",
-        )
-    except UnverifiedEmailError:
-        Audit.warning(
-            "User login failed - email unverified",
-            username=form_data.username,
-            client_ip=identifier,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Email address not verified",
-        )
-    except Exception as exc:
-        Audit.error(
-            "User login failed with unexpected error",
-            username=form_data.username,
-            client_ip=identifier,
-            error=str(exc),
-            exc_info=True,
-        )
-        raise
+from app.utils.rate_limiter import RateLimiterUtils
 
 
 class _RefreshRequest(BaseModel):
     refresh_token: str | None = Field(None, description="Valid JWT refresh token")
 
 
-@router.post(
-    "/refresh",
-    summary="Refresh access token using refresh JWT",
-    response_model=TokenResponse,
-)
-async def refresh_access_token(
-    request: Request,
-    response: Response,
-    payload: _RefreshRequest | None = None,
-    db: AsyncSession = Depends(get_db),
-) -> TokenResponse | Response:  # type: ignore[valid-type]
-    """Exchange *refresh_token* for a new access token.
+class Auth:
+    """Authentication endpoint using singleton pattern with dependency injection."""
 
-    The new access token contains the latest roles/attributes claims.
-    """
-    start_time = time.time()
-    client_ip = request.client.host or "unknown"
+    ep = APIRouter(prefix="/auth", tags=["auth"])
+    _auth_usecase: AuthUsecase
+    _rate_limiter_utils: RateLimiterUtils
 
-    Audit.info("Token refresh attempt started", client_ip=client_ip)
+    def __init__(self, auth_usecase: AuthUsecase, rate_limiter_utils: RateLimiterUtils):
+        """Initialize with injected dependencies."""
+        Auth._auth_usecase = auth_usecase
+        Auth._rate_limiter_utils = rate_limiter_utils
 
-    service = AuthService(db)
-    try:
-        token_str = None
-        if payload and payload.refresh_token:
-            token_str = payload.refresh_token
-        else:
-            token_str = request.cookies.get("refresh_token")
+    @staticmethod
+    @ep.post(
+        "/register",
+        status_code=status.HTTP_201_CREATED,
+        response_model=UserRead,
+        summary="Register a new user",
+    )
+    async def register_user(
+        request: Request,
+        payload: UserCreate,
+        background_tasks: BackgroundTasks,
+    ) -> UserRead:
+        """Create a new user account."""
+        client_ip = request.client.host or "unknown"
 
-        # If the browser does not carry a *refresh_token* cookie we simply
-        # reply with *204 No Content* to indicate that no auth session exists.
-        # Returning 401 here is technically correct but clutters the browser
-        # console with errors on the public pages where no user is expected
-        # to be authenticated yet.
-
-        if not token_str:
-            Audit.info(
-                "Token refresh skipped – no refresh token provided", client_ip=client_ip
-            )
-            response.status_code = status.HTTP_204_NO_CONTENT
-            return response
-
-        tokens = await service.refresh(token_str)
-
-        duration = int((time.time() - start_time) * 1000)
         Audit.info(
-            "Token refresh successful", client_ip=client_ip, duration_ms=duration
-        )
-
-        response.set_cookie(
-            "access_token",
-            tokens.access_token,
-            httponly=True,
-            samesite="lax",
-        )
-
-        return tokens
-    except Exception as exc:  # noqa: BLE001
-        duration = int((time.time() - start_time) * 1000)
-        Audit.warning(
-            "Token refresh failed",
+            "User registration started",
+            username=payload.username,
+            email=payload.email,
             client_ip=client_ip,
-            duration_ms=duration,
-            error=str(exc),
         )
 
-        raise HTTPException(
-            status_code=HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired refresh token",
+        try:
+            user = await Auth._auth_usecase.register(
+                payload, background_tasks=background_tasks
+            )
+
+            Audit.info(
+                "User registration completed successfully",
+                user_id=user.id,
+                username=user.username,
+                email=user.email,
+            )
+
+            return user
+        except DuplicateError as dup:
+            Audit.error(
+                "User registration failed - duplicate field",
+                username=payload.username,
+                email=payload.email,
+                duplicate_field=dup.field,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"{dup.field} already exists",
+            ) from dup
+        except WeakPasswordError:
+            Audit.warning(
+                "User registration failed - weak password",
+                username=payload.username,
+                email=payload.email,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password does not meet strength requirements",
+            )
+        except Exception as exc:
+            Audit.error(
+                "User registration failed with unexpected error",
+                username=payload.username,
+                email=payload.email,
+                error=str(exc),
+                exc_info=True,
+            )
+            raise
+
+    @staticmethod
+    @ep.post(
+        "/token",
+        summary="Obtain JWT bearer tokens",
+        response_model=TokenResponse,
+    )
+    async def login_for_access_token(
+        request: Request,
+        response: Response,
+        form_data: OAuth2PasswordRequestForm = Depends(OAuth2PasswordRequestForm),
+    ) -> TokenResponse:
+        """OAuth2 Password grant – return access & refresh tokens."""
+        identifier = request.client.host or "unknown"
+        limiter = Auth._rate_limiter_utils.login_rate_limiter
+
+        Audit.info(
+            "User login attempt started",
+            username=form_data.username,
+            client_ip=identifier,
         )
 
+        try:
+            tokens = await Auth._auth_usecase.authenticate(
+                form_data.username, form_data.password
+            )
+            # Successful login → reset any accumulated failures for this IP
+            limiter.reset(identifier)
 
-@router.post(
-    "/logout",
-    status_code=status.HTTP_200_OK,
-    summary="Logout current user",
-    response_class=Response,
-)
-async def logout(
-    request: Request,
-    response: Response,
-    db: AsyncSession = Depends(get_db),
-) -> None:
-    """Revoke refresh token and clear auth cookies.
+            Audit.info(
+                "User login successful",
+                username=form_data.username,
+                client_ip=identifier,
+            )
 
-    Uses the *refresh_token* cookie if present, revokes it in the database and
-    instructs the browser to delete both auth cookies.
-    """
+            response.set_cookie(
+                "access_token",
+                tokens.access_token,
+                httponly=True,
+                samesite="lax",
+            )
+            response.set_cookie(
+                "refresh_token",
+                tokens.refresh_token,
+                httponly=True,
+                samesite="lax",
+                path="/auth",
+            )
 
-    token = request.cookies.get("refresh_token")
-    if token:
-        service = AuthService(db)
-        await service.revoke_refresh_token(token)
+            return tokens
 
-    secure = settings.ENVIRONMENT.lower() == "production"
+        except InvalidCredentialsError:
+            Audit.warning(
+                "User login failed - invalid credentials",
+                username=form_data.username,
+                client_ip=identifier,
+            )
 
-    response.set_cookie(
-        "access_token",
-        "",
-        max_age=0,
-        path="/",
-        httponly=True,
-        secure=secure,
-        samesite="lax",
+            # Failed credentials → consume one hit and maybe block further attempts
+            if not limiter.allow(identifier):
+                Audit.warning(
+                    "Login rate limit exceeded",
+                    username=form_data.username,
+                    client_ip=identifier,
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="Too many login attempts, please try again later.",
+                )
+            raise HTTPException(
+                status_code=HTTP_401_UNAUTHORIZED,
+                detail="Invalid username or password",
+            )
+        except InactiveUserError:
+            Audit.warning(
+                "User login failed - inactive account",
+                username=form_data.username,
+                client_ip=identifier,
+            )
+
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Inactive or disabled user account",
+            )
+        except UnverifiedEmailError:
+            Audit.warning(
+                "User login failed - email unverified",
+                username=form_data.username,
+                client_ip=identifier,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Email address not verified",
+            )
+        except Exception as exc:
+            Audit.error(
+                "User login failed with unexpected error",
+                username=form_data.username,
+                client_ip=identifier,
+                error=str(exc),
+                exc_info=True,
+            )
+            raise
+
+    @staticmethod
+    @ep.post(
+        "/refresh",
+        summary="Refresh access token using refresh JWT",
+        response_model=TokenResponse,
     )
+    async def refresh_access_token(
+        request: Request,
+        response: Response,
+        payload: _RefreshRequest | None = None,
+    ) -> TokenResponse | Response:
+        """Refresh access token using refresh JWT."""
+        client_ip = request.client.host or "unknown"
 
-    # Clear refresh_token set with path=/auth/refresh
-    response.set_cookie(
-        "refresh_token",
-        "",
-        max_age=0,
-        path="/auth/refresh",
-        httponly=True,
-        secure=secure,
-        samesite="lax",
+        # Extract refresh token from payload, cookie, or Authorization header
+        refresh_token = None
+        if payload and payload.refresh_token:
+            refresh_token = payload.refresh_token
+        elif "refresh_token" in request.cookies:
+            refresh_token = request.cookies["refresh_token"]
+        elif "authorization" in request.headers:
+            auth_header = request.headers["authorization"]
+            if auth_header.startswith("Bearer "):
+                refresh_token = auth_header[7:]
+
+        if not refresh_token:
+            Audit.warning(
+                "Token refresh failed - no refresh token", client_ip=client_ip
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token not provided",
+            )
+
+        Audit.info("Token refresh attempt started", client_ip=client_ip)
+
+        try:
+            tokens = await Auth._auth_usecase.refresh(refresh_token)
+
+            Audit.info("Token refresh successful", client_ip=client_ip)
+
+            response.set_cookie(
+                "access_token",
+                tokens.access_token,
+                httponly=True,
+                samesite="lax",
+            )
+            response.set_cookie(
+                "refresh_token",
+                tokens.refresh_token,
+                httponly=True,
+                samesite="lax",
+                path="/auth",
+            )
+
+            return tokens
+
+        except Exception as exc:
+            Audit.error(
+                "Token refresh failed",
+                client_ip=client_ip,
+                error=str(exc),
+                exc_info=True,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token",
+            )
+
+    @staticmethod
+    @ep.post(
+        "/logout",
+        status_code=status.HTTP_200_OK,
+        summary="Logout current user",
+        response_class=Response,
     )
+    async def logout(
+        request: Request,
+        response: Response,
+    ) -> None:
+        """Logout current user."""
+        client_ip = request.client.host or "unknown"
 
-    # Clear any leftover OAuth state cookie
-    response.set_cookie(
-        "oauth_state",
-        "",
-        max_age=0,
-        path="/",
-        httponly=False,
-        secure=secure,
-        samesite="lax",
-    )
+        Audit.info("User logout started", client_ip=client_ip)
 
-    Audit.info("User logged out")
+        # Clear cookies
+        response.delete_cookie("access_token")
+        response.delete_cookie("refresh_token", path="/auth")
+
+        refresh_token = request.cookies.get("refresh_token")
+        if not refresh_token:
+            Audit.warning(
+                "Logout failed: no refresh token provided", client_ip=client_ip
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Refresh token not provided",
+            )
+
+        await Auth._auth_usecase.revoke_refresh_token(refresh_token)
+
+        Audit.info("User logout completed", client_ip=client_ip)

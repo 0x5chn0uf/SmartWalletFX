@@ -2,61 +2,52 @@ import time
 import uuid
 from typing import List, Optional
 
-import structlog
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.database import CoreDatabase
 from app.models import Wallet
-
-logger = structlog.get_logger(__name__)
+from app.utils.logging import Audit
 
 
 class WalletRepository:
     """Repository layer for wallet persistence operations."""
 
-    def __init__(self, db: AsyncSession):
-        self.db = db
-
-    # ------------------------------------------------------------------
-    # Query helpers
-    # ------------------------------------------------------------------
+    def __init__(self, database: CoreDatabase, audit: Audit):
+        self.__database = database
+        self.__audit = audit
 
     async def get_by_address(self, address: str) -> Optional[Wallet]:
+        """Get wallet by address."""
         start_time = time.time()
-
-        logger.debug("Querying wallet by address", address=address)
+        self.__audit.info("wallet_repository_get_by_address_started", address=address)
 
         try:
-            result = await self.db.execute(
-                select(Wallet).where(Wallet.address == address)
-            )
-            wallet = result.scalars().first()
+            async with self.__database.get_session() as session:
+                result = await session.execute(
+                    select(Wallet).where(Wallet.address == address)
+                )
+                wallet = result.scalars().first()
 
-            duration = int((time.time() - start_time) * 1000)
-            logger.debug(
-                "Wallet query completed",
-                address=address,
-                found=wallet is not None,
-                duration_ms=duration,
-            )
+                duration = int((time.time() - start_time) * 1000)
+                self.__audit.info(
+                    "wallet_repository_get_by_address_success",
+                    address=address,
+                    found=wallet is not None,
+                    duration_ms=duration,
+                )
 
-            return wallet
+                return wallet
         except Exception as exc:
             duration = int((time.time() - start_time) * 1000)
-            logger.error(
-                "Wallet query failed",
+            self.__audit.error(
+                "wallet_repository_get_by_address_failed",
                 address=address,
                 duration_ms=duration,
                 error=str(exc),
-                exc_info=True,
             )
             raise
-
-    # ------------------------------------------------------------------
-    # Persistence helpers
-    # ------------------------------------------------------------------
 
     async def create(
         self,
@@ -72,88 +63,96 @@ class WalletRepository:
             user_id: Owner user ID (required).
         """
         start_time = time.time()
-
-        logger.info(
-            "Creating wallet in database", address=address, user_id=user_id, name=name
-        )
-
-        db_wallet = Wallet(
-            user_id=user_id,
+        self.__audit.info(
+            "wallet_repository_create_started",
             address=address,
-            name=name or "Unnamed Wallet",
-            balance_usd=0.0,
+            user_id=str(user_id),
+            name=name,
         )
-        self.db.add(db_wallet)
+
         try:
-            await self.db.commit()
-            await self.db.refresh(db_wallet)
+            async with self.__database.get_session() as session:
+                db_wallet = Wallet(
+                    user_id=user_id,
+                    address=address,
+                    name=name or "Unnamed Wallet",
+                    balance_usd=0.0,
+                )
+                session.add(db_wallet)
 
-            duration = int((time.time() - start_time) * 1000)
-            logger.info(
-                "Wallet created successfully in database",
-                wallet_id=db_wallet.id,
-                address=address,
-                user_id=user_id,
-                name=name,
-                duration_ms=duration,
-            )
+                try:
+                    await session.commit()
+                    await session.refresh(db_wallet)
 
-            return db_wallet
-        except IntegrityError as exc:
-            await self.db.rollback()
-            duration = int((time.time() - start_time) * 1000)
-            logger.warning(
-                "Wallet creation failed - duplicate address",
-                address=address,
-                user_id=user_id,
-                name=name,
-                duration_ms=duration,
-                error=str(exc),
-            )
-            raise HTTPException(status_code=400, detail="Wallet address already exists")
+                    duration = int((time.time() - start_time) * 1000)
+                    self.__audit.info(
+                        "wallet_repository_create_success",
+                        wallet_id=str(db_wallet.id),
+                        address=address,
+                        user_id=str(user_id),
+                        name=name,
+                        duration_ms=duration,
+                    )
+
+                    return db_wallet
+                except IntegrityError as exc:
+                    await session.rollback()
+                    duration = int((time.time() - start_time) * 1000)
+                    self.__audit.warning(
+                        "wallet_repository_create_duplicate",
+                        address=address,
+                        user_id=str(user_id),
+                        name=name,
+                        duration_ms=duration,
+                        error=str(exc),
+                    )
+                    raise HTTPException(
+                        status_code=400, detail="Wallet address already exists"
+                    )
+        except HTTPException:
+            raise
         except Exception as exc:
-            await self.db.rollback()
             duration = int((time.time() - start_time) * 1000)
-            logger.error(
-                "Database error during wallet creation",
+            self.__audit.error(
+                "wallet_repository_create_failed",
                 address=address,
-                user_id=user_id,
+                user_id=str(user_id),
                 name=name,
                 duration_ms=duration,
                 error=str(exc),
-                exc_info=True,
             )
             raise
 
     async def list_by_user(self, user_id: uuid.UUID) -> List[Wallet]:
         """Return wallets owned by *user_id*."""
         start_time = time.time()
-
-        logger.debug("Querying wallets by user", user_id=user_id)
+        self.__audit.info(
+            "wallet_repository_list_by_user_started", user_id=str(user_id)
+        )
 
         try:
-            result = await self.db.execute(
-                select(Wallet).where(Wallet.user_id == user_id)
-            )
-            wallets = result.scalars().all()
+            async with self.__database.get_session() as session:
+                result = await session.execute(
+                    select(Wallet).where(Wallet.user_id == user_id)
+                )
+                wallets = result.scalars().all()
 
-            duration = int((time.time() - start_time) * 1000)
-            logger.debug(
-                "Wallets query completed",
-                user_id=user_id,
-                wallet_count=len(wallets),
-                duration_ms=duration,
-            )
+                duration = int((time.time() - start_time) * 1000)
+                self.__audit.info(
+                    "wallet_repository_list_by_user_success",
+                    user_id=str(user_id),
+                    wallet_count=len(wallets),
+                    duration_ms=duration,
+                )
 
-            return wallets
+                return wallets
         except Exception as exc:
             duration = int((time.time() - start_time) * 1000)
-            logger.error(
-                "Wallets query failed",
-                user_id=user_id,
+            self.__audit.error(
+                "wallet_repository_list_by_user_failed",
+                user_id=str(user_id),
                 duration_ms=duration,
                 error=str(exc),
-                exc_info=True,
             )
             raise
 
@@ -165,54 +164,62 @@ class WalletRepository:
             user_id: Owner user ID (required for authorization).
         """
         start_time = time.time()
-
-        logger.info("Deleting wallet from database", address=address, user_id=user_id)
+        self.__audit.info(
+            "wallet_repository_delete_started",
+            address=address,
+            user_id=str(user_id),
+        )
 
         try:
-            wallet = await self.get_by_address(address)
-            if not wallet:
+            async with self.__database.get_session() as session:
+                # Get the wallet first
+                result = await session.execute(
+                    select(Wallet).where(Wallet.address == address)
+                )
+                wallet = result.scalars().first()
+
+                if not wallet:
+                    duration = int((time.time() - start_time) * 1000)
+                    self.__audit.warning(
+                        "wallet_repository_delete_not_found",
+                        address=address,
+                        user_id=str(user_id),
+                        duration_ms=duration,
+                    )
+                    raise HTTPException(status_code=404, detail="Wallet not found")
+
+                if wallet.user_id != user_id:
+                    duration = int((time.time() - start_time) * 1000)
+                    self.__audit.warning(
+                        "wallet_repository_delete_unauthorized",
+                        address=address,
+                        user_id=str(user_id),
+                        wallet_owner_id=str(wallet.user_id),
+                        duration_ms=duration,
+                    )
+                    raise HTTPException(status_code=404, detail="Wallet not found")
+
+                await session.delete(wallet)
+                await session.commit()
+
                 duration = int((time.time() - start_time) * 1000)
-                logger.warning(
-                    "Wallet deletion failed - not found",
+                self.__audit.info(
+                    "wallet_repository_delete_success",
                     address=address,
-                    user_id=user_id,
+                    user_id=str(user_id),
                     duration_ms=duration,
                 )
-                raise HTTPException(status_code=404, detail="Wallet not found")
 
-            if wallet.user_id != user_id:
-                duration = int((time.time() - start_time) * 1000)
-                logger.warning(
-                    "Wallet deletion failed - unauthorized",
-                    address=address,
-                    user_id=user_id,
-                    wallet_owner_id=wallet.user_id,
-                    duration_ms=duration,
-                )
-                raise HTTPException(status_code=404, detail="Wallet not found")
-
-            await self.db.delete(wallet)
-            await self.db.commit()
-
-            duration = int((time.time() - start_time) * 1000)
-            logger.info(
-                "Wallet deleted successfully from database",
-                address=address,
-                user_id=user_id,
-                duration_ms=duration,
-            )
-
-            return True
+                return True
         except HTTPException:
             raise
         except Exception as exc:
             duration = int((time.time() - start_time) * 1000)
-            logger.error(
-                "Database error during wallet deletion",
+            self.__audit.error(
+                "wallet_repository_delete_failed",
                 address=address,
-                user_id=user_id,
+                user_id=str(user_id),
                 duration_ms=duration,
                 error=str(exc),
-                exc_info=True,
             )
             raise

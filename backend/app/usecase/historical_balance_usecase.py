@@ -1,23 +1,29 @@
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.repositories.historical_balance_repository import (
-    HistoricalBalanceRepository,
-)
-from app.schemas.historical_balance import (
+from app.core.config import Configuration
+from app.domain.schemas.historical_balance import (
     HistoricalBalanceCreate,
     HistoricalBalanceResponse,
 )
+from app.repositories.historical_balance_repository import (
+    HistoricalBalanceRepository,
+)
+from app.utils.logging import Audit
 
 
 class HistoricalBalanceUsecase:
     """
-    Use case layer for historical balance operations. Handles business logic
-    for creating and managing historical balance records.
+    Use case layer for historical balance operations with explicit dependency injection.
+    Handles business logic for creating and managing historical balance records.
     """
 
-    def __init__(self, db: AsyncSession):
-        self.db = db
-        self.historical_balance_repository = HistoricalBalanceRepository(db)
+    def __init__(
+        self,
+        historical_balance_repo: HistoricalBalanceRepository,
+        config: Configuration,
+        audit: Audit,
+    ):
+        self.__historical_balance_repo = historical_balance_repo
+        self.__config_service = config
+        self.__audit = audit
 
     async def create_historical_balance(
         self, hb: HistoricalBalanceCreate
@@ -29,4 +35,23 @@ class HistoricalBalanceUsecase:
         Returns:
             HistoricalBalanceResponse: The created historical balance response object.
         """
-        return await self.historical_balance_repository.create(hb)
+        self.__audit.info(
+            "historical_balance_usecase_create_started",
+            wallet_address=hb.wallet_address if hasattr(hb, "wallet_address") else None,
+        )
+
+        try:
+            result = await self.__historical_balance_repo.create(hb)
+
+            self.__audit.info(
+                "historical_balance_usecase_create_success",
+                historical_balance_id=str(result.id) if hasattr(result, "id") else None,
+            )
+
+            return result
+        except Exception as e:
+            self.__audit.error(
+                "historical_balance_usecase_create_failed",
+                error=str(e),
+            )
+            raise

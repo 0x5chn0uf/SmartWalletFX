@@ -113,8 +113,8 @@ const VerifyEmailNoticePage: React.FC = () => {
       <GlassCard>
         <Logo>SmartWalletFX</Logo>
         <Subtitle>
-          A verification email has been sent. Please check your inbox and verify
-          your email to log in.
+          A verification email has been sent. Please check your inbox and verify your email to log
+          in.
         </Subtitle>
         <Button onClick={() => navigate('/login-register')}>Back to Login</Button>
       </GlassCard>
