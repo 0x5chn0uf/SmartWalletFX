@@ -13,7 +13,7 @@ describe('emailVerificationSlice reducer', () => {
       error: { message: 'err' },
     });
     expect(state.status).toBe('failed');
-    expect(state.error).toBe('err');
+    expect(state.error).toBe('Verification failed');
   });
 
   it('handles resendVerification lifecycle', () => {

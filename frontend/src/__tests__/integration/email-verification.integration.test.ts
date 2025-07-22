@@ -89,8 +89,7 @@ describe('Email Verification Flow Integration Tests', () => {
       expect(authState.user).toEqual(mockUser);
       expect(authState.user?.email_verified).toBe(true);
 
-      // Verify tokens are stored
-      expect(localStorage.getItem('access_token')).toBe(mockTokenResponse.access_token);
+      // Verify session is marked as active (tokens are in httpOnly cookies)
       expect(localStorage.getItem('session_active')).toBe('1');
     });
 
@@ -292,13 +291,8 @@ describe('Email Verification Flow Integration Tests', () => {
 
       await store.dispatch(verifyEmail(mockVerificationToken));
 
-      // Check that tokens are properly stored
-      expect(localStorage.getItem('access_token')).toBe('new-access-token');
-      expect(localStorage.getItem('refresh_token')).toBe('new-refresh-token');
+      // Check that session is marked as active (tokens are in httpOnly cookies)
       expect(localStorage.getItem('session_active')).toBe('1');
-
-      // Check that auth header is set
-      expect(apiClient.defaults.headers.common['Authorization']).toBe('Bearer new-access-token');
     });
 
     it('should not set tokens if verification fails', async () => {
@@ -310,11 +304,8 @@ describe('Email Verification Flow Integration Tests', () => {
 
       await store.dispatch(verifyEmail('invalid-token'));
 
-      // Ensure no tokens are stored
-      expect(localStorage.getItem('access_token')).toBeNull();
-      expect(localStorage.getItem('refresh_token')).toBeNull();
+      // Ensure no session is stored
       expect(localStorage.getItem('session_active')).toBeNull();
-      expect(apiClient.defaults.headers.common['Authorization']).toBeUndefined();
     });
   });
 

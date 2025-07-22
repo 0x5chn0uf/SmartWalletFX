@@ -31,38 +31,48 @@ export const verifyEmail = createAsyncThunk(
 
 export const resendVerification = createAsyncThunk(
   'emailVerification/resend',
-  async (email: string) => {
-    await apiClient.post('/auth/resend-verification', { email });
+  async (email: string, { rejectWithValue }) => {
+    try {
+      await apiClient.post('/auth/resend-verification', { email });
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data || 'Resend failed');
+    }
   }
 );
 
 const slice = createSlice({
   name: 'emailVerification',
   initialState,
-  reducers: {},
+  reducers: {
+    resetState: () => initialState,
+  },
   extraReducers: builder => {
     builder
       .addCase(verifyEmail.pending, state => {
         state.status = 'loading';
+        state.error = null;
       })
       .addCase(verifyEmail.fulfilled, (state, action) => {
         state.status = 'succeeded';
+        state.error = null;
         // Successful verification also implies authentication
         // We don't manage auth state here (handled in authSlice), but keeping for completeness
       })
       .addCase(verifyEmail.rejected, (state, action) => {
         state.status = 'failed';
-        state.error = action.error.message || 'Verification failed';
+        state.error = 'Verification failed';
       })
       .addCase(resendVerification.pending, state => {
         state.status = 'loading';
+        state.error = null;
       })
       .addCase(resendVerification.fulfilled, state => {
         state.status = 'succeeded';
+        state.error = null;
       })
       .addCase(resendVerification.rejected, (state, action) => {
         state.status = 'failed';
-        state.error = action.error.message || 'Resend failed';
+        state.error = 'Resend failed';
       });
   },
 });
