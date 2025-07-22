@@ -8,6 +8,9 @@ from app.core.middleware import CorrelationIdMiddleware, JWTAuthMiddleware
 from app.di import DIContainer
 from app.domain.schemas.user import WeakPasswordError  # local import
 
+# Import models to register them with SQLAlchemy Base
+import app.models  # noqa: F401
+
 
 class ApplicationFactory:
     """Factory for creating FastAPI applications with dependency injection."""
