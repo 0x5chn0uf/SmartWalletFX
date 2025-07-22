@@ -89,8 +89,8 @@ describe('Test Setup', () => {
     });
   });
 
-  describe('Axios mock', () => {
-    it('should mock axios methods', async () => {
+  describe('Axios setup', () => {
+    it('should have axios methods available', async () => {
       const axios = (await import('axios')).default;
 
       expect(typeof axios.get).toBe('function');
@@ -98,11 +98,12 @@ describe('Test Setup', () => {
       expect(typeof axios.put).toBe('function');
       expect(typeof axios.delete).toBe('function');
 
-      // Verify they are mock functions
-      expect(vi.isMockFunction(axios.get)).toBe(true);
-      expect(vi.isMockFunction(axios.post)).toBe(true);
-      expect(vi.isMockFunction(axios.put)).toBe(true);
-      expect(vi.isMockFunction(axios.delete)).toBe(true);
+      // We use MSW for network mocking instead of axios mocks
+      // so axios methods should be real functions, not mocks
+      expect(vi.isMockFunction(axios.get)).toBe(false);
+      expect(vi.isMockFunction(axios.post)).toBe(false);
+      expect(vi.isMockFunction(axios.put)).toBe(false);
+      expect(vi.isMockFunction(axios.delete)).toBe(false);
     });
   });
 
