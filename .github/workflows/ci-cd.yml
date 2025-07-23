@@ -338,6 +338,13 @@ jobs:
         working-directory: ./frontend
         run: npm run test:coverage
 
+      - name: Run accessibility tests
+        working-directory: ./frontend
+        run: |
+          if [ -f package.json ]; then
+            npm run test -- --testNamePattern="accessibility" --passWithNoTests --run --reporter=verbose
+          fi
+
       - name: Enforce frontend coverage threshold (75%)
         working-directory: ./frontend
         run: |

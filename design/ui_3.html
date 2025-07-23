@@ -1,313 +1,2140 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cobalt DeFi Dashboard - Alt 3</title>
-  <link href="https://fonts.googleapis.com/css?family=Inter:400,600,700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --primary-bg: #1a1f2e;
-      --surface: #242937;
-      --surface-elevated: #2d3548;
-      --accent: #4fd1c7;
-      --accent-secondary: #6366f1;
-      --success: #10b981;
-      --warning: #f59e0b;
-      --error: #ef4444;
-      --text-primary: #fff;
-      --text-secondary: #9ca3af;
-      --text-muted: #6b7280;
-      --text-inverse: #1f2937;
-      --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      --card-radius: 12px;
-      --card-padding: 24px;
-      --card-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      --sidebar-width: 220px;
-      --header-height: 80px;
-      --grid-gap: 24px;
-    }
-    body {
-      background: var(--primary-bg);
-      color: var(--text-primary);
-      font-family: var(--font-primary);
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-    }
-    .sidebar {
-      width: var(--sidebar-width);
-      background: var(--surface);
-      height: 100vh;
-      position: fixed;
-      left: 0;
-      top: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      padding: 32px 0 0 0;
-      border-right: 1px solid rgba(255,255,255,0.08);
-      z-index: 10;
-    }
-    .sidebar .logo {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--accent);
-      margin-left: 32px;
-      margin-bottom: 40px;
-    }
-    .sidebar .nav-links {
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-      gap: 8px;
-    }
-    .sidebar .nav-link {
-      color: var(--text-secondary);
-      font-size: 1rem;
-      font-weight: 500;
-      text-decoration: none;
-      padding: 12px 32px;
-      border-radius: 8px 0 0 8px;
-      transition: background 0.2s;
-      width: 100%;
-      display: block;
-    }
-    .sidebar .nav-link.active, .sidebar .nav-link:hover {
-      background: var(--accent);
-      color: var(--text-inverse);
-    }
-    .main-content {
-      margin-left: var(--sidebar-width);
-      width: 100%;
-      padding: 40px 32px;
-      max-width: 1400px;
-    }
-    .metrics-row {
-      display: flex;
-      gap: var(--grid-gap);
-      margin-bottom: 32px;
-      flex-wrap: wrap;
-    }
-    .metric-card {
-      background: var(--surface);
-      border-radius: var(--card-radius);
-      padding: var(--card-padding);
-      box-shadow: var(--card-shadow);
-      min-width: 220px;
-      flex: 1 1 220px;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      margin-bottom: 12px;
-    }
-    .metric-label {
-      font-size: 14px;
-      color: var(--text-secondary);
-      margin-bottom: 8px;
-    }
-    .metric-value {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--accent);
-      line-height: 1.2;
-    }
-    .chart-section {
-      background: var(--surface-elevated);
-      border-radius: var(--card-radius);
-      padding: 24px;
-      margin-bottom: 32px;
-      min-height: 320px;
-      box-shadow: var(--card-shadow);
-    }
-    .chart-title {
-      font-size: 1.2rem;
-      color: var(--text-secondary);
-      margin-bottom: 16px;
-    }
-    .bar-chart {
-      display: flex;
-      align-items: flex-end;
-      height: 180px;
-      width: 100%;
-      gap: 16px;
-      margin-top: 24px;
-    }
-    .bar {
-      width: 36px;
-      border-radius: 8px 8px 0 0;
-      background: linear-gradient(135deg, #4fd1c7 0%, #3b82f6 100%);
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      position: relative;
-      transition: height 0.3s;
-    }
-    .bar-label {
-      position: absolute;
-      bottom: -24px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: #9ca3af;
-      font-size: 12px;
-      text-align: center;
-      width: 100%;
-    }
-    .bar-value {
-      position: absolute;
-      top: -24px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: #fff;
-      font-size: 12px;
-      font-weight: 600;
-      text-shadow: 0 2px 8px #1a1f2e;
-    }
-    .breakdown-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: var(--grid-gap);
-    }
-    .breakdown-card {
-      background: var(--surface);
-      border-radius: var(--card-radius);
-      padding: 20px 24px;
-      box-shadow: var(--card-shadow);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .breakdown-asset {
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: var(--accent);
-    }
-    .breakdown-protocol {
-      color: var(--text-secondary);
-      font-size: 1rem;
-    }
-    .breakdown-value {
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: var(--text-primary);
-    }
-    .breakdown-apy {
-      color: var(--success);
-      font-size: 1rem;
-      font-weight: 500;
-    }
-    @media (max-width: 900px) {
-      .main-content {
-        padding: 24px 8px;
-      }
-      .metrics-row {
-        flex-direction: column;
-        gap: 12px;
-      }
-      .metric-card {
-        min-width: 0;
-        width: 100%;
-      }
-      .breakdown-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-    @media (max-width: 768px) {
-      .sidebar {
-        display: none;
-      }
-      .main-content {
-        margin-left: 0;
-        padding: 16px 4px;
-      }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeFi Portfolio Dashboard - Interactive</title>
+    <style>
+        /* ===== CSS VARIABLES ===== */
+        :root {
+            --color-primary: #4fd1c7;
+            --color-surface: #242937;
+            --color-surface-elevated: #2d3548;
+            --text-primary: #ffffff;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --accent-secondary: #6366f1;
+            --background: #1a1f2e;
+            --nav-background: #1f2937;
+            --nav-hover: #374151;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.15);
+            --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.25);
+        }
+
+        /* ===== GLOBAL STYLES ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        /* Advanced Animation Keyframes */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200px 0;
+            }
+            100% {
+                background-position: calc(200px + 100%) 0;
+            }
+        }
+
+        @keyframes glow {
+            0%, 100% {
+                box-shadow: 0 0 20px rgba(79, 209, 199, 0.3);
+            }
+            50% {
+                box-shadow: 0 0 30px rgba(79, 209, 199, 0.6);
+            }
+        }
+
+        @keyframes countUp {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* Enhanced Navigation Bar */
+        .nav-bar {
+            background-color: var(--nav-background);
+            padding: 1rem;
+            box-shadow: var(--shadow-light);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-logo {
+            color: var(--color-primary);
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .nav-logo:hover {
+            transform: scale(1.05);
+            filter: drop-shadow(0 0 10px var(--color-primary));
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-link::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(79, 209, 199, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .nav-link:hover::before {
+            left: 100%;
+        }
+
+        .nav-link:hover {
+            background-color: var(--nav-hover);
+            color: var(--text-primary);
+            transform: translateY(-2px);
+        }
+
+        .nav-link.active {
+            color: var(--color-primary);
+            background-color: rgba(79, 209, 199, 0.1);
+        }
+
+        .nav-button {
+            background: linear-gradient(135deg, var(--color-primary), var(--accent-secondary));
+            color: white;
+            padding: 0.7rem 1.5rem;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transition: all 0.5s;
+            transform: translate(-50%, -50%);
+        }
+
+        .nav-button:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .nav-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(79, 209, 199, 0.4);
+        }
+
+        /* Dashboard Container with Animation */
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        /* Wallet Address Card */
+        .wallet-address-card {
+            background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-elevated) 100%);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .wallet-address-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--color-primary), var(--accent-secondary));
+        }
+
+        .wallet-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .wallet-address {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .wallet-text {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            color: var(--color-primary);
+            font-size: 1rem;
+            font-weight: 600;
+            background: rgba(79, 209, 199, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid rgba(79, 209, 199, 0.2);
+        }
+
+        .copy-btn {
+            background: transparent;
+            border: 1px solid rgba(79, 209, 199, 0.3);
+            color: var(--color-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background: rgba(79, 209, 199, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .preview-badge {
+            background: linear-gradient(135deg, var(--color-primary), var(--accent-secondary));
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 2rem;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            box-shadow: var(--shadow-light);
+            animation: pulse 2s infinite;
+        }
+
+        .preview-description {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        /* Enhanced Timeline Wallet Card with ui_1 gradients */
+        .timeline-wallet-card {
+            position: relative;
+            margin-bottom: 2rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-elevated) 100%);
+            border-radius: 1rem;
+            box-shadow: var(--shadow-heavy);
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .timeline-wallet-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--color-primary), var(--accent-secondary), var(--success));
+        }
+
+        .timeline-wallet-card:hover {
+            box-shadow: var(--shadow-heavy), 0 0 30px rgba(79, 209, 199, 0.2);
+        }
+
+        /* Section Separator */
+        .section-separator {
+            width: 100%;
+            margin: 2rem 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .separator-line {
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(79, 209, 199, 0.3), transparent);
+        }
+
+        /* Top Position Section */
+        .top-position-section {
+            padding-top: 1rem;
+        }
+
+        /* Enhanced Timeline Metric */
+        .timeline-metric {
+            position: absolute;
+            top: 0;
+            right: 0;
+            min-width: 200px;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            padding: 2rem;
+            animation: slideInLeft 0.6s ease-out 0.2s both;
+        }
+
+        .metric-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            transition: color 0.3s ease;
+        }
+
+        .metric-value {
+            color: var(--color-primary);
+            font-size: 2.5rem;
+            font-weight: 700;
+            line-height: 1.1;
+            animation: countUp 0.8s ease-out 0.4s both;
+            transition: all 0.3s ease;
+            text-shadow: 0 0 30px rgba(79, 209, 199, 0.4);
+            filter: drop-shadow(0 0 20px rgba(79, 209, 199, 0.3));
+        }
+
+        .metric-value:hover {
+            transform: scale(1.05);
+        }
+
+        .variation {
+            color: var(--success);
+            font-weight: 600;
+            font-size: 1rem;
+            display: flex;
+            gap: 0.3rem;
+            margin-top: 0.75rem;
+            align-items: center;
+            transition: all 0.3s ease;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .variation:hover {
+            transform: scale(1.1);
+        }
+
+        .perf-value {
+            font-size: 0.85em;
+        }
+
+        .arrow {
+            font-size: 1.2em;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .time-period {
+            color: var(--text-muted);
+            font-weight: 400;
+            font-size: 0.9em;
+        }
+
+        /* Enhanced Timeline Section */
+        .timeline-section {
+            width: 100%;
+            animation: fadeInUp 0.6s ease-out 0.3s both;
+        }
+
+        .chart-title-row {
+            margin-bottom: 1.5rem;
+        }
+
+        .chart-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            margin: 0;
+        }
+
+        .chart-title::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 40px;
+            height: 2px;
+            background: linear-gradient(90deg, var(--color-primary), var(--accent-secondary));
+            border-radius: 1px;
+        }
+
+        .timeline-buttons-row {
+            display: flex;
+            gap: 0.25rem;
+            margin-top: 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.25rem;
+            border-radius: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: fit-content;
+        }
+
+        .timeline-btn {
+            background: transparent;
+            border: none;
+            border-radius: 0.5rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            min-width: 60px;
+        }
+
+        .timeline-btn:hover:not(.locked) {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(1.05);
+        }
+
+        .timeline-btn.active {
+            color: var(--color-primary);
+            background: rgba(79, 209, 199, 0.2);
+            box-shadow: 0 0 15px rgba(79, 209, 199, 0.3);
+        }
+
+        .timeline-btn.locked {
+            opacity: 0.4;
+            cursor: not-allowed;
+            position: relative;
+        }
+
+        .timeline-btn.locked::after {
+            content: "🔒";
+            margin-left: 0.5rem;
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+
+        .timeline-btn.locked:hover {
+            opacity: 0.6;
+            transform: none;
+        }
+
+        /* Interactive Chart Container */
+        .chart-container {
+            width: 100%;
+            height: 250px;
+            margin: 1.5rem 0;
+            position: relative;
+            transition: all 0.3s ease;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+
+        .chart-container svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .chart-container:hover {
+            transform: scale(1.02);
+        }
+
+        .chart-container svg {
+            transition: all 0.5s ease;
+        }
+
+        .chart-dot {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .chart-dot:hover {
+            r: 8;
+            filter: drop-shadow(0 0 8px var(--color-primary));
+        }
+
+        /* Tooltip */
+        .chart-tooltip {
+            position: absolute;
+            background: rgba(45, 53, 72, 0.95);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 0.5rem 1rem;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .chart-tooltip.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Enhanced Timeline Changes Row */
+        .timeline-changes-row {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .change-metric {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1rem;
+            color: var(--text-secondary);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .change-metric:hover {
+            background: rgba(79, 209, 199, 0.1);
+            transform: translateY(-3px);
+        }
+
+        .change-value {
+            color: var(--success);
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .sparkline {
+            transition: all 0.3s ease;
+        }
+
+        .change-metric:hover .sparkline {
+            transform: scale(1.2);
+        }
+
+        .blurred-metric .change-value,
+        .blurred-metric .sparkline {
+            filter: blur(4px);
+            opacity: 0.4;
+        }
+
+        /* Locked Content Overlay Styles */
+        .locked-overlay {
+            position: relative;
+            background: var(--color-surface-elevated);
+            border-radius: 1rem;
+            margin-top: 1.5rem;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .locked-content {
+            filter: blur(4px);
+            opacity: 0.4;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .unlock-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(26, 31, 46, 0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(12px);
+            transition: all 0.3s ease;
+        }
+
+        .unlock-message {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            z-index: 10;
+        }
+
+        .unlock-message h3 {
+            margin: 0 0 0.5rem 0;
+            color: var(--text-primary);
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .unlock-message p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        .unlock-btn {
+            background: linear-gradient(135deg, var(--color-primary), var(--accent-secondary));
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 0.5rem;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-light);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .unlock-btn:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-heavy);
+        }
+
+        /* Top Position Card (from ui_1) */
+        .top-position-card {
+            background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-elevated) 100%);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            animation: fadeInUp 0.8s ease-out 0.4s both;
+        }
+
+        .top-position-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--color-primary), var(--accent-secondary), var(--success));
+        }
+
+        .top-position-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-heavy);
+            border-color: rgba(79, 209, 199, 0.2);
+        }
+
+        .position-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .position-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+        }
+
+        .position-title::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 40px;
+            height: 2px;
+            background: linear-gradient(90deg, var(--color-primary), var(--accent-secondary));
+            border-radius: 1px;
+        }
+
+        .position-hint {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            padding: 0.25rem 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 0.25rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .position-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .position-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+            border-radius: 0.5rem;
+        }
+
+        .position-item:hover {
+            background: rgba(79, 209, 199, 0.05);
+            transform: scale(1.02);
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        .position-item:last-child {
+            border-bottom: none;
+        }
+
+        .position-info {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .position-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--color-primary), var(--accent-secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1.1rem;
+            box-shadow: var(--shadow-light);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .position-icon::after {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            background: linear-gradient(45deg, var(--color-primary), var(--accent-secondary));
+            border-radius: 50%;
+            z-index: -1;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .position-item:hover .position-icon {
+            transform: scale(1.1);
+        }
+
+        .position-item:hover .position-icon::after {
+            opacity: 1;
+        }
+
+        .position-details h4 {
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .position-details p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .position-metrics {
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .position-value {
+            font-weight: 700;
+            color: var(--text-primary);
+            font-size: 1.2rem;
+        }
+
+        .position-apy {
+            color: var(--success);
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding: 0.25rem 0.5rem;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 0.25rem;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        /* Enhanced Metrics Row */
+        .metrics-row {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-elevated) 100%);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: var(--shadow-light);
+            min-width: 280px;
+            flex: 1 1 350px;
+            transition: all 0.3s ease;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--color-primary), var(--accent-secondary));
+            border-radius: inherit;
+        }
+
+
+        .metric-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-heavy);
+        }
+
+        .metric-value-row {
+            display: flex;
+            align-items: baseline;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .apy-projected {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .metric-divider {
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border-color), transparent);
+            border: none;
+            margin: 1.5rem 0;
+        }
+
+        /* Enhanced Progress Bars */
+        .yield-title, .net-title {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+
+        .yield-bars, .net-bars {
+            display: flex;
+            gap: 2rem;
+            align-items: flex-end;
+            margin-top: 1.5rem;
+        }
+
+        .yield-bar, .net-bar {
+            width: 70px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            border-radius: 0.5rem 0.5rem 0 0;
+            color: #fff;
+            font-weight: 600;
+            font-size: 1rem;
+            box-shadow: var(--shadow-light);
+            padding: 1rem 0.5rem;
+            transition: all 0.4s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .yield-bar::before, .net-bar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, transparent 50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .yield-bar:hover::before, .net-bar:hover::before {
+            opacity: 1;
+        }
+
+        .yield-bar:hover, .net-bar:hover {
+            transform: scale(1.05) translateY(-5px);
+            filter: brightness(1.2);
+        }
+
+        .yield-bar {
+            height: 90px;
+            background: linear-gradient(135deg, var(--success) 0%, var(--color-primary) 100%);
+            animation: slideInLeft 0.8s ease-out;
+        }
+
+        .yield-bar.projected {
+            height: 130px;
+            background: linear-gradient(135deg, var(--accent-secondary) 0%, var(--color-primary) 100%);
+            animation: slideInLeft 0.8s ease-out 0.2s both;
+        }
+
+        .net-bar {
+            height: 130px;
+            background: linear-gradient(135deg, var(--color-primary) 0%, #3b82f6 100%);
+            animation: slideInLeft 0.8s ease-out 0.1s both;
+        }
+
+        .net-bar.withdrawal {
+            height: 70px;
+            background: linear-gradient(135deg, var(--error) 0%, var(--warning) 100%);
+            animation: slideInLeft 0.8s ease-out 0.3s both;
+        }
+
+        .yield-bar-label, .net-bar-label {
+            margin-top: 1rem;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            font-weight: 700;
+            text-shadow: 0 2px 8px var(--background);
+        }
+
+        .net-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--success);
+            display: block;
+            margin-bottom: 1rem;
+            animation: countUp 0.8s ease-out 0.5s both;
+        }
+
+        /* Enhanced Position Breakdown */
+        .breakdown-section {
+            background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-elevated) 100%);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            animation: fadeInUp 0.8s ease-out 0.6s both;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .breakdown-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--color-primary), var(--success));
+        }
+
+        .breakdown-section:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-heavy);
+        }
+
+        .breakdown-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--text-secondary) 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+
+        .breakdown-title::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 40px;
+            height: 2px;
+            background: linear-gradient(90deg, var(--color-primary), var(--success));
+            border-radius: 1px;
+        }
+
+        .position-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .position-table th,
+        .position-table td {
+            padding: 1rem 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .position-table th {
+            color: var(--text-secondary);
+            font-weight: 600;
+            background: rgba(79, 209, 199, 0.05);
+        }
+
+        .position-table tr:hover {
+            background: rgba(79, 209, 199, 0.1);
+        }
+
+        .position-table tr:hover td {
+            color: var(--color-primary);
+            transform: translateX(5px);
+        }
+
+        /* Loading States */
+        .loading-skeleton {
+            background: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0.1) 25%,
+                rgba(255, 255, 255, 0.2) 50%,
+                rgba(255, 255, 255, 0.1) 75%
+            );
+            background-size: 200px 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
+        /* Expandable Sections */
+        .expandable-section {
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+
+        .expandable-section.collapsed {
+            max-height: 300px;
+        }
+
+        .expandable-section.expanded {
+            max-height: none;
+        }
+
+        .expand-toggle {
+            background: none;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            color: var(--color-primary);
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .expand-toggle:hover {
+            background: rgba(79, 209, 199, 0.1);
+            transform: translateY(-2px);
+        }
+
+        /* Floating Action Button */
+        .fab {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--color-primary), var(--accent-secondary));
+            border: none;
+            cursor: pointer;
+            box-shadow: var(--shadow-heavy);
+            color: white;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+            animation: glow 3s ease-in-out infinite;
+            z-index: 1000;
+        }
+
+        .fab:hover {
+            transform: scale(1.1) rotate(15deg);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .timeline-metric {
+                position: static;
+                align-items: flex-start;
+                padding: 1rem 0;
+            }
+
+            .metrics-row {
+                flex-direction: column;
+            }
+
+            .metric-card {
+                width: 100%;
+                min-width: auto;
+            }
+
+            .timeline-changes-row {
+                gap: 1rem;
+                justify-content: flex-start;
+            }
+
+            .chart-container {
+                height: 180px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .nav-container {
+                justify-content: center;
+            }
+
+            .yield-bars, .net-bars {
+                gap: 1rem;
+            }
+
+            .yield-bar, .net-bar {
+                width: 50px;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Notification Badge */
+        .notification-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--error);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 2s infinite;
+        }
+
+        /* Feature Locked Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(26, 31, 46, 0.9);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--color-surface);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: var(--shadow-heavy);
+            border: 1px solid var(--border-color);
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            transform: scale(0.9) translateY(20px);
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.visible .modal-content {
+            transform: scale(1) translateY(0);
+        }
+
+        .modal-title {
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .modal-description {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+
+        .modal-button {
+            background: linear-gradient(135deg, var(--color-primary), var(--accent-secondary));
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-right: 1rem;
+        }
+
+        .modal-button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-light);
+        }
+
+        .modal-button.secondary {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            margin-right: 0;
+        }
+
+        .modal-button.secondary:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Toast Notification */
+        .toast-notification {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            background: var(--color-surface);
+            border: 1px solid rgba(255, 184, 0, 0.3);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            color: var(--text-primary);
+            box-shadow: var(--shadow-light);
+            z-index: 10000;
+            max-width: 300px;
+            transform: translateX(100%);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .toast-notification.visible {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .toast-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .toast-title {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .toast-message {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+    </style>
 </head>
 <body>
-  <aside class="sidebar">
-    <div class="logo">Cobalt</div>
-    <div class="nav-links">
-      <a href="#" class="nav-link active">Dashboard</a>
-      <a href="#" class="nav-link">Portfolio</a>
-      <a href="#" class="nav-link">Settings</a>
+    <!-- Navigation Bar -->
+    <nav class="nav-bar">
+        <div class="nav-container">
+            <a href="/" class="nav-logo">SmartWalletFX</a>
+            <div class="nav-links">
+                <a href="/" class="nav-link">Home</a>
+                <a href="/dashboard" class="nav-link">Dashboard</a>
+                <a href="/portfolio" class="nav-link active">Portfolio</a>
+                <a href="/analytics" class="nav-link">Analytics</a>
+                <button class="nav-button">
+                    Connect Wallet
+                    <div class="notification-badge">!</div>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+        <!-- Wallet Address Card -->
+        <div class="wallet-address-card">
+            <div class="wallet-info">
+                <div class="wallet-address">
+                    <span class="wallet-text">0x742d35cc6df08fc34234523523Cf6E231c2f6E</span>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <div class="preview-badge">PREVIEW MODE</div>
+            </div>
+            <p class="preview-description">
+                You're viewing a limited preview. Sign up to unlock complete portfolio history, detailed analytics, and all positions.
+            </p>
+        </div>
+
+        <!-- Combined Portfolio & Positions Card -->
+        <div class="timeline-wallet-card">
+            <!-- Top right metric -->
+            <div class="timeline-metric">
+                <span class="metric-label">Total Portfolio Value</span>
+                <span class="metric-value" data-target="42500">$0</span>
+                <div class="variation">
+                    <span class="perf-main">
+                        +2.3% <span class="perf-value">(+$950)</span>
+                    </span>
+                    <span class="arrow">▲</span>
+                    <span class="time-period">(24h)</span>
+                </div>
+            </div>
+
+            <!-- Timeline section -->
+            <div class="timeline-section">
+                <div class="chart-title-row">
+                    <h2 class="chart-title">Portfolio Performance</h2>
+                    <div class="timeline-buttons-row">
+                        <button class="timeline-btn active" data-range="24h">24h</button>
+                        <button class="timeline-btn locked" data-range="7d">7d</button>
+                        <button class="timeline-btn locked" data-range="30d">30d</button>
+                        <button class="timeline-btn locked" data-range="90d">90d</button>
+                    </div>
+                </div>
+
+                <!-- Interactive SVG Timeline Chart -->
+                <div class="chart-container" id="chartContainer">
+                    <svg width="100%" height="100%" viewBox="0 0 1200 250">
+                        <defs>
+                            <linearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#4fd1c7" />
+                                <stop offset="100%" stop-color="#3b82f6" />
+                            </linearGradient>
+                            <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#4fd1c7" stop-opacity="0.3" />
+                                <stop offset="100%" stop-color="#4fd1c7" stop-opacity="0" />
+                            </linearGradient>
+                            <filter id="glow">
+                                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                                <feMerge> 
+                                    <feMergeNode in="coloredBlur"/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
+                        </defs>
+                        <polygon id="chartArea" points="50,200 150,180 250,140 350,120 450,100 550,110 650,90 750,120 850,80 950,60 1150,80 1200,80 1200,250 0,250" 
+                                fill="url(#areaGradient)" />
+                        <polyline id="chartLine" fill="none" stroke="url(#lineGradient)" stroke-width="3" filter="url(#glow)"
+                                points="60,200 150,180 250,140 350,120 450,100 550,110 650,90 750,120 850,80 950,60 1150,80" />
+                        <!-- Interactive Dots -->
+                        <circle class="chart-dot" cx="50" cy="200" r="6" fill="#4fd1c7" data-value="$39,500" data-date="00:00" />
+                        <circle class="chart-dot" cx="150" cy="180" r="6" fill="#4fd1c7" data-value="$40,200" data-date="04:00" />
+                        <circle class="chart-dot" cx="250" cy="140" r="6" fill="#4fd1c7" data-value="$41,800" data-date="08:00" />
+                        <circle class="chart-dot" cx="350" cy="120" r="6" fill="#4fd1c7" data-value="$42,100" data-date="12:00" />
+                        <circle class="chart-dot" cx="450" cy="100" r="6" fill="#4fd1c7" data-value="$42,600" data-date="16:00" />
+                        <circle class="chart-dot" cx="550" cy="110" r="6" fill="#4fd1c7" data-value="$42,300" data-date="20:00" />
+                        <circle class="chart-dot" cx="650" cy="90" r="6" fill="#4fd1c7" data-value="$42,800" data-date="24:00" />
+                        <circle class="chart-dot" cx="750" cy="120" r="6" fill="#4fd1c7" data-value="$42,100" data-date="04:00" />
+                        <circle class="chart-dot" cx="850" cy="80" r="6" fill="#4fd1c7" data-value="$42,900" data-date="08:00" />
+                        <circle class="chart-dot" cx="950" cy="60" r="6" fill="#4fd1c7" data-value="$43,200" data-date="12:00" />
+                        <circle class="chart-dot" cx="1200" cy="80" r="6" fill="#4fd1c7" data-value="$42,500" data-date="Now" />
+                    </svg>
+                    <div class="chart-tooltip" id="chartTooltip"></div>
+                </div>
+
+                <!-- Timeline changes row -->
+                <div class="timeline-changes-row">
+                    <div class="change-metric" data-period="24h">
+                        <span>24h</span>
+                        <span class="change-value">+2.3%</span>
+                        <svg class="sparkline" width="48" height="20" viewBox="0 0 48 20">
+                            <polyline fill="none" stroke="var(--success)" stroke-width="2" 
+                                    points="0,15 8,12 16,10 24,8 32,12 40,6 48,8" />
+                        </svg>
+                    </div>
+                    <div class="change-metric blurred-metric" data-period="7d">
+                        <span>7d</span>
+                        <span class="change-value">+5.8%</span>
+                        <svg class="sparkline" width="48" height="20" viewBox="0 0 48 20">
+                            <polyline fill="none" stroke="var(--accent-secondary)" stroke-width="2" 
+                                    points="0,15 8,12 16,10 24,8 32,12 40,6 48,8" />
+                        </svg>
+                    </div>
+                    <div class="change-metric blurred-metric" data-period="30d">
+                        <span>30d</span>
+                        <span class="change-value">+12.1%</span>
+                        <svg class="sparkline" width="48" height="20" viewBox="0 0 48 20">
+                            <polyline fill="none" stroke="var(--warning)" stroke-width="2" 
+                                    points="0,15 8,12 16,10 24,8 32,12 40,6 48,8" />
+                        </svg>
+                    </div>
+                    <div class="change-metric blurred-metric" data-period="90d">
+                        <span>90d</span>
+                        <span class="change-value">+18.7%</span>
+                        <svg class="sparkline" width="48" height="20" viewBox="0 0 48 20">
+                            <polyline fill="none" stroke="var(--color-primary)" stroke-width="2" 
+                                    points="0,18 8,16 16,12 24,8 32,6 40,4 48,2" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Separator -->
+            <div class="section-separator">
+                <div class="separator-line"></div>
+            </div>
+
+            <!-- Top Position Section -->
+            <div class="top-position-section">
+                <div class="position-header">
+                    <h2 class="position-title">Your Top Positions</h2>
+                    <span class="position-hint">3 of 12 positions shown</span>
+                </div>
+            
+            <ul class="position-list">
+                <li class="position-item">
+                    <div class="position-info">
+                        <div class="position-icon">W</div>
+                        <div class="position-details">
+                            <h4>WBTC</h4>
+                            <p>Wrapped Bitcoin • Yearn</p>
+                        </div>
+                    </div>
+                    <div class="position-metrics">
+                        <div class="position-value">$22,000</div>
+                        <div class="position-apy">+9.1% APY</div>
+                    </div>
+                </li>
+                
+                <li class="position-item">
+                    <div class="position-info">
+                        <div class="position-icon">E</div>
+                        <div class="position-details">
+                            <h4>ETH</h4>
+                            <p>Ethereum • Aave</p>
+                        </div>
+                    </div>
+                    <div class="position-metrics">
+                        <div class="position-value">$12,000</div>
+                        <div class="position-apy">+5.2% APY</div>
+                    </div>
+                </li>
+                
+                <li class="position-item">
+                    <div class="position-info">
+                        <div class="position-icon">U</div>
+                        <div class="position-details">
+                            <h4>USDC</h4>
+                            <p>USD Coin • Compound</p>
+                        </div>
+                    </div>
+                    <div class="position-metrics">
+                        <div class="position-value">$8,500</div>
+                        <div class="position-apy">+3.8% APY</div>
+                    </div>
+                </li>
+            </ul>
+
+            <!-- Locked Content with Blur Effect -->
+            <div class="locked-overlay">
+                <div class="locked-content">
+                    <ul class="position-list">
+                        <li class="position-item">
+                            <div class="position-info">
+                                <div class="position-icon">L</div>
+                                <div class="position-details">
+                                    <h4>LINK</h4>
+                                    <p>Chainlink • Curve</p>
+                                </div>
+                            </div>
+                            <div class="position-metrics">
+                                <div class="position-value">$5,200</div>
+                                <div class="position-apy">+7.4% APY</div>
+                            </div>
+                        </li>
+                        
+                        <li class="position-item">
+                            <div class="position-info">
+                                <div class="position-icon">A</div>
+                                <div class="position-details">
+                                    <h4>AAVE</h4>
+                                    <p>Aave Token • Aave V3</p>
+                                </div>
+                            </div>
+                            <div class="position-metrics">
+                                <div class="position-value">$3,800</div>
+                                <div class="position-apy">+6.2% APY</div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+                <div class="unlock-overlay">
+                    <div class="unlock-message">
+                        <h3>9 More Positions Hidden</h3>
+                        <p>Register to see your complete portfolio breakdown</p>
+                    </div>
+                    <button class="unlock-btn" onclick="showFeatureLockedModal()">Unlock All Positions</button>
+                </div>
+            </div>
+            </div>
+        </div>
+
+        <!-- Metrics Row -->
+        <div class="metrics-row">
+            <!-- APY Card -->
+            <div class="metric-card expandable-section" id="apyCard">
+                <span class="metric-label">Average APY</span>
+                <div class="metric-value-row">
+                    <span class="metric-value" data-target="7.25">0%</span>
+                    <span class="apy-projected">($3,800 projected)</span>
+                </div>
+                <hr class="metric-divider">
+                <h3 class="yield-title">Realized vs Projected Yield</h3>
+                <div class="yield-bars">
+                    <div class="yield-bar" data-value="2400">
+                        $0
+                        <div class="yield-bar-label">Realized</div>
+                    </div>
+                    <div class="yield-bar projected" data-value="3800">
+                        $0
+                        <div class="yield-bar-label">Projected</div>
+                    </div>
+                </div>
+                <button class="expand-toggle" onclick="toggleExpand('apyCard')">Show Details</button>
+            </div>
+
+            <!-- Net Deposits/Withdrawals -->
+            <div class="metric-card expandable-section" id="netCard">
+                <h3 class="net-title">Net Deposits vs Net Withdrawals</h3>
+                <span class="net-value" data-target="11000">Net: $0</span>
+                <div class="net-bars">
+                    <div class="net-bar" data-value="18000">
+                        $0k
+                        <div class="net-bar-label">Deposits</div>
+                    </div>
+                    <div class="net-bar withdrawal" data-value="7000">
+                        $0k
+                        <div class="net-bar-label">Withdrawals</div>
+                    </div>
+                </div>
+                <button class="expand-toggle" onclick="toggleExpand('netCard')">Show History</button>
+            </div>
+        </div>
+
+        <!-- Position Breakdown Table -->
+        <div class="breakdown-section">
+            <h3 class="breakdown-title">Position Breakdown</h3>
+            <table class="position-table">
+                <thead>
+                    <tr>
+                        <th>Asset</th>
+                        <th>Protocol</th>
+                        <th>Value</th>
+                        <th>APY</th>
+                        <th>24h Change</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>ETH</td>
+                        <td>Aave V3</td>
+                        <td>$12,000</td>
+                        <td>5.2%</td>
+                        <td style="color: var(--success);">+2.1%</td>
+                    </tr>
+                    <tr>
+                        <td>USDC</td>
+                        <td>Compound</td>
+                        <td>$8,500</td>
+                        <td>3.8%</td>
+                        <td style="color: var(--success);">+0.1%</td>
+                    </tr>
+                    <tr>
+                        <td>WBTC</td>
+                        <td>Yearn Finance</td>
+                        <td>$22,000</td>
+                        <td>9.1%</td>
+                        <td style="color: var(--success);">+4.2%</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
-  </aside>
-  <main class="main-content">
-    <div class="metrics-row">
-      <div class="metric-card">
-        <div class="metric-label">Average APY</div>
-        <div class="metric-value">7.25%</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-label">Total Value of Wallet</div>
-        <div class="metric-value">$42,500</div>
-      </div>
+
+    <!-- Feature Locked Modal -->
+    <div id="featureLockedModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 class="modal-title">🚀 Unlock Full Access</h2>
+            <p class="modal-description">
+                Get complete portfolio insights, extended historical data, and advanced analytics.
+            </p>
+            <button class="modal-button" onclick="closeModal()">Start Free Trial</button>
+            <button class="modal-button secondary" onclick="closeModal()">Maybe Later</button>
+        </div>
     </div>
-    <div class="chart-section">
-      <div class="chart-title">Performance Timeline</div>
-      <div class="bar-chart">
-        <div class="bar" style="height: 60px;">
-          <span class="bar-value">$10k</span>
-          <span class="bar-label">Jan</span>
+
+    <!-- Toast Notification -->
+    <div id="toastNotification" class="toast-notification">
+        <div class="toast-header">
+            <span>🔒</span>
+            <div class="toast-title">Feature Locked</div>
         </div>
-        <div class="bar" style="height: 90px;">
-          <span class="bar-value">$15k</span>
-          <span class="bar-label">Feb</span>
-        </div>
-        <div class="bar" style="height: 120px;">
-          <span class="bar-value">$20k</span>
-          <span class="bar-label">Mar</span>
-        </div>
-        <div class="bar" style="height: 150px;">
-          <span class="bar-value">$25k</span>
-          <span class="bar-label">Apr</span>
-        </div>
-        <div class="bar" style="height: 180px;">
-          <span class="bar-value">$30k</span>
-          <span class="bar-label">May</span>
-        </div>
-        <div class="bar" style="height: 160px;">
-          <span class="bar-value">$28k</span>
-          <span class="bar-label">Jun</span>
-        </div>
-        <div class="bar" style="height: 140px;">
-          <span class="bar-value">$24k</span>
-          <span class="bar-label">Jul</span>
-        </div>
-        <div class="bar" style="height: 170px;">
-          <span class="bar-value">$29k</span>
-          <span class="bar-label">Aug</span>
-        </div>
-        <div class="bar" style="height: 200px;">
-          <span class="bar-value">$35k</span>
-          <span class="bar-label">Sep</span>
-        </div>
-        <div class="bar" style="height: 220px;">
-          <span class="bar-value">$38k</span>
-          <span class="bar-label">Oct</span>
-        </div>
-      </div>
+        <p class="toast-message">
+            Register to unlock extended historical data
+        </p>
     </div>
-    <div class="breakdown-grid">
-      <div class="breakdown-card">
-        <div class="breakdown-asset">ETH</div>
-        <div class="breakdown-protocol">Aave</div>
-        <div class="breakdown-value">$12,000</div>
-        <div class="breakdown-apy">5.2% APY</div>
-      </div>
-      <div class="breakdown-card">
-        <div class="breakdown-asset">USDC</div>
-        <div class="breakdown-protocol">Compound</div>
-        <div class="breakdown-value">$8,500</div>
-        <div class="breakdown-apy">3.8% APY</div>
-      </div>
-      <div class="breakdown-card">
-        <div class="breakdown-asset">WBTC</div>
-        <div class="breakdown-protocol">Yearn</div>
-        <div class="breakdown-value">$22,000</div>
-        <div class="breakdown-apy">9.1% APY</div>
-      </div>
-    </div>
-  </main>
+
+    <!-- Floating Action Button -->
+    <button class="fab" onclick="refreshData()" title="Refresh Data">
+        ⟳
+    </button>
+
+    <script>
+        // Enhanced data structure with more interactivity
+        const MOCK_DATA = {
+            totalValue: 42500,
+            totalValueChange: 2.3,
+            totalValueChangeAbs: 950,
+            apy: 7.25,
+            apyProjected: 3800,
+            apyRealized: 2400,
+            netDeposits: 18000,
+            netWithdrawals: 7000,
+            net: 11000,
+            timelineChanges: [
+                { label: '24h', value: '+2.3%', color: 'var(--success)' },
+                { label: '7d', value: '+5.8%', color: 'var(--accent-secondary)' },
+                { label: '30d', value: '+12.1%', color: 'var(--warning)' }
+            ],
+            positions: [
+                { asset: 'ETH', protocol: 'Aave V3', value: 12000, apy: 5.2, change: 2.1 },
+                { asset: 'USDC', protocol: 'Compound', value: 8500, apy: 3.8, change: 0.1 },
+                { asset: 'WBTC', protocol: 'Yearn Finance', value: 22000, apy: 9.1, change: 4.2 }
+            ]
+        };
+
+        // Enhanced timeline chart data
+        const timelineData = {
+            '24h': [
+                { x: 0, y: 200, value: '$39,500', date: '00:00' },
+                { x: 60, y: 180, value: '$40,200', date: '04:00' },
+                { x: 120, y: 140, value: '$41,800', date: '08:00' },
+                { x: 180, y: 120, value: '$42,100', date: '12:00' },
+                { x: 240, y: 100, value: '$42,600', date: '16:00' },
+                { x: 300, y: 110, value: '$42,300', date: '20:00' },
+                { x: 360, y: 90, value: '$42,800', date: '24:00' },
+                { x: 420, y: 120, value: '$42,100', date: '04:00' },
+                { x: 480, y: 80, value: '$42,900', date: '08:00' },
+                { x: 540, y: 60, value: '$43,200', date: '12:00' },
+                { x: 600, y: 80, value: '$42,500', date: 'Now' }
+            ],
+            '7d': [
+                { x: 0, y: 180, value: '$38,500', date: 'Mon' },
+                { x: 60, y: 160, value: '$39,200', date: 'Tue' },
+                { x: 120, y: 120, value: '$40,800', date: 'Wed' },
+                { x: 180, y: 100, value: '$41,100', date: 'Thu' },
+                { x: 240, y: 80, value: '$41,600', date: 'Fri' },
+                { x: 300, y: 90, value: '$41,300', date: 'Sat' },
+                { x: 360, y: 70, value: '$41,800', date: 'Sun' },
+                { x: 420, y: 100, value: '$41,100', date: 'Mon' },
+                { x: 480, y: 60, value: '$41,900', date: 'Tue' },
+                { x: 540, y: 40, value: '$42,200', date: 'Wed' },
+                { x: 600, y: 60, value: '$42,500', date: 'Now' }
+            ],
+            '30d': [
+                { x: 0, y: 220, value: '$37,500', date: 'Week 1' },
+                { x: 60, y: 200, value: '$38,200', date: 'Week 1' },
+                { x: 120, y: 160, value: '$39,800', date: 'Week 2' },
+                { x: 180, y: 140, value: '$40,100', date: 'Week 2' },
+                { x: 240, y: 120, value: '$40,600', date: 'Week 3' },
+                { x: 300, y: 130, value: '$40,300', date: 'Week 3' },
+                { x: 360, y: 110, value: '$40,800', date: 'Week 4' },
+                { x: 420, y: 140, value: '$40,100', date: 'Week 4' },
+                { x: 480, y: 100, value: '$40,900', date: 'Week 5' },
+                { x: 540, y: 80, value: '$41,200', date: 'Week 5' },
+                { x: 600, y: 100, value: '$42,500', date: 'Now' }
+            ],
+            '90d': [
+                { x: 0, y: 240, value: '$35,500', date: 'Month 1' },
+                { x: 60, y: 220, value: '$36,200', date: 'Month 1' },
+                { x: 120, y: 180, value: '$37,800', date: 'Month 1' },
+                { x: 180, y: 160, value: '$38,100', date: 'Month 2' },
+                { x: 240, y: 140, value: '$38,600', date: 'Month 2' },
+                { x: 300, y: 150, value: '$38,300', date: 'Month 2' },
+                { x: 360, y: 130, value: '$38,800', date: 'Month 3' },
+                { x: 420, y: 160, value: '$38,100', date: 'Month 3' },
+                { x: 480, y: 120, value: '$38,900', date: 'Month 3' },
+                { x: 540, y: 100, value: '$39,200', date: 'Month 3' },
+                { x: 600, y: 120, value: '$42,500', date: 'Now' }
+            ]
+        };
+
+        // Initialize dashboard with animations
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeAnimations();
+            initializeTimelineButtons();
+            initializeChartInteractions();
+            initializeExpandableSections();
+            initializeCopyButton();
+            initializeSparklineClicks();
+            updateChart('24h');
+            animateCounters();
+        });
+
+        // Counter animation function
+        function animateCounters() {
+            const counters = document.querySelectorAll('[data-target]');
+            
+            counters.forEach(counter => {
+                const target = parseFloat(counter.getAttribute('data-target'));
+                const isPercentage = counter.textContent.includes('%');
+                const isCurrency = counter.textContent.includes('$');
+                let start = 0;
+                const increment = target / 100;
+                
+                const timer = setInterval(() => {
+                    start += increment;
+                    
+                    if (start >= target) {
+                        start = target;
+                        clearInterval(timer);
+                    }
+                    
+                    let displayValue = Math.floor(start);
+                    
+                    if (isCurrency) {
+                        if (counter.classList.contains('net-value')) {
+                            counter.textContent = `Net: ${formatCurrency(displayValue)}`;
+                        } else {
+                            counter.textContent = formatCurrency(displayValue);
+                        }
+                    } else if (isPercentage) {
+                        counter.textContent = `${start.toFixed(2)}%`;
+                    } else {
+                        counter.textContent = displayValue.toString();
+                    }
+                }, 20);
+            });
+
+            // Animate bars
+            const bars = document.querySelectorAll('[data-value]');
+            bars.forEach((bar, index) => {
+                setTimeout(() => {
+                    const value = parseInt(bar.getAttribute('data-value'));
+                    if (bar.classList.contains('net-bar')) {
+                        bar.textContent = `$${(value / 1000)}k`;
+                    } else {
+                        bar.textContent = formatCurrency(value);
+                    }
+                }, index * 200);
+            });
+        }
+
+        // Initialize timeline buttons with enhanced interactions
+        function initializeTimelineButtons() {
+            const buttons = document.querySelectorAll('.timeline-btn');
+            
+            buttons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    // Check if button is locked
+                    if (e.target.classList.contains('locked')) {
+                        // Shake animation for locked buttons
+                        e.target.style.animation = 'shake 0.5s ease-in-out';
+                        setTimeout(() => {
+                            e.target.style.animation = '';
+                            showLockedFeatureToast();
+                        }, 500);
+                        return;
+                    }
+                    
+                    buttons.forEach(btn => btn.classList.remove('active'));
+                    e.target.classList.add('active');
+                    
+                    const timeframe = e.target.getAttribute('data-range');
+                    updateChart(timeframe);
+                    
+                    // Add click animation
+                    e.target.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        e.target.style.transform = '';
+                    }, 150);
+                });
+
+                button.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        button.click();
+                    }
+                });
+            });
+        }
+
+        // Initialize chart interactions
+        function initializeChartInteractions() {
+            const chartDots = document.querySelectorAll('.chart-dot');
+            const tooltip = document.getElementById('chartTooltip');
+            const container = document.getElementById('chartContainer');
+            
+            chartDots.forEach(dot => {
+                dot.addEventListener('mouseenter', (e) => {
+                    const value = e.target.getAttribute('data-value');
+                    const date = e.target.getAttribute('data-date');
+                    
+                    tooltip.innerHTML = `
+                        <strong>${value}</strong><br>
+                        <small>${date}</small>
+                    `;
+                    tooltip.classList.add('visible');
+                    
+                    const rect = container.getBoundingClientRect();
+                    const dotRect = e.target.getBoundingClientRect();
+                    
+                    tooltip.style.left = `${dotRect.left - rect.left - 40}px`;
+                    tooltip.style.top = `${dotRect.top - rect.top - 60}px`;
+                });
+                
+                dot.addEventListener('mouseleave', () => {
+                    tooltip.classList.remove('visible');
+                });
+            });
+        }
+
+        // Enhanced chart update function
+        function updateChart(timeframe) {
+            const data = timelineData[timeframe];
+            
+            // Animate chart transition
+            const chartLine = document.getElementById('chartLine');
+            const chartArea = document.getElementById('chartArea');
+            const chartDots = document.querySelectorAll('.chart-dot');
+            
+            // Create smooth transition
+            chartLine.style.opacity = '0.3';
+            chartArea.style.opacity = '0.3';
+            
+            setTimeout(() => {
+                const points = data.map(point => `${point.x},${point.y}`).join(' ');
+                
+                chartLine.setAttribute('points', points);
+                chartLine.style.opacity = '1';
+                
+                const areaPoints = points + ` ${data[data.length-1].x},250 0,250`;
+                chartArea.setAttribute('points', areaPoints);
+                chartArea.style.opacity = '1';
+                
+                // Update dots with animation
+                data.forEach((point, index) => {
+                    if (chartDots[index]) {
+                        chartDots[index].setAttribute('cx', point.x);
+                        chartDots[index].setAttribute('cy', point.y);
+                        chartDots[index].setAttribute('data-value', point.value);
+                        chartDots[index].setAttribute('data-date', point.date);
+                    }
+                });
+            }, 200);
+        }
+
+        // Initialize expandable sections
+        function initializeExpandableSections() {
+            const sections = document.querySelectorAll('.expandable-section');
+            sections.forEach(section => {
+                section.classList.add('collapsed');
+            });
+        }
+
+        // Toggle expand functionality
+        function toggleExpand(sectionId) {
+            const section = document.getElementById(sectionId);
+            const toggle = section.querySelector('.expand-toggle');
+            
+            if (section.classList.contains('collapsed')) {
+                section.classList.remove('collapsed');
+                section.classList.add('expanded');
+                toggle.textContent = 'Show Less';
+            } else {
+                section.classList.remove('expanded');
+                section.classList.add('collapsed');
+                toggle.textContent = section.id === 'apyCard' ? 'Show Details' : 'Show History';
+            }
+        }
+
+        // Refresh data with loading animation
+        function refreshData() {
+            const fab = document.querySelector('.fab');
+            fab.style.transform = 'scale(0.8) rotate(360deg)';
+            fab.innerHTML = '⟳';
+            
+            // Simulate data refresh
+            setTimeout(() => {
+                // Add shimmer effect to cards
+                const cards = document.querySelectorAll('.metric-card, .timeline-wallet-card');
+                cards.forEach(card => {
+                    card.classList.add('loading-skeleton');
+                });
+                
+                setTimeout(() => {
+                    cards.forEach(card => {
+                        card.classList.remove('loading-skeleton');
+                    });
+                    fab.style.transform = '';
+                    animateCounters(); // Re-animate counters
+                }, 1500);
+            }, 300);
+            
+            setTimeout(() => {
+                fab.style.transform = '';
+            }, 600);
+        }
+
+        // Initialize animations
+        function initializeAnimations() {
+            // Observe elements for scroll animations
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.style.animationDelay = '0s';
+                        entry.target.style.animationPlayState = 'running';
+                    }
+                });
+            });
+
+            const animatedElements = document.querySelectorAll('.metric-card, .breakdown-section');
+            animatedElements.forEach(el => observer.observe(el));
+        }
+
+        // Format currency helper
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(value);
+        }
+
+        // Copy button functionality
+        function initializeCopyButton() {
+            const copyBtn = document.querySelector('.copy-btn');
+            if (copyBtn) {
+                copyBtn.addEventListener('click', async () => {
+                    try {
+                        await navigator.clipboard.writeText('0x742d35cc6df08fc34234523523Cf6E231c2f6E');
+                        
+                        // Visual feedback
+                        const originalText = copyBtn.textContent;
+                        copyBtn.textContent = 'Copied!';
+                        copyBtn.style.background = 'rgba(16, 185, 129, 0.2)';
+                        copyBtn.style.color = 'var(--success)';
+                        copyBtn.style.borderColor = 'var(--success)';
+                        
+                        setTimeout(() => {
+                            copyBtn.textContent = originalText;
+                            copyBtn.style.background = 'transparent';
+                            copyBtn.style.color = 'var(--color-primary)';
+                            copyBtn.style.borderColor = 'rgba(79, 209, 199, 0.3)';
+                        }, 2000);
+                    } catch (err) {
+                        console.error('Failed to copy: ', err);
+                        alert('Failed to copy address');
+                    }
+                });
+            }
+        }
+
+        // Initialize sparkline click handlers
+        function initializeSparklineClicks() {
+            const lockedMetrics = document.querySelectorAll('.blurred-metric');
+            
+            lockedMetrics.forEach(metric => {
+                metric.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showLockedFeatureToast();
+                });
+                
+                // Add cursor pointer to indicate clickability
+                metric.style.cursor = 'pointer';
+                
+                // Optional: Add hover effect
+                metric.addEventListener('mouseenter', () => {
+                    metric.style.opacity = '0.7';
+                });
+                
+                metric.addEventListener('mouseleave', () => {
+                    metric.style.opacity = '1';
+                });
+            });
+        }
+
+        // Modal and toast functions
+        function showFeatureLockedModal() {
+            const modal = document.getElementById('featureLockedModal');
+            modal.classList.add('visible');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('featureLockedModal');
+            modal.classList.remove('visible');
+        }
+
+        function showLockedFeatureToast() {
+            const toast = document.getElementById('toastNotification');
+            toast.classList.add('visible');
+            
+            setTimeout(() => {
+                toast.classList.remove('visible');
+            }, 3000);
+        }
+
+        // Add keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' && e.ctrlKey) {
+                e.preventDefault();
+                refreshData();
+            }
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('featureLockedModal').addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                closeModal();
+            }
+        });
+
+        // Add touch gesture support for mobile
+        let startY = 0;
+        document.addEventListener('touchstart', (e) => {
+            startY = e.touches[0].clientY;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            const endY = e.changedTouches[0].clientY;
+            const diff = startY - endY;
+            
+            if (diff > 50) { // Swipe up
+                // Could trigger refresh or other action
+            } else if (diff < -50) { // Swipe down
+                // Could trigger refresh
+                if (window.scrollY < 100) {
+                    refreshData();
+                }
+            }
+        });
+
+        // Add shake animation keyframes
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                25% { transform: translateX(-5px); }
+                75% { transform: translateX(5px); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
 </body>
-</html> 
+</html>
