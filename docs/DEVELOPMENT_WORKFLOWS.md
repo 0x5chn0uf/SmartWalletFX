@@ -816,7 +816,7 @@ describe('MyFeatureCard', () => {
   });
 
   it('calls onEdit when edit button is clicked', () => {
-    const onEdit = jest.fn();
+    const onEdit = vi.fn();
     render(<MyFeatureCard feature={mockFeature} onEdit={onEdit} />);
 
     fireEvent.click(screen.getByText('Edit'));
@@ -824,7 +824,7 @@ describe('MyFeatureCard', () => {
   });
 
   it('calls onDelete when delete button is clicked', () => {
-    const onDelete = jest.fn();
+    const onDelete = vi.fn();
     render(<MyFeatureCard feature={mockFeature} onDelete={onDelete} />);
 
     fireEvent.click(screen.getByText('Delete'));
