@@ -62,18 +62,6 @@ dev-debug.log
 *.sln
 *.sw?
 
-# IDE Files
-.cursor/
-.cursor
-.taskmaster/
-.claude/
-.roo/
-custom_modes/
-memory-bank/
-.roomodes
-.windsurfrules
-.mcp.json
-
 # Dependencies
 __pycache__/
 *.pyc
@@ -134,3 +122,8 @@ design/*
 # But keep these specific files
 !design/design.json
 !design/design-tokens.json
+
+logs
+# Environment variables
+.idea
+.vscode
