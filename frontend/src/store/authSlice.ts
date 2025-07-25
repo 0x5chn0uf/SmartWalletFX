@@ -2,6 +2,12 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import apiClient from '../services/api';
 import { verifyEmail } from './emailVerificationSlice';
+import {
+  updateUserProfile,
+  updateNotificationPreferences,
+  uploadProfilePicture,
+  deleteProfilePicture,
+} from './slices/userProfileSlice';
 import { validateApiResponse, ValidationError, formatValidationError } from '../utils/validation';
 import {
   UserProfileSchema,
@@ -210,6 +216,27 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.user = null;
         state.status = 'idle';
+      })
+      // Sync user data when profile updates succeed
+      .addCase(updateUserProfile.fulfilled, (state, action) => {
+        if (state.user) {
+          state.user = { ...state.user, ...action.payload };
+        }
+      })
+      .addCase(updateNotificationPreferences.fulfilled, (state, action) => {
+        if (state.user) {
+          state.user = { ...state.user, ...action.payload };
+        }
+      })
+      .addCase(uploadProfilePicture.fulfilled, (state, action) => {
+        if (state.user) {
+          state.user = { ...state.user, ...action.payload };
+        }
+      })
+      .addCase(deleteProfilePicture.fulfilled, (state, action) => {
+        if (state.user) {
+          state.user = { ...state.user, ...action.payload };
+        }
       });
   },
 });

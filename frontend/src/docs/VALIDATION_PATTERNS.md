@@ -5,8 +5,9 @@ This document outlines the runtime validation patterns implemented for API respo
 ## Overview
 
 Runtime validation ensures that API responses match expected TypeScript types, providing:
+
 - **Runtime type safety** beyond compile-time TypeScript checking
-- **Better error handling** with detailed validation error messages  
+- **Better error handling** with detailed validation error messages
 - **Developer experience** with clear error logging and debugging info
 - **Production reliability** by catching unexpected API response formats
 
@@ -51,7 +52,7 @@ import { WalletListSchema } from '../schemas/wallet';
 export async function getWalletsSafely() {
   const response = await apiClient.get('/defi/wallets');
   const result = safeValidateApiResponse(response, WalletListSchema);
-  
+
   if (result.success) {
     return result.data;
   } else {
@@ -144,10 +145,10 @@ try {
   if (error instanceof ValidationError) {
     // Access zodError for detailed validation info
     console.error('Validation failed:', error.zodError.errors);
-    
+
     // Access original response for debugging
     console.error('Response data:', error.response.data);
-    
+
     // Get formatted error message
     const message = formatValidationError(error);
   }
@@ -188,7 +189,7 @@ describe('UserProfileSchema', () => {
       email: 'john@example.com',
       email_verified: true,
     };
-    
+
     const result = UserProfileSchema.safeParse(validUser);
     expect(result.success).toBe(true);
   });
@@ -202,7 +203,7 @@ describe('getWallets with validation', () => {
   it('should return validated wallet list', async () => {
     const validData = ['0x123...', '0xabc...'];
     mockedApi.get.mockResolvedValue({ data: validData });
-    
+
     const result = await getWallets();
     expect(result).toEqual(validData);
   });
@@ -210,7 +211,7 @@ describe('getWallets with validation', () => {
   it('should throw ValidationError for invalid data', async () => {
     const invalidData = [123, 'valid-address']; // mixed types
     mockedApi.get.mockResolvedValue({ data: invalidData });
-    
+
     await expect(getWallets()).rejects.toThrow(ValidationError);
   });
 });

@@ -52,7 +52,7 @@ apiClient.interceptors.response.use(
         if (typeof window !== 'undefined') {
           // Always use test redirect in test environments (when available)
           const testRedirect = (window as any).__TEST_REDIRECT__;
-          
+
           if (testRedirect && typeof testRedirect === 'function') {
             testRedirect('/login-register');
           } else {
