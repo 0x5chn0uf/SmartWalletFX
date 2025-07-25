@@ -37,6 +37,7 @@ from app.repositories.wallet_repository import WalletRepository
 
 # Repository imports
 from app.services.email_service import EmailService
+from app.services.file_upload_service import FileUploadService
 from app.services.oauth_service import OAuthService
 from app.usecase.auth_usecase import AuthUsecase
 
@@ -48,6 +49,7 @@ from app.usecase.portfolio_snapshot_usecase import PortfolioSnapshotUsecase
 from app.usecase.token_balance_usecase import TokenBalanceUsecase
 from app.usecase.token_price_usecase import TokenPriceUsecase
 from app.usecase.token_usecase import TokenUsecase
+from app.usecase.user_profile_usecase import UserProfileUsecase
 from app.usecase.wallet_usecase import WalletUsecase
 from app.utils.encryption import EncryptionUtils
 from app.utils.jwks_cache import JWKSCacheUtils
@@ -124,6 +126,9 @@ class DIContainer:
 
         email_service = EmailService(config, audit)
         self.register_service("email", email_service)
+
+        file_upload_service = FileUploadService(audit)
+        self.register_service("file_upload", file_upload_service)
 
     def _initialize_utilities(self):
         """Initialize and register utility classes."""
@@ -289,6 +294,10 @@ class DIContainer:
         )
         self.register_usecase("portfolio_snapshot", portfolio_snapshot_uc)
 
+        # User profile usecase
+        user_profile_uc = UserProfileUsecase(user_repo, audit)
+        self.register_usecase("user_profile", user_profile_uc)
+
     def _initialize_endpoints(self):
         """Initialize and register endpoint singletons."""
         # Get core components
@@ -345,7 +354,9 @@ class DIContainer:
         )
         self.register_endpoint("password_reset", password_reset_endpoint)
 
-        users_endpoint = Users(user_repo)
+        user_profile_uc = self.get_usecase("user_profile")
+        file_upload_service = self.get_service("file_upload")
+        users_endpoint = Users(user_repo, user_profile_uc, file_upload_service)
         self.register_endpoint("users", users_endpoint)
 
         wallets_endpoint = Wallets(

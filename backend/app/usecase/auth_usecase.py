@@ -95,6 +95,7 @@ class AuthUsecase:
             username=payload.username,
             email=payload.email,
             hashed_password=hashed_pw,
+            email_verified=False,  # New users start with unverified email
             # Default role for new users
             roles=[UserRole.INDIVIDUAL_INVESTOR.value],
             attributes={},

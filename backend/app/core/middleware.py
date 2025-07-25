@@ -38,8 +38,9 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
 class JWTAuthMiddleware(BaseHTTPMiddleware):
     """Extract user_id from JWT token and add it to request state."""
 
-    def __init__(self, app, protected_paths: Optional[list] = None):
+    def __init__(self, app, di_container=None, protected_paths: Optional[list] = None):
         super().__init__(app)
+        self.di_container = di_container
         # Define which paths require authentication
         self.protected_paths = protected_paths or [
             "/users",
@@ -84,10 +85,14 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
         token = auth_header.split(" ")[1]
 
         try:
-            # Local import to avoid circular dependency
-            from app.main import di_container
+            # Use the injected DI container or fall back to global import
+            if self.di_container:
+                jwt_utils = self.di_container.get_utility("jwt_utils")
+            else:
+                # Local import to avoid circular dependency
+                from app.main import di_container
 
-            jwt_utils = di_container.get_utility("jwt_utils")
+                jwt_utils = di_container.get_utility("jwt_utils")
 
             # Decode token and extract user_id
             payload = jwt_utils.decode_token(token)
@@ -125,6 +130,7 @@ class Middleware:
         """Get the JWT Auth middleware class."""
         return JWTAuthMiddleware
 
-    def create_jwt_auth_middleware(self) -> JWTAuthMiddleware:
+    def create_jwt_auth_middleware(self, di_container=None) -> JWTAuthMiddleware:
         """Create a new instance of JWT Auth middleware."""
-        return JWTAuthMiddleware(app=None)  # app will be set by FastAPI
+        # app will be set by FastAPI
+        return JWTAuthMiddleware(app=None, di_container=di_container)

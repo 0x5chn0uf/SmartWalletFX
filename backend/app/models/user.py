@@ -31,6 +31,21 @@ class User(Base):
         JSON, nullable=True, doc="User attributes for ABAC (geo, portfolio_value, etc.)"
     )
 
+    # Profile management fields
+    profile_picture_url = Column(
+        String(500), nullable=True, doc="URL to user's profile picture"
+    )
+    first_name = Column(String(100), nullable=True, doc="User's first name")
+    last_name = Column(String(100), nullable=True, doc="User's last name")
+    bio = Column(String(1000), nullable=True, doc="User's bio/description")
+    timezone = Column(String(50), nullable=True, doc="User's preferred timezone")
+    preferred_currency = Column(
+        String(10), nullable=True, default="USD", doc="User's preferred currency"
+    )
+    notification_preferences = Column(
+        JSON, nullable=True, doc="User notification preferences"
+    )
+
     created_at = Column(
         DateTime, default=datetime.utcnow, nullable=False, doc="Creation timestamp."
     )

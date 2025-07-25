@@ -64,6 +64,7 @@ dev = [
     "pytest-env==1.1.1",        # Environment variables for tests
     "pytest-mock==3.12.0",      # Mock objects for tests
     "pytest-benchmark==4.0.0",  # Performance benchmarking
+    "pytest-xdist==3.5.0",      # Parallel test execution
     "httpx==0.25.1",            # HTTP client for testing
     "coverage==7.3.2",          # Coverage measurement
     "hypothesis==6.135.10",     # Property-based testing
@@ -111,7 +112,13 @@ python_files = ["test_*.py"]
 addopts = '-m "not performance"'
 filterwarnings = ["ignore::DeprecationWarning"]
 markers = [
-    "performance: slow performance / load tests"
+    "performance: slow performance / load tests",
+    "integration: mark test as integration test (may use PostgreSQL)",
+    "unit: mark test as unit test (uses SQLite)",
+    "nightly: mark test as nightly test (long-running)",
+    "property: mark test as property-based test",
+    "security: mark test as security-related test",
+    "e2e: mark test as end-to-end test"
 ]
 
 [tool.flake8]

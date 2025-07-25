@@ -1,6 +1,7 @@
 """
 JWT utility helpers leveraging python-jose.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -83,6 +84,15 @@ class JWTUtils:
         self.__sign_key_cache = None
         self.__verify_key_cache = None
 
+    def clear_caches(self) -> None:
+        """Clear internal key caches for testing purposes.
+
+        This method clears the internal key caches to ensure test isolation.
+        Should only be used in test environments.
+        """
+        self.__sign_key_cache = None
+        self.__verify_key_cache = None
+
     def _get_sign_key(self) -> str | bytes:  # pragma: no cover
         """Return the key used to sign tokens based on algorithm."""
         if self.__sign_key_cache is not None:
@@ -97,6 +107,8 @@ class JWTUtils:
                         "ACTIVE_JWT_KID not found in JWT_KEYS – misconfiguration"
                     )
                 key = _to_text(self.__config.JWT_KEYS[self.__config.ACTIVE_JWT_KID])
+                if not key or key.strip() == "":
+                    raise ValueError("JWT key cannot be empty secret")
                 self.__sign_key_cache = key
                 return key
 
@@ -209,11 +221,28 @@ class JWTUtils:
             "jti": jti,
             "type": "refresh",
         }
-        token = jwt.encode(
-            payload,
-            self._get_sign_key(),
-            algorithm=self.__config.JWT_ALGORITHM,
-        )
+        headers = {"kid": self.__config.ACTIVE_JWT_KID}
+        sign_key = self._get_sign_key()
+        try:
+            token = jwt.encode(
+                payload,
+                sign_key,
+                algorithm=self.__config.JWT_ALGORITHM,
+                headers=headers,
+            )
+        except JWTError:
+            # Retry with alternate representation if needed
+            alt_key = (
+                sign_key.encode("latin-1")
+                if isinstance(sign_key, str)
+                else sign_key.decode("latin-1")
+            )
+            token = jwt.encode(
+                payload,
+                alt_key,
+                algorithm=self.__config.JWT_ALGORITHM,
+                headers=headers,
+            )
         return token
 
     def decode_token(self, token: str) -> Dict[str, Any]:
@@ -371,3 +400,13 @@ def _to_text(key: str | bytes) -> str:
     if isinstance(key, bytes):
         return key.decode("latin-1")  # 1-byte → 1-codepoint – lossless
     return key
+
+
+def clear_jwt_state() -> None:
+    """Clear global JWT state for testing purposes.
+
+    This function clears the global _RETIRED_KEYS dictionary to ensure
+    test isolation. Should only be used in test environments.
+    """
+    global _RETIRED_KEYS
+    _RETIRED_KEYS.clear()

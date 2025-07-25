@@ -29,6 +29,9 @@ class Configuration(BaseSettings):
 
     # Full connection string takes precedence if defined in the environment
     DATABASE_URL: str | None = None
+    TEST_DB_URL: str = (
+        "postgresql+asyncpg://testuser:testpass@localhost:55432/smartwallet_test"
+    )
 
     # Individual components (used when DATABASE_URL is missing)
     POSTGRES_USER: str = "devuser"
@@ -50,11 +53,31 @@ class Configuration(BaseSettings):
         The value precedence is:
 
         1. Explicit ``DATABASE_URL`` env var / .env (if *truthy*)
-        2. Assemble from individual POSTGRES_* components.
+        2. ``TEST_DB_URL`` env var if in test environment (if *truthy*)
+        3. Assemble from individual POSTGRES_* components.
         """
+        import os
 
         if v:  # explicit full DSN wins
             return v
+
+        # Always prefer TEST_DB_URL when explicitly provided – this is primarily
+        # set by the test suite's fixtures (see *tests/shared/fixtures/base.py*)
+        # to point the application at a temporary SQLite or PostgreSQL database.
+        #
+        # Previously, this value was only honoured when PyTest-specific
+        # environment variables were already set.  However, those variables are
+        # not available at *import-time* when the FastAPI app (and therefore
+        # the Configuration singleton) is instantiated, which caused the
+        # application to fall back to the default Postgres connection string
+        # and fail during the test startup phase.
+        #
+        # By unconditionally returning ``TEST_DB_URL`` when it is present we
+        # ensure that the correct temporary database is used regardless of the
+        # import order or execution context.
+        test_db_url = os.getenv("TEST_DB_URL")
+        if test_db_url:
+            return test_db_url
 
         values = info.data  # current field values collected by Pydantic
 
@@ -112,7 +135,7 @@ class Configuration(BaseSettings):
     # controlled by *ACTIVE_JWT_KID*.  Additional keys may exist in the map
     # during a grace-period following rotation so that previously-issued
     # tokens remain valid.
-    JWT_KEYS: dict[str, str] = {}
+    JWT_KEYS: dict[str, str] = {"default": "insecure-test-key"}
 
     # Identifier of the key currently used to *sign* newly-issued tokens.
     # MUST be present in *JWT_KEYS*.
