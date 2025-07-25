@@ -1,14 +1,15 @@
 import pytest
 from fastapi.testclient import TestClient
 
-pytestmark = pytest.mark.usefixtures("client")
+pytestmark = pytest.mark.usefixtures("client_with_db")
 
 
-def test_invalid_login_returns_structured_error(client: TestClient):
+@pytest.mark.integration
+def test_invalid_login_returns_structured_error(client_with_db: TestClient):
     """Ensure invalid credentials return JSON error payload with trace_id."""
 
     # Try to login with non-existent credentials without registering first
-    bad_res = client.post(
+    bad_res = client_with_db.post(
         "/auth/token",
         data={"username": "nonexistent_user", "password": "wrong"},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
@@ -24,16 +25,17 @@ def test_invalid_login_returns_structured_error(client: TestClient):
     assert bad_res.headers.get("X-Trace-Id") == body["trace_id"]
 
 
-def test_no_plaintext_traceback_in_error_response(client: TestClient):
-    """Ensure stack traces are not leaked in generic error responses (404/422 etc.)."""
+@pytest.mark.integration
+def test_no_plaintext_traceback_in_error_response(client_with_db: TestClient):
+    """Ensure stack traces are not leaked in generic error responses (404/422 etc)."""
 
     # Unknown path → 404 handled by global error handler
-    resp = client.get("/nonexistent-path")
+    resp = client_with_db.get("/nonexistent-path")
     assert resp.status_code == 404
     assert "Traceback (most recent call last)" not in resp.text
     assert "<module>" not in resp.text
 
     # Validation error on /auth/register (missing fields)
-    bad = client.post("/auth/register", json={})
+    bad = client_with_db.post("/auth/register", json={})
     assert bad.status_code == 422
     assert "Traceback" not in bad.text

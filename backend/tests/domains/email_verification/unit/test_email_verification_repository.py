@@ -38,6 +38,7 @@ def email_verification_repository(mock_database, mock_audit):
     return EmailVerificationRepository(mock_database, mock_audit)
 
 
+@pytest.mark.unit
 def test_email_verification_repository_constructor_dependencies():
     """Test that EmailVerificationRepository properly accepts dependencies in constructor."""
     # Arrange
@@ -52,6 +53,7 @@ def test_email_verification_repository_constructor_dependencies():
     assert repository._EmailVerificationRepository__audit == mock_audit
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_create_success(email_verification_repository, mock_session):
     """Test successful creation of email verification token."""
@@ -75,6 +77,7 @@ async def test_create_success(email_verification_repository, mock_session):
     email_verification_repository._EmailVerificationRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_create_exception_handling(email_verification_repository, mock_session):
     """Test exception handling in create method."""
@@ -93,6 +96,7 @@ async def test_create_exception_handling(email_verification_repository, mock_ses
     email_verification_repository._EmailVerificationRepository__audit.error.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_valid_found(email_verification_repository, mock_session):
     """Test getting a valid email verification token that exists."""
@@ -120,6 +124,7 @@ async def test_get_valid_found(email_verification_repository, mock_session):
     email_verification_repository._EmailVerificationRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_valid_not_found(email_verification_repository, mock_session):
     """Test getting a valid email verification token that doesn't exist."""
@@ -140,6 +145,7 @@ async def test_get_valid_not_found(email_verification_repository, mock_session):
     email_verification_repository._EmailVerificationRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_valid_exception_handling(
     email_verification_repository, mock_session
@@ -158,6 +164,7 @@ async def test_get_valid_exception_handling(
     email_verification_repository._EmailVerificationRepository__audit.error.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_mark_used_success(email_verification_repository, mock_session):
     """Test successful marking of email verification token as used."""
@@ -182,6 +189,7 @@ async def test_mark_used_success(email_verification_repository, mock_session):
     email_verification_repository._EmailVerificationRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_mark_used_exception_handling(
     email_verification_repository, mock_session
@@ -201,6 +209,7 @@ async def test_mark_used_exception_handling(
     email_verification_repository._EmailVerificationRepository__audit.error.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_delete_expired_success(email_verification_repository, mock_session):
     """Test successful deletion of expired email verification tokens."""
@@ -221,6 +230,7 @@ async def test_delete_expired_success(email_verification_repository, mock_sessio
     email_verification_repository._EmailVerificationRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_delete_expired_exception_handling(
     email_verification_repository, mock_session
@@ -237,6 +247,7 @@ async def test_delete_expired_exception_handling(
     email_verification_repository._EmailVerificationRepository__audit.error.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_token_hashing_consistency():
     """Test that token hashing is consistent across methods."""
@@ -268,6 +279,7 @@ async def test_token_hashing_consistency():
     assert call_args.token_hash == expected_hash
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_audit_logging_patterns(email_verification_repository, mock_session):
     """Test that audit logging follows consistent patterns."""
@@ -290,6 +302,7 @@ async def test_audit_logging_patterns(email_verification_repository, mock_sessio
     assert "email_verification_repository_create_success" in str(audit_calls[1])
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_valid_query_structure(email_verification_repository, mock_session):
     """Test that get_valid builds the correct SQL query structure."""

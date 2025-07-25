@@ -17,6 +17,7 @@ from app.domain.schemas.wallet import WalletCreate, WalletResponse
 from app.usecase.wallet_usecase import WalletUsecase
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_wallet_usecase_create_wallet_success(
     wallet_usecase_with_di, mock_wallet_repository
@@ -48,6 +49,7 @@ async def test_wallet_usecase_create_wallet_success(
     )
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_wallet_usecase_create_wallet_duplicate(
     wallet_usecase_with_di, mock_wallet_repository
@@ -72,6 +74,7 @@ async def test_wallet_usecase_create_wallet_duplicate(
     assert "already exists" in exc.value.detail
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_wallet_usecase_list_wallets(
     wallet_usecase_with_di, mock_wallet_repository
@@ -108,6 +111,7 @@ async def test_wallet_usecase_list_wallets(
     mock_wallet_repository.list_by_user.assert_called_once_with(user.id)
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_wallet_usecase_delete_wallet_success(
     wallet_usecase_with_di, mock_wallet_repository
@@ -126,6 +130,7 @@ async def test_wallet_usecase_delete_wallet_success(
     )
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_wallet_usecase_delete_wallet_not_found(
     wallet_usecase_with_di, mock_wallet_repository
@@ -147,6 +152,7 @@ async def test_wallet_usecase_delete_wallet_not_found(
     assert exc.value.status_code == 404
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_wallet_usecase_verify_ownership_owned(
     wallet_usecase_with_di, mock_wallet_repository
@@ -173,6 +179,7 @@ async def test_wallet_usecase_verify_ownership_owned(
     )
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_wallet_usecase_verify_ownership_not_owned(
     wallet_usecase_with_di, mock_wallet_repository
@@ -198,6 +205,7 @@ async def test_wallet_usecase_verify_ownership_not_owned(
     )
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_wallet_usecase_get_portfolio_snapshots(
     wallet_usecase_with_di, mock_wallet_repository, mock_portfolio_snapshot_repository
@@ -236,6 +244,7 @@ async def test_wallet_usecase_get_portfolio_snapshots(
     )
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_wallet_usecase_get_portfolio_snapshots_not_owned(
     wallet_usecase_with_di, mock_wallet_repository
@@ -256,6 +265,7 @@ async def test_wallet_usecase_get_portfolio_snapshots_not_owned(
     assert "not found or access denied" in exc.value.detail
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_wallet_usecase_audit_logging(
     wallet_usecase_with_di, mock_wallet_repository, mock_audit
@@ -283,6 +293,7 @@ async def test_wallet_usecase_audit_logging(
     mock_audit.info.assert_called()
 
 
+@pytest.mark.unit
 def test_wallet_usecase_constructor_dependencies():
     """Test that WalletUsecase properly accepts dependencies in constructor."""
     # Arrange

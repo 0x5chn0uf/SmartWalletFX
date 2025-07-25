@@ -11,6 +11,7 @@ from app.usecase.oauth_usecase import OAuthUsecase
 class TestOAuthEndpoints:
     """Test OAuth endpoints."""
 
+    @pytest.mark.unit
     def test_oauth_init(self):
         """Test OAuth initialization."""
         mock_usecase = Mock(spec=OAuthUsecase)
@@ -18,6 +19,7 @@ class TestOAuthEndpoints:
         assert OAuth._OAuth__oauth_uc is mock_usecase
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_oauth_login_success(self):
         """Test successful OAuth login redirect."""
         mock_usecase = Mock(spec=OAuthUsecase)
@@ -37,6 +39,7 @@ class TestOAuthEndpoints:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_oauth_callback_success(self):
         """Test successful OAuth callback."""
         mock_usecase = Mock(spec=OAuthUsecase)
@@ -60,6 +63,7 @@ class TestOAuthEndpoints:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_oauth_callback_unsupported_provider(self):
         """Test OAuth callback with unsupported provider."""
         mock_usecase = Mock(spec=OAuthUsecase)
@@ -78,6 +82,7 @@ class TestOAuthEndpoints:
         assert "Provider not supported" in exc.value.detail
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_oauth_callback_no_cookie_state(self):
         """Test OAuth callback with no cookie state."""
         mock_usecase = Mock(spec=OAuthUsecase)
@@ -96,6 +101,7 @@ class TestOAuthEndpoints:
         assert "Invalid state" in exc.value.detail
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_oauth_callback_state_mismatch(self):
         """Test OAuth callback with state mismatch."""
         mock_usecase = Mock(spec=OAuthUsecase)
@@ -114,6 +120,7 @@ class TestOAuthEndpoints:
         assert "Invalid state" in exc.value.detail
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_oauth_callback_invalid_state_verification(self):
         """Test OAuth callback with invalid state verification."""
         mock_usecase = Mock(spec=OAuthUsecase)
@@ -133,6 +140,7 @@ class TestOAuthEndpoints:
         assert "Invalid state" in exc.value.detail
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_oauth_callback_github_provider(self):
         """Test OAuth callback with GitHub provider."""
         mock_usecase = Mock(spec=OAuthUsecase)

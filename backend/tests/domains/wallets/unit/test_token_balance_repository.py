@@ -23,6 +23,7 @@ def setup_mock_session(repository, mock_session):
     repository._TokenBalanceRepository__database.get_session = mock_get_session
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_token_balance_repository_create(
     token_balance_repository_with_di, mock_async_session
@@ -61,6 +62,7 @@ async def test_token_balance_repository_create(
     # In a real integration test, we would check balance properties
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_token_balance_repository_create_exception(
     token_balance_repository_with_di, mock_async_session

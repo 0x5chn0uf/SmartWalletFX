@@ -8,6 +8,8 @@ from httpx import AsyncClient
 
 from app.domain.schemas.user import UserCreate
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.mark.asyncio
 async def test_password_reset_flow(
@@ -113,15 +115,42 @@ async def test_forgot_password_unknown_email(
 
 @pytest.mark.asyncio
 async def test_password_reset_rate_limit(
-    test_app_with_di_container, test_di_container_with_db
+    integration_async_client, test_di_container_with_db
 ) -> None:
-    """Hitting the forgot-password endpoint more than the allowed attempts should 429."""
-    # Get the rate limiter from DI container to control it for testing
-    rate_limiter_utils = test_di_container_with_db.get_utility("rate_limiter_utils")
+    """Hitting the forgot-password endpoint more than the allowed attempts should 429"""
+    # Replace the mocked rate limiter with a real one for this test
+    from app.utils.rate_limiter import RateLimiterUtils
+
+    config = test_di_container_with_db.get_core("config")
+    real_rate_limiter_utils = RateLimiterUtils(config)
+    test_di_container_with_db.register_utility(
+        "rate_limiter_utils", real_rate_limiter_utils
+    )
+
+    # Re-register the password reset endpoint with the real rate limiter
+    from app.api.endpoints.password_reset import PasswordReset
+
+    password_reset_repo = test_di_container_with_db.get_repository("password_reset")
+    user_repo = test_di_container_with_db.get_repository("user")
+    email_service = test_di_container_with_db.get_service("email")
+    password_hasher = test_di_container_with_db.get_utility("password_hasher")
+
+    password_reset_endpoint = PasswordReset(
+        password_reset_repo,
+        user_repo,
+        email_service,
+        real_rate_limiter_utils,
+        password_hasher,
+        config,
+    )
+    test_di_container_with_db.register_endpoint(
+        "password_reset", password_reset_endpoint
+    )
+
     auth_usecase = test_di_container_with_db.get_usecase("auth")
 
     # Clear any existing rate limit state
-    rate_limiter_utils.login_rate_limiter.clear()
+    real_rate_limiter_utils.login_rate_limiter.clear()
 
     # Create a test user
     unique_id = uuid.uuid4().hex[:8]
@@ -135,22 +164,22 @@ async def test_password_reset_rate_limit(
     user.email_verified = True
 
     # Commit the user to the database
-    user_repo = test_di_container_with_db.get_repository("user")
     await user_repo.save(user)
 
-    async with AsyncClient(
-        app=test_app_with_di_container, base_url="http://test"
-    ) as client:
-        # Make password reset requests up to the limit (5 attempts)
-        for i in range(5):
-            resp = await client.post(
-                "/auth/password-reset-request", json={"email": email}
-            )
-            assert resp.status_code == 204  # Should succeed
+    # Use the SafeAsyncClient (integration_async_client) that handles ASGI issues
 
-        # Next attempt should be rate limited
-        resp = await client.post("/auth/password-reset-request", json={"email": email})
-        assert resp.status_code == 429  # Rate limited
+    # Make password reset requests up to the limit (5 attempts)
+    for i in range(5):
+        resp = await integration_async_client.post(
+            "/auth/password-reset-request", json={"email": email}
+        )
+        assert resp.status_code == 204  # Should succeed
+
+    # Next attempt should be rate limited
+    resp = await integration_async_client.post(
+        "/auth/password-reset-request", json={"email": email}
+    )
+    assert resp.status_code == 429  # Rate limited
 
 
 @pytest.mark.asyncio
@@ -182,10 +211,9 @@ async def test_reset_password_invalid_token(
 
 @pytest.mark.asyncio
 async def test_reset_password_token_reuse(
-    test_app_with_di_container, test_di_container_with_db
+    integration_async_client, test_di_container_with_db
 ) -> None:
     """Tokens are single-use – a second attempt should fail with 400."""
-    from httpx import AsyncClient
 
     # Get services from DI container
     auth_usecase = test_di_container_with_db.get_usecase("auth")
@@ -211,20 +239,17 @@ async def test_reset_password_token_reuse(
     expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
     await password_reset_repo.create(token, user.id, expires_at)
 
-    async with AsyncClient(
-        app=test_app_with_di_container, base_url="http://test"
-    ) as client:
-        # First successful reset
-        ok = await client.post(
-            "/auth/password-reset-complete",
-            json={"token": token, "password": "BrandN3w!pwd"},
-        )
-        assert ok.status_code == 200
+    # First successful reset
+    ok = await integration_async_client.post(
+        "/auth/password-reset-complete",
+        json={"token": token, "password": "BrandN3w!pwd"},
+    )
+    assert ok.status_code == 200
 
-        # Second attempt should now fail (token marked as used)
-        fail = await client.post(
-            "/auth/password-reset-complete",
-            json={"token": token, "password": "Another1!pwd"},
-        )
-        assert fail.status_code == 400
-        assert "Invalid or expired token" in fail.json()["detail"]
+    # Second attempt should now fail (token marked as used)
+    fail = await integration_async_client.post(
+        "/auth/password-reset-complete",
+        json={"token": token, "password": "Another1!pwd"},
+    )
+    assert fail.status_code == 400
+    assert "Invalid or expired token" in fail.json()["detail"]

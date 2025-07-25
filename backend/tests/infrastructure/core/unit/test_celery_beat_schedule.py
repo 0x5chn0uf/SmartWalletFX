@@ -1,9 +1,11 @@
+import pytest
 from celery.schedules import crontab
 
 from app.celery_app import celery
 from app.core.config import Configuration
 
 
+@pytest.mark.unit
 def test_jwt_rotation_beat_schedule_is_configured():
     """
     Tests that the 'jwt-rotation-beat' schedule is correctly configured in Celery.

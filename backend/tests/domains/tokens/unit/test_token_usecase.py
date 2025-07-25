@@ -12,6 +12,7 @@ from app.usecase.token_usecase import TokenUsecase
 class TestTokenUsecase:
     """Test TokenUsecase class."""
 
+    @pytest.mark.unit
     def test_init(self, token_usecase_with_di):
         """Test TokenUsecase initialization."""
         usecase = token_usecase_with_di
@@ -21,6 +22,7 @@ class TestTokenUsecase:
         assert usecase._TokenUsecase__audit is not None
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_success(self, token_usecase_with_di):
         """Test successful token creation."""
         usecase = token_usecase_with_di
@@ -72,6 +74,7 @@ class TestTokenUsecase:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_with_default_decimals(self, token_usecase_with_di):
         """Test token creation with default decimals."""
         usecase = token_usecase_with_di
@@ -112,6 +115,7 @@ class TestTokenUsecase:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_with_custom_decimals(self, token_usecase_with_di):
         """Test token creation with custom decimals."""
         usecase = token_usecase_with_di
@@ -146,6 +150,7 @@ class TestTokenUsecase:
         assert result.decimals == 6
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_zero_decimals(self, token_usecase_with_di):
         """Test token creation with zero decimals."""
         usecase = token_usecase_with_di
@@ -180,6 +185,7 @@ class TestTokenUsecase:
         assert result.decimals == 0
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_without_symbol_attribute(self, token_usecase_with_di):
         """Test token creation when input doesn't have symbol attribute."""
         usecase = token_usecase_with_di
@@ -217,6 +223,7 @@ class TestTokenUsecase:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_long_name(self, token_usecase_with_di):
         """Test token creation with long name."""
         usecase = token_usecase_with_di
@@ -252,6 +259,7 @@ class TestTokenUsecase:
         assert result.name == long_name
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_special_characters(self, token_usecase_with_di):
         """Test token creation with special characters."""
         usecase = token_usecase_with_di
@@ -287,6 +295,7 @@ class TestTokenUsecase:
         assert result.name == "Ünïcødé Tøkën"
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_repository_exception(self, token_usecase_with_di):
         """Test token creation with repository exception."""
         usecase = token_usecase_with_di
@@ -319,6 +328,7 @@ class TestTokenUsecase:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_validation_error(self, token_usecase_with_di):
         """Test token creation with validation error."""
         usecase = token_usecase_with_di
@@ -344,6 +354,7 @@ class TestTokenUsecase:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_result_without_id(self, token_usecase_with_di):
         """Test token creation when result doesn't have id attribute."""
         usecase = token_usecase_with_di
@@ -382,6 +393,7 @@ class TestTokenUsecase:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_duplicate_address(self, token_usecase_with_di):
         """Test token creation with duplicate address."""
         usecase = token_usecase_with_di
@@ -410,6 +422,7 @@ class TestTokenUsecase:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_multiple_calls(self, token_usecase_with_di):
         """Test multiple token creations."""
         usecase = token_usecase_with_di
@@ -466,6 +479,7 @@ class TestTokenUsecase:
         )  # 2 started + 2 success
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_concurrent_calls(self, token_usecase_with_di):
         """Test concurrent token creations."""
         usecase = token_usecase_with_di

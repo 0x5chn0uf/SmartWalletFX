@@ -75,6 +75,7 @@ def wallet_usecase(
     )
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_create_wallet_success(
     wallet_usecase, mock_wallet_repository, mock_user_repository
@@ -106,6 +107,7 @@ async def test_create_wallet_success(
     )
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_create_wallet_duplicate(
     wallet_usecase, mock_wallet_repository, mock_user_repository
@@ -129,6 +131,7 @@ async def test_create_wallet_duplicate(
     assert "already exists" in exc.value.detail
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_create_wallet_invalid_address():
     """Test wallet creation with invalid address."""
@@ -136,6 +139,7 @@ async def test_create_wallet_invalid_address():
         WalletCreate(address="notanaddress")
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_list_wallets(
     wallet_usecase, mock_wallet_repository, mock_user_repository
@@ -173,6 +177,7 @@ async def test_list_wallets(
     mock_wallet_repository.list_by_user.assert_called_once_with(user.id)
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_delete_wallet_success(
     wallet_usecase, mock_wallet_repository, mock_user_repository
@@ -192,6 +197,7 @@ async def test_delete_wallet_success(
     mock_wallet_repository.delete.assert_called_once_with(addr, user_id=user.id)
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_delete_wallet_not_found(
     wallet_usecase, mock_wallet_repository, mock_user_repository
@@ -213,6 +219,7 @@ async def test_delete_wallet_not_found(
     assert exc.value.status_code == 404
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_verify_wallet_ownership_owned_wallet(
     wallet_usecase, mock_wallet_repository, mock_user_repository
@@ -236,6 +243,7 @@ async def test_verify_wallet_ownership_owned_wallet(
     mock_wallet_repository.get_by_address.assert_called_once_with(address=addr)
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_verify_wallet_ownership_not_owned(
     wallet_usecase, mock_wallet_repository, mock_user_repository
@@ -259,6 +267,7 @@ async def test_verify_wallet_ownership_not_owned(
     assert result is False
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_verify_wallet_ownership_nonexistent_wallet(
     wallet_usecase, mock_wallet_repository, mock_user_repository
@@ -278,6 +287,7 @@ async def test_verify_wallet_ownership_nonexistent_wallet(
     assert result is False
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_portfolio_snapshots_success(
     wallet_usecase,
@@ -315,6 +325,7 @@ async def test_get_portfolio_snapshots_success(
     mock_wallet_repository.get_by_address.assert_called_once_with(address=addr)
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_portfolio_snapshots_not_owned(
     wallet_usecase, mock_wallet_repository, mock_user_repository
@@ -339,6 +350,7 @@ async def test_get_portfolio_snapshots_not_owned(
     assert "Wallet not found or access denied" in exc.value.detail
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_portfolio_snapshots_nonexistent_wallet(
     wallet_usecase, mock_wallet_repository, mock_user_repository
@@ -358,6 +370,7 @@ async def test_get_portfolio_snapshots_nonexistent_wallet(
     assert exc.value.status_code == 404
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_portfolio_metrics_not_owned(
     wallet_usecase, mock_wallet_repository, mock_user_repository
@@ -382,6 +395,7 @@ async def test_get_portfolio_metrics_not_owned(
     assert "Wallet not found or access denied" in exc.value.detail
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_portfolio_timeline_not_owned(
     wallet_usecase, mock_wallet_repository, mock_user_repository
@@ -406,6 +420,7 @@ async def test_get_portfolio_timeline_not_owned(
     assert "Wallet not found or access denied" in exc.value.detail
 
 
+@pytest.mark.unit
 def test_wallet_usecase_constructor_dependencies():
     """Test that WalletUsecase properly accepts dependencies in constructor."""
     # Arrange

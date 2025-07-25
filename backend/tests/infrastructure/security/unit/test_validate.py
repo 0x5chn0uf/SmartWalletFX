@@ -7,6 +7,7 @@ import pytest
 from app.utils import audit as audit_utils
 
 
+@pytest.mark.unit
 def test_validate_audit_event_accepts_valid(monkeypatch):
     monkeypatch.setenv("AUDIT_VALIDATION", "hard")
     importlib.reload(audit_utils)  # reload to apply env var
@@ -21,6 +22,7 @@ def test_validate_audit_event_accepts_valid(monkeypatch):
     audit_utils.validate_audit_event(event)
 
 
+@pytest.mark.unit
 def test_validate_audit_event_rejects_invalid(monkeypatch):
     monkeypatch.setenv("AUDIT_VALIDATION", "hard")
     importlib.reload(audit_utils)
@@ -34,6 +36,7 @@ def test_validate_audit_event_rejects_invalid(monkeypatch):
         audit_utils.validate_audit_event(event)
 
 
+@pytest.mark.unit
 def test_validate_audit_event_warn_mode(monkeypatch):
     monkeypatch.setenv("AUDIT_VALIDATION", "warn")
     importlib.reload(audit_utils)
@@ -47,6 +50,7 @@ def test_validate_audit_event_warn_mode(monkeypatch):
         audit_utils.validate_audit_event(event)
 
 
+@pytest.mark.unit
 def test_validate_audit_event_off_mode(monkeypatch):
     monkeypatch.setenv("AUDIT_VALIDATION", "off")
     importlib.reload(audit_utils)

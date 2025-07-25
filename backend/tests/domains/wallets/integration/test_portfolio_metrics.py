@@ -3,6 +3,8 @@ import uuid
 import pytest
 from httpx import AsyncClient
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.mark.asyncio
 async def test_portfolio_metrics_and_timeline(authenticated_client: AsyncClient):

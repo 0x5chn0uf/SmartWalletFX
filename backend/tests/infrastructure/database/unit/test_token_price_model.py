@@ -7,6 +7,7 @@ from app.domain.schemas.token_price import TokenPriceCreate
 from app.models import Token, TokenPrice
 
 
+@pytest.mark.unit
 def test_create_token_price_model():
     """Test creating a token price model directly (unit test without database)."""
     # Generate a UUID for the token_id
@@ -29,6 +30,7 @@ def test_create_token_price_model():
     assert hasattr(token_price, "token")  # relationship
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_token_price_validation():
     """Test token price model validation."""

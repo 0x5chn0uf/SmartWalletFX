@@ -15,6 +15,7 @@ from app.usecase.token_balance_usecase import TokenBalanceUsecase
 class TestTokenBalanceUsecase:
     """Test TokenBalanceUsecase class."""
 
+    @pytest.mark.unit
     def test_init(self, token_balance_usecase_with_di):
         """Test TokenBalanceUsecase initialization."""
         usecase = token_balance_usecase_with_di
@@ -24,6 +25,7 @@ class TestTokenBalanceUsecase:
         assert usecase._TokenBalanceUsecase__audit is not None
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_balance_success(self, token_balance_usecase_with_di):
         """Test successful token balance creation."""
         usecase = token_balance_usecase_with_di
@@ -81,6 +83,7 @@ class TestTokenBalanceUsecase:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_balance_with_wallet_address(
         self, token_balance_usecase_with_di
     ):
@@ -128,6 +131,7 @@ class TestTokenBalanceUsecase:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_balance_zero_balance(
         self, token_balance_usecase_with_di
     ):
@@ -175,6 +179,7 @@ class TestTokenBalanceUsecase:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_balance_very_small_balance(
         self, token_balance_usecase_with_di
     ):
@@ -216,6 +221,7 @@ class TestTokenBalanceUsecase:
         assert result.balance_usd == balance_usd
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_balance_very_large_balance(
         self, token_balance_usecase_with_di
     ):
@@ -257,6 +263,7 @@ class TestTokenBalanceUsecase:
         assert result.balance_usd == balance_usd
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_balance_negative_balance(
         self, token_balance_usecase_with_di
     ):
@@ -298,6 +305,7 @@ class TestTokenBalanceUsecase:
         assert result.balance_usd == balance_usd
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_balance_repository_exception(
         self, token_balance_usecase_with_di
     ):
@@ -336,6 +344,7 @@ class TestTokenBalanceUsecase:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_balance_validation_error(
         self, token_balance_usecase_with_di
     ):
@@ -370,6 +379,7 @@ class TestTokenBalanceUsecase:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_balance_result_without_id(
         self, token_balance_usecase_with_di
     ):
@@ -416,6 +426,7 @@ class TestTokenBalanceUsecase:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_balance_multiple_calls(
         self, token_balance_usecase_with_di
     ):
@@ -482,6 +493,7 @@ class TestTokenBalanceUsecase:
         )  # 2 started + 2 success
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_balance_concurrent_calls(
         self, token_balance_usecase_with_di
     ):
@@ -540,6 +552,7 @@ class TestTokenBalanceUsecase:
         assert usecase._TokenBalanceUsecase__token_balance_repo.create.call_count == 3
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_balance_duplicate_entry(
         self, token_balance_usecase_with_di
     ):
@@ -576,6 +589,7 @@ class TestTokenBalanceUsecase:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_balance_mismatched_usd_value(
         self, token_balance_usecase_with_di
     ):

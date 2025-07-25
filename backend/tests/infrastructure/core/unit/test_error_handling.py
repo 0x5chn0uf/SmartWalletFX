@@ -30,6 +30,7 @@ def _make_request() -> Request:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_http_exception_handler_returns_mapped_payload():
     eh = CoreErrorHandling(Audit())
@@ -46,6 +47,7 @@ async def test_http_exception_handler_returns_mapped_payload():
     assert resp.status_code == 404
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_validation_exception_handler_uses_generic_message():
     eh = CoreErrorHandling(Audit())
@@ -62,6 +64,7 @@ async def test_validation_exception_handler_uses_generic_message():
     assert body["code"] == "VALIDATION_ERROR" and body["status_code"] == 422
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_generic_exception_handler_catches_unexpected_error(caplog):
     eh = CoreErrorHandling(Audit())
@@ -76,6 +79,7 @@ async def test_generic_exception_handler_catches_unexpected_error(caplog):
     # avoid coupling to audit logger internals.
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_integrity_error_handler_maps_to_conflict():
     eh = CoreErrorHandling(Audit())

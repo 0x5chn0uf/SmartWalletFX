@@ -21,6 +21,7 @@ class DummySession(AsyncSession):
         return None
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_user_from_request_success():
     user_id = uuid.uuid4()
@@ -52,6 +53,7 @@ async def test_get_user_from_request_success():
         assert result._current_attributes == {}
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_user_from_request_no_user_id():
     request = Mock(state=Mock(user_id=None, token_payload={"sub": "test", "roles": []}))
@@ -63,6 +65,7 @@ async def test_get_user_from_request_no_user_id():
     assert "Not authenticated" in exc.value.detail
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_user_from_request_no_payload():
     user_id = uuid.uuid4()

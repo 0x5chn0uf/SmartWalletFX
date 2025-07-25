@@ -23,6 +23,7 @@ class TestGetJwksCache:
     """Test cache retrieval operations."""
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_get_jwks_cache_hit(self, mock_redis, sample_jwks):
         """Test successful cache retrieval."""
         # Mock Redis to return cached data
@@ -36,6 +37,7 @@ class TestGetJwksCache:
         mock_redis.get.assert_called_once_with(JWKS_CACHE_KEY)
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_get_jwks_cache_miss(self, mock_redis):
         """Test cache miss returns None."""
         mock_redis.get.return_value = None
@@ -46,6 +48,7 @@ class TestGetJwksCache:
         mock_redis.get.assert_called_once_with(JWKS_CACHE_KEY)
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_get_jwks_cache_redis_error(self, mock_redis):
         """Test graceful handling of Redis errors."""
         mock_redis.get.side_effect = Exception("Redis connection failed")
@@ -56,6 +59,7 @@ class TestGetJwksCache:
         mock_redis.get.assert_called_once_with(JWKS_CACHE_KEY)
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_get_jwks_cache_invalid_json(self, mock_redis):
         """Test graceful handling of invalid JSON in cache."""
         mock_redis.get.return_value = b"invalid json"
@@ -70,6 +74,7 @@ class TestSetJwksCache:
     """Test cache storage operations."""
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_set_jwks_cache_success(self, mock_redis, sample_jwks):
         """Test successful cache storage."""
         mock_redis.setex.return_value = True
@@ -86,6 +91,7 @@ class TestSetJwksCache:
         assert stored_data["keys"] == sample_jwks.model_dump()["keys"]
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_set_jwks_cache_redis_error(self, mock_redis, sample_jwks):
         """Test graceful handling of Redis storage errors."""
         mock_redis.setex.side_effect = Exception("Redis storage failed")
@@ -96,6 +102,7 @@ class TestSetJwksCache:
         mock_redis.setex.assert_called_once()
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_set_jwks_cache_serialization_error(self, mock_redis):
         """Test handling of JWKSet serialization errors."""
         # Create a valid JWKSet but mock json.dumps to fail
@@ -125,6 +132,7 @@ class TestInvalidateJwksCache:
     """Test cache invalidation operations."""
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_invalidate_jwks_cache_success(self, mock_redis):
         """Test successful cache invalidation."""
         mock_redis.delete.return_value = 1
@@ -135,6 +143,7 @@ class TestInvalidateJwksCache:
         mock_redis.delete.assert_called_once_with(JWKS_CACHE_KEY)
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_invalidate_jwks_cache_redis_error(self, mock_redis):
         """Test graceful handling of Redis deletion errors."""
         mock_redis.delete.side_effect = Exception("Redis deletion failed")
@@ -145,6 +154,7 @@ class TestInvalidateJwksCache:
         mock_redis.delete.assert_called_once_with(JWKS_CACHE_KEY)
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_invalidate_jwks_cache_key_not_found(self, mock_redis):
         """Test invalidation when key doesn't exist."""
         mock_redis.delete.return_value = 0
@@ -163,6 +173,7 @@ class TestRedisClientBuilder:
     """Test Redis client creation."""
 
     @patch("app.utils.jwks_cache.Redis")
+    @pytest.mark.unit
     def test_build_redis_client(self, mock_redis_class):
         """Test Redis client creation with correct URL."""
         from app.utils import jwks_cache
@@ -171,12 +182,14 @@ class TestRedisClientBuilder:
 
         jwks_cache._build_redis_client()
 
-        mock_redis_class.from_url.assert_called_once_with("redis://localhost:6379/0")
+        # Expect test Redis URL from pytest.ini
+        mock_redis_class.from_url.assert_called_once_with("redis://localhost:6379/15")
 
 
 class TestInvalidateJwksCacheSync:
     """Tests for the synchronous cache invalidation wrapper."""
 
+    @pytest.mark.unit
     def test_sync_invalidation_success(self, monkeypatch):
         redis_client = AsyncMock()
         monkeypatch.setattr(
@@ -199,6 +212,7 @@ class TestInvalidateJwksCacheSync:
         assert invalidate_jwks_cache_sync() is True
         assert len(calls) == 2
 
+    @pytest.mark.unit
     def test_sync_invalidation_failure(self, monkeypatch):
         monkeypatch.setattr(
             "app.utils.jwks_cache._build_redis_client", lambda: AsyncMock()

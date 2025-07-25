@@ -15,6 +15,7 @@ class TestDIContainer:
         """Create a DIContainer instance for testing."""
         return DIContainer()
 
+    @pytest.mark.unit
     def test_config_service_registration(self, di_container):
         """Test that Configuration is registered."""
         config = di_container.get_core("config")
@@ -22,17 +23,20 @@ class TestDIContainer:
         assert hasattr(config, "PROJECT_NAME")
         assert hasattr(config, "VERSION")
 
+    @pytest.mark.unit
     def test_database_registration(self, di_container):
         """Test that CoreDatabase is registered."""
         database = di_container.get_core("database")
         assert database is not None
         assert hasattr(database, "get_session")
 
+    @pytest.mark.unit
     def test_audit_service_registration(self, di_container):
         """Test that Audit service is registered."""
         audit = di_container.get_core("audit")
         assert audit is not None
 
+    @pytest.mark.unit
     def test_helper_services_registration(self, di_container):
         """Test that all helper services are registered."""
         # Test that all helper services are registered
@@ -42,6 +46,7 @@ class TestDIContainer:
         assert di_container.get_core("middleware") is not None
         assert di_container.get_core("database") is not None
 
+    @pytest.mark.unit
     def test_helper_service_types(self, di_container):
         """Test that helper services are of correct types."""
         from app.core.celery import CoreCelery
@@ -65,6 +70,7 @@ class TestDIContainer:
         database = di_container.get_core("database")
         assert isinstance(database, CoreDatabase)
 
+    @pytest.mark.unit
     def test_helper_service_dependencies(self, di_container):
         """Test that helper services have proper dependencies injected."""
         # Test LoggingService has config dependency
@@ -90,6 +96,7 @@ class TestDIContainer:
         audit = di_container.get_core("audit")
         assert database.audit == audit
 
+    @pytest.mark.unit
     def test_all_repositories_registered(self, di_container):
         """Test that all repositories are registered."""
         expected_repositories = [
@@ -110,6 +117,7 @@ class TestDIContainer:
             repo = di_container.get_repository(repo_name)
             assert repo is not None, f"Repository '{repo_name}' not registered"
 
+    @pytest.mark.unit
     def test_all_usecases_registered(self, di_container):
         """Test that all usecases are registered."""
         expected_usecases = [
@@ -127,6 +135,7 @@ class TestDIContainer:
             usecase = di_container.get_usecase(usecase_name)
             assert usecase is not None, f"Usecase '{usecase_name}' not registered"
 
+    @pytest.mark.unit
     def test_all_endpoints_registered(self, di_container):
         """Test that all endpoints are registered."""
         expected_endpoints = [
@@ -143,6 +152,7 @@ class TestDIContainer:
             endpoint = di_container.get_endpoint(endpoint_name)
             assert endpoint is not None, f"Endpoint '{endpoint_name}' not registered"
 
+    @pytest.mark.unit
     def test_endpoint_dependency_injection(self, di_container):
         """Test that endpoints have proper dependency injection."""
         # Test email verification endpoint
@@ -180,12 +190,14 @@ class TestDIContainer:
         assert hasattr(admin_endpoint, "ep")
         assert "admin" in admin_endpoint.ep.tags
 
+    @pytest.mark.unit
     def test_service_singleton_behavior(self, di_container):
         """Test that services are singletons."""
         config1 = di_container.get_core("config")
         config2 = di_container.get_core("config")
         assert config1 is config2
 
+    @pytest.mark.unit
     def test_helper_service_singleton_behavior(self, di_container):
         """Test that helper services are singletons."""
         # Test that multiple calls return the same instance
@@ -209,44 +221,52 @@ class TestDIContainer:
         database_init_service2 = di_container.get_core("database")
         assert database_init_service1 is database_init_service2
 
+    @pytest.mark.unit
     def test_repository_singleton_behavior(self, di_container):
         """Test that repositories are singletons."""
         user_repo1 = di_container.get_repository("user")
         user_repo2 = di_container.get_repository("user")
         assert user_repo1 is user_repo2
 
+    @pytest.mark.unit
     def test_usecase_singleton_behavior(self, di_container):
         """Test that usecases are singletons."""
         wallet_uc1 = di_container.get_usecase("wallet")
         wallet_uc2 = di_container.get_usecase("wallet")
         assert wallet_uc1 is wallet_uc2
 
+    @pytest.mark.unit
     def test_endpoint_singleton_behavior(self, di_container):
         """Test that endpoints are singletons."""
         email_verification_endpoint1 = di_container.get_endpoint("email_verification")
         email_verification_endpoint2 = di_container.get_endpoint("email_verification")
         assert email_verification_endpoint1 is email_verification_endpoint2
 
+    @pytest.mark.unit
     def test_nonexistent_service_raises_error(self, di_container):
         """Test that getting a non-existent service raises ValueError."""
         with pytest.raises(ValueError, match="Service 'nonexistent' not found"):
             di_container.get_service("nonexistent")
 
+    @pytest.mark.unit
     def test_nonexistent_repository_raises_error(self, di_container):
         """Test that getting a non-existent repository raises ValueError."""
         with pytest.raises(ValueError, match="Repository 'nonexistent' not found"):
             di_container.get_repository("nonexistent")
 
+    @pytest.mark.unit
     def test_nonexistent_usecase_raises_error(self, di_container):
         """Test that getting a non-existent usecase raises ValueError."""
         with pytest.raises(ValueError, match="Usecase 'nonexistent' not found"):
             di_container.get_usecase("nonexistent")
 
+    @pytest.mark.unit
     def test_nonexistent_endpoint_raises_error(self, di_container):
         """Test that getting a non-existent endpoint raises ValueError."""
         with pytest.raises(ValueError, match="Endpoint 'nonexistent' not found"):
             di_container.get_endpoint("nonexistent")
 
+    @pytest.mark.unit
     def test_repository_dependency_injection_validation(self, di_container):
         """Test that repositories have proper dependency injection."""
         # Test that all repositories have database and audit dependencies
@@ -279,6 +299,7 @@ class TestDIContainer:
                 repo, f"_{class_name}__audit"
             ), f"Repository '{repo_name}' missing audit dependency"
 
+    @pytest.mark.unit
     def test_usecase_dependency_injection_validation(self, di_container):
         """Test that usecases have proper dependency injection."""
         # Test that all usecases have required dependencies
@@ -307,6 +328,7 @@ class TestDIContainer:
                     usecase, f"_{usecase.__class__.__name__}__config_service"
                 ), f"Usecase '{usecase_name}' missing config"
 
+    @pytest.mark.unit
     def test_endpoint_router_configuration(self, di_container):
         """Test that endpoints have proper router configuration."""
         # Test specific endpoint configurations
@@ -338,6 +360,7 @@ class TestDIContainer:
                         tag in endpoint.ep.tags
                     ), f"Endpoint '{endpoint_name}' missing tag '{tag}'"
 
+    @pytest.mark.unit
     def test_service_initialization_order(self, di_container):
         """Test that services are initialized in the correct order."""
         # Core services should be initialized first
@@ -357,6 +380,7 @@ class TestDIContainer:
         assert logging_service is not None
         assert celery_service is not None
 
+    @pytest.mark.unit
     def test_repository_types_validation(self, di_container):
         """Test that repositories are of correct types."""
         from app.repositories.email_verification_repository import (
@@ -419,6 +443,7 @@ class TestDIContainer:
             di_container.get_repository("token_balance"), TokenBalanceRepository
         )
 
+    @pytest.mark.unit
     def test_usecase_types_validation(self, di_container):
         """Test that usecases are of correct types."""
         from app.usecase.email_verification_usecase import (
@@ -454,6 +479,7 @@ class TestDIContainer:
             di_container.get_usecase("portfolio_snapshot"), PortfolioSnapshotUsecase
         )
 
+    @pytest.mark.unit
     def test_endpoint_types_validation(self, di_container):
         """Test that endpoints are of correct types."""
         from app.api.endpoints.admin import Admin
@@ -475,6 +501,7 @@ class TestDIContainer:
         assert isinstance(di_container.get_endpoint("users"), Users)
         assert isinstance(di_container.get_endpoint("admin"), Admin)
 
+    @pytest.mark.unit
     def test_di_container_state_isolation(self):
         """Test that multiple DIContainer instances are isolated."""
         # Create two separate DIContainer instances
@@ -492,6 +519,7 @@ class TestDIContainer:
         config1_again = di_container1.get_core("config")
         assert config1 is config1_again
 
+    @pytest.mark.unit
     def test_all_registered_services_are_accessible(self, di_container):
         """Test that all registered services can be accessed."""
         # Core services
@@ -506,6 +534,7 @@ class TestDIContainer:
         assert di_container.get_core("middleware") is not None
         assert di_container.get_core("database") is not None
 
+    @pytest.mark.unit
     def test_all_registered_repositories_are_accessible(self, di_container):
         """Test that all registered repositories can be accessed."""
         expected_repositories = [
@@ -527,6 +556,7 @@ class TestDIContainer:
                 di_container.get_repository(repo_name) is not None
             ), f"Repository '{repo_name}' not accessible"
 
+    @pytest.mark.unit
     def test_all_registered_usecases_are_accessible(self, di_container):
         """Test that all registered usecases can be accessed."""
         expected_usecases = [
@@ -545,6 +575,7 @@ class TestDIContainer:
                 di_container.get_usecase(usecase_name) is not None
             ), f"Usecase '{usecase_name}' not accessible"
 
+    @pytest.mark.unit
     def test_all_registered_endpoints_are_accessible(self, di_container):
         """Test that all registered endpoints can be accessed."""
         expected_endpoints = [
@@ -566,18 +597,27 @@ class TestDIContainer:
 class TestConfigurationService:
     """Test the Configuration."""
 
+    @pytest.mark.unit
     def test_configuration_service_properties(self):
         """Test that Configuration properties work correctly."""
-        config = Configuration()
+        # Use test configuration to ensure consistent values in parallel execution
+        from tests.shared.fixtures.test_config import create_unit_test_config
+
+        config = create_unit_test_config()
 
         # Test direct attribute access
         assert config.PROJECT_NAME == "SmartWalletFX"
         assert config.VERSION == "0.1.0"
-        assert config.ENVIRONMENT == "development"
+        assert (
+            config.ENVIRONMENT == "testing"
+        )  # Expect testing environment in test suite
         assert isinstance(config.BACKEND_CORS_ORIGINS, list)
         assert config.ACCESS_TOKEN_EXPIRE_MINUTES == 15
-        assert config.REFRESH_TOKEN_EXPIRE_DAYS == 7
+        assert (
+            config.REFRESH_TOKEN_EXPIRE_DAYS == 1
+        )  # Test config sets this to 1 for faster tests
 
+    @pytest.mark.unit
     def test_configuration_service_is_pydantic_settings(self):
         """Test that Configuration is still a proper Pydantic BaseSettings."""
         config = Configuration()
@@ -596,6 +636,7 @@ class TestCoreDatabase:
         """Create a DIContainer instance for testing."""
         return DIContainer()
 
+    @pytest.mark.unit
     def test_database_initialization(self, di_container):
         """Test that CoreDatabase initializes with proper engines and session factories."""
         config = di_container.get_core("config")
@@ -608,6 +649,7 @@ class TestCoreDatabase:
         assert hasattr(database, "async_session_factory")
         assert hasattr(database, "sync_session_factory")
 
+    @pytest.mark.unit
     def test_sync_session_creation(self, di_container):
         """Test that sync session can be created."""
         config = di_container.get_core("config")
@@ -619,6 +661,7 @@ class TestCoreDatabase:
         sync_session.close()
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_async_session_creation(self, di_container):
         """Test that async session can be created."""
         config = di_container.get_core("config")

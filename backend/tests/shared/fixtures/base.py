@@ -94,10 +94,17 @@ def _make_test_db(tmp_path_factory: pytest.TempPathFactory) -> tuple[str, str]:
     # Branch 2 – SQLite (fallback)
     # ------------------------------------------------------------------
 
-    db_dir = tmp_path_factory.mktemp("db")
-    db_file = db_dir / "test.sqlite"
-    async_url = f"sqlite+aiosqlite:///{db_file}"
-    sync_url = f"sqlite:///{db_file}"
+    # Use in-memory SQLite for maximum speed in unit tests
+    if os.getenv("PYTEST_CURRENT_TEST"):
+        # In-memory database for tests
+        async_url = "sqlite+aiosqlite:///:memory:"
+        sync_url = "sqlite:///:memory:"
+    else:
+        # File-based database for development/debugging
+        db_dir = tmp_path_factory.mktemp("db")
+        db_file = db_dir / "test.sqlite"
+        async_url = f"sqlite+aiosqlite:///{db_file}"
+        sync_url = f"sqlite:///{db_file}"
 
     temp_engine = create_engine(sync_url, connect_args={"check_same_thread": False})
     Base.metadata.create_all(bind=temp_engine)

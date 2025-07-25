@@ -7,6 +7,28 @@ from fastapi import FastAPI
 from jose import jwt
 
 from app.domain.schemas.user import UserCreate
+from app.utils.rate_limiter import login_rate_limiter
+from tests.shared.utils.safe_client import safe_get, safe_post
+
+pytestmark = pytest.mark.integration
+
+
+@pytest.fixture(autouse=True)
+async def _cleanup_auth_state(test_di_container_with_db):
+    """Reset auth-related state between tests."""
+    # Reset rate-limiter to avoid bleed-through from other tests
+    login_rate_limiter.clear()
+
+    # Clear JWT global state to ensure test isolation
+    from app.utils.jwt import clear_jwt_state
+
+    clear_jwt_state()
+
+    # Clear JWT utils caches to ensure test isolation
+    jwt_utils = test_di_container_with_db.get_utility("jwt_utils")
+    jwt_utils.clear_caches()
+
+    yield
 
 
 @pytest.fixture
@@ -62,9 +84,9 @@ async def test_register_login_and_me(
         assert tokens["token_type"] == "bearer"
         assert "access_token" in tokens and tokens["access_token"]
 
-        # Protected route
+        # Protected route (use safe_get due to ASGI issues)
         headers = {"Authorization": f"Bearer {tokens['access_token']}"}
-        resp = await client.get("/users/me", headers=headers)
+        resp = await safe_get(test_app_with_di_container, "/users/me", headers=headers)
         assert resp.status_code == 200, resp.text
         me = resp.json()
         assert me["username"] == user_payload["username"]
@@ -95,7 +117,8 @@ async def test_login_with_wrong_password(
         await user_repo.save(user)
 
         bad_form = {"username": user_payload["username"], "password": "WrongPass1!"}
-        resp = await client.post(
+        resp = await safe_post(
+            test_app_with_di_container,
             "/auth/token",
             data=bad_form,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
@@ -107,23 +130,17 @@ async def test_login_with_wrong_password(
 async def test_protected_route_requires_token(
     test_app_with_di_container: FastAPI,
 ) -> None:
-    async with httpx.AsyncClient(
-        app=test_app_with_di_container, base_url="http://test"
-    ) as client:
-        resp = await client.get("/users/me")
-        assert resp.status_code == 401, resp.text
+    resp = await safe_get(test_app_with_di_container, "/users/me")
+    assert resp.status_code == 401, resp.text
 
 
 @pytest.mark.asyncio
 async def test_protected_route_rejects_invalid_token(
     test_app_with_di_container: FastAPI,
 ) -> None:
-    async with httpx.AsyncClient(
-        app=test_app_with_di_container, base_url="http://test"
-    ) as client:
-        headers = {"Authorization": "Bearer invalid.token.here"}
-        resp = await client.get("/users/me", headers=headers)
-        assert resp.status_code == 401, resp.text
+    headers = {"Authorization": "Bearer invalid.token.here"}
+    resp = await safe_get(test_app_with_di_container, "/users/me", headers=headers)
+    assert resp.status_code == 401, resp.text
 
 
 @pytest.mark.asyncio

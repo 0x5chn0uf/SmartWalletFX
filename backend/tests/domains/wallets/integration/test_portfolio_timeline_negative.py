@@ -5,6 +5,8 @@ import pytest
 
 from app.domain.schemas.user import UserCreate
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.mark.asyncio
 async def test_portfolio_timeline_unauthorized(

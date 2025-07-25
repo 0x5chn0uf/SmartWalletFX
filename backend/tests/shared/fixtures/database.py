@@ -11,7 +11,9 @@ from app.core.database import CoreDatabase
 @pytest.fixture(scope="session")
 def config():
     """Configuration service for tests."""
-    return Configuration()
+    from .test_config import UnitTestConfiguration
+
+    return UnitTestConfiguration()
 
 
 @pytest.fixture(scope="session")
@@ -27,14 +29,15 @@ def database(config):
 async def db_session(database):
     """
     Function-scoped async session using the session-scoped async engine.
-    Provides complete test isolation with automatic rollback.
+    For integration tests, commits changes. For unit tests, uses transactions.
     """
+    # Initialize database tables before creating sessions
+    await database.init_db()
+
     async_session = async_sessionmaker(
         bind=database.async_engine, class_=AsyncSession, expire_on_commit=False
     )
     async with async_session() as session:
-        await session.begin()
-        try:
-            yield session
-        finally:
-            await session.rollback()
+        # Don't start a transaction - let each operation commit individually
+        # This allows integration tests to persist data between operations
+        yield session

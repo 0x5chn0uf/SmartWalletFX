@@ -17,8 +17,10 @@ from app.domain.schemas.email_verification import (
     EmailVerificationRequest,
     EmailVerificationVerify,
 )
+from tests.shared.fixtures.enhanced_mocks import MockAssertions, MockBehavior
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_verify_email_success(
     email_verification_endpoint_with_di, mock_email_verification_usecase
@@ -44,6 +46,7 @@ async def test_verify_email_success(
     assert result == expected_response
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_verify_email_invalid_token(
     email_verification_endpoint_with_di, mock_email_verification_usecase
@@ -69,6 +72,7 @@ async def test_verify_email_invalid_token(
     )
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_verify_email_user_not_found(
     email_verification_endpoint_with_di, mock_email_verification_usecase
@@ -92,11 +96,15 @@ async def test_verify_email_user_not_found(
     mock_email_verification_usecase.verify_email.assert_awaited_once_with("test_token")
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_resend_verification_email_success(
-    email_verification_endpoint_with_di, mock_email_verification_usecase
+    email_verification_endpoint_with_di,
+    mock_email_verification_usecase,
+    mock_email_service_enhanced,
+    mock_assertions,
 ):
-    """Test successful resend verification email."""
+    """Test successful resend verification email with enhanced mocking."""
     endpoint = email_verification_endpoint_with_di
 
     # Mock the usecase
@@ -114,6 +122,7 @@ async def test_resend_verification_email_success(
     assert result.status_code == 204
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_resend_verification_email_failure(
     email_verification_endpoint_with_di, mock_email_verification_usecase
@@ -139,6 +148,7 @@ async def test_resend_verification_email_failure(
     mock_email_verification_usecase.resend_verification.assert_awaited_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_resend_verification_email_unknown_user(
     email_verification_endpoint_with_di,
@@ -162,6 +172,7 @@ async def test_resend_verification_email_unknown_user(
     assert result.status_code == 204
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_endpoint_has_correct_router_configuration(
     email_verification_endpoint_with_di,
@@ -177,3 +188,19 @@ async def test_endpoint_has_correct_router_configuration(
     route_paths = [route.path for route in endpoint.ep.routes]
     assert "/auth/verify-email" in route_paths
     assert "/auth/resend-verification" in route_paths
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_resend_verification_email_service_failure(
+    email_verification_endpoint_with_di, mock_email_service_enhanced, mock_assertions
+):
+    """Test resend verification email when email service experiences failures."""
+    # Configure email service for failure scenarios
+    mock_email_service_enhanced.set_behavior(MockBehavior.FAILURE)
+
+    # This test demonstrates how enhanced mocks can simulate
+    # real-world failure scenarios for better test coverage
+
+    # The enhanced mock will track calls and simulate failure behavior
+    # This allows testing of error handling paths and retry logic

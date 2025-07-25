@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import pytest
+
 from app.domain.schemas.audit_log import AuditEventBase
 
 
+@pytest.mark.unit
 def test_roundtrip_identity() -> None:
     sample = {
         "timestamp": "2025-06-20T12:00:00Z",

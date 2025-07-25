@@ -1,3 +1,5 @@
+import pytest
+
 from app.utils.security import (
     get_password_hash,
     validate_password_strength,
@@ -5,6 +7,7 @@ from app.utils.security import (
 )
 
 
+@pytest.mark.unit
 def test_password_hash_and_verify():
     password = "StrongPass1!"
     hashed = get_password_hash(password)
@@ -13,6 +16,7 @@ def test_password_hash_and_verify():
     assert not verify_password("WrongPass1!", hashed)
 
 
+@pytest.mark.unit
 def test_validate_password_strength():
     assert validate_password_strength("Abcd1234!")
     assert not validate_password_strength("weak")

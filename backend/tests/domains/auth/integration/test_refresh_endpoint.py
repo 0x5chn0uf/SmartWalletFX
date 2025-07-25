@@ -6,6 +6,28 @@ from fastapi import FastAPI
 from jose import jwt
 
 from app.domain.schemas.user import UserCreate
+from app.utils.rate_limiter import login_rate_limiter
+from tests.shared.utils.safe_client import safe_post
+
+pytestmark = pytest.mark.integration
+
+
+@pytest.fixture(autouse=True)
+async def _cleanup_auth_state(test_di_container_with_db):
+    """Reset auth-related state between tests."""
+    # Reset rate-limiter to avoid bleed-through from other tests
+    login_rate_limiter.clear()
+
+    # Clear JWT global state to ensure test isolation
+    from app.utils.jwt import clear_jwt_state
+
+    clear_jwt_state()
+
+    # Clear JWT utils caches to ensure test isolation
+    jwt_utils = test_di_container_with_db.get_utility("jwt_utils")
+    jwt_utils.clear_caches()
+
+    yield
 
 
 async def _register_and_login_with_di(
@@ -76,11 +98,10 @@ async def test_refresh_success(
 
 @pytest.mark.asyncio
 async def test_refresh_invalid_token(test_app_with_di_container: FastAPI):
-    async with httpx.AsyncClient(
-        app=test_app_with_di_container, base_url="http://test"
-    ) as client:
-        res = await client.post(
-            "/auth/refresh", json={"refresh_token": "invalid-token"}
-        )
-        assert res.status_code == 401
-        assert "Invalid refresh token" in res.json().get("detail", "")
+    res = await safe_post(
+        test_app_with_di_container,
+        "/auth/refresh",
+        json={"refresh_token": "invalid-token"},
+    )
+    assert res.status_code == 401
+    assert "Invalid refresh token" in res.json().get("detail", "")

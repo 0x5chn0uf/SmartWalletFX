@@ -20,6 +20,7 @@ def setup_mock_session(repository, mock_session):
     repository._TokenRepository__database.get_session = mock_get_session
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_token_repository_create(token_repository_with_di, mock_async_session):
     """Test token creation with dependency injection."""
@@ -59,6 +60,7 @@ async def test_token_repository_create(token_repository_with_di, mock_async_sess
     mock_async_session.commit.assert_awaited_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_token_repository_create_exception(
     token_repository_with_di, mock_async_session

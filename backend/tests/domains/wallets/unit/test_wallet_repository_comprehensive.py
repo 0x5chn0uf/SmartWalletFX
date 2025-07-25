@@ -45,6 +45,7 @@ def wallet_repository(mock_database, mock_audit):
     return WalletRepository(mock_database, mock_audit)
 
 
+@pytest.mark.unit
 def test_wallet_repository_constructor_dependencies():
     """Test that WalletRepository properly accepts dependencies in constructor."""
     # Arrange
@@ -59,6 +60,7 @@ def test_wallet_repository_constructor_dependencies():
     assert repository._WalletRepository__audit == mock_audit
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_address_found(wallet_repository, mock_session):
     """Test getting wallet by address when wallet exists."""
@@ -86,6 +88,7 @@ async def test_get_by_address_found(wallet_repository, mock_session):
     wallet_repository._WalletRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_address_not_found(wallet_repository, mock_session):
     """Test getting wallet by address when wallet doesn't exist."""
@@ -109,6 +112,7 @@ async def test_get_by_address_not_found(wallet_repository, mock_session):
     wallet_repository._WalletRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_address_exception_handling(wallet_repository, mock_session):
     """Test exception handling in get_by_address method."""
@@ -126,6 +130,7 @@ async def test_get_by_address_exception_handling(wallet_repository, mock_session
     wallet_repository._WalletRepository__audit.error.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_create_success(wallet_repository, mock_session):
     """Test successful creation of wallet."""
@@ -166,6 +171,7 @@ async def test_create_success(wallet_repository, mock_session):
     wallet_repository._WalletRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_create_with_default_name(wallet_repository, mock_session):
     """Test wallet creation with default name when no name provided."""
@@ -196,6 +202,7 @@ async def test_create_with_default_name(wallet_repository, mock_session):
     wallet_repository._WalletRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_create_duplicate_address(wallet_repository, mock_session):
     """Test wallet creation with duplicate address raises HTTPException."""
@@ -217,6 +224,7 @@ async def test_create_duplicate_address(wallet_repository, mock_session):
     wallet_repository._WalletRepository__audit.warning.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_create_general_exception_handling(wallet_repository, mock_session):
     """Test general exception handling in create method."""
@@ -235,6 +243,7 @@ async def test_create_general_exception_handling(wallet_repository, mock_session
     wallet_repository._WalletRepository__audit.error.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_list_by_user_success(wallet_repository, mock_session):
     """Test successful listing of wallets by user."""
@@ -265,6 +274,7 @@ async def test_list_by_user_success(wallet_repository, mock_session):
     wallet_repository._WalletRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_list_by_user_empty_result(wallet_repository, mock_session):
     """Test listing wallets by user when user has no wallets."""
@@ -288,6 +298,7 @@ async def test_list_by_user_empty_result(wallet_repository, mock_session):
     wallet_repository._WalletRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_list_by_user_exception_handling(wallet_repository, mock_session):
     """Test exception handling in list_by_user method."""
@@ -305,6 +316,7 @@ async def test_list_by_user_exception_handling(wallet_repository, mock_session):
     wallet_repository._WalletRepository__audit.error.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_delete_success(wallet_repository, mock_session):
     """Test successful deletion of wallet."""
@@ -336,6 +348,7 @@ async def test_delete_success(wallet_repository, mock_session):
     wallet_repository._WalletRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_delete_wallet_not_found(wallet_repository, mock_session):
     """Test deletion when wallet doesn't exist."""
@@ -361,6 +374,7 @@ async def test_delete_wallet_not_found(wallet_repository, mock_session):
     wallet_repository._WalletRepository__audit.warning.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_delete_unauthorized_user(wallet_repository, mock_session):
     """Test deletion when user is not the owner."""
@@ -391,6 +405,7 @@ async def test_delete_unauthorized_user(wallet_repository, mock_session):
     wallet_repository._WalletRepository__audit.warning.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_delete_general_exception_handling(wallet_repository, mock_session):
     """Test general exception handling in delete method."""
@@ -409,6 +424,7 @@ async def test_delete_general_exception_handling(wallet_repository, mock_session
     wallet_repository._WalletRepository__audit.error.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_timing_measurements():
     """Test that timing measurements are properly calculated."""
@@ -439,6 +455,7 @@ async def test_timing_measurements():
     assert call_args["duration_ms"] == 500
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_audit_logging_patterns():
     """Test that audit logging follows consistent patterns."""

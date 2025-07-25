@@ -10,6 +10,7 @@ from app.utils.oauth_state_cache import (
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_generate_state_unique():
     state1 = generate_state()
     state2 = generate_state()
@@ -18,6 +19,7 @@ async def test_generate_state_unique():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_store_state_success():
     redis = AsyncMock()
     result = await store_state(redis, "abc", ttl=5)
@@ -26,6 +28,7 @@ async def test_store_state_success():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_store_state_failure():
     redis = AsyncMock()
     redis.setex.side_effect = Exception("boom")
@@ -34,6 +37,7 @@ async def test_store_state_failure():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_verify_state_hit():
     redis = AsyncMock()
     redis.exists.return_value = 1
@@ -43,6 +47,7 @@ async def test_verify_state_hit():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_verify_state_miss():
     redis = AsyncMock()
     redis.exists.return_value = 0
@@ -52,6 +57,7 @@ async def test_verify_state_miss():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_verify_state_exception():
     redis = AsyncMock()
     redis.exists.side_effect = Exception("boom")
@@ -60,6 +66,7 @@ async def test_verify_state_exception():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_verify_state_fallback(monkeypatch):
     redis = AsyncMock()
     redis.exists.side_effect = Exception("boom")

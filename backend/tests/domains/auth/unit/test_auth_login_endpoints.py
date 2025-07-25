@@ -19,6 +19,7 @@ from app.domain.schemas.auth_token import TokenResponse
 class TestAuthLoginEndpoints:
     """Test auth login endpoints."""
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_login_for_access_token_success(
         self, auth_endpoint, mock_auth_usecase, mock_rate_limiter_utils
@@ -63,6 +64,7 @@ class TestAuthLoginEndpoints:
             # Check that cookies were set
             response.set_cookie.assert_called()
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_login_for_access_token_invalid_credentials(
         self, auth_endpoint, mock_auth_usecase
@@ -99,6 +101,7 @@ class TestAuthLoginEndpoints:
             )
             mock_audit.warning.assert_called()
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_login_for_access_token_rate_limited(
         self, auth_endpoint, mock_auth_usecase
@@ -134,6 +137,7 @@ class TestAuthLoginEndpoints:
                 )
                 mock_audit.warning.assert_called()
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_login_for_access_token_inactive_user(
         self, auth_endpoint, mock_auth_usecase
@@ -164,6 +168,7 @@ class TestAuthLoginEndpoints:
             )
             mock_audit.warning.assert_called()
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_login_for_access_token_unverified_email(
         self, auth_endpoint, mock_auth_usecase
@@ -194,6 +199,7 @@ class TestAuthLoginEndpoints:
             )
             mock_audit.warning.assert_called()
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_login_for_access_token_unexpected_error(
         self, auth_endpoint, mock_auth_usecase

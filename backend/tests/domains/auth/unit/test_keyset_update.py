@@ -1,6 +1,9 @@
+import pytest
+
 from app.utils.jwt_rotation import KeySetUpdate
 
 
+@pytest.mark.unit
 def test_is_noop_conditions():
     """Verify the is_noop helper across combinations."""
     assert KeySetUpdate().is_noop() is True

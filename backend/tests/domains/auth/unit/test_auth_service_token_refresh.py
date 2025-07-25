@@ -11,6 +11,7 @@ from app.domain.errors import InvalidCredentialsError
 class TestAuthServiceTokenRefresh:
     """Test auth service token refresh functionality."""
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_refresh_success(
         self, auth_usecase, mock_jwt_utils, mock_refresh_token_repo
@@ -36,6 +37,7 @@ class TestAuthServiceTokenRefresh:
         assert result.access_token == "new-access-token"
         assert result.token_type == "bearer"
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_refresh_invalid_token(self, auth_usecase, mock_jwt_utils):
         """Test refresh with invalid token."""
@@ -44,6 +46,7 @@ class TestAuthServiceTokenRefresh:
         with pytest.raises(InvalidCredentialsError):
             await auth_usecase.refresh("invalid-token")
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_refresh_wrong_token_type(self, auth_usecase, mock_jwt_utils):
         """Test refresh with wrong token type."""
@@ -56,6 +59,7 @@ class TestAuthServiceTokenRefresh:
         with pytest.raises(InvalidCredentialsError):
             await auth_usecase.refresh("wrong-type-token")
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_refresh_expired_token(
         self, auth_usecase, mock_jwt_utils, mock_refresh_token_repo
@@ -71,6 +75,7 @@ class TestAuthServiceTokenRefresh:
         with pytest.raises(InvalidCredentialsError):
             await auth_usecase.refresh("expired-token")
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_refresh_revoked_token(
         self, auth_usecase, mock_jwt_utils, mock_refresh_token_repo

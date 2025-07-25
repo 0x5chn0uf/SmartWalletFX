@@ -28,6 +28,7 @@ def mock_settings():
 class TestEncryptionError:
     """Test EncryptionError exception."""
 
+    @pytest.mark.unit
     def test_encryption_error_inheritance(self):
         """Test that EncryptionError inherits from RuntimeError."""
         error = EncryptionError("test error")
@@ -44,6 +45,7 @@ class TestEncryptFile:
         self.encrypted_path = Path("/tmp/test_file.txt.gpg")
 
     @patch("app.utils.encryption.subprocess.run")
+    @pytest.mark.unit
     def test_encrypt_file_success_with_recipient(self, mock_run):
         """Test successful file encryption with explicit recipient."""
         mock_run.return_value = Mock(returncode=0)
@@ -70,6 +72,7 @@ class TestEncryptFile:
         )
 
     @patch("app.utils.encryption.subprocess.run")
+    @pytest.mark.unit
     def test_encrypt_file_success_with_default_recipient(
         self, mock_run, mock_settings, monkeypatch
     ):
@@ -105,6 +108,7 @@ class TestEncryptFile:
         )
 
     @patch("app.utils.encryption.subprocess.run")
+    @pytest.mark.unit
     def test_encrypt_file_success_with_custom_gpg_binary(self, mock_run):
         """Test successful file encryption with custom GPG binary."""
         mock_run.return_value = Mock(returncode=0)
@@ -134,12 +138,14 @@ class TestEncryptFile:
             stderr=subprocess.PIPE,
         )
 
+    @pytest.mark.unit
     def test_encrypt_file_file_not_found(self):
         """Test encryption when source file doesn't exist."""
         with patch.object(Path, "exists", return_value=False):
             with pytest.raises(FileNotFoundError):
                 encrypt_file(self.test_file_path, recipient="test_key")
 
+    @pytest.mark.unit
     def test_encrypt_file_no_recipient_configured(self, monkeypatch):
         """Test encryption when no recipient is provided."""
         mock_config = Configuration()
@@ -152,6 +158,7 @@ class TestEncryptFile:
                 encrypt_file(self.test_file_path)
 
     @patch("app.utils.encryption.subprocess.run")
+    @pytest.mark.unit
     def test_encrypt_file_gpg_command_failure(self, mock_run):
         """Test encryption when GPG command fails."""
         # Mock CalledProcessError with stderr
@@ -167,6 +174,7 @@ class TestEncryptFile:
                 encrypt_file(self.test_file_path, recipient="test_key")
 
     @patch("app.utils.encryption.subprocess.run")
+    @pytest.mark.unit
     def test_encrypt_file_gpg_command_failure_no_stderr(self, mock_run):
         """Test encryption when GPG command fails with no stderr."""
         # Mock CalledProcessError without stderr
@@ -181,6 +189,7 @@ class TestEncryptFile:
                 encrypt_file(self.test_file_path, recipient="test_key")
 
     @patch("app.utils.encryption.subprocess.run")
+    @pytest.mark.unit
     def test_encrypt_file_gpg_command_failure_stderr_not_bytes(self, mock_run):
         """Test encryption when GPG command fails with non-bytes stderr."""
         # Mock CalledProcessError with string stderr
@@ -195,6 +204,7 @@ class TestEncryptFile:
                 encrypt_file(self.test_file_path, recipient="test_key")
 
     @patch("app.utils.encryption.subprocess.run")
+    @pytest.mark.unit
     def test_encrypt_file_creates_correct_output_path(self, mock_run):
         """Test that encryption creates the correct output file path."""
         mock_run.return_value = Mock(returncode=0)
@@ -212,6 +222,7 @@ class TestEncryptFile:
                 assert result == expected_output
 
     @patch("app.utils.encryption.subprocess.run")
+    @pytest.mark.unit
     def test_encrypt_file_command_arguments(self, mock_run):
         """Test that GPG command is called with correct arguments."""
         mock_run.return_value = Mock(returncode=0)
@@ -233,6 +244,7 @@ class TestEncryptFile:
         assert str(self.test_file_path) in cmd
 
     @patch("app.utils.encryption.subprocess.run")
+    @pytest.mark.unit
     def test_encrypt_file_subprocess_kwargs(self, mock_run):
         """Test that subprocess.run is called with correct kwargs."""
         mock_run.return_value = Mock(returncode=0)
@@ -249,6 +261,7 @@ class TestEncryptFile:
 class TestGPGBinary:
     """Test GPG binary constant."""
 
+    @pytest.mark.unit
     def test_gpg_binary_constant(self):
         """Test that GPG_BINARY is set correctly."""
         assert GPG_BINARY == "gpg"

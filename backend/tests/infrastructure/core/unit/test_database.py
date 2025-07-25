@@ -13,6 +13,7 @@ from app.utils.logging import Audit
 class TestCoreDatabase:
     """Test CoreDatabase class."""
 
+    @pytest.mark.unit
     def test_init_with_sqlite_async_url(self):
         """Test initialization with SQLite database URL conversion."""
         config = Mock(spec=Configuration)
@@ -41,6 +42,7 @@ class TestCoreDatabase:
             assert sync_args[0] == "sqlite:///test.db"
             assert sync_kwargs["connect_args"] == {"check_same_thread": False}
 
+    @pytest.mark.unit
     def test_init_with_postgresql_url(self):
         """Test initialization with PostgreSQL database URL conversion."""
         config = Mock(spec=Configuration)
@@ -71,6 +73,7 @@ class TestCoreDatabase:
             assert sync_args[0] == "postgresql://user:pass@host:5432/db"
             assert sync_kwargs["connect_args"] == {}
 
+    @pytest.mark.unit
     def test_init_with_already_async_urls(self):
         """Test initialization with already converted async URLs."""
         config = Mock(spec=Configuration)
@@ -97,6 +100,7 @@ class TestCoreDatabase:
             sync_args, sync_kwargs = mock_create_sync.call_args
             assert sync_args[0] == "sqlite:///test.db"
 
+    @pytest.mark.unit
     def test_init_with_postgresql_asyncpg_url(self):
         """Test initialization with PostgreSQL asyncpg URL conversion."""
         config = Mock(spec=Configuration)
@@ -123,6 +127,7 @@ class TestCoreDatabase:
             sync_args, sync_kwargs = mock_create_sync.call_args
             assert sync_args[0] == "postgresql://user:pass@host:5432/db"
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_init_db_success(self):
         """Test successful database initialization."""
@@ -158,6 +163,7 @@ class TestCoreDatabase:
             audit.info.assert_any_call("database_initialization_completed")
             mock_conn.run_sync.assert_called_once_with(Base.metadata.create_all)
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_init_db_failure(self):
         """Test database initialization failure."""
@@ -195,6 +201,7 @@ class TestCoreDatabase:
                 "database_initialization_failed", error="DB Error"
             )
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_check_database_connection_success(self):
         """Test successful database connection check."""
@@ -229,6 +236,7 @@ class TestCoreDatabase:
             assert result is True
             mock_conn.execute.assert_called_once_with("SELECT 1")
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_check_database_connection_failure(self):
         """Test database connection check failure."""
@@ -265,6 +273,7 @@ class TestCoreDatabase:
                 "database_connection_check_failed", error="Connection Error"
             )
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_session(self):
         """Test get_session async context manager."""
@@ -296,6 +305,7 @@ class TestCoreDatabase:
             async with db.get_session() as session:
                 assert session is mock_session_instance
 
+    @pytest.mark.unit
     def test_get_sync_session(self):
         """Test get_sync_session method."""
         config = Mock(spec=Configuration)

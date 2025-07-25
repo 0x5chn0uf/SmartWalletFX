@@ -20,6 +20,7 @@ from app.domain.schemas.password_reset import (
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_request_password_reset_rate_limited(
     password_reset_endpoint_with_di, mock_rate_limiter_utils
 ):
@@ -37,6 +38,7 @@ async def test_request_password_reset_rate_limited(
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_request_password_reset_unknown_email(
     password_reset_endpoint_with_di,
     mock_user_repository,
@@ -59,6 +61,7 @@ async def test_request_password_reset_unknown_email(
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_request_password_reset_email_failure(
     password_reset_endpoint_with_di,
     mock_user_repository,
@@ -88,6 +91,7 @@ async def test_request_password_reset_email_failure(
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_request_password_reset_success(
     password_reset_endpoint_with_di,
     mock_user_repository,
@@ -123,6 +127,7 @@ async def test_request_password_reset_success(
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_verify_reset_token(
     password_reset_endpoint_with_di,
     mock_password_reset_repository,
@@ -142,6 +147,7 @@ async def test_verify_reset_token(
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_verify_reset_token_invalid(
     password_reset_endpoint_with_di,
     mock_password_reset_repository,
@@ -164,6 +170,7 @@ async def test_verify_reset_token_invalid(
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_reset_password_invalid_token(
     password_reset_endpoint_with_di,
     mock_password_reset_repository,
@@ -186,6 +193,7 @@ async def test_reset_password_invalid_token(
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_reset_password_user_not_found(
     password_reset_endpoint_with_di,
     mock_user_repository,
@@ -214,6 +222,7 @@ async def test_reset_password_user_not_found(
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_reset_password_success(
     password_reset_endpoint_with_di,
     mock_user_repository,

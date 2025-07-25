@@ -9,6 +9,7 @@ import pytest
 class TestAuthServiceTokenManagement:
     """Test auth service token management functionality."""
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_revoke_refresh_token_success(
         self, auth_usecase, mock_refresh_token_repo, mock_jwt_utils
@@ -35,6 +36,7 @@ class TestAuthServiceTokenManagement:
             saved_token = mock_refresh_token_repo.save.call_args[0][0]
             assert saved_token.revoked is True
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_revoke_refresh_token_not_found(
         self, auth_usecase, mock_refresh_token_repo, mock_jwt_utils

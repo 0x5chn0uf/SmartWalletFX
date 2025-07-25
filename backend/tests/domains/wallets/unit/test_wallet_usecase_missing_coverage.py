@@ -20,6 +20,7 @@ from app.domain.schemas.wallet import WalletCreate, WalletResponse
 class TestWalletUsecaseMissingCoverage:
     """Test missing coverage areas in WalletUsecase."""
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_create_wallet_user_not_found(self, wallet_usecase_with_di):
         """Test create_wallet when user is not found."""
@@ -42,6 +43,7 @@ class TestWalletUsecaseMissingCoverage:
         # Verify user repo was called
         usecase._WalletUsecase__user_repo.get_by_id.assert_called_once_with(user_id)
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_create_wallet_exception_handling(self, wallet_usecase_with_di):
         """Test create_wallet exception handling."""
@@ -71,6 +73,7 @@ class TestWalletUsecaseMissingCoverage:
         assert error_call[0][0] == "wallet_usecase_create_wallet_failed"
         assert "Database error" in error_call[1]["error"]
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_list_wallets_user_not_found(self, wallet_usecase_with_di):
         """Test list_wallets when user is not found."""
@@ -87,6 +90,7 @@ class TestWalletUsecaseMissingCoverage:
         assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
         assert "User not found" in str(exc_info.value.detail)
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_list_wallets_exception_handling(self, wallet_usecase_with_di):
         """Test list_wallets exception handling."""
@@ -113,6 +117,7 @@ class TestWalletUsecaseMissingCoverage:
         assert error_call[0][0] == "wallet_usecase_list_wallets_failed"
         assert "Database error" in error_call[1]["error"]
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_delete_wallet_user_not_found(self, wallet_usecase_with_di):
         """Test delete_wallet when user is not found."""
@@ -130,6 +135,7 @@ class TestWalletUsecaseMissingCoverage:
         assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
         assert "User not found" in str(exc_info.value.detail)
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_delete_wallet_exception_handling(self, wallet_usecase_with_di):
         """Test delete_wallet exception handling."""
@@ -157,6 +163,7 @@ class TestWalletUsecaseMissingCoverage:
         assert error_call[0][0] == "wallet_usecase_delete_wallet_failed"
         assert "Database error" in error_call[1]["error"]
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_verify_wallet_ownership_user_not_found(self, wallet_usecase_with_di):
         """Test verify_wallet_ownership when user is not found."""
@@ -173,6 +180,7 @@ class TestWalletUsecaseMissingCoverage:
         # Verify returns False
         assert result is False
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_verify_wallet_ownership_exception_handling(
         self, wallet_usecase_with_di
@@ -202,6 +210,7 @@ class TestWalletUsecaseMissingCoverage:
         assert error_call[0][0] == "wallet_usecase_verify_ownership_failed"
         assert "Database error" in error_call[1]["error"]
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_portfolio_snapshots_user_not_found(self, wallet_usecase_with_di):
         """Test get_portfolio_snapshots when user is not found."""
@@ -219,6 +228,7 @@ class TestWalletUsecaseMissingCoverage:
         assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
         assert "User not found" in str(exc_info.value.detail)
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_portfolio_snapshots_exception_handling(
         self, wallet_usecase_with_di
@@ -248,6 +258,7 @@ class TestWalletUsecaseMissingCoverage:
         assert error_call[0][0] == "wallet_usecase_get_portfolio_snapshots_failed"
         assert "Database error" in error_call[1]["error"]
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_portfolio_metrics_user_not_found(self, wallet_usecase_with_di):
         """Test get_portfolio_metrics when user is not found."""
@@ -265,6 +276,7 @@ class TestWalletUsecaseMissingCoverage:
         assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
         assert "User not found" in str(exc_info.value.detail)
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_portfolio_metrics_no_snapshots(self, wallet_usecase_with_di):
         """Test get_portfolio_metrics when no snapshots exist."""
@@ -310,6 +322,7 @@ class TestWalletUsecaseMissingCoverage:
         warning_call = usecase._WalletUsecase__audit.warning.call_args
         assert warning_call[0][0] == "wallet_usecase_get_portfolio_metrics_no_snapshots"
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_portfolio_metrics_with_snapshots(self, wallet_usecase_with_di):
         """Test get_portfolio_metrics with existing snapshots."""
@@ -363,6 +376,7 @@ class TestWalletUsecaseMissingCoverage:
         assert result.health_scores == []
         assert result.protocol_breakdown == {}
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_portfolio_metrics_exception_handling(
         self, wallet_usecase_with_di
@@ -392,6 +406,7 @@ class TestWalletUsecaseMissingCoverage:
         assert error_call[0][0] == "wallet_usecase_get_portfolio_metrics_failed"
         assert "Database error" in error_call[1]["error"]
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_portfolio_timeline_user_not_found(self, wallet_usecase_with_di):
         """Test get_portfolio_timeline when user is not found."""
@@ -409,6 +424,7 @@ class TestWalletUsecaseMissingCoverage:
         assert exc_info.value.status_code == status.HTTP_404_NOT_FOUND
         assert "User not found" in str(exc_info.value.detail)
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_portfolio_timeline_success(self, wallet_usecase_with_di):
         """Test get_portfolio_timeline success case."""
@@ -464,6 +480,7 @@ class TestWalletUsecaseMissingCoverage:
         assert call_args[0][4] == 0  # offset
         assert call_args[0][5] == "daily"  # interval
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_portfolio_timeline_with_null_values(
         self, wallet_usecase_with_di
@@ -506,6 +523,7 @@ class TestWalletUsecaseMissingCoverage:
         assert result.collateral_usd == [0.0]
         assert result.borrowings_usd == [0.0]
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_portfolio_timeline_exception_handling(
         self, wallet_usecase_with_di
@@ -535,6 +553,7 @@ class TestWalletUsecaseMissingCoverage:
         assert error_call[0][0] == "wallet_usecase_get_portfolio_timeline_failed"
         assert "Database error" in error_call[1]["error"]
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_portfolio_timeline_custom_parameters(
         self, wallet_usecase_with_di

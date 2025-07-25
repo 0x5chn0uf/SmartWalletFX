@@ -2,10 +2,11 @@ import uuid
 
 import pytest
 
-from app.domain.schemas.user import UserCreate, WeakPasswordError
+from app.domain.schemas.user import UserCreate
 from app.usecase.auth_usecase import DuplicateError
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_register_success(auth_usecase, mock_user_repo):
     """Test successful user registration with new DI pattern."""
@@ -26,6 +27,7 @@ async def test_register_success(auth_usecase, mock_user_repo):
     assert user.hashed_password.startswith("$2")
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_register_duplicate_username(auth_usecase, mock_user_repo):
     """Test that registering with duplicate username raises DuplicateError."""
@@ -46,10 +48,13 @@ async def test_register_duplicate_username(auth_usecase, mock_user_repo):
         await auth_usecase.register(dup_payload)
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_register_weak_password(auth_usecase):
-    """Test that registering with weak password raises WeakPasswordError."""
-    with pytest.raises(WeakPasswordError):
+    """Test that registering with weak password raises ValidationError."""
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
         weak = UserCreate(
             username=f"charlie-{uuid.uuid4().hex[:8]}",
             email=f"charlie-{uuid.uuid4().hex[:8]}@example.com",

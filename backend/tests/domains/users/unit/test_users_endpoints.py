@@ -8,15 +8,17 @@ pattern with dependency injection.
 from __future__ import annotations
 
 import uuid
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from fastapi import HTTPException, Request, status
 
 from app.domain.schemas.user import UserCreate
 from app.models.user import User
+from tests.shared.fixtures.enhanced_mocks import MockAssertions, MockBehavior
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_read_current_user_success(users_endpoint_with_di):
     """Test successful reading of current user."""
@@ -56,6 +58,7 @@ async def test_read_current_user_success(users_endpoint_with_di):
         mock_audit.info.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_read_current_user_inactive(users_endpoint_with_di):
     """Test reading current user when user is inactive."""
@@ -88,6 +91,7 @@ async def test_read_current_user_inactive(users_endpoint_with_di):
         assert excinfo.value.detail == "Inactive or disabled user account"
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_update_user_success(users_endpoint_with_di):
     """Test successful user update."""
@@ -137,6 +141,7 @@ async def test_update_user_success(users_endpoint_with_di):
         endpoint._Users__user_repo.update.assert_awaited_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_update_user_not_found(users_endpoint_with_di):
     """Test updating user when user is not found."""
@@ -178,12 +183,16 @@ async def test_update_user_not_found(users_endpoint_with_di):
         endpoint._Users__user_repo.update.assert_not_awaited()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
-async def test_update_user_unauthorized(users_endpoint_with_di):
-    """Test updating user when not authorized."""
+async def test_update_user_unauthorized(
+    users_endpoint_with_di,
+    mock_user_repository,
+):
+    """Test updating user when not authorized using regular mocks."""
     endpoint = users_endpoint_with_di
 
-    # Setup
+    # Setup test data
     user_id = uuid.uuid4()
     db_user = User(
         id=user_id,
@@ -193,14 +202,14 @@ async def test_update_user_unauthorized(users_endpoint_with_di):
     )
 
     current_user = User(
-        id=uuid.uuid4(),  # Different ID
+        id=uuid.uuid4(),  # Different ID - unauthorized
         username="otheruser",
         email="other@example.com",
         hashed_password="hashed",
     )
 
-    # Mock repository
-    endpoint._Users__user_repo.get_by_id.return_value = db_user
+    # Configure mock for authorization failure scenario
+    mock_user_repository.get_by_id = AsyncMock(return_value=db_user)
 
     user_in = UserCreate(
         username="updated_user",
@@ -216,7 +225,7 @@ async def test_update_user_unauthorized(users_endpoint_with_di):
     with patch("app.api.endpoints.users.get_user_id_from_request") as mock_get_user_id:
         mock_get_user_id.return_value = current_user.id
 
-        # Execute and Assert
+        # Execute and Assert authorization failure
         with pytest.raises(HTTPException) as excinfo:
             await endpoint.update_user(request, user_id, user_in)
 
@@ -226,6 +235,7 @@ async def test_update_user_unauthorized(users_endpoint_with_di):
         endpoint._Users__user_repo.update.assert_not_awaited()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_delete_user_success(users_endpoint_with_di):
     """Test successful user deletion."""
@@ -261,6 +271,7 @@ async def test_delete_user_success(users_endpoint_with_di):
         endpoint._Users__user_repo.delete.assert_awaited_once_with(current_user)
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_delete_user_not_found(users_endpoint_with_di):
     """Test deleting user when user is not found."""
@@ -296,6 +307,7 @@ async def test_delete_user_not_found(users_endpoint_with_di):
         endpoint._Users__user_repo.delete.assert_not_awaited()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_delete_user_unauthorized(users_endpoint_with_di):
     """Test deleting user when not authorized."""
@@ -338,6 +350,7 @@ async def test_delete_user_unauthorized(users_endpoint_with_di):
         endpoint._Users__user_repo.delete.assert_not_awaited()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_endpoint_has_correct_router_configuration(users_endpoint_with_di):
     """Test that the endpoint has correct router configuration."""
