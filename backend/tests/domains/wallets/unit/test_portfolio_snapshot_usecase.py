@@ -372,7 +372,12 @@ class TestPortfolioSnapshotUsecase:
 
         # Verify default parameters were used
         usecase._PortfolioSnapshotUsecase__portfolio_snapshot_repo.get_timeline.assert_called_once_with(
-            user_address, from_ts, to_ts, 100, 0, "none"  # default values
+            user_address,
+            from_ts,
+            to_ts,
+            100,
+            0,
+            "none",  # default values
         )
 
         assert result == []

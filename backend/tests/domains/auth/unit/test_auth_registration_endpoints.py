@@ -91,16 +91,14 @@ class TestAuthRegistrationEndpoints:
         request.client = Mock()
         request.client.host = "127.0.0.1"
 
-        background_tasks = Mock()
+        Mock()
 
         # With the updated schema, weak passwords are caught at Pydantic validation level
         # This test now validates that ValidationError is raised during schema creation
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError) as excinfo:
-            user_payload = UserCreate(
-                username="testuser", email="test@example.com", password="weak"
-            )
+            UserCreate(username="testuser", email="test@example.com", password="weak")
 
         # Ensure the error is related to password strength
         assert "strength requirements" in str(excinfo.value)

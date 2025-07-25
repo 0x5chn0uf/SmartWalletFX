@@ -83,7 +83,7 @@ async def test_obtain_token_bad_credentials(
 
     async with httpx.AsyncClient(
         app=test_app_with_di_container, base_url="http://test"
-    ) as client:
+    ):
         # Register user using auth usecase
         user_data = UserCreate(username=username, email=email, password=password)
         user = await auth_usecase.register(user_data)

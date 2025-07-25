@@ -43,9 +43,9 @@ def test_app_with_di_container(test_di_container_with_db):
     """Create a FastAPI app using DIContainer for integration testing."""
     from app.main import ApplicationFactory
 
-    # Create app using DIContainer with skip_middleware=True but allow startup for database initialization
+    # Create app using DIContainer with middleware enabled for proper integration testing
     app_factory = ApplicationFactory(
-        test_di_container_with_db, skip_startup=False, skip_middleware=True
+        test_di_container_with_db, skip_startup=False, skip_middleware=False
     )
     app = app_factory.create_app()
 
@@ -218,131 +218,135 @@ async def integration_async_client(test_app_with_di_container):
                     ).encode()
                     status_code = 422
 
-            elif "/password-reset-request" in url:
-                # Rate limiting endpoint - return 429 for test
-                content = json.dumps(
-                    {
-                        "detail": "Too many password reset requests. Please try again later.",
-                        "code": "RATE_LIMIT_EXCEEDED",
-                        "status_code": 429,
-                        "trace_id": "test-trace-id",
-                    }
-                ).encode()
-                status_code = 429
+            # Let real FastAPI handlers process password-reset and
+            # user / wallet routes during integration tests so business
+            # logic (validation, rate-limit, ownership checks, etc.)
+            # is executed and proper status codes are returned.
+            #
+            # Only reach this block for *unit* tests that lack a DB session.
 
-            # Wallet endpoints
-            elif "/wallets" in url:
-                if not has_auth:
+            if not self._async_client:  # unit-test path ⇒ keep minimal mocks
+                if "/password-reset-request" in url:
+                    # Rate limiting endpoint - return 429 for test
                     content = json.dumps(
                         {
-                            "detail": "Not authenticated",
-                            "code": "AUTH_FAILURE",
-                            "status_code": 401,
+                            "detail": "Too many password reset requests. Please try again later.",
+                            "code": "RATE_LIMIT_EXCEEDED",
+                            "status_code": 429,
                             "trace_id": "test-trace-id",
                         }
                     ).encode()
-                    status_code = 401
-                elif "/portfolio/metrics" in url:
-                    # Extract address from URL
-                    import re
+                    status_code = 429
+                elif "/wallets" in url:
+                    if not has_auth:
+                        content = json.dumps(
+                            {
+                                "detail": "Not authenticated",
+                                "code": "AUTH_FAILURE",
+                                "status_code": 401,
+                                "trace_id": "test-trace-id",
+                            }
+                        ).encode()
+                        status_code = 401
+                    elif "/portfolio/metrics" in url:
+                        # Extract address from URL
+                        import re
 
-                    address_match = re.search(
-                        r"/wallets/([^/]+)/portfolio/metrics", url
-                    )
-                    address = address_match.group(1) if address_match else "0x123"
-                    content = json.dumps(
-                        {
-                            "user_address": address,
-                            "total_collateral": 0.0,
-                            "total_borrowings": 0.0,
-                            "total_collateral_usd": 0.0,
-                            "total_borrowings_usd": 0.0,
-                            "health_factor": 1.0,
-                            "net_worth_usd": 0.0,
-                        }
-                    ).encode()
-                    status_code = 200
-                elif "/portfolio/timeline" in url:
-                    # Portfolio timeline endpoint
-                    content = json.dumps(
-                        {
-                            "timestamps": [],
-                            "collateral_usd": [],
-                            "borrowings_usd": [],
-                            "net_worth_usd": [],
-                        }
-                    ).encode()
-                    status_code = 200
-                elif method.upper() == "POST":
-                    # Create wallet
-                    content = json.dumps(
-                        {
-                            "id": "test-wallet-id",
-                            "address": json_data.get("address", "0x123"),
-                            "name": json_data.get("name", "Test Wallet"),
-                            "user_id": "test-user-id",
-                        }
-                    ).encode()
-                    status_code = 201
-                elif method.upper() == "GET":
-                    # List wallets or get specific wallet
-                    content = json.dumps([]).encode()
-                    status_code = 200
-                elif method.upper() == "DELETE":
-                    # Delete wallet
-                    content = json.dumps(
-                        {"message": "Wallet deleted successfully"}
-                    ).encode()
-                    status_code = 200
+                        address_match = re.search(
+                            r"/wallets/([^/]+)/portfolio/metrics", url
+                        )
+                        address = address_match.group(1) if address_match else "0x123"
+                        content = json.dumps(
+                            {
+                                "user_address": address,
+                                "total_collateral": 0.0,
+                                "total_borrowings": 0.0,
+                                "total_collateral_usd": 0.0,
+                                "total_borrowings_usd": 0.0,
+                                "health_factor": 1.0,
+                                "net_worth_usd": 0.0,
+                            }
+                        ).encode()
+                        status_code = 200
+                    elif "/portfolio/timeline" in url:
+                        # Portfolio timeline endpoint
+                        content = json.dumps(
+                            {
+                                "timestamps": [],
+                                "collateral_usd": [],
+                                "borrowings_usd": [],
+                                "net_worth_usd": [],
+                            }
+                        ).encode()
+                        status_code = 200
+                    elif method.upper() == "POST":
+                        # Create wallet
+                        content = json.dumps(
+                            {
+                                "id": "test-wallet-id",
+                                "address": json_data.get("address", "0x123"),
+                                "name": json_data.get("name", "Test Wallet"),
+                                "user_id": "test-user-id",
+                            }
+                        ).encode()
+                        status_code = 201
+                    elif method.upper() == "GET":
+                        # List wallets or get specific wallet
+                        content = json.dumps([]).encode()
+                        status_code = 200
+                    elif method.upper() == "DELETE":
+                        # Delete wallet
+                        content = json.dumps(
+                            {"message": "Wallet deleted successfully"}
+                        ).encode()
+                        status_code = 200
+                    else:
+                        content = json.dumps({"message": "OK"}).encode()
+                        status_code = 200
+                elif "/users/me" in url:
+                    if not has_auth:
+                        # Debug: Integration tests should have auth headers
+                        raise Exception(
+                            f"Integration test for {url} missing auth headers. Check JWT token generation."
+                        )
+                    else:
+                        # This should not be reached in integration tests - throw error to debug
+                        raise Exception(
+                            f"Integration test should not use mock response for {url}. Fix ASGI transport issue instead."
+                        )
+                elif "/portfolio" in url:
+                    if not has_auth:
+                        content = json.dumps(
+                            {
+                                "detail": "Not authenticated",
+                                "code": "AUTH_FAILURE",
+                                "status_code": 401,
+                                "trace_id": "test-trace-id",
+                            }
+                        ).encode()
+                        status_code = 401
+                    else:
+                        content = json.dumps({"total_value": 0, "metrics": {}}).encode()
+                        status_code = 200
                 else:
-                    content = json.dumps({"message": "OK"}).encode()
-                    status_code = 200
-
-            # User profile endpoints
-            elif "/users/me" in url:
-                if not has_auth:
+                    # Default response for unit tests
                     content = json.dumps(
                         {
-                            "detail": "Not authenticated",
-                            "code": "AUTH_FAILURE",
-                            "status_code": 401,
+                            "detail": "Test infrastructure limitation",
+                            "code": "TEST_ERROR",
+                            "status_code": 500,
                             "trace_id": "test-trace-id",
                         }
                     ).encode()
-                    status_code = 401
-                else:
-                    # This should not be reached in integration tests - throw error to debug
-                    raise Exception(
-                        f"Integration test should not use mock response for {url}. Fix ASGI transport issue instead."
-                    )
-
-            # Portfolio endpoints
-            elif "/portfolio" in url:
-                if not has_auth:
-                    content = json.dumps(
-                        {
-                            "detail": "Not authenticated",
-                            "code": "AUTH_FAILURE",
-                            "status_code": 401,
-                            "trace_id": "test-trace-id",
-                        }
-                    ).encode()
-                    status_code = 401
-                else:
-                    content = json.dumps({"total_value": 0, "metrics": {}}).encode()
-                    status_code = 200
-
+                    status_code = 500
             else:
-                # Default response
-                content = json.dumps(
-                    {
-                        "detail": "Test infrastructure limitation",
-                        "code": "TEST_ERROR",
-                        "status_code": 500,
-                        "trace_id": "test-trace-id",
-                    }
-                ).encode()
-                status_code = 500
+                # For integration tests, we should not use mock responses for password reset endpoints
+                # These should be handled by the real FastAPI app
+                if "/password-reset" in url and self._async_client:
+                    # Re-raise the original exception to force the test to handle real endpoints
+                    raise 
+                else:
+                    raise   # force _safe_request to use the real async client
 
             # Create mock response object
             class MockResponse:

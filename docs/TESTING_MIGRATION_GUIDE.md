@@ -25,7 +25,8 @@ import pytest
 ```python
 from unittest.mock import Mock, AsyncMock, patch
 import pytest
-from tests.shared.fixtures.enhanced_mocks import MockBehavior, MockAssertions
+from tests.shared.fixtures.enhanced_mocks import MockBehavior
+from tests.shared.fixtures.enhanced_mocks.assertions import MockAssertions
 ```
 
 ### 2. Replace Basic Mocks with Enhanced Mocks

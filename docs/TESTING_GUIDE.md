@@ -50,7 +50,7 @@ tests/
 │   └── security/          # Security tests
 └── shared/                # Shared test utilities
     ├── fixtures/          # Test fixtures and mocks
-    │   ├── enhanced_mocks.py    # Enhanced mock system
+    │   ├── enhanced_mocks/    # Enhanced mock system
     │   ├── test_di_container.py # Test DI container
     │   ├── test_config.py       # Test configurations
     │   └── test_database.py     # Database test utilities
@@ -126,10 +126,10 @@ The enhanced mock system provides realistic behaviors and comprehensive tracking
 
 ```python
 from tests.shared.fixtures.enhanced_mocks import (
-    MockBehavior, 
-    MockAssertions,
-    MockServiceFactory
+    MockBehavior,
+    MockServiceFactory,
 )
+from tests.shared.fixtures.enhanced_mocks.assertions import MockAssertions
 
 # Create mocks with specific behaviors
 user_repo = MockServiceFactory.create_user_repository(MockBehavior.SUCCESS)
@@ -469,7 +469,7 @@ def test_enhanced_style(
         create=AsyncMock(return_value=user)
     )
     
-    # Test logic
+    result = await service.create_user(user_data)
     
     # Enhanced assertions with call tracking
     mock_assertions.assert_called_once_with(

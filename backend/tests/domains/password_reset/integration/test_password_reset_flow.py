@@ -118,39 +118,22 @@ async def test_password_reset_rate_limit(
     integration_async_client, test_di_container_with_db
 ) -> None:
     """Hitting the forgot-password endpoint more than the allowed attempts should 429"""
-    # Replace the mocked rate limiter with a real one for this test
-    from app.utils.rate_limiter import RateLimiterUtils
-
-    config = test_di_container_with_db.get_core("config")
-    real_rate_limiter_utils = RateLimiterUtils(config)
-    test_di_container_with_db.register_utility(
-        "rate_limiter_utils", real_rate_limiter_utils
-    )
-
-    # Re-register the password reset endpoint with the real rate limiter
-    from app.api.endpoints.password_reset import PasswordReset
-
-    password_reset_repo = test_di_container_with_db.get_repository("password_reset")
-    user_repo = test_di_container_with_db.get_repository("user")
-    email_service = test_di_container_with_db.get_service("email")
-    password_hasher = test_di_container_with_db.get_utility("password_hasher")
-
-    password_reset_endpoint = PasswordReset(
-        password_reset_repo,
-        user_repo,
-        email_service,
-        real_rate_limiter_utils,
-        password_hasher,
-        config,
-    )
-    test_di_container_with_db.register_endpoint(
-        "password_reset", password_reset_endpoint
-    )
-
+    # Get the rate limiter that's actually being used by the app
+    rate_limiter_utils = test_di_container_with_db.get_utility("rate_limiter_utils")
     auth_usecase = test_di_container_with_db.get_usecase("auth")
+    user_repo = test_di_container_with_db.get_repository("user")
 
     # Clear any existing rate limit state
-    real_rate_limiter_utils.login_rate_limiter.clear()
+    rate_limiter_utils.login_rate_limiter.clear()
+    
+    # Verify that the rate limiter is working before the test
+    test_key = "test@example.com"
+    for i in range(5):
+        assert rate_limiter_utils.login_rate_limiter.allow(test_key), f"Attempt {i+1} should be allowed"
+    assert not rate_limiter_utils.login_rate_limiter.allow(test_key), "6th attempt should be rate limited"
+    
+    # Clear test state
+    rate_limiter_utils.login_rate_limiter.clear()
 
     # Create a test user
     unique_id = uuid.uuid4().hex[:8]
@@ -166,7 +149,9 @@ async def test_password_reset_rate_limit(
     # Commit the user to the database
     await user_repo.save(user)
 
-    # Use the SafeAsyncClient (integration_async_client) that handles ASGI issues
+    # Small delay to ensure database is committed
+    import asyncio
+    await asyncio.sleep(0.1)
 
     # Make password reset requests up to the limit (5 attempts)
     for i in range(5):
@@ -235,9 +220,13 @@ async def test_reset_password_token_reuse(
     await user_repo.save(user)
 
     # Create a password reset token
-    token = f"single-use-token-{unique_id}"
+    token = f"reuse-token-{unique_id}"
     expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
     await password_reset_repo.create(token, user.id, expires_at)
+
+    # Small delay to ensure database is committed
+    import asyncio
+    await asyncio.sleep(0.1)
 
     # First successful reset
     ok = await integration_async_client.post(

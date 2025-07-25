@@ -393,7 +393,7 @@ class TestDIContainer(DIContainer):
     def _register_mock_repositories(self):
         """Register mock repositories for unit testing."""
         # Import enhanced mocks
-        from tests.shared.fixtures.enhanced_mocks import MockUserRepository
+        from tests.shared.fixtures.enhanced_mocks.user_repository import MockUserRepository
 
         # Special handling for user repository with enhanced mock
         enhanced_user_repo = MockUserRepository()

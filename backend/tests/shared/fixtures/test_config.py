@@ -21,7 +21,8 @@ class TestConfiguration(Configuration):
     def __init__(self, **overrides):
         """Initialize test configuration with test-optimized defaults."""
         # Set test environment before calling super().__init__()
-        os.environ.setdefault("ENVIRONMENT", "testing")
+        # Always force the environment to 'testing' for predictable behaviour
+        os.environ["ENVIRONMENT"] = "testing"
 
         # Set test-optimized defaults
         test_defaults = {
@@ -37,10 +38,10 @@ class TestConfiguration(Configuration):
             "FRONTEND_BASE_URL": "http://localhost:3000",  # Add frontend URL for tests
         }
 
-        # Apply test defaults
+        # Apply test defaults (override environment for deterministic tests)
         for key, value in test_defaults.items():
             if key not in overrides:
-                os.environ.setdefault(key, str(value))
+                os.environ[key] = str(value)
 
         # Apply custom overrides
         for key, value in overrides.items():

@@ -17,7 +17,8 @@ from app.domain.schemas.email_verification import (
     EmailVerificationRequest,
     EmailVerificationVerify,
 )
-from tests.shared.fixtures.enhanced_mocks import MockAssertions, MockBehavior
+from tests.shared.fixtures.enhanced_mocks import MockBehavior
+from tests.shared.fixtures.enhanced_mocks.assertions import MockAssertions
 
 
 @pytest.mark.unit
@@ -193,14 +194,35 @@ async def test_endpoint_has_correct_router_configuration(
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_resend_verification_email_service_failure(
-    email_verification_endpoint_with_di, mock_email_service_enhanced, mock_assertions
+    email_verification_endpoint_with_di,
+    mock_email_service_enhanced,
+    mock_email_verification_usecase,
+    mock_assertions,
 ):
     """Test resend verification email when email service experiences failures."""
     # Configure email service for failure scenarios
     mock_email_service_enhanced.set_behavior(MockBehavior.FAILURE)
 
-    # This test demonstrates how enhanced mocks can simulate
-    # real-world failure scenarios for better test coverage
+    async def resend_side_effect(email, background_tasks, _rate_limiter):
+        background_tasks.add_task(
+            mock_email_service_enhanced.send_verification_email,
+            email,
+            "tok123",
+        )
 
-    # The enhanced mock will track calls and simulate failure behavior
-    # This allows testing of error handling paths and retry logic
+    mock_email_verification_usecase.resend_verification.side_effect = resend_side_effect
+
+    endpoint = email_verification_endpoint_with_di
+
+    payload = EmailVerificationRequest(email="fail@example.com")
+    background_tasks = BackgroundTasks()
+    result = await endpoint.resend_verification_email(payload, background_tasks)
+    await background_tasks()
+
+    assert result.status_code == 204
+    mock_assertions.assert_called_once_with(
+        mock_email_service_enhanced,
+        "send_verification_email",
+        "fail@example.com",
+        "tok123",
+    )

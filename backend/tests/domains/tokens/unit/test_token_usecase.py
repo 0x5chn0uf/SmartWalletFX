@@ -83,7 +83,7 @@ class TestTokenUsecase:
         token_create = TokenCreate(
             address="0xabcdef1234567890123456789012345678901234",
             symbol="ETH",
-            name="Ethereum"
+            name="Ethereum",
             # decimals not specified, should default to 18
         )
 

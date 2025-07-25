@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from unittest.mock import Mock
 
+from tests.shared.fixtures.enhanced_mocks import MockAssertions, MockBehavior
+
 import pytest
 from fastapi import BackgroundTasks, HTTPException
 
@@ -41,23 +43,48 @@ async def test_request_password_reset_rate_limited(
 @pytest.mark.unit
 async def test_request_password_reset_unknown_email(
     password_reset_endpoint_with_di,
-    mock_user_repository,
+    mock_user_repository_enhanced,
     mock_rate_limiter_utils,
+    mock_assertions,
 ):
     """Test password reset request for unknown email."""
     endpoint = password_reset_endpoint_with_di
+    # Replace repository with enhanced mock (class-level attribute)
+    endpoint.__class__._PasswordReset__user_repo = mock_user_repository_enhanced
 
     # Mock rate limiter to allow request
     mock_rate_limiter_utils.login_rate_limiter.allow.return_value = True
 
-    # Mock user repository to return None (user not found)
-    mock_user_repository.get_by_email.return_value = None
+
 
     payload = PasswordResetRequest(email="nobody@example.com")
     await endpoint.request_password_reset(payload, BackgroundTasks())
 
     # Should return None or success response for security (don't reveal if email exists)
-    mock_user_repository.get_by_email.assert_awaited_once_with("nobody@example.com")
+    mock_assertions.assert_called_once_with(
+        mock_user_repository_enhanced,
+        "get_by_email",
+        "nobody@example.com",
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.unit
+async def test_request_password_reset_user_repo_failure(
+    password_reset_endpoint_with_di,
+    mock_user_repository_enhanced,
+    mock_rate_limiter_utils,
+):
+    """Test password reset when user repository fails."""
+    endpoint = password_reset_endpoint_with_di
+    endpoint.__class__._PasswordReset__user_repo = mock_user_repository_enhanced
+
+    mock_rate_limiter_utils.login_rate_limiter.allow.return_value = True
+    mock_user_repository_enhanced.set_behavior(MockBehavior.FAILURE)
+
+    payload = PasswordResetRequest(email="oops@example.com")
+    with pytest.raises(ValueError):
+        await endpoint.request_password_reset(payload, BackgroundTasks())
 
 
 @pytest.mark.asyncio
