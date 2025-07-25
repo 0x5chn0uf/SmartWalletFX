@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import '../../setupTests';
+import '../setup';
 import { server } from '../../mocks/server';
 
 describe('Test Setup', () => {

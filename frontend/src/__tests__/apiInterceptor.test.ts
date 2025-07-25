@@ -1,6 +1,4 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import axios from 'axios';
-import apiClient from '../services/api';
 
 // Mock axios.post to track calls
 const mockPost = vi.fn();

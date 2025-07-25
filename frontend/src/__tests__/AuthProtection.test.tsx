@@ -1,11 +1,9 @@
-import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
 import LoginRegisterPage from '../pages/LoginRegisterPage';
 import ForgotPasswordPage from '../pages/ForgotPasswordPage';
-import authReducer from '../store/authSlice';
 
 import { vi } from 'vitest';
 

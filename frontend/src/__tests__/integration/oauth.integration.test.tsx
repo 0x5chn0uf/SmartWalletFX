@@ -22,7 +22,7 @@ describe('OAuth Integration Tests', () => {
     // Clear localStorage and reset mocks
     localStorage.clear();
     mockLocationAssign.mockClear();
-    
+
     // Reset MSW handlers
     server.resetHandlers();
   });
@@ -30,7 +30,7 @@ describe('OAuth Integration Tests', () => {
   describe('OAuth Button Component', () => {
     it('should render Google OAuth button correctly', () => {
       render(<OAuthButton provider="google" />);
-      
+
       const button = screen.getByRole('button');
       expect(button).toBeInTheDocument();
       expect(button).toHaveTextContent('Continue with Google');
@@ -39,7 +39,7 @@ describe('OAuth Integration Tests', () => {
 
     it('should render GitHub OAuth button correctly', () => {
       render(<OAuthButton provider="github" />);
-      
+
       const button = screen.getByRole('button');
       expect(button).toBeInTheDocument();
       expect(button).toHaveTextContent('Continue with GitHub');
@@ -48,20 +48,20 @@ describe('OAuth Integration Tests', () => {
 
     it('should redirect to OAuth endpoint when clicked', () => {
       render(<OAuthButton provider="google" />);
-      
+
       const button = screen.getByRole('button');
       fireEvent.click(button);
-      
+
       expect(window.location.href).toBe(`${API_URL}/auth/oauth/google/login`);
     });
 
     it('should call onClick handler if provided', () => {
       const mockOnClick = vi.fn();
       render(<OAuthButton provider="github" onClick={mockOnClick} />);
-      
+
       const button = screen.getByRole('button');
       fireEvent.click(button);
-      
+
       expect(mockOnClick).toHaveBeenCalledTimes(1);
       expect(window.location.href).toBe(`${API_URL}/auth/oauth/github/login`);
     });
@@ -76,17 +76,17 @@ describe('OAuth Integration Tests', () => {
           return new Response(null, {
             status: 302,
             headers: {
-              Location: 'https://accounts.google.com/oauth/authorize?client_id=...'
-            }
+              Location: 'https://accounts.google.com/oauth/authorize?client_id=...',
+            },
           });
         })
       );
 
       render(<OAuthButton provider="google" />);
-      
+
       const button = screen.getByRole('button');
       fireEvent.click(button);
-      
+
       // Verify that the user would be redirected to OAuth provider
       expect(window.location.href).toBe(`${API_URL}/auth/oauth/google/login`);
     });
@@ -97,17 +97,17 @@ describe('OAuth Integration Tests', () => {
           return new Response(null, {
             status: 302,
             headers: {
-              Location: 'https://github.com/login/oauth/authorize?client_id=...'
-            }
+              Location: 'https://github.com/login/oauth/authorize?client_id=...',
+            },
           });
         })
       );
 
       render(<OAuthButton provider="github" />);
-      
+
       const button = screen.getByRole('button');
       fireEvent.click(button);
-      
+
       expect(window.location.href).toBe(`${API_URL}/auth/oauth/github/login`);
     });
   });
@@ -116,11 +116,11 @@ describe('OAuth Integration Tests', () => {
     it('should simulate successful Google OAuth callback', async () => {
       const mockCode = 'oauth_authorization_code_123';
       const mockState = 'oauth_state_456';
-      
+
       const mockTokenResponse = {
         access_token: 'oauth-access-token',
         refresh_token: 'oauth-refresh-token',
-        token_type: 'bearer'
+        token_type: 'bearer',
       };
 
       const mockUser = {
@@ -128,7 +128,7 @@ describe('OAuth Integration Tests', () => {
         username: 'googleuser',
         email: 'user@gmail.com',
         email_verified: true,
-        role: 'user'
+        role: 'user',
       };
 
       server.use(
@@ -136,7 +136,7 @@ describe('OAuth Integration Tests', () => {
           const url = new URL(request.url);
           const code = url.searchParams.get('code');
           const state = url.searchParams.get('state');
-          
+
           if (code === mockCode && state === mockState) {
             // In a real OAuth flow, this would redirect to the frontend with cookies set
             // For testing, we return success with the expected cookies
@@ -147,17 +147,14 @@ describe('OAuth Integration Tests', () => {
                 headers: {
                   'Set-Cookie': [
                     `access_token=${mockTokenResponse.access_token}; HttpOnly; SameSite=Lax`,
-                    `refresh_token=${mockTokenResponse.refresh_token}; HttpOnly; SameSite=Lax; Path=/auth`
-                  ].join(', ')
-                }
+                    `refresh_token=${mockTokenResponse.refresh_token}; HttpOnly; SameSite=Lax; Path=/auth`,
+                  ].join(', '),
+                },
               }
             );
           }
-          
-          return HttpResponse.json(
-            { detail: 'Invalid OAuth callback' },
-            { status: 400 }
-          );
+
+          return HttpResponse.json({ detail: 'Invalid OAuth callback' }, { status: 400 });
         }),
         http.get(`${API_URL}/users/me`, () => {
           return HttpResponse.json(mockUser);
@@ -166,7 +163,7 @@ describe('OAuth Integration Tests', () => {
 
       // Simulate OAuth callback URL
       const callbackUrl = `${API_URL}/auth/oauth/google/callback?code=${mockCode}&state=${mockState}`;
-      
+
       // Test that the callback endpoint would handle the OAuth response correctly
       const response = await fetch(callbackUrl);
       expect(response.status).toBe(200);
@@ -178,18 +175,15 @@ describe('OAuth Integration Tests', () => {
     it('should handle OAuth callback with invalid state', async () => {
       server.use(
         http.get(`${API_URL}/auth/oauth/google/callback`, () => {
-          return HttpResponse.json(
-            { detail: 'Invalid state' },
-            { status: 400 }
-          );
+          return HttpResponse.json({ detail: 'Invalid state' }, { status: 400 });
         })
       );
 
       const callbackUrl = `${API_URL}/auth/oauth/google/callback?code=valid_code&state=invalid_state`;
-      
+
       const response = await fetch(callbackUrl);
       expect(response.status).toBe(400);
-      
+
       const data = await response.json();
       expect(data.detail).toBe('Invalid state');
     });
@@ -199,23 +193,23 @@ describe('OAuth Integration Tests', () => {
         http.get(`${API_URL}/auth/oauth/google/callback`, ({ request }) => {
           const url = new URL(request.url);
           const code = url.searchParams.get('code');
-          
+
           if (!code) {
             return HttpResponse.json(
               { detail: 'Authorization code not provided' },
               { status: 400 }
             );
           }
-          
+
           return HttpResponse.json({ success: true });
         })
       );
 
       const callbackUrl = `${API_URL}/auth/oauth/google/callback?state=valid_state`;
-      
+
       const response = await fetch(callbackUrl);
       expect(response.status).toBe(400);
-      
+
       const data = await response.json();
       expect(data.detail).toBe('Authorization code not provided');
     });
@@ -225,23 +219,20 @@ describe('OAuth Integration Tests', () => {
         http.get(`${API_URL}/auth/oauth/google/callback`, ({ request }) => {
           const url = new URL(request.url);
           const error = url.searchParams.get('error');
-          
+
           if (error === 'access_denied') {
-            return HttpResponse.json(
-              { detail: 'User denied access' },
-              { status: 400 }
-            );
+            return HttpResponse.json({ detail: 'User denied access' }, { status: 400 });
           }
-          
+
           return HttpResponse.json({ success: true });
         })
       );
 
       const callbackUrl = `${API_URL}/auth/oauth/google/callback?error=access_denied&state=valid_state`;
-      
+
       const response = await fetch(callbackUrl);
       expect(response.status).toBe(400);
-      
+
       const data = await response.json();
       expect(data.detail).toBe('User denied access');
     });
@@ -251,17 +242,14 @@ describe('OAuth Integration Tests', () => {
     it('should handle unsupported OAuth provider', async () => {
       server.use(
         http.get(`${API_URL}/auth/oauth/unsupported/login`, () => {
-          return HttpResponse.json(
-            { detail: 'Provider not supported' },
-            { status: 404 }
-          );
+          return HttpResponse.json({ detail: 'Provider not supported' }, { status: 404 });
         })
       );
 
       // Test that unsupported provider would return 404
       const response = await fetch(`${API_URL}/auth/oauth/unsupported/login`);
       expect(response.status).toBe(404);
-      
+
       const data = await response.json();
       expect(data.detail).toBe('Provider not supported');
     });
@@ -277,10 +265,10 @@ describe('OAuth Integration Tests', () => {
       );
 
       render(<OAuthButton provider="google" />);
-      
+
       const button = screen.getByRole('button');
       fireEvent.click(button);
-      
+
       // The redirect would still happen, but the backend would handle the error
       expect(window.location.href).toBe(`${API_URL}/auth/oauth/google/login`);
     });
@@ -293,10 +281,10 @@ describe('OAuth Integration Tests', () => {
       );
 
       render(<OAuthButton provider="github" />);
-      
+
       const button = screen.getByRole('button');
       fireEvent.click(button);
-      
+
       // Redirect would still happen, error handling is done at network level
       expect(window.location.href).toBe(`${API_URL}/auth/oauth/github/login`);
     });
@@ -305,45 +293,42 @@ describe('OAuth Integration Tests', () => {
   describe('OAuth State Management', () => {
     it('should handle OAuth state cookie validation', async () => {
       const mockState = 'secure_oauth_state_123';
-      
+
       server.use(
         http.get(`${API_URL}/auth/oauth/google/callback`, ({ request }) => {
           const cookies = request.headers.get('cookie') || '';
           const url = new URL(request.url);
           const stateParam = url.searchParams.get('state');
-          
+
           // Check if state parameter matches cookie
           if (cookies.includes(`oauth_state=${mockState}`) && stateParam === mockState) {
             return HttpResponse.json(
               { success: true, redirect: '/dashboard' },
               {
                 status: 200,
-                headers: { 'X-Redirect': '/dashboard' }
+                headers: { 'X-Redirect': '/dashboard' },
               }
             );
           }
-          
-          return HttpResponse.json(
-            { detail: 'Invalid state' },
-            { status: 400 }
-          );
+
+          return HttpResponse.json({ detail: 'Invalid state' }, { status: 400 });
         })
       );
 
       // Mock cookie with OAuth state
       Object.defineProperty(document, 'cookie', {
         writable: true,
-        value: `oauth_state=${mockState}`
+        value: `oauth_state=${mockState}`,
       });
 
       const callbackUrl = `${API_URL}/auth/oauth/google/callback?code=valid_code&state=${mockState}`;
-      
+
       const response = await fetch(callbackUrl, {
         headers: {
-          'Cookie': `oauth_state=${mockState}`
-        }
+          Cookie: `oauth_state=${mockState}`,
+        },
       });
-      
+
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data.success).toBe(true);
@@ -355,7 +340,7 @@ describe('OAuth Integration Tests', () => {
         http.get(`${API_URL}/auth/oauth/github/callback`, ({ request }) => {
           const url = new URL(request.url);
           const state = url.searchParams.get('state');
-          
+
           // Simulate CSRF check failure
           if (!state || state.length < 10) {
             return HttpResponse.json(
@@ -363,17 +348,17 @@ describe('OAuth Integration Tests', () => {
               { status: 400 }
             );
           }
-          
+
           return HttpResponse.json({ success: true });
         })
       );
 
       // Test with short/weak state parameter
       const callbackUrl = `${API_URL}/auth/oauth/github/callback?code=valid_code&state=weak`;
-      
+
       const response = await fetch(callbackUrl);
       expect(response.status).toBe(400);
-      
+
       const data = await response.json();
       expect(data.detail).toBe('Invalid state parameter - possible CSRF attack');
     });
@@ -386,7 +371,7 @@ describe('OAuth Integration Tests', () => {
         username: 'existinguser',
         email: 'user@gmail.com',
         email_verified: true,
-        role: 'user'
+        role: 'user',
       };
 
       server.use(
@@ -397,8 +382,8 @@ describe('OAuth Integration Tests', () => {
             {
               status: 200,
               headers: {
-                'Set-Cookie': 'access_token=linked-account-token; HttpOnly; SameSite=Lax'
-              }
+                'Set-Cookie': 'access_token=linked-account-token; HttpOnly; SameSite=Lax',
+              },
             }
           );
         }),
@@ -408,7 +393,7 @@ describe('OAuth Integration Tests', () => {
       );
 
       const callbackUrl = `${API_URL}/auth/oauth/google/callback?code=valid_code&state=valid_state`;
-      
+
       const response = await fetch(callbackUrl);
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -422,7 +407,7 @@ describe('OAuth Integration Tests', () => {
         username: 'newgoogleuser',
         email: 'newuser@gmail.com',
         email_verified: true, // OAuth users are auto-verified
-        role: 'user'
+        role: 'user',
       };
 
       server.use(
@@ -432,8 +417,8 @@ describe('OAuth Integration Tests', () => {
             {
               status: 200,
               headers: {
-                'Set-Cookie': 'access_token=new-user-token; HttpOnly; SameSite=Lax'
-              }
+                'Set-Cookie': 'access_token=new-user-token; HttpOnly; SameSite=Lax',
+              },
             }
           );
         }),
@@ -443,7 +428,7 @@ describe('OAuth Integration Tests', () => {
       );
 
       const callbackUrl = `${API_URL}/auth/oauth/google/callback?code=valid_code&state=valid_state`;
-      
+
       const response = await fetch(callbackUrl);
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -456,10 +441,10 @@ describe('OAuth Integration Tests', () => {
     it('should use correct API URL from environment', () => {
       // Test that OAuth button uses the configured API URL
       render(<OAuthButton provider="google" />);
-      
+
       const button = screen.getByRole('button');
       fireEvent.click(button);
-      
+
       // Should use the API_URL constant from the component
       expect(window.location.href).toBe(`${API_URL}/auth/oauth/google/login`);
     });
@@ -469,10 +454,10 @@ describe('OAuth Integration Tests', () => {
       // Since we can't dynamically change import.meta.env during runtime,
       // we'll test that the component uses the expected localhost URL in test environment
       render(<OAuthButton provider="github" />);
-      
+
       const button = screen.getByRole('button');
       fireEvent.click(button);
-      
+
       // Should use the test environment URL (localhost:8000)
       expect(window.location.href).toBe('http://localhost:8000/auth/oauth/github/login');
     });

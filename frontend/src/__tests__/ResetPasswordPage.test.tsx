@@ -1,12 +1,9 @@
-import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
 import { vi } from 'vitest';
 import ResetPasswordPage from '../pages/ResetPasswordPage';
-import passwordResetReducer from '../store/passwordResetSlice';
-import authReducer from '../store/authSlice';
 
 // Mock the API client
 vi.mock('../services/api', () => ({
