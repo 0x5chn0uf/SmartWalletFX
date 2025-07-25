@@ -15,7 +15,8 @@ from fastapi import HTTPException, Request, status
 
 from app.domain.schemas.user import UserCreate
 from app.models.user import User
-from tests.shared.fixtures.enhanced_mocks import MockAssertions, MockBehavior
+from tests.shared.fixtures.enhanced_mocks import MockBehavior
+from tests.shared.fixtures.enhanced_mocks.assertions import MockAssertions
 
 
 @pytest.mark.unit

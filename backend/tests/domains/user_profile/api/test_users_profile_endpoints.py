@@ -1,27 +1,6 @@
 """API tests for user profile management endpoints."""
-from unittest.mock import patch
-
 import pytest
 from fastapi import status
-
-
-def store_user_data_for_mock(user):
-    """Store user data for mock system to access."""
-    import tests.conftest as conftest_module
-
-    conftest_module._test_user_data = {
-        "id": str(user.id),
-        "username": user.username,
-        "email": user.email,
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-        "bio": user.bio,
-        "timezone": user.timezone,
-        "preferred_currency": user.preferred_currency,
-        "created_at": user.created_at.isoformat() if user.created_at else None,
-        "updated_at": user.updated_at.isoformat() if user.updated_at else None,
-        "email_verified": user.email_verified,
-    }
 
 
 @pytest.mark.integration
@@ -44,18 +23,12 @@ class TestUserProfileEndpoints:
             preferred_currency="USD",
         )
 
-        # Store user data for mock to access
-        store_user_data_for_mock(user)
-
         # Get auth headers for the user
         auth_headers = await get_auth_headers_for_user_factory(user)
 
-        with patch(
-            "app.api.dependencies.get_user_id_from_request", return_value=user.id
-        ):
-            response = await integration_async_client.get(
-                "/users/me/profile", headers=auth_headers
-            )
+        response = await integration_async_client.get(
+            "/users/me/profile", headers=auth_headers
+        )
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -82,9 +55,6 @@ class TestUserProfileEndpoints:
         """Test PUT /users/me/profile updates profile successfully."""
         user = await user_factory()
 
-        # Store user data for mock to access
-        store_user_data_for_mock(user)
-
         # Get auth headers for the user
         auth_headers = await get_auth_headers_for_user_factory(user)
 
@@ -96,12 +66,9 @@ class TestUserProfileEndpoints:
             "preferred_currency": "EUR",
         }
 
-        with patch(
-            "app.api.dependencies.get_user_id_from_request", return_value=user.id
-        ):
-            response = await integration_async_client.put(
-                "/users/me/profile", headers=auth_headers, json=update_data
-            )
+        response = await integration_async_client.put(
+            "/users/me/profile", headers=auth_headers, json=update_data
+        )
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -119,20 +86,14 @@ class TestUserProfileEndpoints:
         """Test PUT /users/me/profile returns 400 for invalid data."""
         user = await user_factory()
 
-        # Store user data for mock to access
-        store_user_data_for_mock(user)
-
         # Get auth headers for the user
         auth_headers = await get_auth_headers_for_user_factory(user)
 
         invalid_data = {"email": "invalid-email-format", "username": "ab"}  # Too short
 
-        with patch(
-            "app.api.dependencies.get_user_id_from_request", return_value=user.id
-        ):
-            response = await integration_async_client.put(
-                "/users/me/profile", headers=auth_headers, json=invalid_data
-            )
+        response = await integration_async_client.put(
+                    "/users/me/profile", headers=auth_headers, json=invalid_data
+                )
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
@@ -176,9 +137,6 @@ class TestUserProfileEndpoints:
         """Test POST /users/me/change-password changes password successfully."""
         user = await user_factory()
 
-        # Store user data for mock to access
-        store_user_data_for_mock(user)
-
         # Get auth headers for the user
         auth_headers = await get_auth_headers_for_user_factory(user)
 
@@ -187,12 +145,9 @@ class TestUserProfileEndpoints:
             "new_password": "NewSecurePassword456!",
         }
 
-        with patch(
-            "app.api.dependencies.get_user_id_from_request", return_value=user.id
-        ):
-            response = await integration_async_client.post(
-                "/users/me/change-password", headers=auth_headers, json=password_data
-            )
+        response = await integration_async_client.post(
+                    "/users/me/change-password", headers=auth_headers, json=password_data
+                )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
@@ -203,9 +158,6 @@ class TestUserProfileEndpoints:
         """Test POST /users/me/change-password returns 400 for incorrect current password."""
         user = await user_factory()
 
-        # Store user data for mock to access
-        store_user_data_for_mock(user)
-
         # Get auth headers for the user
         auth_headers = await get_auth_headers_for_user_factory(user)
 
@@ -214,12 +166,9 @@ class TestUserProfileEndpoints:
             "new_password": "NewSecurePassword456!",
         }
 
-        with patch(
-            "app.api.dependencies.get_user_id_from_request", return_value=user.id
-        ):
-            response = await integration_async_client.post(
-                "/users/me/change-password", headers=auth_headers, json=password_data
-            )
+        response = await integration_async_client.post(
+                    "/users/me/change-password", headers=auth_headers, json=password_data
+                )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "Current password is incorrect" in response.json()["detail"]
@@ -230,9 +179,6 @@ class TestUserProfileEndpoints:
     ):
         """Test POST /users/me/change-password returns 422 for weak new password."""
         user = await user_factory()
-
-        # Store user data for mock to access
-        store_user_data_for_mock(user)
 
         # Get auth headers for the user
         auth_headers = await get_auth_headers_for_user_factory(user)
@@ -252,9 +198,6 @@ class TestUserProfileEndpoints:
         """Test PUT /users/me/notifications updates preferences successfully."""
         user = await user_factory()
 
-        # Store user data for mock to access
-        store_user_data_for_mock(user)
-
         # Get auth headers for the user
         auth_headers = await get_auth_headers_for_user_factory(user)
 
@@ -266,12 +209,9 @@ class TestUserProfileEndpoints:
             "security_alerts": True,
         }
 
-        with patch(
-            "app.api.dependencies.get_user_id_from_request", return_value=user.id
-        ):
-            response = await integration_async_client.put(
-                "/users/me/notifications", headers=auth_headers, json=preferences
-            )
+        response = await integration_async_client.put(
+                    "/users/me/notifications", headers=auth_headers, json=preferences
+                )
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -286,22 +226,16 @@ class TestUserProfileEndpoints:
         """Test PUT /users/me/notifications returns 400 for invalid preferences."""
         user = await user_factory()
 
-        # Store user data for mock to access
-        store_user_data_for_mock(user)
-
         # Get auth headers for the user
         auth_headers = await get_auth_headers_for_user_factory(user)
 
         invalid_preferences = {"invalid_key": True, "email_notifications": False}
 
-        with patch(
-            "app.api.dependencies.get_user_id_from_request", return_value=user.id
-        ):
-            response = await integration_async_client.put(
-                "/users/me/notifications",
-                headers=auth_headers,
-                json=invalid_preferences,
-            )
+        response = await integration_async_client.put(
+                    "/users/me/notifications",
+                    headers=auth_headers,
+                    json=invalid_preferences,
+                )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "Invalid notification preference keys" in response.json()["detail"]
@@ -313,18 +247,12 @@ class TestUserProfileEndpoints:
         """Test DELETE /users/me deletes account successfully."""
         user = await user_factory()
 
-        # Store user data for mock to access
-        store_user_data_for_mock(user)
-
         # Get auth headers for the user
         auth_headers = await get_auth_headers_for_user_factory(user)
 
-        with patch(
-            "app.api.dependencies.get_user_id_from_request", return_value=user.id
-        ):
-            response = await integration_async_client.delete(
-                "/users/me", headers=auth_headers
-            )
+        response = await integration_async_client.delete(
+                    "/users/me", headers=auth_headers
+                )
 
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
@@ -339,20 +267,14 @@ class TestUserProfileEndpoints:
         """Test POST /users/me/profile/picture uploads image successfully."""
         user = await user_factory()
 
-        # Store user data for mock to access
-        store_user_data_for_mock(user)
-
         # Get auth headers for the user
         auth_headers = await get_auth_headers_for_user_factory(user)
 
-        with patch(
-            "app.api.dependencies.get_user_id_from_request", return_value=user.id
-        ):
-            response = await integration_async_client.post(
-                "/users/me/profile/picture",
-                headers=auth_headers,
-                files={"file": ("test.jpg", valid_image_file.file, "image/jpeg")},
-            )
+        response = await integration_async_client.post(
+                    "/users/me/profile/picture",
+                    headers=auth_headers,
+                    files={"file": ("test.jpg", valid_image_file.file, "image/jpeg")},
+                )
 
         assert response.status_code == status.HTTP_200_OK
 
@@ -372,20 +294,14 @@ class TestUserProfileEndpoints:
         """Test POST /users/me/profile/picture returns 400 for invalid file types."""
         user = await user_factory()
 
-        # Store user data for mock to access
-        store_user_data_for_mock(user)
-
         # Get auth headers for the user
         auth_headers = await get_auth_headers_for_user_factory(user)
 
-        with patch(
-            "app.api.dependencies.get_user_id_from_request", return_value=user.id
-        ):
-            response = await integration_async_client.post(
-                "/users/me/profile/picture",
-                headers=auth_headers,
-                files={"file": ("test.txt", invalid_image_file.file, "text/plain")},
-            )
+        response = await integration_async_client.post(
+                    "/users/me/profile/picture",
+                    headers=auth_headers,
+                    files={"file": ("test.txt", invalid_image_file.file, "text/plain")},
+                )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "File type not allowed" in response.json()["detail"]
@@ -401,20 +317,14 @@ class TestUserProfileEndpoints:
         """Test POST /users/me/profile/picture returns 400 for oversized files."""
         user = await user_factory()
 
-        # Store user data for mock to access
-        store_user_data_for_mock(user)
-
         # Get auth headers for the user
         auth_headers = await get_auth_headers_for_user_factory(user)
 
-        with patch(
-            "app.api.dependencies.get_user_id_from_request", return_value=user.id
-        ):
-            response = await integration_async_client.post(
-                "/users/me/profile/picture",
-                headers=auth_headers,
-                files={"file": ("large.jpg", large_image_file.file, "image/jpeg")},
-            )
+        response = await integration_async_client.post(
+                    "/users/me/profile/picture",
+                    headers=auth_headers,
+                    files={"file": ("large.jpg", large_image_file.file, "image/jpeg")},
+                )
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "File too large" in response.json()["detail"]

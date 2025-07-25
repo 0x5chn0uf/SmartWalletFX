@@ -81,7 +81,7 @@ class Admin:
                     "kyc_level": "verified",
                 }
             )
-        )
+        ),
     ):
         """Access high-value operations.
 
@@ -103,7 +103,7 @@ class Admin:
             lambda: require_attributes(
                 {"geography": {"op": "in", "value": ["US", "CA", "EU"]}}
             )
-        )
+        ),
     ):
         """Access regional features. Requires: geography in ["US", "CA", "EU"]"""
         user_geography = getattr(current_user, "_current_attributes", {}).get(
