@@ -1,0 +1,50 @@
+name: Manual Test Coverage
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_security_checks:
+        description: 'Run security and quality checks'
+        type: boolean
+        default: false
+      run_performance_tests:
+        description: 'Run performance tests'
+        type: boolean
+        default: false
+      test_domains:
+        description: 'Comma-separated list of test domains to run (default: all)'
+        type: string
+        default: 'auth,users,wallets,tokens,email_verification,oauth,password_reset,user_profile,jwks'
+
+jobs:
+  run-tests-with-coverage:
+    name: Run Tests with Coverage
+    uses: ./.github/workflows/parallel-test-workflow.yml
+    with:
+      run_security_checks: ${{ github.event.inputs.run_security_checks }}
+      run_performance_tests: ${{ github.event.inputs.run_performance_tests }}
+      run_docker_integration: false
+      test_domains: ${{ github.event.inputs.test_domains }}
+      
+  report-coverage:
+    name: Report Coverage
+    needs: run-tests-with-coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Display Coverage Report
+        run: |
+          echo "# Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Coverage Percentage" >> $GITHUB_STEP_SUMMARY
+          echo "- Total Coverage: ${{ needs.run-tests-with-coverage.outputs.coverage_percentage }}%" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if (( $(echo "${{ needs.run-tests-with-coverage.outputs.coverage_percentage }} >= 90" | bc -l) )); then
+            echo "✅ Coverage meets threshold (90%)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Coverage below threshold (90%)" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Coverage Badge" >> $GITHUB_STEP_SUMMARY
+          echo "[![Coverage Status](https://coveralls.io/repos/github/${{ github.repository }}/badge.svg?branch=${{ github.ref_name }})](https://coveralls.io/github/${{ github.repository }}?branch=${{ github.ref_name }})" >> $GITHUB_STEP_SUMMARY

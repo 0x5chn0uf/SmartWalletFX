@@ -1,0 +1,57 @@
+name: Manual Enhanced Tests
+
+on:
+  # Allow manual triggering with options
+  workflow_dispatch:
+    inputs:
+      run_security_checks:
+        description: 'Run security and quality checks'
+        type: boolean
+        default: true
+      run_performance_tests:
+        description: 'Run performance tests'
+        type: boolean
+        default: false
+      run_docker_integration:
+        description: 'Run Docker integration tests'
+        type: boolean
+        default: false
+      test_domains:
+        description: 'Comma-separated list of test domains to run (default: all)'
+        type: string
+        default: 'auth,users,wallets,tokens,email_verification,oauth,password_reset,user_profile,jwks'
+
+jobs:
+  manual-tests:
+    name: Run Selected Tests
+    uses: ./.github/workflows/parallel-test-workflow.yml
+    with:
+      run_security_checks: ${{ github.event.inputs.run_security_checks }}
+      run_performance_tests: ${{ github.event.inputs.run_performance_tests }}
+      run_docker_integration: ${{ github.event.inputs.run_docker_integration }}
+      test_domains: ${{ github.event.inputs.test_domains }}
+
+  test-summary:
+    name: Test Summary
+    needs: manual-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate test summary
+        run: |
+          echo "# Manual Test Run Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Selected Test Options" >> $GITHUB_STEP_SUMMARY
+          echo "- Security Checks: ${{ github.event.inputs.run_security_checks }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Performance Tests: ${{ github.event.inputs.run_performance_tests }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Docker Integration: ${{ github.event.inputs.run_docker_integration }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Test Domains: ${{ github.event.inputs.test_domains }}" >> $GITHUB_STEP_SUMMARY
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "- Coverage: ${{ needs.manual-tests.outputs.coverage_percentage }}%" >> $GITHUB_STEP_SUMMARY
+          
+          if (( $(echo "${{ needs.manual-tests.outputs.coverage_percentage }} >= 90" | bc -l) )); then
+            echo "✅ Coverage meets threshold (90%)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Coverage below threshold (90%)" >> $GITHUB_STEP_SUMMARY
+          fi
