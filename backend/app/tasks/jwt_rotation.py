@@ -123,7 +123,10 @@ def _apply_key_set_update(update: KeySetUpdate) -> None:
         return
 
     from app.utils import jwt as jwt_utils  # local import to avoid cycles
-    from app.utils.jwks_cache import invalidate_jwks_cache_sync
+
+    # Import inside function so monkey-patching in tests is respected;
+    # importing at call time picks up patched object.
+    from app.utils.jwks_cache import invalidate_jwks_cache_sync  # type: ignore
 
     now = datetime.now(timezone.utc)
 
