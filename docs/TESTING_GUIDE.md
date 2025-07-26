@@ -7,12 +7,12 @@ This guide covers the enhanced testing infrastructure implemented for better tes
 1. [Overview](#overview)
 2. [Test Architecture](#test-architecture)
 3. [Test Categories](#test-categories)
-5. [Docker Test Infrastructure](#docker-test-infrastructure)
-6. [Writing Tests](#writing-tests)
-7. [Running Tests](#running-tests)
-8. [CI/CD Integration](#cicd-integration)
-9. [Best Practices](#best-practices)
-10. [Migration Guide](#migration-guide)
+4. [Docker Test Infrastructure](#docker-test-infrastructure)
+5. [Writing Tests](#writing-tests)
+6. [Running Tests](#running-tests)
+7. [CI/CD Integration](#cicd-integration)
+8. [Best Practices](#best-practices)
+9. [Migration Guide](#migration-guide)
 
 ## Overview
 
@@ -58,6 +58,7 @@ tests/
 ## Test Categories
 
 ### Unit Tests
+
 Fast, isolated tests that rely on simple mocks for external dependencies.
 
 ```python
@@ -78,6 +79,7 @@ async def test_login_success(auth_service, mock_user_repository):
 ```
 
 ### Integration Tests
+
 Tests that use real database connections and verify actual data persistence.
 
 ```python
@@ -92,20 +94,18 @@ async def test_complete_auth_flow(
 ):
     """Test complete authentication flow with real database."""
     auth_usecase = test_di_container_with_db.get_usecase("auth")
-    
+
     # Register user
     user = await auth_usecase.register(UserCreate(
         username="testuser",
-        email="test@example.com", 
+        email="test@example.com",
         password="StrongPassword123!"
     ))
-    
+
     # Verify user exists in database
     saved_user = await integration_test_session.get(User, user.id)
     assert saved_user.email == "test@example.com"
 ```
-
-
 
 ## Docker Test Infrastructure
 
@@ -116,9 +116,9 @@ The Docker test infrastructure provides isolated services:
 ```yaml
 # docker-compose.test.yml (automatically managed)
 services:
-  postgres-test:    # Port 55433 (isolated from dev)
-  redis-test:       # Port 6380 (isolated from dev)
-  backend-test:     # Port 8001 (for integration testing)
+  postgres-test: # Port 55432 (isolated from dev)
+  redis-test: # Port 6380 (isolated from dev)
+  backend-test: # Port 8001 (for integration testing)
 ```
 
 ### Usage
@@ -141,7 +141,7 @@ make test-docker-clean
 from tests.shared.fixtures.test_config import create_integration_test_config
 
 config = create_integration_test_config(
-    test_db_url="postgresql+asyncpg://testuser:testpass@localhost:55433/test_smartwallet"
+    test_db_url="postgresql+asyncpg://testuser:testpass@localhost:55432/test_smartwallet"
 )
 ```
 
@@ -155,7 +155,7 @@ def test_login_success()                    # Happy path
 def test_login_invalid_credentials()        # Error case
 def test_login_rate_limited()              # Edge case
 
-# Integration tests  
+# Integration tests
 def test_auth_flow_end_to_end()            # Full workflow
 def test_database_constraints()            # Database-specific
 
@@ -175,7 +175,7 @@ async def test_unit_with_mocks(
 ):
     pass
 
-@pytest.mark.asyncio  
+@pytest.mark.asyncio
 async def test_integration_with_db(
     test_di_container_with_db,        # Integration DI container
     integration_test_session,         # Real database session
@@ -197,7 +197,7 @@ def test_user():
         email="test@example.com"
     )
 
-@pytest.fixture 
+@pytest.fixture
 def test_wallet(test_user):
     return WalletFactory.build(
         user_id=test_user.id,
@@ -230,7 +230,7 @@ make test-all-scenarios
 export TEST_TYPE=unit|integration|performance
 
 # Database configuration
-export TEST_DB_URL="postgresql+asyncpg://testuser:testpass@localhost:55433/test_smartwallet"
+export TEST_DB_URL="postgresql+asyncpg://testuser:testpass@localhost:55432/test_smartwallet"
 
 # Performance optimization
 export BCRYPT_ROUNDS=4
@@ -245,15 +245,15 @@ For VS Code, add to `.vscode/settings.json`:
 
 ```json
 {
-    "python.testing.pytestArgs": [
-        "tests",
-        "--tb=short",
-        "--cov=app",
-        "--cov-report=term-missing"
-    ],
-    "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true,
-    "python.testing.pytestPath": "pytest"
+  "python.testing.pytestArgs": [
+    "tests",
+    "--tb=short",
+    "--cov=app",
+    "--cov-report=term-missing"
+  ],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestPath": "pytest"
 }
 ```
 
@@ -266,7 +266,7 @@ The enhanced CI/CD pipeline provides:
 - **Parallel test execution** across multiple domains
 - **Matrix testing** for different test groups
 - **Docker integration** for realistic testing
-- **Performance benchmarking** 
+- **Performance benchmarking**
 - **Coverage reporting** with Codecov
 
 ### Pipeline Stages
@@ -293,13 +293,13 @@ Configure branch protection with required status checks:
 ```python
 class TestUserAuthentication:
     """Group related tests in classes."""
-    
+
     @pytest.mark.asyncio
     async def test_login_success(self):
         """Test successful login scenario."""
         pass
-        
-    @pytest.mark.asyncio  
+
+    @pytest.mark.asyncio
     async def test_login_failure(self):
         """Test failed login scenario."""
         pass
@@ -310,6 +310,7 @@ class TestUserAuthentication:
 ### From Basic Tests to Integration Tests
 
 **Before:**
+
 ```python
 def test_basic(mock_db):
     # All mocked
@@ -317,6 +318,7 @@ def test_basic(mock_db):
 ```
 
 **After:**
+
 ```python
 @pytest.mark.integration
 async def test_integration(
@@ -325,7 +327,7 @@ async def test_integration(
 ):
     # Real database operations
     result = await real_service.create_user(user_data)
-    
+
     # Verify in database
     saved_user = await integration_test_session.get(User, result.id)
     assert saved_user.email == user_data.email
@@ -352,8 +354,8 @@ async def test_integration(
 # Check Docker test services
 docker-compose -f docker-compose.test.yml ps
 
-# Verify test database connection  
-TEST_DB_URL="postgresql+asyncpg://testuser:testpass@localhost:55433/test_smartwallet" \
+# Verify test database connection
+TEST_DB_URL="postgresql+asyncpg://testuser:testpass@localhost:55432/test_smartwallet" \
 python -c "from sqlalchemy import create_engine; print('Connection OK')"
 
 # Run single test with verbose output
@@ -362,4 +364,4 @@ pytest tests/path/to/test.py::test_function -v -s --tb=long
 
 ---
 
-This enhanced testing infrastructure provides a solid foundation for reliable, fast, and comprehensive testing. Follow these patterns for consistent, maintainable tests that provide confidence in code quality and system reliability. 
+This enhanced testing infrastructure provides a solid foundation for reliable, fast, and comprehensive testing. Follow these patterns for consistent, maintainable tests that provide confidence in code quality and system reliability.
