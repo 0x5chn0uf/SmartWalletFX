@@ -7,6 +7,7 @@ from jose import jwt as jose_jwt
 
 from app.core.config import Configuration
 from app.core.security.roles import UserRole
+from app.domain.interfaces.services import OAuthServiceInterface
 from app.domain.schemas.auth_token import TokenResponse
 from app.models.user import User
 from app.repositories.oauth_account_repository import OAuthAccountRepository
@@ -16,7 +17,7 @@ from app.utils.jwt import JWTUtils
 from app.utils.logging import Audit
 
 
-class OAuthService:
+class OAuthService(OAuthServiceInterface):
     """Handle OAuth-based authentication and account linking."""
 
     def __init__(

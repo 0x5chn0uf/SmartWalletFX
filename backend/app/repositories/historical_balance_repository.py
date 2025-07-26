@@ -1,10 +1,13 @@
 from app.core.database import CoreDatabase
+from app.domain.interfaces.repositories import (
+    HistoricalBalanceRepositoryInterface,
+)
 from app.domain.schemas.historical_balance import HistoricalBalanceCreate
 from app.models.historical_balance import HistoricalBalance
 from app.utils.logging import Audit
 
 
-class HistoricalBalanceRepository:
+class HistoricalBalanceRepository(HistoricalBalanceRepositoryInterface):
     """Repository for :class:`~app.models.historical_balance.HistoricalBalance`."""
 
     def __init__(self, database: CoreDatabase, audit: Audit):

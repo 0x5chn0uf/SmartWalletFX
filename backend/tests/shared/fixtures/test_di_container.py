@@ -176,6 +176,7 @@ class TestDIContainer(DIContainer):
         # rate-limit related endpoints behave correctly (429 after N attempts).
         # Unit tests keep the lightweight mock to avoid unnecessary delays.
 
+        from app.domain.interfaces.utils import RateLimiterUtilsInterface
         from app.utils.rate_limiter import RateLimiterUtils
 
         if self._test_session:
@@ -186,7 +187,7 @@ class TestDIContainer(DIContainer):
             self.register_utility("rate_limiter_utils", real_rate_limiter_utils)
         else:
             # Unit tests – preserve previous mock behaviour for speed.
-            mock_rate_limiter = Mock(spec=RateLimiterUtils)
+            mock_rate_limiter = Mock(spec=RateLimiterUtilsInterface)
             mock_rate_limiter.login_rate_limiter = Mock()
             mock_rate_limiter.login_rate_limiter.allow = Mock(return_value=True)
             mock_rate_limiter.login_rate_limiter.reset = Mock()
@@ -203,7 +204,9 @@ class TestDIContainer(DIContainer):
             self.register_utility("jwt_utils", real_jwt_utils)
         else:
             # Unit tests: use mock JWT utils
-            mock_jwt_utils = Mock(spec=JWTUtils)
+            from app.domain.interfaces.utils import JWTUtilsInterface
+
+            mock_jwt_utils = Mock(spec=JWTUtilsInterface)
             # Add JWT methods that usecases need
             mock_jwt_utils.create_access_token = Mock(return_value="mock_access_token")
             mock_jwt_utils.create_refresh_token = Mock(
@@ -220,21 +223,21 @@ class TestDIContainer(DIContainer):
         self.register_utility("encryption_utils", mock_encryption_utils)
 
         # Mock JWKS cache utils
-        from app.utils.jwks_cache import JWKSCacheUtils
+        from app.domain.interfaces.utils import JWKSCacheUtilsInterface
 
-        mock_jwks_cache = Mock(spec=JWKSCacheUtils)
+        mock_jwks_cache = Mock(spec=JWKSCacheUtilsInterface)
         self.register_utility("jwks_cache_utils", mock_jwks_cache)
 
         # Mock JWT key utils
-        from app.utils.jwt_keys import JWTKeyUtils
+        from app.domain.interfaces.utils import JWTKeyUtilsInterface
 
-        mock_jwt_key_utils = Mock(spec=JWTKeyUtils)
+        mock_jwt_key_utils = Mock(spec=JWTKeyUtilsInterface)
         self.register_utility("jwt_key_utils", mock_jwt_key_utils)
 
         # Mock password hasher
-        from app.utils.security import PasswordHasher
+        from app.domain.interfaces.utils import PasswordHasherInterface
 
-        mock_password_hasher = Mock(spec=PasswordHasher)
+        mock_password_hasher = Mock(spec=PasswordHasherInterface)
         self.register_utility("password_hasher", mock_password_hasher)
 
     def _register_mock_audit(self):
@@ -279,17 +282,17 @@ class TestDIContainer(DIContainer):
     def _register_mock_external_services(self):
         """Register mock external services."""
         # Email service
-        from app.services.email_service import EmailService
+        from app.domain.interfaces.services import EmailServiceInterface
 
-        mock_email = Mock(spec=EmailService)
+        mock_email = Mock(spec=EmailServiceInterface)
         mock_email.send_verification_email = AsyncMock(return_value=True)
         mock_email.send_password_reset_email = AsyncMock(return_value=True)
         self.register_service("email", mock_email)
 
         # File upload service
-        from app.services.file_upload_service import FileUploadService
+        from app.domain.interfaces.services import FileUploadServiceInterface
 
-        mock_file_upload = Mock(spec=FileUploadService)
+        mock_file_upload = Mock(spec=FileUploadServiceInterface)
         mock_file_upload.upload_profile_picture = AsyncMock(
             return_value="https://example.com/pic.jpg"
         )
@@ -297,9 +300,9 @@ class TestDIContainer(DIContainer):
         self.register_service("file_upload", mock_file_upload)
 
         # OAuth service
-        from app.services.oauth_service import OAuthService
+        from app.domain.interfaces.services import OAuthServiceInterface
 
-        mock_oauth = Mock(spec=OAuthService)
+        mock_oauth = Mock(spec=OAuthServiceInterface)
         mock_oauth.exchange_code = AsyncMock(
             return_value={"access_token": "test-token"}
         )

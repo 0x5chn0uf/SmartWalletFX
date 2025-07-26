@@ -10,6 +10,7 @@ from typing import Optional
 
 from fastapi import UploadFile
 
+from app.domain.interfaces.services import FileUploadServiceInterface
 from app.utils.logging import Audit
 
 
@@ -22,7 +23,7 @@ class FileUploadError(Exception):
         self.code = code
 
 
-class FileUploadService:
+class FileUploadService(FileUploadServiceInterface):
     """Service for handling file uploads with validation and storage."""
 
     # Allowed file extensions for profile pictures

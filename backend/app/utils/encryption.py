@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Final, Optional
 
 from app.core.config import Configuration
+from app.domain.interfaces.utils import EncryptionUtilsInterface
 
 __all__: Final[list[str]] = [
     "EncryptionError",
@@ -28,7 +29,7 @@ class EncryptionError(RuntimeError):
 GPG_BINARY: Final[str] = "gpg"
 
 
-class EncryptionUtils:
+class EncryptionUtils(EncryptionUtilsInterface):
     """Utility class for GPG encryption operations."""
 
     def __init__(self, config: Configuration):

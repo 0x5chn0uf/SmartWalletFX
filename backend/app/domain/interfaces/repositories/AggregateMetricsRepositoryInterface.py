@@ -1,14 +1,14 @@
-"""Repository interfaces for persistence (ports)."""
-
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 
-from ..entities.models import AggregateMetrics
+from app.domain.schemas.defi_aggregate import (
+    AggregateMetricsSchema as AggregateMetrics,
+)
 
 
-class AggregateMetricsRepository(ABC):
+class AggregateMetricsRepositoryInterface(ABC):
     """Port for persisting and retrieving aggregated metrics."""
 
     @abstractmethod
@@ -18,7 +18,7 @@ class AggregateMetricsRepository(ABC):
     @abstractmethod
     async def get_latest(
         self, wallet_id: str
-    ) -> AggregateMetrics | None:  # pragma: no cover
+    ) -> Optional[AggregateMetrics]:  # pragma: no cover
         """Return the most recent metrics for the given wallet, or None."""
 
     @abstractmethod

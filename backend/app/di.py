@@ -17,6 +17,19 @@ from app.core.database import CoreDatabase
 from app.core.error_handling import CoreErrorHandling
 from app.core.logging import CoreLogging
 from app.core.middleware import Middleware
+from app.domain.interfaces.repositories import (
+    EmailVerificationRepositoryInterface,
+    HistoricalBalanceRepositoryInterface,
+    OAuthAccountRepositoryInterface,
+    PasswordResetRepositoryInterface,
+    PortfolioSnapshotRepositoryInterface,
+    RefreshTokenRepositoryInterface,
+    TokenBalanceRepositoryInterface,
+    TokenPriceRepositoryInterface,
+    TokenRepositoryInterface,
+    UserRepositoryInterface,
+    WalletRepositoryInterface,
+)
 from app.repositories.email_verification_repository import (
     EmailVerificationRepository,
 )
@@ -163,34 +176,58 @@ class DIContainer:
         self.register_repository("user", user_repository)
 
         email_verification_repository = EmailVerificationRepository(database, audit)
-        self.register_repository("email_verification", email_verification_repository)
+        self.register_repository(
+            "email_verification",
+            email_verification_repository,
+        )
 
         oauth_account_repository = OAuthAccountRepository(database, audit)
-        self.register_repository("oauth_account", oauth_account_repository)
+        self.register_repository(
+            "oauth_account",
+            oauth_account_repository,
+        )
 
         password_reset_repository = PasswordResetRepository(database, audit)
-        self.register_repository("password_reset", password_reset_repository)
+        self.register_repository(
+            "password_reset",
+            password_reset_repository,
+        )
 
         refresh_token_repository = RefreshTokenRepository(database, audit)
-        self.register_repository("refresh_token", refresh_token_repository)
+        self.register_repository(
+            "refresh_token",
+            refresh_token_repository,
+        )
 
         wallet_repository = WalletRepository(database, audit)
         self.register_repository("wallet", wallet_repository)
 
         portfolio_snapshot_repository = PortfolioSnapshotRepository(database, audit)
-        self.register_repository("portfolio_snapshot", portfolio_snapshot_repository)
+        self.register_repository(
+            "portfolio_snapshot",
+            portfolio_snapshot_repository,
+        )
 
         historical_balance_repository = HistoricalBalanceRepository(database, audit)
-        self.register_repository("historical_balance", historical_balance_repository)
+        self.register_repository(
+            "historical_balance",
+            historical_balance_repository,
+        )
 
         token_repository = TokenRepository(database, audit)
         self.register_repository("token", token_repository)
 
         token_price_repository = TokenPriceRepository(database, audit)
-        self.register_repository("token_price", token_price_repository)
+        self.register_repository(
+            "token_price",
+            token_price_repository,
+        )
 
         token_balance_repository = TokenBalanceRepository(database, audit)
-        self.register_repository("token_balance", token_balance_repository)
+        self.register_repository(
+            "token_balance",
+            token_balance_repository,
+        )
 
     def _initialize_usecases(self):
         """Initialize and register usecase singletons."""
