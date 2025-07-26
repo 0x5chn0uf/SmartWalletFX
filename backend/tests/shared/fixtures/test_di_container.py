@@ -98,13 +98,13 @@ class TestDIContainer(DIContainer):
                 from tests.shared.fixtures.test_config import (
                     create_integration_test_config,
                 )
-                
+
                 # Use a test-specific SQLite file that gets cleaned up
                 test_db_url = "sqlite+aiosqlite:///./test_integration.db"
                 test_config = create_integration_test_config(test_db_url)
                 self.register_core("config", test_config)
             else:
-                # Unit test: use in-memory database  
+                # Unit test: use in-memory database
                 from tests.shared.fixtures.test_config import (
                     create_unit_test_config,
                 )
@@ -182,11 +182,11 @@ class TestDIContainer(DIContainer):
 
         # Create a wrapper that prevents duplicate init_db calls
         original_init_db = self._test_database.init_db
-        
+
         async def noop_init_db():
             """Skip init_db since tables are already created during test setup."""
             pass
-        
+
         self._test_database.get_session = get_test_session
         self._test_database.init_db = noop_init_db
         self.register_core("database", self._test_database)
