@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from app.models.user import User
-from tests.shared.fixtures.enhanced_mocks import MockBehavior, mock_assertions
+
 
 
 class TestOAuthService:
@@ -22,7 +22,7 @@ class TestOAuthService:
         mock_audit,
     ):
         """Test that authenticate_or_create creates a new user if none exists."""
-        # Setup enhanced mock with realistic behavior
+        # Setup mocks with realistic behavior
         created_user = User(
             id=uuid.uuid4(), username="alice", email="alice@example.com"
         )
@@ -42,7 +42,7 @@ class TestOAuthService:
             "google", "account123", "alice@example.com"
         )
 
-        # Verify using enhanced assertions
+        # Verify using standard mock assertions
         assert user == created_user
         mock_user_repository.get_by_email.assert_awaited_once_with("alice@example.com")
         mock_oauth_account_repository.get_by_provider_account.assert_awaited_once_with(
