@@ -1,10 +1,11 @@
 from app.core.database import CoreDatabase
+from app.domain.interfaces.repositories import TokenPriceRepositoryInterface
 from app.domain.schemas.token_price import TokenPriceCreate
 from app.models.token_price import TokenPrice
 from app.utils.logging import Audit
 
 
-class TokenPriceRepository:
+class TokenPriceRepository(TokenPriceRepositoryInterface):
     """Repository for :class:`~app.models.token_price.TokenPrice`."""
 
     def __init__(self, database: CoreDatabase, audit: Audit):

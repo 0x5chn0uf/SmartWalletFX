@@ -7,6 +7,7 @@ from email.message import EmailMessage
 from typing import Final
 
 from app.core.config import Configuration
+from app.domain.interfaces.services import EmailServiceInterface
 from app.utils.logging import Audit
 
 
@@ -58,7 +59,7 @@ async def _send_via_smtp(message: EmailMessage, config: Configuration) -> None:
     await loop.run_in_executor(None, _sync_send)
 
 
-class EmailService:
+class EmailService(EmailServiceInterface):
     """Email service with dependency injection support."""
 
     def __init__(self, config: Configuration, audit: Audit):

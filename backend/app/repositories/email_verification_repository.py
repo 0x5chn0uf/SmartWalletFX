@@ -8,11 +8,14 @@ from typing import Optional
 from sqlalchemy.future import select
 
 from app.core.database import CoreDatabase
+from app.domain.interfaces.repositories import (
+    EmailVerificationRepositoryInterface,
+)
 from app.models.email_verification import EmailVerification
 from app.utils.logging import Audit
 
 
-class EmailVerificationRepository:
+class EmailVerificationRepository(EmailVerificationRepositoryInterface):
     """Repository for email verification tokens."""
 
     def __init__(self, database: CoreDatabase, audit: Audit):

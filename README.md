@@ -276,7 +276,6 @@ We welcome contributions from the community! Whether you're fixing bugs, adding 
 
 Please see our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
 
----
 
 ## 📜 License
 

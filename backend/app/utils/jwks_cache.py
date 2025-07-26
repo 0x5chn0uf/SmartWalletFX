@@ -8,6 +8,7 @@ from typing import Optional
 from redis.asyncio import Redis
 
 from app.core.config import Configuration
+from app.domain.interfaces.utils import JWKSCacheUtilsInterface
 from app.domain.schemas.jwks import JWKSet
 
 logger = logging.getLogger(__name__)
@@ -104,7 +105,7 @@ def invalidate_jwks_cache_sync() -> bool:
 _redis_singleton: Redis | None = None
 
 
-class JWKSCacheUtils:
+class JWKSCacheUtils(JWKSCacheUtilsInterface):
     """Utility class for JWKS caching operations."""
 
     def __init__(self, config: Configuration):

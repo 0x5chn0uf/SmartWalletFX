@@ -8,11 +8,12 @@ from typing import Optional
 from sqlalchemy.future import select
 
 from app.core.database import CoreDatabase
+from app.domain.interfaces.repositories import PasswordResetRepositoryInterface
 from app.models.password_reset import PasswordReset
 from app.utils.logging import Audit
 
 
-class PasswordResetRepository:
+class PasswordResetRepository(PasswordResetRepositoryInterface):
     """Repository for password reset tokens."""
 
     def __init__(self, database: CoreDatabase, audit: Audit):

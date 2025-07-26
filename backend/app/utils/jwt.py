@@ -12,6 +12,7 @@ from jose import ExpiredSignatureError, JWTError, jwt
 from pydantic import ValidationError
 
 from app.core.config import Configuration
+from app.domain.interfaces.utils import JWTUtilsInterface
 from app.domain.schemas.jwt import JWTPayload
 from app.utils.logging import Audit
 
@@ -72,7 +73,7 @@ def rotate_signing_key(
     )
 
 
-class JWTUtils:
+class JWTUtils(JWTUtilsInterface):
     """Helper class encapsulating JWT creation and decoding logic."""
 
     __config: Configuration

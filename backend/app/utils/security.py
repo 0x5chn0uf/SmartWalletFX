@@ -10,13 +10,14 @@ import re
 from passlib.context import CryptContext
 
 from app.core.config import Configuration
+from app.domain.interfaces.utils import PasswordHasherInterface
 
 # ---------------------------------------------------------------------------
 # Password Hasher Utility
 # ---------------------------------------------------------------------------
 
 
-class PasswordHasher:  # noqa: D101 – simple utility wrapper
+class PasswordHasher(PasswordHasherInterface):  # noqa: D101 – simple utility wrapper
     """Utility class for hashing & verifying passwords.
 
     Uses *passlib*'s :class:`~passlib.context.CryptContext` under the hood and
