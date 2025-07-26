@@ -76,13 +76,21 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
             # Skip auth for non-protected or excluded paths
             return await call_next(request)
 
-        # Extract Authorization header
+        # Extract token from Authorization header or cookies
+        token = None
+
+        # First try Authorization header
         auth_header = request.headers.get("Authorization")
-        if not auth_header or not auth_header.startswith("Bearer "):
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+
+        # If no Authorization header, try access_token cookie
+        if not token:
+            token = request.cookies.get("access_token")
+
+        if not token:
             # Let the endpoint handle the 401 error
             return await call_next(request)
-
-        token = auth_header.split(" ")[1]
 
         try:
             # Use the injected DI container or fall back to global import

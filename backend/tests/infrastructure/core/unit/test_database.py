@@ -77,7 +77,7 @@ class TestCoreDatabase:
     def test_init_with_already_async_urls(self):
         """Test initialization with already converted async URLs."""
         config = Mock(spec=Configuration)
-        config.DATABASE_URL = "sqlite+aiosqlite:///test.db"
+        config.DATABASE_URL = "sqlite+aiosqlite:///:memory:"
         config.DB_POOL_SIZE = 10
         config.DB_MAX_OVERFLOW = 20
 
@@ -93,12 +93,12 @@ class TestCoreDatabase:
             # Check that URL was not double-converted
             mock_create_async.assert_called_once()
             args, kwargs = mock_create_async.call_args
-            assert args[0] == "sqlite+aiosqlite:///test.db"
+            assert args[0] == "sqlite+aiosqlite:///:memory:"
 
             # Check sync engine setup removes async driver
             mock_create_sync.assert_called_once()
             sync_args, sync_kwargs = mock_create_sync.call_args
-            assert sync_args[0] == "sqlite:///test.db"
+            assert sync_args[0] == "sqlite:///:memory:"
 
     @pytest.mark.unit
     def test_init_with_postgresql_asyncpg_url(self):

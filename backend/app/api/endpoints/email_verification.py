@@ -25,9 +25,26 @@ class EmailVerification:
 
     @staticmethod
     @ep.post("/verify-email", response_model=TokenResponse)
-    async def verify_email(payload: EmailVerificationVerify):
+    async def verify_email(payload: EmailVerificationVerify, response: Response):
         """Verify email using verification token."""
-        return await EmailVerification.__verification_uc.verify_email(payload.token)
+        tokens = await EmailVerification.__verification_uc.verify_email(payload.token)
+
+        # Set httpOnly cookies for consistent authentication with login endpoint
+        response.set_cookie(
+            "access_token",
+            tokens.access_token,
+            httponly=True,
+            samesite="lax",
+        )
+        response.set_cookie(
+            "refresh_token",
+            tokens.refresh_token,
+            httponly=True,
+            samesite="lax",
+            path="/auth",
+        )
+
+        return tokens
 
     @staticmethod
     @ep.post(

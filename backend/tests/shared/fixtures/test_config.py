@@ -58,7 +58,7 @@ class UnitTestConfiguration(TestConfiguration):
 
     def __init__(self, **overrides):
         unit_test_defaults = {
-            "DATABASE_URL": "sqlite+aiosqlite:///test.db",
+            "DATABASE_URL": "sqlite+aiosqlite:///:memory:",
             "REDIS_URL": "redis://localhost:6379/15",  # Separate test Redis DB
             "EMAIL_ENABLED": False,
             "CELERY_BROKER_URL": "memory://",  # In-memory broker for tests

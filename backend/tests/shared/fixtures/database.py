@@ -16,13 +16,16 @@ def config():
     return UnitTestConfiguration()
 
 
-@pytest.fixture(scope="session")
-def database(config):
+@pytest_asyncio.fixture
+async def database(config):
     """Database service for tests."""
     from app.utils.logging import Audit
 
     audit = Audit()
-    return CoreDatabase(config, audit)
+    db = CoreDatabase(config, audit)
+    # Initialize database schema for tests
+    await db.init_db()
+    return db
 
 
 @pytest_asyncio.fixture

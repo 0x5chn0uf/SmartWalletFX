@@ -81,16 +81,16 @@ class Configuration(BaseSettings):
 
         values = info.data  # current field values collected by Pydantic
 
-        user = values.get("POSTGRES_USER")
-        password = values.get("POSTGRES_PASSWORD")
-        server = values.get("POSTGRES_SERVER")
-        port = values.get("POSTGRES_PORT")
+        # Use default values when not provided in environment or values dict
+        user = values.get("POSTGRES_USER") or "devuser"
+        password = values.get("POSTGRES_PASSWORD") or "devpass"
+        server = values.get("POSTGRES_SERVER") or "postgres-dev"
+        port = values.get("POSTGRES_PORT") or 5432
+        db = values.get("POSTGRES_DB") or "smartwallet_dev"
 
         # Guard against missing or invalid port coming from environment vars
         if (not port) or (isinstance(port, str) and port.lower() == "none"):
             port = 5432
-
-        db = values.get("POSTGRES_DB")
 
         return f"postgresql+asyncpg://{user}:{password}@{server}:{port}/{db}"
 

@@ -7,8 +7,10 @@ pattern with dependency injection.
 
 from __future__ import annotations
 
+from unittest.mock import Mock
+
 import pytest
-from fastapi import BackgroundTasks, HTTPException
+from fastapi import BackgroundTasks, HTTPException, Response
 
 from app.domain.schemas.auth_token import TokenResponse
 from app.domain.schemas.email_verification import (
@@ -27,8 +29,8 @@ async def test_verify_email_success(
 
     # Mock the usecase response
     expected_response = TokenResponse(
-        access_token="mock_access_token",
-        refresh_token="mock_refresh_token",
+        access_token="access_token_value",
+        refresh_token="refresh_token_value",
         token_type="bearer",
         expires_in=3600,
     )
@@ -36,11 +38,28 @@ async def test_verify_email_success(
 
     # Test the endpoint method
     payload = EmailVerificationVerify(token="test_token")
-    result = await endpoint.verify_email(payload)
+    mock_response = Mock(spec=Response)
+    result = await endpoint.verify_email(payload, mock_response)
 
     # Verify the usecase was called correctly
     mock_email_verification_usecase.verify_email.assert_awaited_once_with("test_token")
     assert result == expected_response
+
+    # Verify cookies are set
+    assert mock_response.set_cookie.call_count == 2
+    # Check access token cookie
+    access_cookie_call = mock_response.set_cookie.call_args_list[0]
+    assert access_cookie_call[0][0] == "access_token"
+    assert access_cookie_call[0][1] == "access_token_value"
+    assert access_cookie_call[1]["httponly"] is True
+    assert access_cookie_call[1]["samesite"] == "lax"
+    # Check refresh token cookie
+    refresh_cookie_call = mock_response.set_cookie.call_args_list[1]
+    assert refresh_cookie_call[0][0] == "refresh_token"
+    assert refresh_cookie_call[0][1] == "refresh_token_value"
+    assert refresh_cookie_call[1]["httponly"] is True
+    assert refresh_cookie_call[1]["samesite"] == "lax"
+    assert refresh_cookie_call[1]["path"] == "/auth"
 
 
 @pytest.mark.unit
@@ -58,8 +77,9 @@ async def test_verify_email_invalid_token(
 
     # Test the endpoint method
     payload = EmailVerificationVerify(token="invalid_token")
+    mock_response = Mock(spec=Response)
     with pytest.raises(HTTPException) as exc_info:
-        await endpoint.verify_email(payload)
+        await endpoint.verify_email(payload, mock_response)
 
     # Verify the exception details
     assert exc_info.value.status_code == 400
@@ -84,8 +104,9 @@ async def test_verify_email_user_not_found(
 
     # Test the endpoint method
     payload = EmailVerificationVerify(token="test_token")
+    mock_response = Mock(spec=Response)
     with pytest.raises(HTTPException) as exc_info:
-        await endpoint.verify_email(payload)
+        await endpoint.verify_email(payload, mock_response)
 
     # Verify the exception details
     assert exc_info.value.status_code == 400

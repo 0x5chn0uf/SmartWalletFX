@@ -141,8 +141,8 @@ const App: React.FC = () => {
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
       line-height: 1.5;
-      background-color: #ffffff;
-      color: #1f2937;
+      background-color: #1a1f2e;
+      color: #ffffff;
     }
 
     h1,
