@@ -10,9 +10,7 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.mark.asyncio
-async def test_list_wallets_empty(
-    integration_async_client, test_di_container_with_db
-):
+async def test_list_wallets_empty(integration_async_client, test_di_container_with_db):
     # Get repositories and services from DIContainer
     user_repo = test_di_container_with_db.get_repository("user")
     auth_usecase = test_di_container_with_db.get_usecase("auth")

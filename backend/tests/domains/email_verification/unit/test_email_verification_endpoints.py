@@ -17,7 +17,6 @@ from app.domain.schemas.email_verification import (
 )
 
 
-
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_verify_email_success(
@@ -195,6 +194,7 @@ async def test_resend_verification_email_service_failure(
     mock_email_verification_usecase,
 ):
     """Test resend verification email when email service experiences failures."""
+
     async def resend_side_effect(email, background_tasks, _rate_limiter):
         background_tasks.add_task(
             mock_email_service.send_verification_email,

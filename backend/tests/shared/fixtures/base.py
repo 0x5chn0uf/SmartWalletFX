@@ -171,11 +171,12 @@ async def test_app(async_engine):
     """
 
     # Import the app and di_container from main
-    from app.main import app as _app, di_container
+    from app.main import app as _app
+    from app.main import di_container
 
     # Get the database service from the DI container and patch its engines
     database_service = di_container.get_core("database")
-    
+
     # Store original engines for cleanup
     original_async_engine = database_service.async_engine
     original_sync_engine = database_service.sync_engine
@@ -184,14 +185,15 @@ async def test_app(async_engine):
 
     # Patch the database service with test engines
     database_service.async_engine = async_engine
-    
+
     # Create sync engine from TEST_DB_URL
     from sqlalchemy import create_engine
+
     sync_url = os.environ["TEST_DB_URL"]
     database_service.sync_engine = create_engine(
         sync_url, connect_args={"check_same_thread": False}
     )
-    
+
     # Update session factories to use the test engines
     database_service.async_session_factory = async_sessionmaker(
         autocommit=False,
@@ -200,7 +202,7 @@ async def test_app(async_engine):
         class_=AsyncSession,
         expire_on_commit=False,
     )
-    
+
     database_service.sync_session_factory = sessionmaker(
         autocommit=False, autoflush=False, bind=database_service.sync_engine
     )

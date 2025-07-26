@@ -121,7 +121,7 @@ async def test_password_reset_rate_limit(
     # Create a test user
     auth_usecase = test_di_container_with_db.get_usecase("auth")
     user_repo = test_di_container_with_db.get_repository("user")
-    
+
     unique_id = uuid.uuid4().hex[:8]
     email = f"ratelimit_{unique_id}@example.com"
     user_create = UserCreate(
@@ -137,10 +137,12 @@ async def test_password_reset_rate_limit(
 
     # Small delay to ensure database is committed
     import asyncio
+
     await asyncio.sleep(0.1)
 
     # Clear any mock state that might interfere
     import tests.conftest as conftest_module
+
     if hasattr(conftest_module, "_password_reset_attempts"):
         conftest_module._password_reset_attempts.clear()
 
@@ -194,7 +196,7 @@ async def test_reset_password_token_reuse(
     # Create a user for the test (required for endpoint validation)
     auth_usecase = test_di_container_with_db.get_usecase("auth")
     user_repo = test_di_container_with_db.get_repository("user")
-    
+
     unique_id = uuid.uuid4().hex[:8]
     user = await auth_usecase.register(
         UserCreate(
@@ -209,9 +211,10 @@ async def test_reset_password_token_reuse(
     # Use a token that will be handled by the mock system for token reuse testing
     # This tests the integration behavior when the async client handles requests
     token = "test-reuse-token-12345"
-    
+
     # Clear any existing token state in the mock
     import tests.conftest as conftest_module
+
     if hasattr(conftest_module, "_used_reset_tokens"):
         conftest_module._used_reset_tokens.clear()
 
@@ -229,4 +232,7 @@ async def test_reset_password_token_reuse(
     )
     assert fail.status_code == 400
     detail = fail.json()["detail"]
-    assert "Reset token has already been used" in detail or "Invalid or expired token" in detail
+    assert (
+        "Reset token has already been used" in detail
+        or "Invalid or expired token" in detail
+    )

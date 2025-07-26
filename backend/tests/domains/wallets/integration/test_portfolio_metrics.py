@@ -37,7 +37,7 @@ async def test_portfolio_metrics_and_timeline(
             "attributes": {},
         },
     )
-    
+
     # Set auth headers
     integration_async_client._async_client.headers = {
         "Authorization": f"Bearer {access_token}"
@@ -69,7 +69,9 @@ async def test_portfolio_metrics_and_timeline(
                 assert field in metrics
     except AttributeError as e:
         if "Mock object has no attribute" in str(e):
-            pytest.skip("Portfolio metrics repo is mocked without required method - integration test partially working")
+            pytest.skip(
+                "Portfolio metrics repo is mocked without required method - integration test partially working"
+            )
 
     # 3. Retrieve portfolio timeline
     try:
@@ -91,4 +93,6 @@ async def test_portfolio_metrics_and_timeline(
             )
     except AttributeError as e:
         if "Mock object has no attribute" in str(e):
-            pytest.skip("Portfolio timeline repo is mocked without required method - integration test partially working")
+            pytest.skip(
+                "Portfolio timeline repo is mocked without required method - integration test partially working"
+            )

@@ -1,8 +1,9 @@
 """API tests for user profile management endpoints."""
+import uuid
+from unittest.mock import patch
+
 import pytest
 from fastapi import status
-from unittest.mock import patch
-import uuid
 
 
 @pytest.mark.integration
@@ -107,13 +108,13 @@ class TestUserProfileEndpoints:
         # Create first user with unique email and username
         existing_user = await user_factory(
             email=f"user1_{uuid.uuid4().hex[:8]}@example.com",
-            username=f"existing_user_{uuid.uuid4().hex[:8]}"
+            username=f"existing_user_{uuid.uuid4().hex[:8]}",
         )
-        
+
         # Create second user with different email and username
         user2 = await user_factory(
             email=f"user2_{uuid.uuid4().hex[:8]}@example.com",
-            username=f"user2_{uuid.uuid4().hex[:8]}"
+            username=f"user2_{uuid.uuid4().hex[:8]}",
         )
 
         # Get auth headers for user2
@@ -129,17 +130,22 @@ class TestUserProfileEndpoints:
         # The async client may fall back to mocks due to ASGI transport issues
         # For this test, check if we get either the real error response or mock validation behavior
         response_data = response.json()
-        
+
         if response.status_code == status.HTTP_400_BAD_REQUEST:
             # Real FastAPI response - preferred outcome
-            assert "already taken" in response_data["detail"] or "Username already taken" in response_data["detail"]
+            assert (
+                "already taken" in response_data["detail"]
+                or "Username already taken" in response_data["detail"]
+            )
         else:
             # If we got a mock response, the mock should handle username conflicts
             # But since the mock system doesn't have access to the actual user database,
             # we'll consider this test passed if the business logic is working correctly.
             # The logs show the real app is working - it detects conflicts correctly.
             assert response.status_code == status.HTTP_200_OK  # Mock fallback behavior
-            print("Test passed via mock fallback - real FastAPI logic is working correctly per logs")
+            print(
+                "Test passed via mock fallback - real FastAPI logic is working correctly per logs"
+            )
 
     @pytest.mark.asyncio
     async def test_change_password_success(
@@ -189,8 +195,10 @@ class TestUserProfileEndpoints:
         else:
             # Mock fallback - for password endpoints, mock should return error for wrong password
             # But the logs show the real app is working correctly
-            assert response.status_code == status.HTTP_200_OK  # Mock may return 200 
-            print("Test passed via mock fallback - real FastAPI logic is working correctly per logs")
+            assert response.status_code == status.HTTP_200_OK  # Mock may return 200
+            print(
+                "Test passed via mock fallback - real FastAPI logic is working correctly per logs"
+            )
 
     @pytest.mark.asyncio
     async def test_change_password_weak_new_password(
@@ -204,7 +212,7 @@ class TestUserProfileEndpoints:
 
         password_data = {
             "current_password": "TestPassword123!",  # Use the correct current password
-            "new_password": "weak"  # This should fail validation
+            "new_password": "weak",  # This should fail validation
         }
 
         response = await integration_async_client.post(
@@ -218,7 +226,9 @@ class TestUserProfileEndpoints:
         else:
             # Mock fallback behavior
             assert response.status_code == status.HTTP_200_OK
-            print("Test passed via mock fallback - password validation would work in real app")
+            print(
+                "Test passed via mock fallback - password validation would work in real app"
+            )
 
     @pytest.mark.asyncio
     async def test_update_notification_preferences_success(
@@ -273,7 +283,9 @@ class TestUserProfileEndpoints:
         else:
             # Mock fallback behavior
             assert response.status_code == status.HTTP_200_OK
-            print("Test passed via mock fallback - notification validation would work in real app")
+            print(
+                "Test passed via mock fallback - notification validation would work in real app"
+            )
 
     @pytest.mark.asyncio
     async def test_delete_current_user_account_success(
@@ -296,7 +308,9 @@ class TestUserProfileEndpoints:
         else:
             # Mock fallback behavior
             assert response.status_code == status.HTTP_200_OK
-            print("Test passed via mock fallback - account deletion would work in real app")
+            print(
+                "Test passed via mock fallback - account deletion would work in real app"
+            )
 
     @pytest.mark.asyncio
     async def test_upload_profile_picture_success(
@@ -353,7 +367,9 @@ class TestUserProfileEndpoints:
             # In test environment, file validation might be mocked to always succeed
             # This is acceptable as long as the real app would validate properly
             assert response.status_code == status.HTTP_200_OK
-            print("Test passed - file upload endpoint accessible, validation mocked in test environment")
+            print(
+                "Test passed - file upload endpoint accessible, validation mocked in test environment"
+            )
 
     @pytest.mark.asyncio
     async def test_upload_profile_picture_too_large(
@@ -383,7 +399,9 @@ class TestUserProfileEndpoints:
             # In test environment, file validation might be mocked to always succeed
             # This is acceptable as long as the real app would validate properly
             assert response.status_code == status.HTTP_200_OK
-            print("Test passed - file upload endpoint accessible, validation mocked in test environment")
+            print(
+                "Test passed - file upload endpoint accessible, validation mocked in test environment"
+            )
 
     @pytest.mark.asyncio
     async def test_profile_endpoints_require_authentication(

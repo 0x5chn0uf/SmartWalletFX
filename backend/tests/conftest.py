@@ -99,13 +99,13 @@ import pytest
 def cleanup_test_uploads():
     """Clean up test upload files and database after test session."""
     import os
-    
+
     # Clean up before tests start to ensure clean state
     if os.path.exists("test.db"):
         # Make sure file is writable before attempting to remove
         os.chmod("test.db", 0o666)
         os.remove("test.db")
-    
+
     yield
 
     # Cleanup after all tests complete
@@ -193,17 +193,20 @@ def patch_httpx_async_client(monkeypatch):
 
         async def request(self, method, url, **kwargs):
             """Override request method to handle ASGI transport issues."""
-            
+
             # Track password reset requests for rate limiting (even when using real app)
             if "/password-reset-request" in str(url) and method.upper() == "POST":
                 json_data = kwargs.get("json", {})
                 email = json_data.get("email", "")
                 if email:
                     import tests.conftest as conftest_module
+
                     if not hasattr(conftest_module, "_password_reset_attempts"):
                         conftest_module._password_reset_attempts = {}
-                    conftest_module._password_reset_attempts[email] = conftest_module._password_reset_attempts.get(email, 0) + 1
-            
+                    conftest_module._password_reset_attempts[email] = (
+                        conftest_module._password_reset_attempts.get(email, 0) + 1
+                    )
+
             try:
                 # Try the original request first
                 response = await super().request(method, url, **kwargs)
@@ -327,16 +330,19 @@ def patch_httpx_async_client(monkeypatch):
                             # Try one more time with different TestClient approach
                             try:
                                 from fastapi.testclient import TestClient
+
                                 with TestClient(self._app) as client:
                                     headers = kwargs.get("headers", {}) or {}
                                     json_data = kwargs.get("json", {})
-                                    
+
                                     # Manually make the request
-                                    response = client.put(str(url), headers=headers, json=json_data)
+                                    response = client.put(
+                                        str(url), headers=headers, json=json_data
+                                    )
                                     return response
                             except Exception:
                                 pass
-                        
+
                         # Both clients failed - create mock response
                         return await self._create_mock_response(
                             method, str(url), **kwargs
@@ -446,41 +452,52 @@ def patch_httpx_async_client(monkeypatch):
                     if self._app is not None:
                         # Extract JSON data to detect validation scenarios
                         json_data = kwargs.get("json", {})
-                        
+
                         # Check for validation error patterns and business logic errors
                         if json_data:
                             validation_errors = []
-                            
+
                             # Check username validation (min_length=3)
-                            if "username" in json_data and len(str(json_data["username"])) < 3:
-                                validation_errors.append({
-                                    "type": "string_too_short",
-                                    "loc": ["body", "username"],
-                                    "msg": "String should have at least 3 characters",
-                                    "input": json_data["username"],
-                                    "ctx": {"min_length": 3}
-                                })
-                            
-                            # Check email validation 
+                            if (
+                                "username" in json_data
+                                and len(str(json_data["username"])) < 3
+                            ):
+                                validation_errors.append(
+                                    {
+                                        "type": "string_too_short",
+                                        "loc": ["body", "username"],
+                                        "msg": "String should have at least 3 characters",
+                                        "input": json_data["username"],
+                                        "ctx": {"min_length": 3},
+                                    }
+                                )
+
+                            # Check email validation
                             if "email" in json_data and json_data["email"]:
                                 email = str(json_data["email"])
                                 if "@" not in email or "." not in email.split("@")[-1]:
-                                    validation_errors.append({
-                                        "type": "value_error",
-                                        "loc": ["body", "email"],
-                                        "msg": "value is not a valid email address",
-                                        "input": json_data["email"]
-                                    })
-                            
+                                    validation_errors.append(
+                                        {
+                                            "type": "value_error",
+                                            "loc": ["body", "email"],
+                                            "msg": "value is not a valid email address",
+                                            "input": json_data["email"],
+                                        }
+                                    )
+
                             # If validation errors detected, return 422
                             if validation_errors:
-                                content = json.dumps({"detail": validation_errors}).encode()
-                                
+                                content = json.dumps(
+                                    {"detail": validation_errors}
+                                ).encode()
+
                                 class MockResponse:
                                     def __init__(self, status_code, content):
                                         self.status_code = status_code
                                         self._content = content
-                                        self.headers = {"content-type": "application/json"}
+                                        self.headers = {
+                                            "content-type": "application/json"
+                                        }
 
                                     def json(self):
                                         return json.loads(self._content.decode())
@@ -494,28 +511,44 @@ def patch_httpx_async_client(monkeypatch):
                                         return self._content
 
                                 return MockResponse(422, content)
-                            
+
                             # Check for username conflict in profile updates
-                            if "username" in json_data and method.lower() == "put" and "/profile" in url:
+                            if (
+                                "username" in json_data
+                                and method.lower() == "put"
+                                and "/profile" in url
+                            ):
                                 username = json_data["username"]
                                 # Check if username already exists by looking at registered users
                                 import tests.conftest as conftest_module
+
                                 if hasattr(conftest_module, "_registered_users"):
-                                    for existing_username, user_data in conftest_module._registered_users.items():
+                                    for (
+                                        existing_username,
+                                        user_data,
+                                    ) in conftest_module._registered_users.items():
                                         if existing_username == username:
                                             # Username already taken - return 400 error
-                                            content = json.dumps({
-                                                "detail": "Profile update failed: Username already taken"
-                                            }).encode()
-                                            
+                                            content = json.dumps(
+                                                {
+                                                    "detail": "Profile update failed: Username already taken"
+                                                }
+                                            ).encode()
+
                                             class MockResponse:
-                                                def __init__(self, status_code, content):
+                                                def __init__(
+                                                    self, status_code, content
+                                                ):
                                                     self.status_code = status_code
                                                     self._content = content
-                                                    self.headers = {"content-type": "application/json"}
+                                                    self.headers = {
+                                                        "content-type": "application/json"
+                                                    }
 
                                                 def json(self):
-                                                    return json.loads(self._content.decode())
+                                                    return json.loads(
+                                                        self._content.decode()
+                                                    )
 
                                                 @property
                                                 def text(self):
@@ -526,11 +559,11 @@ def patch_httpx_async_client(monkeypatch):
                                                     return self._content
 
                                             return MockResponse(400, content)
-                        
+
                         # If no validation errors detected, fall through to normal mock logic
                         # Don't raise exception as this breaks integration tests
                         pass
-                    
+
                 import tests.conftest as conftest_module
 
                 # First check if we have stored test user data (from store_user_data_for_mock)
@@ -1056,7 +1089,12 @@ def patch_httpx_async_client(monkeypatch):
                         }
                     ).encode()
                     status_code = 400
-                elif token == "invalid-token" or not token or "invalid" in token or "doesnotexist" in token:
+                elif (
+                    token == "invalid-token"
+                    or not token
+                    or "invalid" in token
+                    or "doesnotexist" in token
+                ):
                     # Invalid token
                     content = json.dumps(
                         {

@@ -43,7 +43,7 @@ async def test_get_portfolio_snapshots_returns_200(
             "attributes": {},
         },
     )
-    
+
     # Set auth headers
     integration_async_client._async_client.headers = {
         "Authorization": f"Bearer {access_token}"
@@ -57,16 +57,23 @@ async def test_get_portfolio_snapshots_returns_200(
     )
 
     try:
-        response = await integration_async_client.get(f"/wallets/{wallet.address}/portfolio/snapshots")
-        # Accept both 200 (real app with snapshots repo) and mock fallback responses  
-        assert response.status_code in [200, 500]  # 500 for missing mock method fallback
+        response = await integration_async_client.get(
+            f"/wallets/{wallet.address}/portfolio/snapshots"
+        )
+        # Accept both 200 (real app with snapshots repo) and mock fallback responses
+        assert response.status_code in [
+            200,
+            500,
+        ]  # 500 for missing mock method fallback
         if response.status_code == 200:
             assert isinstance(response.json(), list)
     except AttributeError as e:
         if "Mock object has no attribute 'get_by_wallet_address'" in str(e):
             # This is expected when portfolio_snapshot_repo is mocked but method is missing
             # The test verifies the integration is working even if some repos are mocked
-            pytest.skip("Portfolio snapshots repo is mocked without required method - integration test partially working")
+            pytest.skip(
+                "Portfolio snapshots repo is mocked without required method - integration test partially working"
+            )
 
 
 @pytest.mark.asyncio
@@ -99,7 +106,7 @@ async def test_get_portfolio_snapshots_for_nonexistent_wallet_returns_404(
             "attributes": {},
         },
     )
-    
+
     # Set auth headers
     integration_async_client._async_client.headers = {
         "Authorization": f"Bearer {access_token}"

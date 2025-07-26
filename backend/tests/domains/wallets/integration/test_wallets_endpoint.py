@@ -151,7 +151,9 @@ async def test_wallet_crud_flow(integration_async_client, test_di_container_with
     resp = await integration_async_client.get("/wallets")
     assert resp.status_code == 200
     wallets_after_delete = resp.json()
-    found_wallet_after = next((w for w in wallets_after_delete if w["address"] == wallet_address), None)
+    found_wallet_after = next(
+        (w for w in wallets_after_delete if w["address"] == wallet_address), None
+    )
     assert found_wallet_after is None
 
 

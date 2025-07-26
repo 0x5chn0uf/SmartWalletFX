@@ -32,7 +32,7 @@ async def db_session(database):
     For integration tests, commits changes. For unit tests, uses transactions.
     """
     import os
-    
+
     # Ensure test database file permissions are correct if it exists
     if os.path.exists("test.db"):
         try:
@@ -44,7 +44,7 @@ async def db_session(database):
                 os.remove("test.db")
             except (OSError, PermissionError):
                 pass  # If we can't remove it, let init_db() handle the error
-    
+
     # Initialize database tables before creating sessions
     await database.init_db()
 

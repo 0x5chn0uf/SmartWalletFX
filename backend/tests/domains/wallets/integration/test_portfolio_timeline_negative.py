@@ -37,7 +37,7 @@ async def test_portfolio_timeline_unauthorized(
             "attributes": {},
         },
     )
-    
+
     # Set auth headers
     integration_async_client._async_client.headers = {
         "Authorization": f"Bearer {access_token}"
@@ -53,7 +53,7 @@ async def test_portfolio_timeline_unauthorized(
 
     # Clear auth headers for unauthenticated request
     integration_async_client._async_client.headers = {}
-    
+
     # Unauthenticated request
     r = await integration_async_client.get(f"/wallets/{addr}/portfolio/timeline")
     assert r.status_code == 401
@@ -88,7 +88,7 @@ async def test_portfolio_timeline_wrong_user(
             "attributes": {},
         },
     )
-    
+
     # Set auth headers for User A
     integration_async_client._async_client.headers = {
         "Authorization": f"Bearer {access_token_a}"
@@ -121,7 +121,7 @@ async def test_portfolio_timeline_wrong_user(
             "attributes": {},
         },
     )
-    
+
     # Switch to User B's authentication
     integration_async_client._async_client.headers = {
         "Authorization": f"Bearer {access_token_b}"
@@ -162,7 +162,7 @@ async def test_portfolio_timeline_wallet_not_found(
             "attributes": {},
         },
     )
-    
+
     # Set auth headers
     integration_async_client._async_client.headers = {
         "Authorization": f"Bearer {access_token}"

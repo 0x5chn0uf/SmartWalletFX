@@ -82,7 +82,11 @@ async def test_create_token_balance_integration(
     if "id" not in token:
         # Mock response, create a test ID structure to complete the test
         token = {"id": "test-token-id", "address": token_address, "symbol": "WBTC"}
-        wallet = {"id": "test-wallet-id", "address": wallet_address, "name": "Test Wallet"}
+        wallet = {
+            "id": "test-wallet-id",
+            "address": wallet_address,
+            "name": "Test Wallet",
+        }
 
     # Create token balance using authenticated client
     balance_data = {

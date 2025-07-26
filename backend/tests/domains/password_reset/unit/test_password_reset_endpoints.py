@@ -9,8 +9,6 @@ from __future__ import annotations
 
 from unittest.mock import Mock
 
-
-
 import pytest
 from fastapi import BackgroundTasks, HTTPException
 
@@ -51,8 +49,6 @@ async def test_request_password_reset_unknown_email(
 
     # Mock rate limiter to allow request
     mock_rate_limiter_utils.login_rate_limiter.allow.return_value = True
-
-
 
     payload = PasswordResetRequest(email="nobody@example.com")
     await endpoint.request_password_reset(payload, BackgroundTasks())

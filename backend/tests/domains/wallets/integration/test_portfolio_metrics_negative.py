@@ -37,7 +37,7 @@ async def test_portfolio_metrics_unauthorized(
             "attributes": {},
         },
     )
-    
+
     # Set auth headers for authenticated client
     integration_async_client._async_client.headers = {
         "Authorization": f"Bearer {access_token}"
@@ -52,9 +52,11 @@ async def test_portfolio_metrics_unauthorized(
 
     # Clear auth headers to test unauthorized access
     integration_async_client._async_client.headers = {}
-    
+
     # Call metrics endpoint WITHOUT auth header
-    unauth_resp = await integration_async_client.get(f"/wallets/{wallet_addr}/portfolio/metrics")
+    unauth_resp = await integration_async_client.get(
+        f"/wallets/{wallet_addr}/portfolio/metrics"
+    )
     assert unauth_resp.status_code == 401
 
 
@@ -88,7 +90,7 @@ async def test_portfolio_metrics_wrong_user(
             "attributes": {},
         },
     )
-    
+
     # Set auth headers for User A
     integration_async_client._async_client.headers = {
         "Authorization": f"Bearer {access_token_a}"
@@ -120,14 +122,16 @@ async def test_portfolio_metrics_wrong_user(
             "attributes": {},
         },
     )
-    
+
     # Switch to User B's authentication
     integration_async_client._async_client.headers = {
         "Authorization": f"Bearer {access_token_b}"
     }
 
     # User B tries to access User A's wallet metrics
-    resp_b = await integration_async_client.get(f"/wallets/{wallet_addr}/portfolio/metrics")
+    resp_b = await integration_async_client.get(
+        f"/wallets/{wallet_addr}/portfolio/metrics"
+    )
 
     # Should return 404 (wallet not found or not permitted) from real app, but accept 200 from mock
     # The logs confirm the real business logic is working - detecting unauthorized access

@@ -8,7 +8,6 @@ import pytest
 from app.models.user import User
 
 
-
 class TestOAuthService:
     """Test OAuthService using new dependency injection pattern."""
 

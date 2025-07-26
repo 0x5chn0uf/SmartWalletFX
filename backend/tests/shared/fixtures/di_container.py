@@ -345,11 +345,13 @@ async def integration_async_client(test_app_with_di_container):
             else:
                 # For integration tests, we should not use mock responses for most endpoints
                 # These should be handled by the real FastAPI app
-                if (("/password-reset" in url or "/users/me" in url) and self._async_client):
+                if (
+                    "/password-reset" in url or "/users/me" in url
+                ) and self._async_client:
                     # Re-raise the original exception to force the test to handle real endpoints
-                    raise 
+                    raise
                 else:
-                    raise   # force _safe_request to use the real async client
+                    raise  # force _safe_request to use the real async client
 
             # Create mock response object
             class MockResponse:

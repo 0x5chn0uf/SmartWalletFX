@@ -139,15 +139,19 @@ async def test_protected_route_rejects_invalid_token(
     test_di_container_with_db,
 ) -> None:
     # Test the endpoint logic directly without going through HTTP layer
-    from app.api.dependencies import get_user_id_from_request
-    from fastapi import HTTPException, Request
     from unittest.mock import Mock
-    
+
+    from fastapi import HTTPException, Request
+
+    from app.api.dependencies import get_user_id_from_request
+
     # Create a mock request with invalid auth state
     request = Mock(spec=Request)
     request.state = Mock()
-    request.state.user_id = None  # This simulates what middleware sets for invalid tokens
-    
+    request.state.user_id = (
+        None  # This simulates what middleware sets for invalid tokens
+    )
+
     # The get_user_id_from_request should raise HTTPException with 401
     try:
         get_user_id_from_request(request)

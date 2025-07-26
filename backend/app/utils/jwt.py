@@ -408,5 +408,4 @@ def clear_jwt_state() -> None:
     This function clears the global _RETIRED_KEYS dictionary to ensure
     test isolation. Should only be used in test environments.
     """
-    global _RETIRED_KEYS
     _RETIRED_KEYS.clear()
