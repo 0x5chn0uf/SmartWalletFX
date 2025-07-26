@@ -420,18 +420,29 @@ async def test_get_portfolio_timeline_not_owned(
     assert "Wallet not found or access denied" in exc.value.detail
 
 
-@pytest.mark.unit
-def test_wallet_usecase_constructor_dependencies():
-    """Test that WalletUsecase properly accepts dependencies in constructor."""
-    # Arrange
-    mock_wallet_repository = Mock()
-    mock_user_repository = Mock()
-    mock_portfolio_snapshot_repository = Mock()
-    mock_config = Mock()
-    mock_audit = Mock()
+import uuid
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock
 
-    # Act
-    usecase = WalletUsecase(
+import pytest
+from fastapi import HTTPException
+
+from app.domain.schemas.wallet import WalletCreate, WalletResponse
+from app.usecase.wallet_usecase import WalletUsecase
+
+
+@pytest.fixture
+def wallet_usecase_with_di(
+    mock_wallet_repository,
+    mock_user_repository,
+    mock_portfolio_snapshot_repository,
+    mock_config,
+    mock_audit,
+):
+    """Provide WalletUsecase instance wired with the common mocked dependencies.
+    This fixture mirrors the constructor-injection pattern used in the DI tests
+    that were previously in *test_wallet_usecase_di.py*."""
+    return WalletUsecase(
         wallet_repo=mock_wallet_repository,
         user_repo=mock_user_repository,
         portfolio_snapshot_repo=mock_portfolio_snapshot_repository,
@@ -439,12 +450,180 @@ def test_wallet_usecase_constructor_dependencies():
         audit=mock_audit,
     )
 
-    # Assert
-    assert usecase._WalletUsecase__wallet_repo == mock_wallet_repository
-    assert usecase._WalletUsecase__user_repo == mock_user_repository
-    assert (
-        usecase._WalletUsecase__portfolio_snapshot_repo
-        == mock_portfolio_snapshot_repository
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_wallet_usecase_create_wallet_success_di(
+    wallet_usecase_with_di, mock_wallet_repository
+):
+    """Successful wallet creation using DI fixture (was _di module)."""
+    user = SimpleNamespace(id=uuid.uuid4())
+    wallet_data = WalletCreate(address="0x" + "a" * 40, name="Test Wallet")
+    expected_wallet = WalletResponse(
+        id=uuid.uuid4(),
+        address=wallet_data.address,
+        name=wallet_data.name,
+        user_id=user.id,
+        is_active=True,
+        balance_usd=0.0,
     )
-    assert usecase._WalletUsecase__config_service == mock_config
-    assert usecase._WalletUsecase__audit == mock_audit
+    mock_wallet_repository.create.return_value = expected_wallet
+
+    res = await wallet_usecase_with_di.create_wallet(user.id, wallet_data)
+
+    assert res == expected_wallet
+    mock_wallet_repository.create.assert_called_once_with(
+        address=wallet_data.address, user_id=user.id, name=wallet_data.name
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_wallet_usecase_create_wallet_duplicate_di(
+    wallet_usecase_with_di, mock_wallet_repository
+):
+    """Duplicate wallet creation via DI raises HTTPException (was _di)."""
+    user = SimpleNamespace(id=uuid.uuid4())
+    wallet_data = WalletCreate(address="0x" + "b" * 40, name="Dup")
+
+    mock_wallet_repository.create.side_effect = HTTPException(
+        status_code=400, detail="Wallet already exists"
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        await wallet_usecase_with_di.create_wallet(user.id, wallet_data)
+
+    assert exc.value.status_code == 400
+    assert "already exists" in exc.value.detail
+
+
+import time
+from datetime import datetime
+from unittest.mock import patch
+
+from fastapi import status
+
+from app.domain.schemas.portfolio_metrics import PortfolioMetrics
+from app.domain.schemas.portfolio_timeline import PortfolioTimeline
+
+
+class TestWalletUsecaseEdgeCases:
+    """Edge-case and error-handling scenarios merged from the former missing-coverage file."""
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_create_wallet_user_not_found(self, wallet_usecase_with_di):
+        usecase = wallet_usecase_with_di
+        user_id = uuid.uuid4()
+        wallet_create = WalletCreate(address="0x" + "c" * 40, name="Test")
+        usecase._WalletUsecase__user_repo.get_by_id = AsyncMock(return_value=None)
+
+        with pytest.raises(HTTPException) as exc:
+            await usecase.create_wallet(user_id, wallet_create)
+        assert exc.value.status_code == status.HTTP_404_NOT_FOUND
+
+    @pytest.mark.unit
+    @pytest.mark.asyncio
+    async def test_list_wallets_user_not_found(self, wallet_usecase_with_di):
+        usecase = wallet_usecase_with_di
+        user_id = uuid.uuid4()
+        usecase._WalletUsecase__user_repo.get_by_id = AsyncMock(return_value=None)
+        with pytest.raises(HTTPException):
+            await usecase.list_wallets(user_id)
+
+
+from datetime import datetime, timedelta
+
+from app.domain.schemas.portfolio_metrics import PortfolioMetrics
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_portfolio_metrics_with_snapshot(
+    wallet_usecase,
+    mock_wallet_repository,
+    mock_portfolio_snapshot_repository,
+    mock_user_repository,
+):
+    """Metrics should be built from latest snapshot when available."""
+    user = _dummy_user()
+    mock_user_repository.get_by_id.return_value = user
+    addr = "0x" + "d" * 40
+
+    # snapshot list – most recent first
+    now_ts = int(datetime.utcnow().timestamp())
+    snapshot_dict = {
+        "timestamp": now_ts,
+        "total_collateral": 200.0,
+        "total_borrowings": 80.0,
+        "total_collateral_usd": 300.0,
+        "total_borrowings_usd": 120.0,
+        "aggregate_health_score": 0.95,
+        "aggregate_apy": 7.5,
+        "collaterals": [],
+        "borrowings": [],
+        "staked_positions": [],
+        "health_scores": [],
+        "protocol_breakdown": {},
+    }
+    mock_portfolio_snapshot_repository.get_by_wallet_address.return_value = [
+        snapshot_dict
+    ]
+    # ownership check returns True
+    mock_wallet_repository.get_by_address.return_value = SimpleNamespace(
+        user_id=user.id
+    )
+
+    metrics: PortfolioMetrics = await wallet_usecase.get_portfolio_metrics(
+        user.id, addr
+    )
+
+    assert metrics.total_collateral_usd == 300.0
+    assert metrics.aggregate_health_score == 0.95
+    mock_portfolio_snapshot_repository.get_by_wallet_address.assert_awaited_once()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_get_portfolio_timeline_success(
+    wallet_usecase,
+    mock_wallet_repository,
+    mock_portfolio_snapshot_repository,
+    mock_user_repository,
+):
+    user = _dummy_user()
+    mock_user_repository.get_by_id.return_value = user
+
+    addr = "0x" + "e" * 40
+
+    # Mock wallet ownership True
+    mock_wallet_repository.get_by_address.return_value = SimpleNamespace(
+        user_id=user.id
+    )
+
+    # timeline snapshots list
+    base = datetime.utcnow()
+    s1 = SimpleNamespace(
+        timestamp=int(base.timestamp()),
+        total_collateral_usd=100.0,
+        total_borrowings_usd=50.0,
+    )
+    s2 = SimpleNamespace(
+        timestamp=int((base - timedelta(days=1)).timestamp()),
+        total_collateral_usd=None,
+        total_borrowings_usd=None,
+    )
+
+    mock_portfolio_snapshot_repository.get_timeline = AsyncMock(return_value=[s1, s2])
+
+    timeline = await wallet_usecase.get_portfolio_timeline(
+        user.id, addr, "daily", 30, 0
+    )
+
+    assert timeline.timestamps == [
+        int(base.timestamp()),
+        int((base - timedelta(days=1)).timestamp()),
+    ]
+    assert timeline.collateral_usd == [100.0, 0.0]
+    assert timeline.borrowings_usd == [50.0, 0.0]
+    mock_portfolio_snapshot_repository.get_timeline.assert_awaited_once()
