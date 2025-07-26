@@ -109,7 +109,7 @@ jobs:
         run: make db-test
 
       # Run domain-specific unit tests with coverage
-      - name: Run unit tests for ${{ matrix.test-domain }} domain
+      - name: Run unit tests for domain
         working-directory: backend
         env:
           BCRYPT_ROUNDS: 4
@@ -168,7 +168,7 @@ jobs:
         run: make db-test
 
       # Run domain-specific integration tests with coverage
-      - name: Run integration tests for ${{ matrix.test-domain }} domain
+      - name: Run integration tests for domain
         working-directory: backend
         env:
           BCRYPT_ROUNDS: 4

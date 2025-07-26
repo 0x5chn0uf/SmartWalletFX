@@ -118,7 +118,7 @@ class Audit:  # noqa: D101 – thin convenience facade
             ctx = get_contextvars()
             if ctx and "trace_id" in ctx and payload.get("trace_id") is None:
                 payload["trace_id"] = ctx["trace_id"]
-        except Exception:  # pragma: no cover
+        except Exception:  # pragma: no cover, nosec B110 – optional structlog context missing
             pass
 
         _AUDIT_LOGGER.info(json.dumps(payload, default=str, separators=(",", ":")))
@@ -158,7 +158,7 @@ class Audit:  # noqa: D101 – thin convenience facade
                 rel_path = path[app_idx:] if app_idx != -1 else path
                 route = f"{rel_path}:{frame_info.function}"
                 break
-        except Exception:  # pragma: no cover
+        except Exception:  # pragma: no cover, nosec B110 – best-effort route detection
             pass
 
         payload: Dict[str, Any] = {
@@ -173,7 +173,7 @@ class Audit:  # noqa: D101 – thin convenience facade
             ctx = get_contextvars()
             if ctx and "trace_id" in ctx:
                 payload["trace_id"] = ctx["trace_id"]
-        except Exception:  # pragma: no cover – structlog may not be configured
+        except Exception:  # pragma: no cover, nosec B110 – structlog not configured
             pass
 
         # Prepare visual representation without noisy meta fields

@@ -185,7 +185,10 @@ class Configuration(BaseSettings):
     # Prometheus metrics endpoint configuration
     PROMETHEUS_ENABLED: bool = True  # Enable/disable Prometheus metrics
     PROMETHEUS_PORT: int = 9090  # Port for Prometheus metrics server
-    PROMETHEUS_HOST: str = "0.0.0.0"  # Host for Prometheus metrics server
+    # Host for Prometheus metrics server – binding to all interfaces is
+    # intentional inside containerized deployments to allow scrape from
+    # the host machine or other services.
+    PROMETHEUS_HOST: str = "0.0.0.0"  # nosec B104
 
     # JWT rotation alerting thresholds
     JWT_ROTATION_ALERT_ON_ERROR: bool = True  # Send alerts on rotation errors

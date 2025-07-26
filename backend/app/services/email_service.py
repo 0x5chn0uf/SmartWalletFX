@@ -51,7 +51,7 @@ async def _send_via_smtp(message: EmailMessage, config: Configuration) -> None:
         finally:
             try:
                 server.quit()
-            except Exception:  # pragma: no cover – best-effort cleanup
+            except Exception:  # pragma: no cover – best-effort cleanup, nosec B110
                 pass
 
     loop = asyncio.get_running_loop()
