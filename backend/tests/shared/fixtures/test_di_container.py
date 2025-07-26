@@ -51,7 +51,7 @@ except ImportError:
 
 
 class TestDIContainer(DIContainer):
-    """Test-specific DI container with enhanced mocking capabilities."""
+    """Test-specific DI container with mocking capabilities."""
 
     def __init__(
         self,
@@ -403,14 +403,27 @@ class TestDIContainer(DIContainer):
 
     def _register_mock_repositories(self):
         """Register mock repositories for unit testing."""
-        # Import enhanced mocks
-        from tests.shared.fixtures.enhanced_mocks.user_repository import (
-            MockUserRepository,
-        )
+        # Use simple mock repository for users
+        user_repo = Mock(spec=UserRepositoryInterface)
+        common_methods = [
+            "create",
+            "get_by_id",
+            "get_by_email",
+            "get_by_username",
+            "update",
+            "delete",
+            "find_all",
+            "exists",
+            "get_all",
+            "get_by_user_id",
+            "get_by_address",
+            "save",
+            "remove",
+        ]
+        for method_name in common_methods:
+            setattr(user_repo, method_name, AsyncMock())
 
-        # Special handling for user repository with enhanced mock
-        enhanced_user_repo = MockUserRepository()
-        self.register_repository("user", enhanced_user_repo)
+        self.register_repository("user", user_repo)
 
         # For other repositories, use basic mocks for now
         repository_specs = {
