@@ -1,10 +1,6 @@
 import pytest
 
 from tests.shared.fixtures.enhanced_mocks import MockBehavior, MockServiceFactory
-from tests.shared.fixtures.enhanced_mocks.user_repository import MockUserRepository
-from tests.shared.fixtures.enhanced_mocks.email_service import MockEmailService
-from tests.shared.fixtures.enhanced_mocks.file_upload_service import MockFileUploadService
-
 from app.domain.schemas.user import UserCreate
 
 
@@ -12,14 +8,26 @@ from app.domain.schemas.user import UserCreate
 @pytest.mark.asyncio
 async def test_user_repository_tracking_and_failure():
     repo = MockServiceFactory.create_user_repository()
-    await repo.create(UserCreate(username="user1", email="u1@example.com", password="StrongPassword123!"))
-    await repo.create(UserCreate(username="user2", email="u2@example.com", password="StrongPassword123!"))
+    await repo.create(
+        UserCreate(
+            username="user1", email="u1@example.com", password="StrongPassword123!"
+        )
+    )
+    await repo.create(
+        UserCreate(
+            username="user2", email="u2@example.com", password="StrongPassword123!"
+        )
+    )
 
     assert len(repo.get_calls("create")) == 2
 
     repo.set_behavior(MockBehavior.FAILURE)
     with pytest.raises(ValueError):
-        await repo.create(UserCreate(username="user3", email="u3@example.com", password="StrongPassword123!"))
+        await repo.create(
+            UserCreate(
+                username="user3", email="u3@example.com", password="StrongPassword123!"
+            )
+        )
 
     assert repo.get_calls("create")[-1].exception is not None
 
