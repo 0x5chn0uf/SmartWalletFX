@@ -180,7 +180,7 @@ class TestRedisClientBuilder:
 
         # Ensure unit test environment is set up correctly
         monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/15")
-        
+
         jwks_cache._redis_singleton = None
 
         jwks_cache._build_redis_client()
