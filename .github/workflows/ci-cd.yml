@@ -193,7 +193,7 @@ jobs:
         working-directory: ./backend
         run: |
           source .venv/bin/activate
-          fixture-lint check
+          fixture-lint check tests/
 
   # Use the parallel testing workflow for better performance and coverage reporting
   parallel-backend-tests:
