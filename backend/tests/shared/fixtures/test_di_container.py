@@ -92,13 +92,25 @@ class TestDIContainer(DIContainer):
         if self._test_config:
             self.register_core("config", self._test_config)
         else:
-            # Create test configuration for unit tests
-            from tests.shared.fixtures.test_config import (
-                create_unit_test_config,
-            )
+            # Create appropriate test configuration based on test type
+            if self._test_session and self._test_database:
+                # Integration test: use file-based SQLite database
+                from tests.shared.fixtures.test_config import (
+                    create_integration_test_config,
+                )
+                
+                # Use a test-specific SQLite file that gets cleaned up
+                test_db_url = "sqlite+aiosqlite:///./test_integration.db"
+                test_config = create_integration_test_config(test_db_url)
+                self.register_core("config", test_config)
+            else:
+                # Unit test: use in-memory database  
+                from tests.shared.fixtures.test_config import (
+                    create_unit_test_config,
+                )
 
-            test_config = create_unit_test_config()
-            self.register_core("config", test_config)
+                test_config = create_unit_test_config()
+                self.register_core("config", test_config)
 
         # Mock audit service
         self._register_mock_audit()
@@ -168,7 +180,15 @@ class TestDIContainer(DIContainer):
             """Provide the test database session."""
             yield self._test_session
 
+        # Create a wrapper that prevents duplicate init_db calls
+        original_init_db = self._test_database.init_db
+        
+        async def noop_init_db():
+            """Skip init_db since tables are already created during test setup."""
+            pass
+        
         self._test_database.get_session = get_test_session
+        self._test_database.init_db = noop_init_db
         self.register_core("database", self._test_database)
 
     def _register_test_utilities(self):

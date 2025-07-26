@@ -7,6 +7,9 @@ from datetime import timedelta
 import pytest
 from hypothesis import settings
 
+# Import all models to ensure they are registered with Base before create_all
+from app.models import *  # noqa: F401, F403
+
 from .shared.fixtures.auth import *
 from .shared.fixtures.auth_cleanup import *
 from .shared.fixtures.base import *
