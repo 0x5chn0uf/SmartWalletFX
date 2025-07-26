@@ -347,17 +347,17 @@ jobs:
       - name: Start test services
         working-directory: backend
         run: |
-          docker-compose -f docker-compose.test.yml up -d postgres-test redis-test
+          docker compose -f docker-compose.test.yml up -d postgres-test redis-test
           sleep 15  # Wait for services to be ready
 
       - name: Check service health
         working-directory: backend
         run: |
-          docker-compose -f docker-compose.test.yml ps
+          docker compose -f docker-compose.test.yml ps
           # Verify PostgreSQL is accessible
-          docker-compose -f docker-compose.test.yml exec -T postgres-test pg_isready -U testuser
+          docker compose -f docker-compose.test.yml exec -T postgres-test pg_isready -U testuser
           # Verify Redis is accessible
-          docker-compose -f docker-compose.test.yml exec -T redis-test redis-cli ping
+          docker compose -f docker-compose.test.yml exec -T redis-test redis-cli ping
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -392,7 +392,7 @@ jobs:
       - name: Cleanup Docker services
         if: always()
         working-directory: backend
-        run: docker-compose -f docker-compose.test.yml down -v
+        run: docker compose -f docker-compose.test.yml down -v
 
   # Test summary and reporting
   test-summary:
