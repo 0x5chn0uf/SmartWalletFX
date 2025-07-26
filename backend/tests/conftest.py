@@ -8,6 +8,7 @@ import pytest
 from hypothesis import settings
 
 from .shared.fixtures.auth import *
+from .shared.fixtures.auth_cleanup import *
 from .shared.fixtures.base import *
 from .shared.fixtures.client import *
 from .shared.fixtures.core import *
@@ -21,7 +22,6 @@ from .shared.fixtures.services import *
 from .shared.fixtures.test_config import *
 from .shared.fixtures.usecases import *
 from .shared.fixtures.user_profile_fixtures import *
-from .shared.fixtures.auth_cleanup import *
 
 ALEMBIC_CONFIG_PATH = str(pathlib.Path(__file__).parent.parent / "alembic.ini")
 

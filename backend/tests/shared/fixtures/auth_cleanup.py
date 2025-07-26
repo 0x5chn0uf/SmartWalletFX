@@ -1,4 +1,5 @@
 import os
+
 import pytest
 
 from app.utils.rate_limiter import login_rate_limiter
@@ -57,4 +58,4 @@ async def _cleanup_auth_state(test_di_container_with_db):
     # 4. Cleanup – remove variables set for this test
     # ------------------------------------------------------------------
     for var in test_env_vars:
-        os.environ.pop(var, None) 
+        os.environ.pop(var, None)
