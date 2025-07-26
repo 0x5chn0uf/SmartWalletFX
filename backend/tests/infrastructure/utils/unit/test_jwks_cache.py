@@ -197,9 +197,30 @@ class TestInvalidateJwksCacheSync:
         )
         calls = []
 
+        import asyncio
+        import inspect  # Local import to avoid polluting global namespace
+
         def fake_run(coro):
+            """A lightweight replacement for ``asyncio.run`` used in tests.
+
+            It **executes** coroutine objects to completion so that they do not
+            generate "coroutine was never awaited" warnings while still
+            allowing the test to spy on how many times it was invoked.
+            """
+
             calls.append(coro)
-            return True if len(calls) == 1 else None
+
+            # Only execute coroutine objects – ``redis.close()`` and similar are
+            # also coroutines.  For non coroutine inputs (e.g. already executed
+            # results) simply return the value as-is.
+            if inspect.iscoroutine(coro):
+                loop = asyncio.new_event_loop()
+                try:
+                    return loop.run_until_complete(coro)
+                finally:
+                    loop.close()
+
+            return coro
 
         monkeypatch.setattr("app.utils.jwks_cache.asyncio.run", fake_run)
 
@@ -218,7 +239,16 @@ class TestInvalidateJwksCacheSync:
             "app.utils.jwks_cache._build_redis_client", lambda: AsyncMock()
         )
 
-        def fake_run(_):
+        import asyncio
+        import inspect
+
+        def fake_run(coro):
+            """Simulate a failure in ``asyncio.run`` while avoiding unawaited warnings."""
+
+            # Close coroutine to prevent RuntimeWarning about it being unawaited
+            if inspect.iscoroutine(coro):
+                coro.close()
+
             raise RuntimeError("boom")
 
         monkeypatch.setattr("app.utils.jwks_cache.asyncio.run", fake_run)
