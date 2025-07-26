@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import { ThemeProvider } from './providers/ThemeProvider';
 import NavBar from './components/NavBar';
 import { Provider } from 'react-redux';

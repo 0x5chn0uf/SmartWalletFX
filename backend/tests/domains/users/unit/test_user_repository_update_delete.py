@@ -15,6 +15,7 @@ def setup_mock_session(user_repository_with_di, mock_async_session):
     user_repository_with_di._UserRepository__database.get_session = mock_get_session
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_user_repository_update(user_repository_with_di, mock_async_session):
     """Test user update with dependency injection."""
@@ -47,6 +48,7 @@ async def test_user_repository_update(user_repository_with_di, mock_async_sessio
     mock_async_session.commit.assert_awaited_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_user_repository_delete_cascades_refresh_tokens(
     user_repository_with_di, mock_async_session
@@ -75,7 +77,8 @@ async def test_user_repository_delete_cascades_refresh_tokens(
     assert result is None
 
     # Verify database operations
-    mock_async_session.execute.assert_awaited_once()  # Delete refresh tokens
+    # Should execute 5 delete statements (RefreshToken, EmailVerification, PasswordReset, OAuthAccount, Wallet)
+    assert mock_async_session.execute.await_count == 5
     mock_async_session.merge.assert_awaited_once_with(mock_user)
     mock_async_session.delete.assert_awaited_once_with(mock_user)
     mock_async_session.commit.assert_awaited_once()

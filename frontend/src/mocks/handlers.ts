@@ -134,6 +134,34 @@ const handlers = [
   http.get(`${API_URL}/dashboard`, () => {
     return HttpResponse.text('Dashboard page', { status: 200 });
   }),
+  // Auth refresh endpoint for session management
+  http.post(`${API_URL}/auth/refresh`, () => {
+    return HttpResponse.json({ detail: 'Authentication required' }, { status: 401 });
+  }),
+  // Email verification endpoint
+  http.post(`${API_URL}/auth/verify-email`, () => {
+    return HttpResponse.json({ detail: 'Invalid or expired token' }, { status: 400 });
+  }),
+  // Profile picture endpoints - default handlers to prevent timeouts
+  http.post(`${API_URL}/users/me/profile/picture`, () => {
+    return HttpResponse.json({ detail: 'Not implemented' }, { status: 501 });
+  }),
+  http.delete(`${API_URL}/users/me/profile/picture`, () => {
+    return HttpResponse.json({ detail: 'Not implemented' }, { status: 501 });
+  }),
+  // Other user profile endpoints
+  http.put(`${API_URL}/users/me/profile`, () => {
+    return HttpResponse.json({ detail: 'Not implemented' }, { status: 501 });
+  }),
+  http.put(`${API_URL}/users/me/password`, () => {
+    return HttpResponse.json({ detail: 'Not implemented' }, { status: 501 });
+  }),
+  http.put(`${API_URL}/users/me/notifications`, () => {
+    return HttpResponse.json({ detail: 'Not implemented' }, { status: 501 });
+  }),
+  http.delete(`${API_URL}/users/me/account`, () => {
+    return HttpResponse.json({ detail: 'Not implemented' }, { status: 501 });
+  }),
 ];
 
 export default handlers;

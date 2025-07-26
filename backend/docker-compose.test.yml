@@ -1,0 +1,122 @@
+services:
+  # Test PostgreSQL database - isolated from development
+  postgres-test:
+    image: postgres:15
+    container_name: smartwallet_test_postgres
+    environment:
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: test_smartwallet
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    ports:
+      - "55432:5432" # Different port from dev database
+    volumes:
+      - test_postgres_data:/var/lib/postgresql/data
+      - ../docker/postgres/01_init_extensions.sql:/docker-entrypoint-initdb.d/01_init_extensions.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U testuser -d test_smartwallet"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test_network
+
+  # Test Redis for caching and sessions - isolated from development
+  redis-test:
+    image: redis:7-alpine
+    container_name: smartwallet_test_redis
+    ports:
+      - "6380:6379" # Different port from dev Redis
+    volumes:
+      - test_redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - test_network
+
+  # Test backend service for integration testing
+  backend-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smartwallet_test_backend
+    environment:
+      # Test-specific environment variables
+      ENVIRONMENT: testing
+      DATABASE_URL: postgresql+asyncpg://testuser:testpass@postgres-test:5432/test_smartwallet
+      REDIS_URL: redis://redis-test:6379/0
+      BCRYPT_ROUNDS: 4
+      LOG_LEVEL: WARNING
+      RATE_LIMIT_ENABLED: false
+      EMAIL_ENABLED: false
+      CELERY_TASK_ALWAYS_EAGER: true
+      # JWT settings for tests
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 15
+      JWT_KEYS: '{"test": "test-secret-key-for-integration-tests"}'
+      ACTIVE_JWT_KID: test
+    ports:
+      - "8001:8000" # Different port from dev backend
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    networks:
+      - test_network
+    volumes:
+      - .:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Test database migration service
+  test-migrations:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smartwallet_test_migrations
+    environment:
+      DATABASE_URL: postgresql+asyncpg://testuser:testpass@postgres-test:5432/test_smartwallet
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    networks:
+      - test_network
+    volumes:
+      - .:/app
+    command: alembic upgrade head
+    profiles:
+      - migration
+
+  # Health check and utility services
+  test-health-check:
+    image: curlimages/curl:latest
+    container_name: smartwallet_test_health
+    depends_on:
+      - backend-test
+    networks:
+      - test_network
+    command: |
+      sh -c "
+        echo 'Waiting for backend to be ready...'
+        until curl -f http://backend-test:8000/api/v1/health; do
+          echo 'Backend not ready, waiting...'
+          sleep 2
+        done
+        echo 'Backend is ready!'
+      "
+    profiles:
+      - health-check
+
+volumes:
+  test_postgres_data:
+    driver: local
+  test_redis_data:
+    driver: local
+
+networks:
+  test_network:
+    driver: bridge

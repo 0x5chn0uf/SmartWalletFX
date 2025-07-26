@@ -30,6 +30,7 @@ def setup_mock_session(repository, mock_session):
     repository._UserRepository__database.get_session = mock_get_session
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_user_repository_get_by_id_success(
     user_repository_with_di, mock_database
@@ -52,6 +53,7 @@ async def test_user_repository_get_by_id_success(
     mock_session.get.assert_called_once_with(User, user_id)
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_user_repository_get_by_id_not_found(
     user_repository_with_di, mock_database
@@ -73,6 +75,7 @@ async def test_user_repository_get_by_id_not_found(
     mock_session.get.assert_called_once_with(User, user_id)
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_user_repository_get_by_email_success(
     user_repository_with_di, mock_database
@@ -98,6 +101,7 @@ async def test_user_repository_get_by_email_success(
     mock_result.scalar_one_or_none.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_user_repository_save_success(
     user_repository_with_di, mock_database, mock_audit
@@ -108,6 +112,7 @@ async def test_user_repository_save_success(
 
     # Mock the database session
     mock_session = AsyncMock()
+    mock_session.add = Mock()
     setup_mock_session(user_repository_with_di, mock_session)
 
     # Act
@@ -121,6 +126,7 @@ async def test_user_repository_save_success(
     mock_audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_user_repository_save_integrity_error(
     user_repository_with_di, mock_database, mock_audit
@@ -131,6 +137,7 @@ async def test_user_repository_save_integrity_error(
 
     # Mock the database session to raise IntegrityError on commit
     mock_session = AsyncMock()
+    mock_session.add = Mock()
     mock_session.commit.side_effect = IntegrityError("duplicate", None, None)
     setup_mock_session(user_repository_with_di, mock_session)
 
@@ -144,6 +151,7 @@ async def test_user_repository_save_integrity_error(
     mock_audit.error.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_user_repository_exists_true(user_repository_with_di, mock_database):
     """Test user exists check returns True when user exists."""
@@ -168,6 +176,7 @@ async def test_user_repository_exists_true(user_repository_with_di, mock_databas
     mock_result.scalar_one_or_none.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_user_repository_exists_false(user_repository_with_di, mock_database):
     """Test user exists check returns False when user doesn't exist."""
@@ -192,6 +201,7 @@ async def test_user_repository_exists_false(user_repository_with_di, mock_databa
     mock_result.scalar_one_or_none.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_user_repository_audit_logging(
     user_repository_with_di, mock_database, mock_audit
@@ -212,6 +222,7 @@ async def test_user_repository_audit_logging(
     mock_audit.info.assert_called()
 
 
+@pytest.mark.unit
 def test_user_repository_constructor_dependencies():
     """Test that UserRepository properly accepts dependencies in constructor."""
     # Arrange

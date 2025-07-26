@@ -1,9 +1,12 @@
 from pathlib import Path
 
+import pytest
+
 from tools.fixture_lint.duplication import find_duplicates
 from tools.fixture_lint.parser import parse_paths
 
 
+@pytest.mark.unit
 def test_find_duplicates(tmp_path: Path) -> None:
     file1 = tmp_path / "test_a.py"
     file1.write_text(

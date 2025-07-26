@@ -40,7 +40,6 @@ module.exports = [
       browser: true,
       es2021: true,
       node: true,
-      jest: true,
     },
     rules: {
       'react/react-in-jsx-scope': 'off',
@@ -74,6 +73,17 @@ module.exports = [
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
       '@typescript-eslint/no-require-imports': 'off',
+    },
+    languageOptions: {
+      globals: {
+        jest: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+      },
     },
   },
 ];

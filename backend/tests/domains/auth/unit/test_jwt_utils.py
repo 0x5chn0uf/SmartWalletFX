@@ -14,6 +14,7 @@ def _configure_hs256(monkeypatch):
     monkeypatch.setattr(Configuration, "JWT_SECRET_KEY", "test-secret", raising=False)
 
 
+@pytest.mark.unit
 def test_jwt_round_trip(mock_jwt_utils):
     user_id = uuid4()
     # Mock the JWT utils methods to return expected values
@@ -35,6 +36,7 @@ def test_jwt_round_trip(mock_jwt_utils):
     mock_jwt_utils.decode_token.assert_called_once_with(token)
 
 
+@pytest.mark.unit
 def test_jwt_expired_token(mock_jwt_utils):
     user_id = uuid4()
     # Mock the expired token behavior
@@ -53,6 +55,7 @@ def test_jwt_expired_token(mock_jwt_utils):
     )
 
 
+@pytest.mark.unit
 def test_jwt_round_trip_with_claims(mock_jwt_utils):
     """Round-trip with additional claims like `role` should succeed."""
     user_id = uuid4()
@@ -76,6 +79,7 @@ def test_jwt_round_trip_with_claims(mock_jwt_utils):
     mock_jwt_utils.decode_token.assert_called_once_with(token)
 
 
+@pytest.mark.unit
 def test_jwt_invalid_token(mock_jwt_utils):
     """Tampering with the token should raise JWTError."""
     user_id = uuid4()

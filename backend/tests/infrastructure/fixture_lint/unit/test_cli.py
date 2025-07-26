@@ -1,10 +1,12 @@
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 from tools.fixture_lint.cli import app
 
 
+@pytest.mark.unit
 def test_check_fails_on_duplicates(tmp_path: Path) -> None:
     file_a = tmp_path / "test_a.py"
     file_a.write_text(
@@ -33,6 +35,7 @@ def foo():
     assert "duplicate hash" in result.output
 
 
+@pytest.mark.unit
 def test_check_passes_without_duplicates(tmp_path: Path) -> None:
     file_a = tmp_path / "test_a.py"
     file_a.write_text(
@@ -60,6 +63,7 @@ def bar():
     assert result.exit_code == 0
 
 
+@pytest.mark.unit
 def test_fix_command_merges_duplicates(tmp_path: Path) -> None:
     file_a = tmp_path / "test_a.py"
     file_a.write_text(

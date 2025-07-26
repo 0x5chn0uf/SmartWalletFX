@@ -5,14 +5,17 @@ cycle.  The very first test checks the *no-op* scenario: when
 no keys are scheduled for retirement and the active key remains valid, the
 helper should report that there is nothing to change.
 """
+
 from datetime import datetime, timedelta, timezone
 
+import pytest
 from freezegun import freeze_time
 
 from app.utils.jwt_rotation import Key, KeySet, promote_and_retire_keys
 
 
 @freeze_time("2025-06-21 10:00:00")
+@pytest.mark.unit
 def test_no_keys_to_retire_or_promote():
     """A fresh key-set should result in a *no-op* update."""
 
@@ -28,6 +31,7 @@ def test_no_keys_to_retire_or_promote():
 
 
 @freeze_time("2025-06-21 10:00:00")
+@pytest.mark.unit
 def test_retire_key_and_promote_new_one():
     """When the active key has passed its *retired_at*, promote next_kid."""
 

@@ -3,7 +3,6 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { TimelineChart } from '../components/Charts/TimelineChart';
 import { PortfolioSnapshot } from '../types/timeline';
-import '@testing-library/jest-dom';
 
 beforeAll(() => {
   global.ResizeObserver = class {

@@ -95,6 +95,7 @@ class AuthUsecase:
             username=payload.username,
             email=payload.email,
             hashed_password=hashed_pw,
+            email_verified=False,  # New users start with unverified email
             # Default role for new users
             roles=[UserRole.INDIVIDUAL_INVESTOR.value],
             attributes={},
@@ -233,7 +234,7 @@ class AuthUsecase:
         return TokenResponse(
             access_token=access_token,
             refresh_token=refresh_token,
-            token_type="bearer",
+            token_type="bearer",  # nosec B106 – constant per OAuth2 spec
             expires_in=self.__config_service.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
 
@@ -297,7 +298,7 @@ class AuthUsecase:
         return TokenResponse(
             access_token=access_token,
             refresh_token=refresh_token,  # Same refresh token returned
-            token_type="bearer",
+            token_type="bearer",  # nosec B106 – constant per OAuth2 spec
             expires_in=self.__config_service.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
 

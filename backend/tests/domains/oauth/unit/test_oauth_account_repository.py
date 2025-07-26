@@ -21,6 +21,7 @@ def setup_mock_session(repository, mock_session):
     repository._OAuthAccountRepository__database.get_session = mock_get_session
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_provider_account_found(
     oauth_account_repository_with_di, mock_async_session
@@ -53,6 +54,7 @@ async def test_get_by_provider_account_found(
     mock_result.scalar_one_or_none.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_provider_account_not_found(
     oauth_account_repository_with_di, mock_async_session
@@ -77,6 +79,7 @@ async def test_get_by_provider_account_not_found(
     mock_result.scalar_one_or_none.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_user_provider_found(
     oauth_account_repository_with_di, mock_async_session
@@ -110,6 +113,7 @@ async def test_get_by_user_provider_found(
     mock_result.scalar_one_or_none.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_user_provider_not_found(
     oauth_account_repository_with_di, mock_async_session
@@ -135,6 +139,7 @@ async def test_get_by_user_provider_not_found(
     mock_result.scalar_one_or_none.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_link_account_with_email(
     oauth_account_repository_with_di, mock_async_session
@@ -160,6 +165,7 @@ async def test_link_account_with_email(
     mock_async_session.refresh.assert_awaited_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_link_account_without_email(
     oauth_account_repository_with_di, mock_async_session
@@ -185,6 +191,7 @@ async def test_link_account_without_email(
     mock_async_session.refresh.assert_awaited_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_link_account_with_session_exception(
     oauth_account_repository_with_di, mock_async_session
@@ -204,6 +211,7 @@ async def test_link_account_with_session_exception(
         )
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_provider_account_exception(
     oauth_account_repository_with_di, mock_async_session
@@ -220,6 +228,7 @@ async def test_get_by_provider_account_exception(
         await oauth_account_repository_with_di.get_by_provider_account("google", "123")
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_user_provider_exception(
     oauth_account_repository_with_di, mock_async_session

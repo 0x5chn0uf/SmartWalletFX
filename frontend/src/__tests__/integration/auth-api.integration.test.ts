@@ -21,7 +21,7 @@ describe('Auth API Integration Tests (httpOnly Cookies)', () => {
   beforeEach(() => {
     // Clear localStorage before each test
     localStorage.clear();
-    
+
     // Note: No need to clear Authorization header as we're using httpOnly cookies
     // The cookies are managed by MSW and browser mock
 
@@ -96,14 +96,14 @@ describe('Auth API Integration Tests (httpOnly Cookies)', () => {
       server.use(
         http.post(`${API_URL}/auth/token`, () => {
           // With httpOnly cookies, the backend sets cookies in response headers
-          return new HttpResponse(null, { 
+          return new HttpResponse(null, {
             status: 200,
             headers: {
               'Set-Cookie': [
                 'access_token=mock-access-token; Path=/; HttpOnly; SameSite=Lax; Secure',
-                'refresh_token=mock-refresh-token; Path=/auth; HttpOnly; SameSite=Lax; Secure'
-              ].join(', ')
-            }
+                'refresh_token=mock-refresh-token; Path=/auth; HttpOnly; SameSite=Lax; Secure',
+              ].join(', '),
+            },
           });
         }),
         http.get(`${API_URL}/users/me`, () => {
@@ -194,14 +194,14 @@ describe('Auth API Integration Tests (httpOnly Cookies)', () => {
       server.use(
         http.post(`${API_URL}/auth/refresh`, () => {
           // Backend sets new tokens as httpOnly cookies
-          return new HttpResponse(null, { 
+          return new HttpResponse(null, {
             status: 200,
             headers: {
               'Set-Cookie': [
                 'access_token=new-access-token; Path=/; HttpOnly; SameSite=Lax; Secure',
-                'refresh_token=new-refresh-token; Path=/auth; HttpOnly; SameSite=Lax; Secure'
-              ].join(', ')
-            }
+                'refresh_token=new-refresh-token; Path=/auth; HttpOnly; SameSite=Lax; Secure',
+              ].join(', '),
+            },
           });
         })
       );
@@ -242,14 +242,14 @@ describe('Auth API Integration Tests (httpOnly Cookies)', () => {
         }),
         // Refresh token call succeeds
         http.post(`${API_URL}/auth/refresh`, () => {
-          return new HttpResponse(null, { 
+          return new HttpResponse(null, {
             status: 200,
             headers: {
               'Set-Cookie': [
                 'access_token=new-access-token; Path=/; HttpOnly; SameSite=Lax; Secure',
-                'refresh_token=new-refresh-token; Path=/auth; HttpOnly; SameSite=Lax; Secure'
-              ].join(', ')
-            }
+                'refresh_token=new-refresh-token; Path=/auth; HttpOnly; SameSite=Lax; Secure',
+              ].join(', '),
+            },
           });
         })
       );
@@ -266,7 +266,7 @@ describe('Auth API Integration Tests (httpOnly Cookies)', () => {
     it('should redirect to login when refresh fails with httpOnly cookies', async () => {
       // Reset the global mock location
       (globalThis as any).mockLocationHref = 'http://localhost:3000';
-      
+
       // Set up test redirect function
       (window as any).__TEST_REDIRECT__ = (url: string) => {
         (globalThis as any).mockLocationHref = url;
@@ -306,14 +306,14 @@ describe('Auth API Integration Tests (httpOnly Cookies)', () => {
       server.use(
         http.post(`${API_URL}/auth/logout`, () => {
           // Backend clears cookies by setting them with empty value and past expiry
-          return new HttpResponse(null, { 
+          return new HttpResponse(null, {
             status: 200,
             headers: {
               'Set-Cookie': [
                 'access_token=; Path=/; HttpOnly; SameSite=Lax; Secure; Expires=Thu, 01 Jan 1970 00:00:00 GMT',
-                'refresh_token=; Path=/auth; HttpOnly; SameSite=Lax; Secure; Expires=Thu, 01 Jan 1970 00:00:00 GMT'
-              ].join(', ')
-            }
+                'refresh_token=; Path=/auth; HttpOnly; SameSite=Lax; Secure; Expires=Thu, 01 Jan 1970 00:00:00 GMT',
+              ].join(', '),
+            },
           });
         })
       );

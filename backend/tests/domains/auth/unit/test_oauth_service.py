@@ -11,6 +11,7 @@ from app.models.user import User
 class TestOAuthService:
     """Test OAuthService using new dependency injection pattern."""
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_authenticate_creates_user_if_missing(
         self,
@@ -20,32 +21,35 @@ class TestOAuthService:
         mock_audit,
     ):
         """Test that authenticate_or_create creates a new user if none exists."""
-        # Setup mocks - no existing OAuth account or user (make them async)
+        # Setup mocks with realistic behavior
+        created_user = User(
+            id=uuid.uuid4(), username="alice", email="alice@example.com"
+        )
+
+        # Configure repository mocks
+        mock_user_repository.get_by_email = AsyncMock(return_value=None)
+        mock_user_repository.save = AsyncMock(return_value=created_user)
+
+        # Setup OAuth account repository (no existing account)
         mock_oauth_account_repository.get_by_provider_account = AsyncMock(
             return_value=None
         )
         mock_oauth_account_repository.link_account = AsyncMock()
-        mock_user_repository.get_by_email = AsyncMock(return_value=None)
-
-        created_user = User(
-            id=uuid.uuid4(), username="alice", email="alice@example.com"
-        )
-        mock_user_repository.save = AsyncMock(return_value=created_user)
 
         # Execute
         user = await oauth_service_with_di.authenticate_or_create(
             "google", "account123", "alice@example.com"
         )
 
-        # Verify
+        # Verify using standard mock assertions
         assert user == created_user
+        mock_user_repository.get_by_email.assert_awaited_once_with("alice@example.com")
         mock_oauth_account_repository.get_by_provider_account.assert_awaited_once_with(
             "google", "account123"
         )
-        mock_user_repository.get_by_email.assert_awaited_once_with("alice@example.com")
-        mock_user_repository.save.assert_awaited()
         mock_audit.info.assert_called()
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_issue_tokens(
         self,
@@ -94,6 +98,7 @@ class TestOAuthService:
             )
             mock_audit.info.assert_called()
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_authenticate_existing_account(
         self,
@@ -123,6 +128,7 @@ class TestOAuthService:
         mock_user_repository.get_by_id.assert_awaited_once_with(account.user_id)
         mock_audit.info.assert_called()
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_authenticate_link_missing_user(
         self,

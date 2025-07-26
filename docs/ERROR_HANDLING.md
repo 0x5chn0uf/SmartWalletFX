@@ -1502,7 +1502,7 @@ const createTestStore = () => configureStore({
 describe('LoginForm Error Handling', () => {
   it('displays error message on authentication failure', async () => {
     // Mock API error response
-    jest.spyOn(global, 'fetch').mockRejectedValueOnce({
+    vi.spyOn(global, 'fetch').mockRejectedValueOnce({
       response: {
         status: 401,
         data: {
@@ -1538,7 +1538,7 @@ describe('LoginForm Error Handling', () => {
 
   it('handles network errors gracefully', async () => {
     // Mock network error
-    jest.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Network Error'));
+    vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('Network Error'));
 
     const store = createTestStore();
     render(
@@ -1562,7 +1562,7 @@ describe('LoginForm Error Handling', () => {
 
   it('shows loading state during form submission', async () => {
     // Mock delayed API response
-    jest.spyOn(global, 'fetch').mockImplementationOnce(
+    vi.spyOn(global, 'fetch').mockImplementationOnce(
       () => new Promise(resolve => setTimeout(resolve, 1000))
     );
 
@@ -1610,7 +1610,7 @@ describe('ErrorBoundary', () => {
   // Suppress console.error for these tests
   const originalError = console.error;
   beforeAll(() => {
-    console.error = jest.fn();
+    console.error = jesvit.fn();
   });
   afterAll(() => {
     console.error = originalError;
@@ -1691,7 +1691,7 @@ const wrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 describe('useErrorHandler', () => {
   it('handles successful API calls', async () => {
-    const mockOperation = jest.fn().mockResolvedValue({ data: 'success' });
+    const mockOperation = vi.fn().mockResolvedValue({ data: 'success' });
 
     const { result } = renderHook(
       () => useErrorHandler(mockOperation),
@@ -1717,7 +1717,7 @@ describe('useErrorHandler', () => {
       }
     };
 
-    const mockOperation = jest.fn().mockRejectedValue(mockError);
+    const mockOperation = vi.fn().mockRejectedValue(mockError);
 
     const { result } = renderHook(
       () => useErrorHandler(mockOperation),
@@ -1736,7 +1736,7 @@ describe('useErrorHandler', () => {
   });
 
   it('provides retry functionality when enabled', async () => {
-    const mockOperation = jest.fn()
+    const mockOperation = vi.fn()
       .mockRejectedValueOnce(new Error('Network Error'))
       .mockResolvedValueOnce({ data: 'success on retry' });
 

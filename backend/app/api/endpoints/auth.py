@@ -21,7 +21,7 @@ from app.domain.errors import (
     UnverifiedEmailError,
 )
 from app.domain.schemas.auth_token import TokenResponse
-from app.domain.schemas.user import UserCreate, UserRead, WeakPasswordError
+from app.domain.schemas.user import UserCreate, UserRead
 from app.usecase.auth_usecase import AuthUsecase, DuplicateError
 from app.utils.logging import Audit
 from app.utils.rate_limiter import RateLimiterUtils
@@ -89,16 +89,6 @@ class Auth:
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"{dup.field} already exists",
             ) from dup
-        except WeakPasswordError:
-            Audit.warning(
-                "User registration failed - weak password",
-                username=payload.username,
-                email=payload.email,
-            )
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Password does not meet strength requirements",
-            )
         except Exception as exc:
             Audit.error(
                 "User registration failed with unexpected error",

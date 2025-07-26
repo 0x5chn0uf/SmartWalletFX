@@ -30,7 +30,7 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
     // Clear localStorage and reset store
     localStorage.clear();
     server.resetHandlers();
-    
+
     // Reset store to initial state
     store.dispatch({ type: 'auth/logout' });
   });
@@ -40,14 +40,14 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
       server.use(
         // Login endpoint sets httpOnly cookies
         http.post(`${API_URL}/auth/token`, () => {
-          return new HttpResponse(null, { 
+          return new HttpResponse(null, {
             status: 200,
             headers: {
               'Set-Cookie': [
                 'access_token=mock-access-token; Path=/; HttpOnly; SameSite=Lax; Secure',
-                'refresh_token=mock-refresh-token; Path=/auth; HttpOnly; SameSite=Lax; Secure'
-              ].join(', ')
-            }
+                'refresh_token=mock-refresh-token; Path=/auth; HttpOnly; SameSite=Lax; Secure',
+              ].join(', '),
+            },
           });
         }),
         // User profile endpoint returns user data
@@ -57,10 +57,12 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
       );
 
       // Step 1: Dispatch login action
-      const loginResult = await store.dispatch(login({
-        email: 'test@example.com',
-        password: 'securePassword123!'
-      }));
+      const loginResult = await store.dispatch(
+        login({
+          email: 'test@example.com',
+          password: 'securePassword123!',
+        })
+      );
 
       // Verify login was successful
       expect(loginResult.type).toBe('auth/login/fulfilled');
@@ -84,13 +86,15 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
         })
       );
 
-      const loginResult = await store.dispatch(login({
-        email: 'test@example.com',
-        password: 'wrongpassword'
-      }));
+      const loginResult = await store.dispatch(
+        login({
+          email: 'test@example.com',
+          password: 'wrongpassword',
+        })
+      );
 
       expect(loginResult.type).toBe('auth/login/rejected');
-      
+
       const authState = store.getState().auth;
       expect(authState.isAuthenticated).toBe(false);
       expect(authState.user).toBeNull();
@@ -105,13 +109,15 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
         })
       );
 
-      const loginResult = await store.dispatch(login({
-        email: 'unverified@example.com',
-        password: 'securePassword123!'
-      }));
+      const loginResult = await store.dispatch(
+        login({
+          email: 'unverified@example.com',
+          password: 'securePassword123!',
+        })
+      );
 
       expect(loginResult.type).toBe('auth/login/rejected');
-      
+
       const authState = store.getState().auth;
       expect(authState.isAuthenticated).toBe(false);
       expect(authState.error?.status).toBe(403);
@@ -127,13 +133,15 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
       );
 
       // Step 1: Register user
-      const registerResult = await store.dispatch(registerUser({
-        email: 'newuser@example.com',
-        password: 'securePassword123!'
-      }));
+      const registerResult = await store.dispatch(
+        registerUser({
+          email: 'newuser@example.com',
+          password: 'securePassword123!',
+        })
+      );
 
       expect(registerResult.type).toBe('auth/register/fulfilled');
-      
+
       const authState = store.getState().auth;
       expect(authState.status).toBe('succeeded');
       expect(authState.isAuthenticated).toBe(false); // User needs to verify email first
@@ -146,13 +154,15 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
         })
       );
 
-      const registerResult = await store.dispatch(registerUser({
-        email: 'existing@example.com',
-        password: 'securePassword123!'
-      }));
+      const registerResult = await store.dispatch(
+        registerUser({
+          email: 'existing@example.com',
+          password: 'securePassword123!',
+        })
+      );
 
       expect(registerResult.type).toBe('auth/register/rejected');
-      
+
       const authState = store.getState().auth;
       expect(authState.status).toBe('failed');
       expect(authState.error?.status).toBe(409);
@@ -164,14 +174,14 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
       server.use(
         // Email verification endpoint
         http.post(`${API_URL}/auth/verify-email`, () => {
-          return new HttpResponse(null, { 
+          return new HttpResponse(null, {
             status: 200,
             headers: {
               'Set-Cookie': [
                 'access_token=verified-access-token; Path=/; HttpOnly; SameSite=Lax; Secure',
-                'refresh_token=verified-refresh-token; Path=/auth; HttpOnly; SameSite=Lax; Secure'
-              ].join(', ')
-            }
+                'refresh_token=verified-refresh-token; Path=/auth; HttpOnly; SameSite=Lax; Secure',
+              ].join(', '),
+            },
           });
         }),
         // User profile endpoint that gets called after verification
@@ -206,7 +216,7 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
       const verifyResult = await store.dispatch(verifyEmail('invalid-token'));
 
       expect(verifyResult.type).toBe('emailVerification/verify/rejected');
-      
+
       const authState = store.getState().auth;
       expect(authState.isAuthenticated).toBe(false);
     });
@@ -242,10 +252,12 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
       expect(requestResult.type).toBe('passwordReset/request/fulfilled');
 
       // Step 2: Reset password with token
-      const resetResult = await store.dispatch(resetPassword({
-        token: 'valid-reset-token',
-        password: 'newSecurePassword123!'
-      }));
+      const resetResult = await store.dispatch(
+        resetPassword({
+          token: 'valid-reset-token',
+          password: 'newSecurePassword123!',
+        })
+      );
       expect(resetResult.type).toBe('passwordReset/reset/fulfilled');
     });
 
@@ -256,10 +268,12 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
         })
       );
 
-      const resetResult = await store.dispatch(resetPassword({
-        token: 'invalid-token',
-        password: 'newPassword123!'
-      }));
+      const resetResult = await store.dispatch(
+        resetPassword({
+          token: 'invalid-token',
+          password: 'newPassword123!',
+        })
+      );
 
       expect(resetResult.type).toBe('passwordReset/reset/rejected');
     });
@@ -300,7 +314,7 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
       const fetchResult = await store.dispatch(fetchCurrentUser());
 
       expect(fetchResult.type).toBe('auth/fetchCurrentUser/rejected');
-      
+
       const authState = store.getState().auth;
       expect(authState.isAuthenticated).toBe(false);
       expect(authState.status).toBe('failed');
@@ -311,22 +325,22 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
     it('should complete logout flow: logout request → cookies cleared → state cleared → redirect ready', async () => {
       server.use(
         http.post(`${API_URL}/auth/logout`, () => {
-          return new HttpResponse(null, { 
+          return new HttpResponse(null, {
             status: 200,
             headers: {
               'Set-Cookie': [
                 'access_token=; Path=/; HttpOnly; SameSite=Lax; Secure; Expires=Thu, 01 Jan 1970 00:00:00 GMT',
-                'refresh_token=; Path=/auth; HttpOnly; SameSite=Lax; Secure; Expires=Thu, 01 Jan 1970 00:00:00 GMT'
-              ].join(', ')
-            }
+                'refresh_token=; Path=/auth; HttpOnly; SameSite=Lax; Secure; Expires=Thu, 01 Jan 1970 00:00:00 GMT',
+              ].join(', '),
+            },
           });
         })
       );
 
       // Set up authenticated state first
-      store.dispatch({ 
-        type: 'auth/login/fulfilled', 
-        payload: mockUser 
+      store.dispatch({
+        type: 'auth/login/fulfilled',
+        payload: mockUser,
       });
       localStorage.setItem('session_active', '1');
 
@@ -334,7 +348,7 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
       const logoutResult = await store.dispatch(logoutUser());
 
       expect(logoutResult.type).toBe('auth/logout/fulfilled');
-      
+
       // Verify state is cleared
       const authState = store.getState().auth;
       expect(authState.isAuthenticated).toBe(false);
@@ -353,9 +367,9 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
       );
 
       // Set up authenticated state first
-      store.dispatch({ 
-        type: 'auth/login/fulfilled', 
-        payload: mockUser 
+      store.dispatch({
+        type: 'auth/login/fulfilled',
+        payload: mockUser,
       });
       localStorage.setItem('session_active', '1');
 
@@ -363,7 +377,7 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
       const logoutResult = await store.dispatch(logoutUser());
 
       expect(logoutResult.type).toBe('auth/logout/fulfilled');
-      
+
       // Frontend state should be cleared
       const authState = store.getState().auth;
       expect(authState.isAuthenticated).toBe(false);
@@ -374,7 +388,7 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
   describe('Token Refresh Flow', () => {
     it('should handle automatic token refresh with httpOnly cookies', async () => {
       let userMeCallCount = 0;
-      
+
       server.use(
         // First call fails with 401
         http.get(`${API_URL}/users/me`, () => {
@@ -387,14 +401,14 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
         }),
         // Refresh token endpoint
         http.post(`${API_URL}/auth/refresh`, () => {
-          return new HttpResponse(null, { 
+          return new HttpResponse(null, {
             status: 200,
             headers: {
               'Set-Cookie': [
                 'access_token=refreshed-access-token; Path=/; HttpOnly; SameSite=Lax; Secure',
-                'refresh_token=refreshed-refresh-token; Path=/auth; HttpOnly; SameSite=Lax; Secure'
-              ].join(', ')
-            }
+                'refresh_token=refreshed-refresh-token; Path=/auth; HttpOnly; SameSite=Lax; Secure',
+              ].join(', '),
+            },
           });
         })
       );
@@ -419,13 +433,15 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
         })
       );
 
-      const loginResult = await store.dispatch(login({
-        email: 'test@example.com',
-        password: 'password'
-      }));
+      const loginResult = await store.dispatch(
+        login({
+          email: 'test@example.com',
+          password: 'password',
+        })
+      );
 
       expect(loginResult.type).toBe('auth/login/rejected');
-      
+
       const authState = store.getState().auth;
       expect(authState.status).toBe('failed');
       expect(authState.error).toBeTruthy();
@@ -434,20 +450,25 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
     it('should handle validation errors', async () => {
       server.use(
         http.post(`${API_URL}/auth/register`, () => {
-          return HttpResponse.json({ 
-            detail: 'Validation error',
-            errors: ['Password too weak', 'Email invalid']
-          }, { status: 422 });
+          return HttpResponse.json(
+            {
+              detail: 'Validation error',
+              errors: ['Password too weak', 'Email invalid'],
+            },
+            { status: 422 }
+          );
         })
       );
 
-      const registerResult = await store.dispatch(registerUser({
-        email: 'invalid-email',
-        password: '123'
-      }));
+      const registerResult = await store.dispatch(
+        registerUser({
+          email: 'invalid-email',
+          password: '123',
+        })
+      );
 
       expect(registerResult.type).toBe('auth/register/rejected');
-      
+
       const authState = store.getState().auth;
       expect(authState.error?.status).toBe(422);
     });
@@ -459,14 +480,14 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
         http.post(`${API_URL}/auth/token`, async () => {
           // Simulate some delay
           await new Promise(resolve => setTimeout(resolve, 100));
-          return new HttpResponse(null, { 
+          return new HttpResponse(null, {
             status: 200,
             headers: {
               'Set-Cookie': [
                 'access_token=concurrent-access-token; Path=/; HttpOnly; SameSite=Lax; Secure',
-                'refresh_token=concurrent-refresh-token; Path=/auth; HttpOnly; SameSite=Lax; Secure'
-              ].join(', ')
-            }
+                'refresh_token=concurrent-refresh-token; Path=/auth; HttpOnly; SameSite=Lax; Secure',
+              ].join(', '),
+            },
           });
         }),
         http.get(`${API_URL}/users/me`, () => {
@@ -475,12 +496,16 @@ describe('Authentication Flows Integration Tests (httpOnly Cookies)', () => {
       );
 
       // Make multiple concurrent login requests
-      const loginPromises = Array(3).fill(0).map(() => 
-        store.dispatch(login({
-          email: 'test@example.com',
-          password: 'password'
-        }))
-      );
+      const loginPromises = Array(3)
+        .fill(0)
+        .map(() =>
+          store.dispatch(
+            login({
+              email: 'test@example.com',
+              password: 'password',
+            })
+          )
+        );
 
       const results = await Promise.all(loginPromises);
 

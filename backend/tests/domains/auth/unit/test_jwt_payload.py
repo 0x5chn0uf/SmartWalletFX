@@ -6,6 +6,7 @@ import pytest
 from app.domain.schemas.jwt import JWTPayload
 
 
+@pytest.mark.unit
 def test_valid_payload():
     now = int(datetime.now(timezone.utc).timestamp())
     payload = JWTPayload(
@@ -20,12 +21,14 @@ def test_valid_payload():
     assert payload.attributes["k"] == "v"
 
 
+@pytest.mark.unit
 def test_invalid_uuid():
     now = int(datetime.now(timezone.utc).timestamp())
     with pytest.raises(Exception):
         JWTPayload(sub="not-a-uuid", exp=now + 60, iat=now, jti="x")
 
 
+@pytest.mark.unit
 def test_expired_token():
     now = int(datetime.now(timezone.utc).timestamp())
     with pytest.raises(Exception):

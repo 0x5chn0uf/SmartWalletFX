@@ -4,6 +4,8 @@ import pytest
 
 from app.models.wallet import Wallet
 
+pytestmark = pytest.mark.integration
+
 
 def generate_unique_address():
     """Generate a unique Ethereum address for testing."""

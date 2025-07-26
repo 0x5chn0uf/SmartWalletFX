@@ -250,9 +250,29 @@ class UserRepository:
 
         try:
             async with self.__database.get_session() as session:
-                # Delete related refresh tokens first
+                # Delete all related records first to avoid constraint violations
+                from app.models.email_verification import EmailVerification
+                from app.models.oauth_account import OAuthAccount
+                from app.models.password_reset import PasswordReset
+                from app.models.wallet import Wallet
+
+                # Delete related records explicitly
                 await session.execute(  # type: ignore[arg-type]
                     delete(RefreshToken).where(RefreshToken.user_id == user.id)
+                )
+                await session.execute(  # type: ignore[arg-type]
+                    delete(EmailVerification).where(
+                        EmailVerification.user_id == user.id
+                    )
+                )
+                await session.execute(  # type: ignore[arg-type]
+                    delete(PasswordReset).where(PasswordReset.user_id == user.id)
+                )
+                await session.execute(  # type: ignore[arg-type]
+                    delete(OAuthAccount).where(OAuthAccount.user_id == user.id)
+                )
+                await session.execute(  # type: ignore[arg-type]
+                    delete(Wallet).where(Wallet.user_id == user.id)
                 )
 
                 # Merge user into this session and delete
@@ -266,5 +286,97 @@ class UserRepository:
         except Exception as e:
             self.__audit.error(
                 "user_repository_delete_failed", user_id=str(user.id), error=str(e)
+            )
+            raise
+
+    async def update_profile(self, user: User, profile_data: dict) -> User:
+        """Update user profile information with validation."""
+        self.__audit.info(
+            "user_repository_update_profile_started",
+            user_id=str(user.id),
+            fields=list(profile_data.keys()),
+        )
+
+        try:
+            async with self.__database.get_session() as session:
+                # Merge the user into this session
+                user = await session.merge(user)
+
+                # Only update profile-related fields
+                profile_fields = {
+                    "username",
+                    "email",
+                    "profile_picture_url",
+                    "first_name",
+                    "last_name",
+                    "bio",
+                    "timezone",
+                    "preferred_currency",
+                    "notification_preferences",
+                }
+
+                for field, value in profile_data.items():
+                    if field in profile_fields and hasattr(user, field):
+                        setattr(user, field, value)
+
+                try:
+                    await session.commit()
+                except IntegrityError as e:
+                    self.__audit.error(
+                        "user_repository_update_profile_integrity_error",
+                        user_id=str(user.id),
+                        error=str(e),
+                    )
+                    await session.rollback()
+                    raise
+
+                await session.refresh(user)
+
+                self.__audit.info(
+                    "user_repository_update_profile_success", user_id=str(user.id)
+                )
+                return user
+        except Exception as e:
+            self.__audit.error(
+                "user_repository_update_profile_failed",
+                user_id=str(user.id),
+                error=str(e),
+            )
+            raise
+
+    async def change_password(self, user: User, new_hashed_password: str) -> User:
+        """Change user password with audit logging."""
+        self.__audit.info(
+            "user_repository_change_password_started", user_id=str(user.id)
+        )
+
+        try:
+            async with self.__database.get_session() as session:
+                # Merge the user into this session
+                user = await session.merge(user)
+                user.hashed_password = new_hashed_password
+
+                try:
+                    await session.commit()
+                except IntegrityError as e:
+                    self.__audit.error(
+                        "user_repository_change_password_integrity_error",
+                        user_id=str(user.id),
+                        error=str(e),
+                    )
+                    await session.rollback()
+                    raise
+
+                await session.refresh(user)
+
+                self.__audit.info(
+                    "user_repository_change_password_success", user_id=str(user.id)
+                )
+                return user
+        except Exception as e:
+            self.__audit.error(
+                "user_repository_change_password_failed",
+                user_id=str(user.id),
+                error=str(e),
             )
             raise

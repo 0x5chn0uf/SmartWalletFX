@@ -35,6 +35,7 @@ class DummySession:  # noqa: D101 – async session stub
         return None
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_user_from_request_success():
     """A valid user_id and token payload on request state returns the user instance."""
@@ -65,6 +66,7 @@ async def test_get_user_from_request_success():
         assert result._current_attributes == {}
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "user_id, token_payload, session_user, expected_detail",
@@ -102,11 +104,13 @@ async def test_get_user_from_request_error_paths(
 class TestAuthDeps:
     """Test AuthDeps class."""
 
+    @pytest.mark.unit
     def test_auth_deps_init(self):
         """Test AuthDeps initialization."""
         deps = AuthDeps()
         assert deps.config is not None
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_rate_limit_auth_token_success(self):
         """Test rate limiting allows request when under limit."""
@@ -122,6 +126,7 @@ class TestAuthDeps:
             await deps.rate_limit_auth_token(request)
             mock_limiter.allow.assert_called_once_with("127.0.0.1")
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_rate_limit_auth_token_no_client_host(self):
         """Test rate limiting handles missing client host."""
@@ -135,6 +140,7 @@ class TestAuthDeps:
             await deps.rate_limit_auth_token(request)
             mock_limiter.allow.assert_called_once_with("unknown")
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_rate_limit_auth_token_exceeds_limit(self):
         """Test rate limiting raises exception when limit exceeded."""
@@ -153,6 +159,7 @@ class TestAuthDeps:
             assert "Retry-After" in exc.value.headers
 
 
+@pytest.mark.unit
 def test_get_user_id_from_request_success():
     """Test get_user_id_from_request with valid user_id."""
     user_id = uuid.uuid4()
@@ -163,6 +170,7 @@ def test_get_user_id_from_request_success():
     assert result == user_id
 
 
+@pytest.mark.unit
 def test_get_user_id_from_request_no_user_id():
     """Test get_user_id_from_request raises exception when no user_id."""
     request = Mock()
@@ -175,6 +183,7 @@ def test_get_user_id_from_request_no_user_id():
     assert "Not authenticated" in exc.value.detail
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_redis():
     """Test get_redis context manager."""
@@ -194,6 +203,7 @@ async def test_get_redis():
         mock_client.close.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_redis_with_exception():
     """Test get_redis handles close exception gracefully."""
@@ -217,18 +227,21 @@ async def test_get_redis_with_exception():
 class TestAuthorizationDeps:
     """Test AuthorizationDeps class."""
 
+    @pytest.mark.unit
     def test_ensure_list_with_list(self):
         """Test _ensure_list with list input."""
         deps = AuthorizationDeps()
         result = deps._ensure_list(["a", "b", "c"])
         assert result == ["a", "b", "c"]
 
+    @pytest.mark.unit
     def test_ensure_list_with_single_value(self):
         """Test _ensure_list with single value."""
         deps = AuthorizationDeps()
         result = deps._ensure_list("single")
         assert result == ["single"]
 
+    @pytest.mark.unit
     def test_match_attribute_simple_equality(self):
         """Test _match_attribute with simple equality."""
         deps = AuthorizationDeps()
@@ -257,12 +270,14 @@ class TestAuthorizationDeps:
             ("invalid", 5, 5, False),
         ],
     )
+    @pytest.mark.unit
     def test_match_attribute_with_operators(self, op, value, requirement, expected):
         """Test _match_attribute with various operators."""
         deps = AuthorizationDeps()
         req = {"op": op, "value": requirement}
         assert deps._match_attribute(value, req) is expected
 
+    @pytest.mark.unit
     def test_expand_permissions(self):
         """Test _expand_permissions with valid roles."""
         deps = AuthorizationDeps()
@@ -271,6 +286,7 @@ class TestAuthorizationDeps:
         assert isinstance(permissions, set)
         assert len(permissions) > 0
 
+    @pytest.mark.unit
     def test_expand_permissions_invalid_role(self):
         """Test _expand_permissions with invalid role."""
         deps = AuthorizationDeps()
@@ -279,6 +295,7 @@ class TestAuthorizationDeps:
         assert isinstance(permissions, set)
         assert len(permissions) == 0
 
+    @pytest.mark.unit
     def test_has_permission_success(self):
         """Test has_permission with valid permission."""
         deps = AuthorizationDeps()
@@ -289,12 +306,14 @@ class TestAuthorizationDeps:
             first_permission = next(iter(permissions))
             assert deps.has_permission(roles, first_permission) is True
 
+    @pytest.mark.unit
     def test_has_permission_failure(self):
         """Test has_permission with invalid permission."""
         deps = AuthorizationDeps()
         roles = [UserRole.INDIVIDUAL_INVESTOR.value]
         assert deps.has_permission(roles, "non_existent_permission") is False
 
+    @pytest.mark.unit
     def test_require_roles_success(self):
         """Test require_roles dependency with valid roles."""
         deps = AuthorizationDeps()
@@ -310,6 +329,7 @@ class TestAuthorizationDeps:
         result = dependency(request)
         assert result is request
 
+    @pytest.mark.unit
     def test_require_roles_no_payload(self):
         """Test require_roles dependency with no token payload."""
         deps = AuthorizationDeps()
@@ -325,6 +345,7 @@ class TestAuthorizationDeps:
         assert exc.value.status_code == 401
         assert "Not authenticated" in exc.value.detail
 
+    @pytest.mark.unit
     def test_require_roles_insufficient_roles(self):
         """Test require_roles dependency with insufficient roles."""
         deps = AuthorizationDeps()
@@ -343,6 +364,7 @@ class TestAuthorizationDeps:
         assert exc.value.status_code == 403
         assert "Access denied" in exc.value.detail
 
+    @pytest.mark.unit
     def test_require_attributes_success(self):
         """Test require_attributes dependency with valid attributes."""
         deps = AuthorizationDeps()
@@ -358,6 +380,7 @@ class TestAuthorizationDeps:
         result = dependency(request)
         assert result is request
 
+    @pytest.mark.unit
     def test_require_attributes_no_payload(self):
         """Test require_attributes dependency with no token payload."""
         deps = AuthorizationDeps()
@@ -373,6 +396,7 @@ class TestAuthorizationDeps:
         assert exc.value.status_code == 401
         assert "Not authenticated" in exc.value.detail
 
+    @pytest.mark.unit
     def test_require_attributes_missing_attribute(self):
         """Test require_attributes dependency with missing attribute."""
         deps = AuthorizationDeps()
@@ -392,6 +416,7 @@ class TestAuthorizationDeps:
         assert "Access denied" in exc.value.detail
         assert "region" in exc.value.detail
 
+    @pytest.mark.unit
     def test_require_permission_success(self):
         """Test require_permission dependency with valid permission."""
         deps = AuthorizationDeps()
@@ -408,6 +433,7 @@ class TestAuthorizationDeps:
             result = dependency(request)
             assert result is request
 
+    @pytest.mark.unit
     def test_require_permission_no_payload(self):
         """Test require_permission dependency with no token payload."""
         deps = AuthorizationDeps()
@@ -422,6 +448,7 @@ class TestAuthorizationDeps:
         assert exc.value.status_code == 401
         assert "Not authenticated" in exc.value.detail
 
+    @pytest.mark.unit
     def test_require_permission_insufficient_permission(self):
         """Test require_permission dependency with insufficient permission."""
         deps = AuthorizationDeps()

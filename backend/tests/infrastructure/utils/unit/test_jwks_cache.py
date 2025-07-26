@@ -23,6 +23,7 @@ class TestGetJwksCache:
     """Test cache retrieval operations."""
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_get_jwks_cache_hit(self, mock_redis, sample_jwks):
         """Test successful cache retrieval."""
         # Mock Redis to return cached data
@@ -36,6 +37,7 @@ class TestGetJwksCache:
         mock_redis.get.assert_called_once_with(JWKS_CACHE_KEY)
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_get_jwks_cache_miss(self, mock_redis):
         """Test cache miss returns None."""
         mock_redis.get.return_value = None
@@ -46,6 +48,7 @@ class TestGetJwksCache:
         mock_redis.get.assert_called_once_with(JWKS_CACHE_KEY)
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_get_jwks_cache_redis_error(self, mock_redis):
         """Test graceful handling of Redis errors."""
         mock_redis.get.side_effect = Exception("Redis connection failed")
@@ -56,6 +59,7 @@ class TestGetJwksCache:
         mock_redis.get.assert_called_once_with(JWKS_CACHE_KEY)
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_get_jwks_cache_invalid_json(self, mock_redis):
         """Test graceful handling of invalid JSON in cache."""
         mock_redis.get.return_value = b"invalid json"
@@ -70,6 +74,7 @@ class TestSetJwksCache:
     """Test cache storage operations."""
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_set_jwks_cache_success(self, mock_redis, sample_jwks):
         """Test successful cache storage."""
         mock_redis.setex.return_value = True
@@ -86,6 +91,7 @@ class TestSetJwksCache:
         assert stored_data["keys"] == sample_jwks.model_dump()["keys"]
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_set_jwks_cache_redis_error(self, mock_redis, sample_jwks):
         """Test graceful handling of Redis storage errors."""
         mock_redis.setex.side_effect = Exception("Redis storage failed")
@@ -96,6 +102,7 @@ class TestSetJwksCache:
         mock_redis.setex.assert_called_once()
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_set_jwks_cache_serialization_error(self, mock_redis):
         """Test handling of JWKSet serialization errors."""
         # Create a valid JWKSet but mock json.dumps to fail
@@ -125,6 +132,7 @@ class TestInvalidateJwksCache:
     """Test cache invalidation operations."""
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_invalidate_jwks_cache_success(self, mock_redis):
         """Test successful cache invalidation."""
         mock_redis.delete.return_value = 1
@@ -135,6 +143,7 @@ class TestInvalidateJwksCache:
         mock_redis.delete.assert_called_once_with(JWKS_CACHE_KEY)
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_invalidate_jwks_cache_redis_error(self, mock_redis):
         """Test graceful handling of Redis deletion errors."""
         mock_redis.delete.side_effect = Exception("Redis deletion failed")
@@ -145,6 +154,7 @@ class TestInvalidateJwksCache:
         mock_redis.delete.assert_called_once_with(JWKS_CACHE_KEY)
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_invalidate_jwks_cache_key_not_found(self, mock_redis):
         """Test invalidation when key doesn't exist."""
         mock_redis.delete.return_value = 0
@@ -163,20 +173,26 @@ class TestRedisClientBuilder:
     """Test Redis client creation."""
 
     @patch("app.utils.jwks_cache.Redis")
-    def test_build_redis_client(self, mock_redis_class):
+    @pytest.mark.unit
+    def test_build_redis_client(self, mock_redis_class, monkeypatch):
         """Test Redis client creation with correct URL."""
         from app.utils import jwks_cache
+
+        # Ensure unit test environment is set up correctly
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/15")
 
         jwks_cache._redis_singleton = None
 
         jwks_cache._build_redis_client()
 
-        mock_redis_class.from_url.assert_called_once_with("redis://localhost:6379/0")
+        # Expect test Redis URL from pytest.ini
+        mock_redis_class.from_url.assert_called_once_with("redis://localhost:6379/15")
 
 
 class TestInvalidateJwksCacheSync:
     """Tests for the synchronous cache invalidation wrapper."""
 
+    @pytest.mark.unit
     def test_sync_invalidation_success(self, monkeypatch):
         redis_client = AsyncMock()
         monkeypatch.setattr(
@@ -184,9 +200,30 @@ class TestInvalidateJwksCacheSync:
         )
         calls = []
 
+        import asyncio
+        import inspect  # Local import to avoid polluting global namespace
+
         def fake_run(coro):
+            """A lightweight replacement for ``asyncio.run`` used in tests.
+
+            It **executes** coroutine objects to completion so that they do not
+            generate "coroutine was never awaited" warnings while still
+            allowing the test to spy on how many times it was invoked.
+            """
+
             calls.append(coro)
-            return True if len(calls) == 1 else None
+
+            # Only execute coroutine objects – ``redis.close()`` and similar are
+            # also coroutines.  For non coroutine inputs (e.g. already executed
+            # results) simply return the value as-is.
+            if inspect.iscoroutine(coro):
+                loop = asyncio.new_event_loop()
+                try:
+                    return loop.run_until_complete(coro)
+                finally:
+                    loop.close()
+
+            return coro
 
         monkeypatch.setattr("app.utils.jwks_cache.asyncio.run", fake_run)
 
@@ -199,12 +236,22 @@ class TestInvalidateJwksCacheSync:
         assert invalidate_jwks_cache_sync() is True
         assert len(calls) == 2
 
+    @pytest.mark.unit
     def test_sync_invalidation_failure(self, monkeypatch):
         monkeypatch.setattr(
             "app.utils.jwks_cache._build_redis_client", lambda: AsyncMock()
         )
 
-        def fake_run(_):
+        import asyncio
+        import inspect
+
+        def fake_run(coro):
+            """Simulate a failure in ``asyncio.run`` while avoiding unawaited warnings."""
+
+            # Close coroutine to prevent RuntimeWarning about it being unawaited
+            if inspect.iscoroutine(coro):
+                coro.close()
+
             raise RuntimeError("boom")
 
         monkeypatch.setattr("app.utils.jwks_cache.asyncio.run", fake_run)

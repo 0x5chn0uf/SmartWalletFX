@@ -45,6 +45,7 @@ def restore_email_service_methods():
 class TestEmailServiceHelpers:
     """Test helper functions for EmailService."""
 
+    @pytest.mark.unit
     def test_build_email_basic(self):
         """Test building a basic email message."""
         subject = "Test Subject"
@@ -60,6 +61,7 @@ class TestEmailServiceHelpers:
         assert message["To"] == recipient
         assert message.get_content().strip() == body
 
+    @pytest.mark.unit
     def test_build_email_with_special_characters(self):
         """Test building email with special characters."""
         subject = "Test Subject with ümlaut"
@@ -75,6 +77,7 @@ class TestEmailServiceHelpers:
         assert message.get_content().strip() == body
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_send_via_smtp_ssl_with_auth(self):
         """Test SMTP sending with SSL and authentication."""
         # Create a mock email message
@@ -123,6 +126,7 @@ class TestEmailServiceHelpers:
             mock_server.quit.assert_called_once()
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_send_via_smtp_tls_no_auth(self):
         """Test SMTP sending with TLS and no authentication."""
         # Create a mock email message
@@ -169,6 +173,7 @@ class TestEmailServiceHelpers:
             mock_server.quit.assert_called_once()
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_send_via_smtp_plain_with_auth(self):
         """Test SMTP sending with plain connection and authentication."""
         # Create a mock email message
@@ -212,6 +217,7 @@ class TestEmailServiceHelpers:
             mock_server.quit.assert_called_once()
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_send_via_smtp_quit_exception(self):
         """Test SMTP sending when quit() raises exception."""
         # Create a mock email message
@@ -246,6 +252,7 @@ class TestEmailServiceHelpers:
             mock_server.quit.assert_called_once()
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_send_via_smtp_send_exception(self):
         """Test SMTP sending when send_message raises exception."""
         # Create a mock email message
@@ -285,6 +292,7 @@ class TestEmailServiceHelpers:
 class TestEmailService:
     """Test EmailService class."""
 
+    @pytest.mark.unit
     def test_init(self, mock_config, mock_audit):
         """Test EmailService initialization."""
         service = EmailService(mock_config, mock_audit)
@@ -293,6 +301,7 @@ class TestEmailService:
         assert service._EmailService__audit is mock_audit
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_send_password_reset_success(
         self, email_service_with_di, restore_email_service_methods
     ):
@@ -333,6 +342,7 @@ class TestEmailService:
             )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_send_password_reset_smtp_failure(
         self, email_service_with_di, restore_email_service_methods
     ):
@@ -361,6 +371,7 @@ class TestEmailService:
             email_service_with_di._EmailService__audit.info.assert_not_called()
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_send_email_verification_success(
         self, email_service_with_di, restore_email_service_methods
     ):
@@ -401,6 +412,7 @@ class TestEmailService:
             )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_send_email_verification_smtp_failure(
         self, email_service_with_di, restore_email_service_methods
     ):
@@ -429,6 +441,7 @@ class TestEmailService:
             email_service_with_di._EmailService__audit.info.assert_not_called()
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_send_password_reset_content_format(
         self, email_service_with_di, restore_email_service_methods
     ):
@@ -464,6 +477,7 @@ class TestEmailService:
             assert "SmartWalletFx Team" in body
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_send_email_verification_content_format(
         self, email_service_with_di, restore_email_service_methods
     ):

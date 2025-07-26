@@ -1,9 +1,17 @@
 import { render, screen } from '@testing-library/react';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import * as d3 from 'd3';
 import { init as echartsInit } from 'echarts';
-import '@testing-library/jest-dom';
 
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
@@ -36,7 +44,7 @@ describe('Chart Libraries Integration', () => {
     };
 
     render(<Line data={data} options={options} data-testid="test-chart" />);
-    
+
     // Chart.js creates a canvas element
     const canvas = screen.getByTestId('test-chart');
     expect(canvas).toBeInTheDocument();
@@ -47,23 +55,21 @@ describe('Chart Libraries Integration', () => {
     expect(typeof d3.scaleLinear).toBe('function');
     expect(typeof d3.select).toBe('function');
     expect(typeof d3.csv).toBe('function');
-    
+
     // Test basic D3 scale functionality
-    const scale = d3.scaleLinear()
-      .domain([0, 100])
-      .range([0, 500]);
-    
+    const scale = d3.scaleLinear().domain([0, 100]).range([0, 500]);
+
     expect(scale(50)).toBe(250);
   });
 
   it('loads ECharts library', () => {
     expect(typeof echartsInit).toBe('function');
-    
+
     // Create a mock DOM element for ECharts
     const mockElement = document.createElement('div');
     mockElement.style.width = '400px';
     mockElement.style.height = '300px';
-    
+
     // This should not throw an error
     expect(() => {
       const chart = echartsInit(mockElement);

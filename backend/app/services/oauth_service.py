@@ -97,6 +97,6 @@ class OAuthService:
         return TokenResponse(
             access_token=access_token,
             refresh_token=refresh_token,
-            token_type="bearer",
+            token_type="bearer",  # nosec B106 – constant per OAuth2 spec
             expires_in=self.__config_service.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )

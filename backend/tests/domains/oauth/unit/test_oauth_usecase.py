@@ -31,6 +31,7 @@ def create_mock_usecase():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_authenticate_and_issue_tokens():
     # Setup
     usecase = create_mock_usecase()
@@ -66,6 +67,7 @@ async def test_authenticate_and_issue_tokens():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_generate_login_redirect_success():
     # Setup
     usecase = create_mock_usecase()
@@ -85,6 +87,7 @@ async def test_generate_login_redirect_success():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_generate_login_redirect_unsupported_provider():
     # Setup
     usecase = create_mock_usecase()
@@ -97,6 +100,7 @@ async def test_generate_login_redirect_unsupported_provider():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_process_callback_success():
     # Setup
     usecase = create_mock_usecase()
@@ -137,6 +141,7 @@ async def test_process_callback_success():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_process_callback_unsupported_provider():
     # Setup
     usecase = create_mock_usecase()
@@ -157,6 +162,7 @@ async def test_process_callback_unsupported_provider():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_process_callback_state_mismatch():
     # Setup
     usecase = create_mock_usecase()
@@ -177,6 +183,7 @@ async def test_process_callback_state_mismatch():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_process_callback_invalid_state():
     # Setup
     usecase = create_mock_usecase()
@@ -198,6 +205,7 @@ async def test_process_callback_invalid_state():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_process_callback_missing_sub():
     # Setup
     usecase = create_mock_usecase()
@@ -224,6 +232,7 @@ async def test_process_callback_missing_sub():
         assert excinfo.value.status_code == 400
 
 
+@pytest.mark.unit
 def test_build_auth_url_google():
     # Setup
     usecase = create_mock_usecase()
@@ -241,6 +250,7 @@ def test_build_auth_url_google():
     assert "test_state" in result
 
 
+@pytest.mark.unit
 def test_build_auth_url_github():
     # Setup
     usecase = create_mock_usecase()
@@ -258,6 +268,7 @@ def test_build_auth_url_github():
     assert "test_state" in result
 
 
+@pytest.mark.unit
 def test_build_auth_url_unsupported():
     # Setup
     usecase = create_mock_usecase()
@@ -269,6 +280,7 @@ def test_build_auth_url_unsupported():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_exchange_code_google():
     # Setup
     usecase = create_mock_usecase()
@@ -300,6 +312,7 @@ async def test_exchange_code_google():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_exchange_code_google_missing_id_token():
     # Setup
     usecase = create_mock_usecase()
@@ -324,6 +337,7 @@ async def test_exchange_code_google_missing_id_token():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_exchange_code_github():
     # Setup
     usecase = create_mock_usecase()
@@ -357,6 +371,7 @@ async def test_exchange_code_github():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_exchange_code_github_missing_access_token():
     # Setup
     usecase = create_mock_usecase()
@@ -381,6 +396,7 @@ async def test_exchange_code_github_missing_access_token():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_exchange_code_github_missing_email():
     # Setup
     usecase = create_mock_usecase()
@@ -419,6 +435,7 @@ async def test_exchange_code_github_missing_email():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_exchange_code_unsupported_provider():
     # Setup
     usecase = create_mock_usecase()

@@ -13,6 +13,7 @@ from app.models.user import User
 class TestAuthServiceAuthentication:
     """Test auth service authentication functionality."""
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_authenticate_success_by_username(
         self, auth_usecase, mock_user_repo, mock_jwt_utils, mock_refresh_token_repo
@@ -42,6 +43,7 @@ class TestAuthServiceAuthentication:
         )  # Check that a refresh token is returned
         mock_refresh_token_repo.create_from_jti.assert_called_once()
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_authenticate_success_by_email(
         self, auth_usecase, mock_user_repo, mock_jwt_utils, mock_refresh_token_repo
@@ -71,6 +73,7 @@ class TestAuthServiceAuthentication:
         )  # Check that a refresh token is returned
         mock_refresh_token_repo.create_from_jti.assert_called_once()
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_authenticate_user_not_found(self, auth_usecase, mock_user_repo):
         """Test authentication with non-existent user."""
@@ -80,6 +83,7 @@ class TestAuthServiceAuthentication:
         with pytest.raises(InvalidCredentialsError):
             await auth_usecase.authenticate("nonexistent", "StrongPass123!")
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_authenticate_inactive_user(self, auth_usecase, mock_user_repo):
         """Test authentication with inactive user."""
@@ -90,6 +94,7 @@ class TestAuthServiceAuthentication:
         with pytest.raises(InactiveUserError):
             await auth_usecase.authenticate("test", "StrongPass123!")
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_authenticate_wrong_password(self, auth_usecase, mock_user_repo):
         """Test authentication with wrong password."""
@@ -102,6 +107,7 @@ class TestAuthServiceAuthentication:
         with pytest.raises(InvalidCredentialsError):
             await auth_usecase.authenticate("test", "WrongPass123!")
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_authenticate_unverified_email(self, auth_usecase, mock_user_repo):
         """Authentication should fail when email is unverified past deadline."""
@@ -119,6 +125,7 @@ class TestAuthServiceAuthentication:
         with pytest.raises(UnverifiedEmailError):
             await auth_usecase.authenticate("test", "StrongPass123!")
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_authenticate_updates_last_login(
         self, auth_usecase, mock_user_repo, mock_jwt_utils, mock_refresh_token_repo

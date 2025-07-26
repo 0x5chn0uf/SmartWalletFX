@@ -40,12 +40,14 @@ class _Proxy:
         self.__dict__[name] = value
 
 
+@pytest.mark.unit
 def test_b64url_uint():
     """Test base64url encoding of integers."""
     assert _b64url_uint(1) == "AQ"
     assert _b64url_uint(65537) == "AQAB"
 
 
+@pytest.mark.unit
 def test_format_public_key_to_jwk_with_rs256():
     """Test format_public_key_to_jwk with RS256 algorithm."""
     # Setup
@@ -63,6 +65,7 @@ def test_format_public_key_to_jwk_with_rs256():
     assert jwk["alg"] == "RS256"
 
 
+@pytest.mark.unit
 def test_format_public_key_to_jwk_with_custom_alg():
     """Test format_public_key_to_jwk with custom algorithm."""
     # Setup
@@ -80,6 +83,7 @@ def test_format_public_key_to_jwk_with_custom_alg():
     assert jwk["alg"] == "RS384"
 
 
+@pytest.mark.unit
 def test_get_signing_key(mock_settings):
     """Test get_signing_key with mock settings."""
     mock_settings.JWT_ALGORITHM = "HS256"
@@ -91,6 +95,7 @@ def test_get_signing_key(mock_settings):
     assert algorithm == "HS256"
 
 
+@pytest.mark.unit
 def test_get_signing_key_rsa(mock_settings, rsa_private_key):
     """Test get_signing_key with RSA algorithm."""
     mock_settings.JWT_ALGORITHM = "RS256"
@@ -102,6 +107,7 @@ def test_get_signing_key_rsa(mock_settings, rsa_private_key):
     assert algorithm == "RS256"
 
 
+@pytest.mark.unit
 def test_get_verifying_keys_with_hs256(mock_settings):
     """Test get_verifying_keys with HS256 algorithm."""
     mock_settings.JWT_ALGORITHM = "HS256"
@@ -114,6 +120,7 @@ def test_get_verifying_keys_with_hs256(mock_settings):
     assert keys[1].value == "secret2"
 
 
+@pytest.mark.unit
 def test_get_verifying_keys_with_rs256(mock_settings, rsa_public_key):
     """Test get_verifying_keys with RS256 algorithm."""
     mock_settings.JWT_ALGORITHM = "RS256"
@@ -124,6 +131,7 @@ def test_get_verifying_keys_with_rs256(mock_settings, rsa_public_key):
     # and assume the correct key is loaded if the length is correct.
 
 
+@pytest.mark.unit
 def test_get_verifying_keys_with_retired_keys(mock_settings, rsa_public_key):
     """Test get_verifying_keys with retired keys."""
     mock_settings.JWT_ALGORITHM = "RS256"

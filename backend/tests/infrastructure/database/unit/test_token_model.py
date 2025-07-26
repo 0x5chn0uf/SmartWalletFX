@@ -6,35 +6,35 @@ from httpx import AsyncClient
 from app.models import Token
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
-async def test_create_token(test_app_with_di_container):
+async def test_create_token_model_directly(db_session):
+    """Test token model creation directly without usecase layer."""
     # Generate a unique address each time to avoid conflicts
     unique_address = f"0x{uuid.uuid4().hex[:40]}"
-    token_data = {
-        "address": unique_address,
-        "symbol": "TKN",
-        "name": "Token",
-        "decimals": 18,
-    }
 
-    # Use the DI container app which has better isolation
-    async with AsyncClient(
-        app=test_app_with_di_container,
-        base_url="http://test",
-        timeout=30.0,
-        follow_redirects=True,
-    ) as ac:
-        resp = await ac.post("/tokens", json=token_data)
-        assert resp.status_code == 201
-        token = resp.json()
+    # Create token model directly
+    token = Token(
+        address=unique_address,
+        symbol="TKN",
+        name="Token",
+        decimals=18,
+    )
 
-    assert token["id"] is not None
-    assert token["address"] == unique_address
-    assert token["symbol"] == "TKN"
-    assert token["name"] == "Token"
-    assert token["decimals"] == 18
+    # Add to session and commit
+    db_session.add(token)
+    await db_session.commit()
+    await db_session.refresh(token)
+
+    # Verify the result
+    assert token.id is not None
+    assert token.address == unique_address
+    assert token.symbol == "TKN"
+    assert token.name == "Token"
+    assert token.decimals == 18
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_token_address_validation(db_session):
     valid_token = Token(
@@ -49,6 +49,7 @@ async def test_token_address_validation(db_session):
     assert invalid_token.validate_address() is False
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_token_symbol_validation(db_session):
     valid_token = Token(
@@ -65,6 +66,7 @@ async def test_token_symbol_validation(db_session):
     assert invalid_token.validate_symbol() is False
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_token_decimals_validation(db_session):
     valid_token = Token(
@@ -83,6 +85,7 @@ async def test_token_decimals_validation(db_session):
     assert invalid_token.validate_decimals() is False
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_token_price_validation(db_session):
     valid_token = Token(

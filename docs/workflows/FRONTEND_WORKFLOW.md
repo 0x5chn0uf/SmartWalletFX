@@ -1,4 +1,4 @@
-# FRONTEND_WORKFLOW.md
+# FRONTEND_WORKFLOW\.md
 
 > **Audience**: Claude Code when working on React/TypeScript frontend code
 > **Scope**: All tasks involving `frontend/` directory, React components, TypeScript files, styles
@@ -41,6 +41,33 @@ npm run test:watch     # Watch mode for unit tests
 npm run cypress:open   # Interactive E2E testing
 ```
 
+### Reduced Output Testing
+
+✅ When running in CI or to reduce token output:
+
+```bash
+npm run test -- --reporter=dot --silent
+```
+
+✅ Or configure `vitest.config.ts` once:
+
+```ts
+test: {
+  reporters: ['dot'],
+  silent: true,
+  clearScreen: false,
+  noStackTrace: true,
+}
+```
+
+✅ Alternative minimal reporter:
+
+```bash
+npm run test -- --reporter=compact
+```
+
+---
+
 ### Single Test Debugging
 
 When working on specific failing tests:
@@ -71,7 +98,7 @@ npm run test:coverage  # Generate test coverage report
 ```bash
 npm run lint           # ESLint checking
 npm run format         # Prettier formatting
-npm run type-check     # TypeScript type checking
+npx tsc --noEmit       # TypeScript type checking
 ```
 
 ### Individual Commands
@@ -110,8 +137,8 @@ npm run build:analyze  # Build with bundle analyzer
 2. **Test first**: Write test file alongside component
 3. **Implement**: Code the component with TypeScript
 4. **Style**: Use Tailwind CSS classes
-5. **Validate**: Run `npm run test` and fix any failures
-6. **Type check**: Ensure `npm run type-check` passes
+5. **Validate**: Run `npm run test -- --reporter=dot --silent`
+6. **Type check**: Ensure `npx tsc --noEmit` passes
 
 ### State Management
 
@@ -136,6 +163,9 @@ npm run build:analyze  # Build with bundle analyzer
 ```bash
 # Run all unit tests
 npm run test
+
+# Run with minimal output
+npm run test -- --reporter=dot --silent
 
 # Test specific component
 npm run test -- src/components/Button.test.tsx
@@ -167,6 +197,9 @@ npm run cypress:run -- --spec "cypress/e2e/auth.cy.ts"
 # Run with verbose output
 npm run test -- --reporter=verbose
 
+# Run with minimal output
+npm run test -- --reporter=dot --silent
+
 # Debug specific test
 npm run test -- --inspect-brk path/to/test.test.tsx
 ```
@@ -174,61 +207,16 @@ npm run test -- --inspect-brk path/to/test.test.tsx
 ### Component Issues
 
 ```bash
-# Start dev server and inspect in browser
 npm run dev
-
-# Check TypeScript errors
-npm run type-check
+npx tsc --noEmit
 ```
 
 ### Build Issues
 
 ```bash
-# Check for build errors
 npm run build
-
-# Analyze bundle size
 npm run build:analyze
 ```
-
----
-
-## Package Management
-
-### Installing Dependencies
-
-```bash
-npm install <package>              # Production dependency
-npm install --save-dev <package>   # Development dependency
-npm update                         # Update all packages
-npm audit                          # Security audit
-npm audit fix                      # Fix security issues
-```
-
-### Common Development Commands
-
-```bash
-npm run storybook      # Start Storybook (if configured)
-npm run test:e2e       # Alternative E2E command
-npm run clean          # Clean build artifacts
-```
-
----
-
-## Available NPM Scripts Reference
-
-| Purpose                | Command                 |
-| ---------------------- | ----------------------- |
-| **Development server** | `npm run dev`           |
-| **Unit tests**         | `npm run test`          |
-| **E2E tests**          | `npm run cypress:run`   |
-| **Watch tests**        | `npm run test:watch`    |
-| **Lint code**          | `npm run lint`          |
-| **Format code**        | `npm run format`        |
-| **Type checking**      | `npm run type-check`    |
-| **Build production**   | `npm run build`         |
-| **Preview build**      | `npm run preview`       |
-| **Test coverage**      | `npm run test:coverage` |
 
 ---
 
@@ -237,17 +225,23 @@ npm run clean          # Clean build artifacts
 Before marking any frontend task complete:
 
 - [ ] Working from `frontend/` directory
-- [ ] All unit tests passing: `npm run test`
+- [ ] All unit tests passing: `npm run test -- --reporter=dot --silent`
 - [ ] E2E tests passing: `npm run cypress:run`
-- [ ] TypeScript compiles: `npm run type-check`
+- [ ] TypeScript compiles: `npx tsc --noEmit`
 - [ ] Linting passes: `npm run lint`
 - [ ] Code properly formatted: `npm run format`
+- [ ] Validation passed: `.taskmaster/integration/scripts/context-aware.sh validate <task-id>`
+- [ ] Reflection populated: `.taskmaster/integration/scripts/context-aware.sh reflect <task-id>`
 - [ ] Changes committed with conventional commit message
 - [ ] Task Master updated: mark task as done
-- [ ] Memory Bank updated: - Archive created: .taskmaster/memory-bank/archive/archive-<task-id>.md - Reflection created: .taskmaster/memory-bank/reflection/reflection-<task-id>.md - Progress & activeContext updated
+- [ ] Memory Bank updated:
+
+  - Archive created: `.taskmaster/memory-bank/archive/archive-<task-id>.md`
+  - Reflection created/updated: `.taskmaster/memory-bank/reflection/reflection-<task-id>.md`
+  - Progress & activeContext updated
 
 ```bash
-.taskmaster/integration/scripts/complete-task.sh <task-id> "<task-title>" [context]
+.taskmaster/integration/scripts/complete-task.sh <task-id> "<task-title>"
 ```
 
 ---
@@ -277,4 +271,4 @@ Before marking any frontend task complete:
 
 ---
 
-_Frontend workflow - Last updated: 20 July 2025_
+_Frontend workflow - Last updated: 22 July 2025_

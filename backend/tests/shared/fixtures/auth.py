@@ -169,7 +169,7 @@ async def inactive_user(db_session: AsyncSession, auth_usecase):
 
 @pytest_asyncio.fixture
 async def authenticated_client(
-    async_client: AsyncClient,
+    integration_async_client,
     test_user: User,
     auth_usecase: AuthUsecase,
     db_session: AsyncSession,
@@ -185,10 +185,11 @@ async def authenticated_client(
         additional_claims={"roles": test_user.roles},
     )
 
-    async_client.headers = {
+    # Set headers for authentication - our SafeAsyncClient supports this
+    integration_async_client._async_client.headers = {
         "Authorization": f"Bearer {token}",
     }
-    return async_client
+    return integration_async_client
 
 
 @pytest_asyncio.fixture
@@ -201,6 +202,72 @@ def unverified_user_client(
         "Authorization": f"Bearer {token_data.access_token}",
     }
     return client
+
+
+@pytest_asyncio.fixture
+async def user_factory(db_session: AsyncSession, auth_usecase):
+    """
+    Factory fixture to create a user with customizable profile data.
+    Expected by user profile tests.
+    """
+
+    async def _create_user(
+        username: str = None,
+        email: str = None,
+        password: str = "TestPassword123!",
+        first_name: str = None,
+        last_name: str = None,
+        bio: str = None,
+        timezone: str = None,
+        preferred_currency: str = "USD",
+        email_verified: bool = True,
+        **kwargs,
+    ):
+        # Generate unique values if not provided
+        if username is None:
+            username = f"testuser_{uuid.uuid4().hex[:8]}"
+        if email is None:
+            email = f"test_{uuid.uuid4().hex[:8]}@example.com"
+
+        user_in = UserCreate(
+            username=username,
+            email=email,
+            password=password,
+        )
+        user = await auth_usecase.register(user_in)
+
+        # Update profile fields if provided
+        update_data = {}
+        if first_name is not None:
+            update_data["first_name"] = first_name
+        if last_name is not None:
+            update_data["last_name"] = last_name
+        if bio is not None:
+            update_data["bio"] = bio
+        if timezone is not None:
+            update_data["timezone"] = timezone
+        if preferred_currency != "USD":
+            update_data["preferred_currency"] = preferred_currency
+
+        # Apply any additional kwargs
+        for key, value in kwargs.items():
+            if hasattr(user, key):
+                update_data[key] = value
+
+        # Update user with profile data if any
+        if update_data:
+            for key, value in update_data.items():
+                setattr(user, key, value)
+
+        user.email_verified = email_verified
+
+        db_session.add(user)
+        await db_session.commit()
+        await db_session.refresh(user)
+
+        return user
+
+    return _create_user
 
 
 @pytest_asyncio.fixture

@@ -37,6 +37,7 @@ def historical_balance_usecase(historical_balance_usecase_with_di):
 class TestHistoricalBalanceUsecase:
     """Test cases for HistoricalBalanceUsecase."""
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_create_historical_balance_success(
         self, historical_balance_usecase, sample_historical_balance_data
@@ -68,6 +69,7 @@ class TestHistoricalBalanceUsecase:
             hb_create
         )
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_create_historical_balance_with_minimal_data(
         self, historical_balance_usecase
@@ -100,6 +102,7 @@ class TestHistoricalBalanceUsecase:
         assert result.balance_usd == minimal_data["balance_usd"]
         assert result.timestamp == minimal_data["timestamp"]
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_create_historical_balance_with_zero_values(
         self, historical_balance_usecase
@@ -125,6 +128,7 @@ class TestHistoricalBalanceUsecase:
         assert result.balance == 0.0
         assert result.balance_usd == 0.0
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_create_historical_balance_with_large_values(
         self, historical_balance_usecase
@@ -151,6 +155,7 @@ class TestHistoricalBalanceUsecase:
         assert result.balance_usd == 999999999999.99
         assert result.timestamp == large_data["timestamp"]
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_create_historical_balance_repository_error(
         self, historical_balance_usecase, sample_historical_balance_data
@@ -169,6 +174,7 @@ class TestHistoricalBalanceUsecase:
             hb_create
         )
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_create_historical_balance_validation_error(
         self, historical_balance_usecase
@@ -188,6 +194,7 @@ class TestHistoricalBalanceUsecase:
         with pytest.raises(ValidationError):  # Should raise validation error
             HistoricalBalanceCreate(**invalid_data)
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_create_historical_balance_multiple_protocols(
         self, historical_balance_usecase
@@ -218,6 +225,7 @@ class TestHistoricalBalanceUsecase:
             assert result.balance == 100.0 + i
             assert result.balance_usd == 150.0 + (i * 100.0)
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_create_historical_balance_edge_case_timestamps(
         self, historical_balance_usecase
@@ -247,6 +255,7 @@ class TestHistoricalBalanceUsecase:
             assert result == mock_response
             assert result.timestamp == data["timestamp"]
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_create_historical_balance_concurrent_creation(
         self, historical_balance_usecase, sample_historical_balance_data

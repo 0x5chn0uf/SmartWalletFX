@@ -11,6 +11,7 @@ def generate_unique_address():
     return "0x" + unique_hex[:40]
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_wallet_address_validation():
     """Test wallet address validation logic."""
@@ -20,6 +21,7 @@ async def test_wallet_address_validation():
     assert invalid_wallet.validate_address() is False
 
 
+@pytest.mark.unit
 def test_wallet_creation():
     """Test basic wallet model creation."""
     address = generate_unique_address()
@@ -28,6 +30,7 @@ def test_wallet_creation():
     assert wallet.name == "Test Wallet"
 
 
+@pytest.mark.unit
 def test_wallet_default_values():
     """Test wallet model default values."""
     address = generate_unique_address()

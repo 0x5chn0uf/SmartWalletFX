@@ -1,0 +1,75 @@
+name: Scheduled Performance Tests
+
+on:
+  schedule:
+    # Run every Monday at 3:00 AM UTC
+    - cron: '0 3 * * 1'
+  # Allow manual triggering
+  workflow_dispatch:
+    inputs:
+      run_unit_tests:
+        description: 'Run unit tests before performance tests'
+        type: boolean
+        default: false
+      test_domains:
+        description: 'Comma-separated list of test domains to run (default: auth,wallets)'
+        type: string
+        default: 'auth,wallets'
+
+jobs:
+  performance-benchmark:
+    name: Performance Benchmark
+    uses: ./.github/workflows/parallel-test-workflow.yml
+    with:
+      run_security_checks: false
+      run_performance_tests: true
+      run_docker_integration: false
+      test_domains: ${{ github.event.inputs.test_domains || 'auth,wallets' }}
+
+  analyze-benchmarks:
+    name: Analyze Benchmark Results
+    needs: performance-benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download benchmark results
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark-results
+
+      - name: Analyze benchmark trends
+        run: |
+          echo "## Performance Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "benchmark-results/benchmark.json" ]; then
+            # Extract key metrics from benchmark JSON
+            python -c '
+            import json, sys
+            with open("benchmark-results/benchmark.json") as f:
+                data = json.load(f)
+            
+            print("| Test | Mean (ms) | Min (ms) | Max (ms) |")
+            print("|------|----------|----------|----------|")
+            
+            for benchmark in data.get("benchmarks", []):
+                name = benchmark.get("name", "Unknown")
+                mean = benchmark.get("stats", {}).get("mean", 0) * 1000
+                min_val = benchmark.get("stats", {}).get("min", 0) * 1000
+                max_val = benchmark.get("stats", {}).get("max", 0) * 1000
+                
+                print(f"| {name} | {mean:.2f} | {min_val:.2f} | {max_val:.2f} |")
+            ' >> $GITHUB_STEP_SUMMARY
+            
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Full results available in the benchmark-results artifact." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ No benchmark results found." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Store benchmark history
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-history
+          path: benchmark-results
+          retention-days: 90  # Keep benchmark history for trend analysis

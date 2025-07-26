@@ -6,6 +6,7 @@ import walletDetailReducer from './walletDetailSlice';
 import notificationReducer from './notificationSlice';
 import passwordResetReducer from './passwordResetSlice';
 import emailVerificationReducer from './emailVerificationSlice';
+import userProfileReducer from './slices/userProfileSlice';
 
 export const store = configureStore({
   reducer: {
@@ -16,6 +17,7 @@ export const store = configureStore({
     notification: notificationReducer,
     passwordReset: passwordResetReducer,
     emailVerification: emailVerificationReducer,
+    userProfile: userProfileReducer,
   },
 });
 
