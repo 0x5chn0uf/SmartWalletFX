@@ -125,6 +125,8 @@ markers = [
 exclude = [
     "venv",
     "venv/*",
+    "backend/venv",
+    "backend/venv/*",
     ".venv",
     ".venv/*",
     ".git",
