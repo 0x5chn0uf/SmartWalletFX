@@ -129,7 +129,7 @@ async def integration_async_client(test_app_with_di_container):
                                 kwargs["headers"] = headers
 
                             return getattr(sync_client, method)(url, **kwargs)
-                    except Exception as sync_error:
+                    except Exception:
                         # If sync client also fails, try mock response
                         return await self._create_mock_response(method, url, **kwargs)
                 else:
