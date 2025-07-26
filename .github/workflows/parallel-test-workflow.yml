@@ -77,32 +77,16 @@ jobs:
         working-directory: backend
         run: mypy app/ --ignore-missing-imports
 
-  # Set up test matrix
-  setup-test-matrix:
-    name: Setup Test Matrix
-    runs-on: ubuntu-latest
-    outputs:
-      test-domains: ${{ steps.set-domains.outputs.domains }}
-    steps:
-      - name: Set test domains
-        id: set-domains
-        run: |
-          if [ -n "${{ inputs.test_domains }}" ]; then
-            echo "domains=${{ inputs.test_domains }}" >> $GITHUB_OUTPUT
-          else
-            echo "domains=auth,users,wallets,tokens,email_verification,oauth,password_reset,user_profile,jwks" >> $GITHUB_OUTPUT
-          fi
-
   # Run unit tests in parallel by domain
   unit-tests:
     name: Unit Tests - ${{ matrix.test-domain }}
-    needs: [security-and-quality, setup-test-matrix]
+    needs: [security-and-quality]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        test-domain: ${{ fromJson('["' + join(split(needs.setup-test-matrix.outputs.test-domains, ','), '","') + '"]') }}
+        test-domain: ["auth", "users", "wallets", "tokens", "email_verification", "oauth", "password_reset", "user_profile", "jwks"]
 
     steps:
       - name: Checkout code
@@ -155,13 +139,13 @@ jobs:
   # Run integration tests in parallel by domain
   integration-tests:
     name: Integration Tests - ${{ matrix.test-domain }}
-    needs: [security-and-quality, setup-test-matrix]
+    needs: [security-and-quality]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        test-domain: ${{ fromJson('["' + join(split(needs.setup-test-matrix.outputs.test-domains, ','), '","') + '"]') }}
+        test-domain: ["auth", "users", "wallets", "tokens", "email_verification", "oauth", "password_reset", "user_profile", "jwks"]
 
     steps:
       - name: Checkout code
