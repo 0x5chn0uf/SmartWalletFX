@@ -437,9 +437,21 @@ jobs:
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Clear npm cache
+        working-directory: ./frontend
+        run: npm cache clean --force
+
       - name: Install Cypress dependencies
         working-directory: ./frontend
         run: npm ci --no-audit --fund=false
+
+      - name: Explicitly install Cypress
+        working-directory: ./frontend
+        run: npm install cypress
+
+      - name: Verify Cypress installation
+        working-directory: ./frontend
+        run: npx cypress verify
 
       - name: Start services via docker-compose
         run: |
