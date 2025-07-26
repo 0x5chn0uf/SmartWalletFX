@@ -85,6 +85,11 @@ class Configuration(BaseSettings):
         password = values.get("POSTGRES_PASSWORD")
         server = values.get("POSTGRES_SERVER")
         port = values.get("POSTGRES_PORT")
+
+        # Guard against missing or invalid port coming from environment vars
+        if (not port) or (isinstance(port, str) and port.lower() == "none"):
+            port = 5432
+
         db = values.get("POSTGRES_DB")
 
         return f"postgresql+asyncpg://{user}:{password}@{server}:{port}/{db}"

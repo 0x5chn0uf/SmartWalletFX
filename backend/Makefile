@@ -126,7 +126,7 @@ db-test: ## Start test database services
 	@sleep 10
 
 db-stop: ## Stop all database services
-	docker compose -f $(COMPOSE_FILE_DEV) down -v
+	docker compose -f $(COMPOSE_FILE_DEV) down -v || true
 	docker compose -f $(COMPOSE_FILE_TEST) down -v || true
 
 db-migrate: ## Apply database migrations
