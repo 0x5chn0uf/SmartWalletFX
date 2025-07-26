@@ -181,7 +181,7 @@ class TestDIContainer(DIContainer):
             yield self._test_session
 
         # Create a wrapper that prevents duplicate init_db calls
-        original_init_db = self._test_database.init_db
+        _ = self._test_database.init_db
 
         async def noop_init_db():
             """Skip init_db since tables are already created during test setup."""
