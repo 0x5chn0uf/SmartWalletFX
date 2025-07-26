@@ -118,7 +118,9 @@ class Audit:  # noqa: D101 – thin convenience facade
             ctx = get_contextvars()
             if ctx and "trace_id" in ctx and payload.get("trace_id") is None:
                 payload["trace_id"] = ctx["trace_id"]
-        except Exception:  # pragma: no cover, nosec B110 – optional structlog context missing
+        except (
+            Exception
+        ):  # pragma: no cover, nosec B110 – optional structlog context missing
             pass
 
         _AUDIT_LOGGER.info(json.dumps(payload, default=str, separators=(",", ":")))
