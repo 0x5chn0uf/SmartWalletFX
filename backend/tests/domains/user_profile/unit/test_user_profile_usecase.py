@@ -6,11 +6,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 from app.domain.errors import InvalidCredentialsError
-from app.domain.schemas.user import (
-    PasswordChange,
-    UserProfileRead,
-    UserProfileUpdate,
-)
+from app.domain.schemas.user import UserProfileRead, UserProfileUpdate
 from app.models.user import User
 from app.usecase.user_profile_usecase import (
     ProfileUpdateError,

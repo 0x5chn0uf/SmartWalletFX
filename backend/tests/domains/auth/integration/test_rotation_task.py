@@ -45,6 +45,13 @@ def _patch_redis_and_lock(monkeypatch):
 
     monkeypatch.setattr("app.tasks.jwt_rotation.acquire_lock", _fake_lock)
 
+    # Ensure JWKS cache invalidation does not spawn real async coroutines during tests.
+    # This prevents "coroutine was never awaited" runtime warnings.
+    monkeypatch.setattr(
+        "app.tasks.jwt_rotation.invalidate_jwks_cache_sync",
+        lambda: True,
+    )
+
 
 # ---------------------------------------------------------------------------
 # Test cases

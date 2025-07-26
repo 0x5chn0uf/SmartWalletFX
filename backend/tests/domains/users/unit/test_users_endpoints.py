@@ -13,8 +13,10 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from fastapi import HTTPException, Request, status
 
-from app.domain.schemas.user import UserCreate
+from app.domain.schemas.user import UserCreate, UserProfileUpdate, UserRead
 from app.models.user import User
+from app.services.file_upload_service import FileUploadError
+from app.usecase.user_profile_usecase import ProfileUpdateError
 
 
 @pytest.mark.unit
@@ -363,3 +365,195 @@ async def test_endpoint_has_correct_router_configuration(users_endpoint_with_di)
     route_paths = [route.path for route in endpoint.ep.routes]
     assert "/users/me" in route_paths
     assert "/users/{user_id}" in route_paths
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_user_profile_success(users_endpoint_with_di):
+    endpoint_cls = users_endpoint_with_di.__class__
+    req = Mock(spec=Request)
+    req.client = Mock(host="127.0.0.1")
+
+    uid = uuid.uuid4()
+    with patch("app.api.endpoints.users.get_user_id_from_request", return_value=uid):
+        from datetime import datetime, timezone
+
+        profile = UserRead(
+            id=uid,
+            username="alice",
+            email="a@example.com",
+            hashed_password="x",
+            roles=["user"],
+            attributes={},
+            email_verified=True,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+
+        async_mock = AsyncMock(return_value=profile)
+        endpoint_cls._Users__user_profile_usecase.update_profile = async_mock  # type: ignore[attr-defined]
+
+        payload = UserProfileUpdate(username="alice")
+        result = await endpoint_cls.update_user_profile(req, payload)
+        assert result == profile
+        endpoint_cls._Users__user_profile_usecase.update_profile.assert_awaited_once()  # type: ignore[attr-defined]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_user_profile_validation_error(users_endpoint_with_di):
+    endpoint_cls = users_endpoint_with_di.__class__
+    req = Mock(spec=Request)
+    req.client = Mock(host="127.0.0.1")
+
+    uid = uuid.uuid4()
+    with patch("app.api.endpoints.users.get_user_id_from_request", return_value=uid):
+        endpoint_cls._Users__user_profile_usecase.update_profile = AsyncMock(
+            side_effect=ProfileUpdateError(  # type: ignore[attr-defined]
+                field="username", message="Username already taken"
+            )
+        )
+
+        with pytest.raises(HTTPException) as exc:
+            await endpoint_cls.update_user_profile(
+                req, UserProfileUpdate(username="xyz")
+            )
+
+        assert exc.value.status_code == status.HTTP_400_BAD_REQUEST
+        assert "already taken" in exc.value.detail
+
+
+from app.domain.schemas.user import PasswordChange, UserProfileRead
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_change_password_success(users_endpoint_with_di):
+    endpoint = users_endpoint_with_di.__class__
+    req = Mock(spec=Request)
+    req.client = Mock(host="127.0.0.1")
+
+    uid = uuid.uuid4()
+    endpoint._Users__user_profile_usecase.change_password = AsyncMock()  # type: ignore[attr-defined]
+
+    with patch("app.api.endpoints.users.get_user_id_from_request", return_value=uid):
+        await endpoint.change_password(
+            req,
+            PasswordChange(
+                current_password="StrongP@ss1", new_password="NewStr0ngP@ss"
+            ),
+        )
+        endpoint._Users__user_profile_usecase.change_password.assert_awaited_once()  # type: ignore[attr-defined]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_change_password_incorrect(users_endpoint_with_di):
+    endpoint = users_endpoint_with_di.__class__
+    req = Mock(spec=Request)
+    uid = uuid.uuid4()
+    endpoint._Users__user_profile_usecase.change_password = AsyncMock(side_effect=Exception("Current password is incorrect"))  # type: ignore[attr-defined]
+
+    with patch("app.api.endpoints.users.get_user_id_from_request", return_value=uid):
+        with pytest.raises(HTTPException) as exc:
+            await endpoint.change_password(
+                req,
+                PasswordChange(
+                    current_password="StrongP@ss1", new_password="Weakpass1"
+                ),
+            )
+        assert exc.value.status_code == 400
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_notification_preferences_success(users_endpoint_with_di):
+    endpoint_cls = users_endpoint_with_di.__class__
+    uid = uuid.uuid4()
+    from datetime import datetime, timezone
+
+    updated = UserProfileRead(
+        id=uid,
+        username="x",
+        email="y@example.com",
+        hashed_password="x",
+        email_verified=True,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    endpoint_cls._Users__user_profile_usecase.update_notification_preferences = AsyncMock(return_value=updated)  # type: ignore[attr-defined]
+
+    req = Mock(spec=Request)
+    with patch("app.api.endpoints.users.get_user_id_from_request", return_value=uid):
+        res = await endpoint_cls.update_notification_preferences(req, {"email": False})
+        assert res == updated
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_update_notification_preferences_validation_error(users_endpoint_with_di):
+    endpoint_cls = users_endpoint_with_di.__class__
+    uid = uuid.uuid4()
+    endpoint_cls._Users__user_profile_usecase.update_notification_preferences = AsyncMock(side_effect=ProfileUpdateError(field="email", message="bad"))  # type: ignore[attr-defined]
+    req = Mock(spec=Request)
+
+    with patch("app.api.endpoints.users.get_user_id_from_request", return_value=uid):
+        with pytest.raises(HTTPException) as exc:
+            await endpoint_cls.update_notification_preferences(req, {"email": True})
+        assert exc.value.status_code == 400
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_delete_account_success(users_endpoint_with_di):
+    endpoint_cls = users_endpoint_with_di.__class__
+    uid = uuid.uuid4()
+    endpoint_cls._Users__user_profile_usecase.delete_account = AsyncMock(return_value=True)  # type: ignore[attr-defined]
+    req = Mock(spec=Request)
+    with patch("app.api.endpoints.users.get_user_id_from_request", return_value=uid):
+        await endpoint_cls.delete_current_user_account(req)  # returns None
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_delete_account_not_found(users_endpoint_with_di):
+    endpoint_cls = users_endpoint_with_di.__class__
+    uid = uuid.uuid4()
+    endpoint_cls._Users__user_profile_usecase.delete_account = AsyncMock(return_value=False)  # type: ignore[attr-defined]
+    req = Mock(spec=Request)
+    with patch("app.api.endpoints.users.get_user_id_from_request", return_value=uid):
+        with pytest.raises(HTTPException) as exc:
+            await endpoint_cls.delete_current_user_account(req)
+        assert exc.value.status_code == 500
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_upload_picture_success(users_endpoint_with_di):
+    endpoint_cls = users_endpoint_with_di.__class__
+    uid = uuid.uuid4()
+    endpoint_cls._Users__file_upload_service.upload_profile_picture = AsyncMock(return_value="https://img")  # type: ignore[attr-defined]
+    endpoint_cls._Users__user_profile_usecase.update_profile = AsyncMock()  # type: ignore[attr-defined]
+
+    fake_file = Mock(filename="pic.png")
+    req = Mock(spec=Request)
+
+    with patch("app.api.endpoints.users.get_user_id_from_request", return_value=uid):
+        res = await endpoint_cls.upload_profile_picture(req, fake_file)
+        assert res["profile_picture_url"] == "https://img"
+        endpoint_cls._Users__file_upload_service.upload_profile_picture.assert_awaited_once()  # type: ignore[attr-defined]
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_upload_picture_error(users_endpoint_with_di):
+    endpoint_cls = users_endpoint_with_di.__class__
+    uid = uuid.uuid4()
+    endpoint_cls._Users__file_upload_service.upload_profile_picture = AsyncMock(side_effect=FileUploadError("bad", "E400"))  # type: ignore[attr-defined]
+    fake_file = Mock(filename="pic.png")
+    req = Mock(spec=Request)
+
+    with patch("app.api.endpoints.users.get_user_id_from_request", return_value=uid):
+        with pytest.raises(HTTPException) as exc:
+            await endpoint_cls.upload_profile_picture(req, fake_file)
+        assert exc.value.status_code == 400

@@ -112,6 +112,7 @@ async def test_user_repository_save_success(
 
     # Mock the database session
     mock_session = AsyncMock()
+    mock_session.add = Mock()
     setup_mock_session(user_repository_with_di, mock_session)
 
     # Act
@@ -136,6 +137,7 @@ async def test_user_repository_save_integrity_error(
 
     # Mock the database session to raise IntegrityError on commit
     mock_session = AsyncMock()
+    mock_session.add = Mock()
     mock_session.commit.side_effect = IntegrityError("duplicate", None, None)
     setup_mock_session(user_repository_with_di, mock_session)
 
