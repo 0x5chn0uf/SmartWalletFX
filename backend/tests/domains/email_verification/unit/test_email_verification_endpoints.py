@@ -7,8 +7,6 @@ pattern with dependency injection.
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, Mock
-
 import pytest
 from fastapi import BackgroundTasks, HTTPException
 
@@ -17,8 +15,7 @@ from app.domain.schemas.email_verification import (
     EmailVerificationRequest,
     EmailVerificationVerify,
 )
-from tests.shared.fixtures.enhanced_mocks import MockBehavior
-from tests.shared.fixtures.enhanced_mocks.assertions import MockAssertions
+
 
 
 @pytest.mark.unit
@@ -102,10 +99,9 @@ async def test_verify_email_user_not_found(
 async def test_resend_verification_email_success(
     email_verification_endpoint_with_di,
     mock_email_verification_usecase,
-    mock_email_service_enhanced,
-    mock_assertions,
+    mock_email_service,
 ):
-    """Test successful resend verification email with enhanced mocking."""
+    """Test successful resend verification email using mocks."""
     endpoint = email_verification_endpoint_with_di
 
     # Mock the usecase
@@ -195,17 +191,13 @@ async def test_endpoint_has_correct_router_configuration(
 @pytest.mark.asyncio
 async def test_resend_verification_email_service_failure(
     email_verification_endpoint_with_di,
-    mock_email_service_enhanced,
+    mock_email_service,
     mock_email_verification_usecase,
-    mock_assertions,
 ):
     """Test resend verification email when email service experiences failures."""
-    # Configure email service for failure scenarios
-    mock_email_service_enhanced.set_behavior(MockBehavior.FAILURE)
-
     async def resend_side_effect(email, background_tasks, _rate_limiter):
         background_tasks.add_task(
-            mock_email_service_enhanced.send_verification_email,
+            mock_email_service.send_verification_email,
             email,
             "tok123",
         )
@@ -220,9 +212,7 @@ async def test_resend_verification_email_service_failure(
     await background_tasks()
 
     assert result.status_code == 204
-    mock_assertions.assert_called_once_with(
-        mock_email_service_enhanced,
-        "send_verification_email",
+    mock_email_service.send_verification_email.assert_awaited_once_with(
         "fail@example.com",
         "tok123",
     )
