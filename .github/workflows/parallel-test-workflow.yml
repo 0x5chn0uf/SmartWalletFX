@@ -120,6 +120,7 @@ jobs:
       # Upload coverage to Coveralls
       - name: Upload unit test coverage to Coveralls
         uses: coverallsapp/github-action@v2
+        continue-on-error: true
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           file: backend/coverage-unit-${{ matrix.test-domain }}.xml
@@ -184,6 +185,7 @@ jobs:
       # Upload coverage to Coveralls
       - name: Upload integration test coverage to Coveralls
         uses: coverallsapp/github-action@v2
+        continue-on-error: true
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           file: backend/coverage-integration-${{ matrix.test-domain }}.xml
@@ -238,6 +240,7 @@ jobs:
       # Upload coverage to Coveralls
       - name: Upload infrastructure test coverage to Coveralls
         uses: coverallsapp/github-action@v2
+        continue-on-error: true
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           file: backend/coverage-infrastructure.xml
