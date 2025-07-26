@@ -15,12 +15,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.future import select
 
 from app.core.database import CoreDatabase
+from app.domain.interfaces.repositories import UserRepositoryInterface
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.utils.logging import Audit
 
 
-class UserRepository:
+class UserRepository(UserRepositoryInterface):
     """Asynchronous repository for CRUD operations on :class:`~app.models.user.User`."""
 
     def __init__(self, database: CoreDatabase, audit: Audit):

@@ -7,11 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.core.database import CoreDatabase
+from app.domain.interfaces.repositories import WalletRepositoryInterface
 from app.models import Wallet
 from app.utils.logging import Audit
 
 
-class WalletRepository:
+class WalletRepository(WalletRepositoryInterface):
     """Repository layer for wallet persistence operations."""
 
     def __init__(self, database: CoreDatabase, audit: Audit):

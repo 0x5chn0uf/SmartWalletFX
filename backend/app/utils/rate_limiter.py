@@ -11,6 +11,7 @@ from time import time
 from typing import DefaultDict, List
 
 from app.core.config import Configuration
+from app.domain.interfaces.utils import RateLimiterUtilsInterface
 
 
 class InMemoryRateLimiter:
@@ -48,7 +49,7 @@ class InMemoryRateLimiter:
             self._hits[key].clear()
 
 
-class RateLimiterUtils:
+class RateLimiterUtils(RateLimiterUtilsInterface):
     """Utility class for rate limiting operations."""
 
     def __init__(self, config: Configuration):

@@ -1,10 +1,11 @@
 from app.core.database import CoreDatabase
+from app.domain.interfaces.repositories import TokenBalanceRepositoryInterface
 from app.domain.schemas.token_balance import TokenBalanceCreate
 from app.models.token_balance import TokenBalance
 from app.utils.logging import Audit
 
 
-class TokenBalanceRepository:
+class TokenBalanceRepository(TokenBalanceRepositoryInterface):
     """Repository for :class:`~app.models.token_balance.TokenBalance`."""
 
     def __init__(self, database: CoreDatabase, audit: Audit):

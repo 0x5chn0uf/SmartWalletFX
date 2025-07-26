@@ -4,12 +4,15 @@ from typing import List, Optional
 from sqlalchemy import and_, delete, desc, or_, select
 
 from app.core.database import CoreDatabase
+from app.domain.interfaces.repositories import (
+    PortfolioSnapshotRepositoryInterface,
+)
 from app.models.portfolio_snapshot import PortfolioSnapshot
 from app.models.portfolio_snapshot_cache import PortfolioSnapshotCache
 from app.utils.logging import Audit
 
 
-class PortfolioSnapshotRepository:
+class PortfolioSnapshotRepository(PortfolioSnapshotRepositoryInterface):
     """Repository for :class:`~app.models.portfolio_snapshot.PortfolioSnapshot`."""
 
     def __init__(self, database: CoreDatabase, audit: Audit):

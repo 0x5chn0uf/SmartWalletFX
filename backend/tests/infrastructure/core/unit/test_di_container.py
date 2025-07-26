@@ -267,6 +267,18 @@ class TestDIContainer:
             di_container.get_endpoint("nonexistent")
 
     @pytest.mark.unit
+    def test_nonexistent_core_raises_error(self, di_container):
+        """Test that getting a non-existent core service raises ValueError."""
+        with pytest.raises(ValueError, match="Core 'nonexistent' not found"):
+            di_container.get_core("nonexistent")
+
+    @pytest.mark.unit
+    def test_nonexistent_utility_raises_error(self, di_container):
+        """Test that getting a non-existent utility raises ValueError."""
+        with pytest.raises(ValueError, match="Utility 'nonexistent' not found"):
+            di_container.get_utility("nonexistent")
+
+    @pytest.mark.unit
     def test_repository_dependency_injection_validation(self, di_container):
         """Test that repositories have proper dependency injection."""
         # Test that all repositories have database and audit dependencies

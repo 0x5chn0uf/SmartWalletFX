@@ -25,9 +25,9 @@ async def test_register_user_sends_verification(monkeypatch):
     service.register.side_effect = mock_register
 
     # Create Auth instance with the mocked service and rate limiter
-    from app.utils.rate_limiter import RateLimiterUtils
+    from app.domain.interfaces.utils import RateLimiterUtilsInterface
 
-    mock_rate_limiter_utils = Mock(spec=RateLimiterUtils)
+    mock_rate_limiter_utils = Mock(spec=RateLimiterUtilsInterface)
     mock_rate_limiter_utils.login_rate_limiter = Mock()
     mock_rate_limiter_utils.login_rate_limiter.allow = Mock(return_value=True)
     mock_rate_limiter_utils.login_rate_limiter.reset = Mock()

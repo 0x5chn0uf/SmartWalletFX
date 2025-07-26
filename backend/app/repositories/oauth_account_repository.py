@@ -6,11 +6,12 @@ from typing import Optional
 from sqlalchemy.future import select
 
 from app.core.database import CoreDatabase
+from app.domain.interfaces.repositories import OAuthAccountRepositoryInterface
 from app.models.oauth_account import OAuthAccount
 from app.utils.logging import Audit
 
 
-class OAuthAccountRepository:
+class OAuthAccountRepository(OAuthAccountRepositoryInterface):
     """Repository for :class:`OAuthAccount` entities."""
 
     def __init__(self, database: CoreDatabase, audit: Audit):

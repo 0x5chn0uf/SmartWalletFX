@@ -16,6 +16,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
 from app.core.config import Configuration
+from app.domain.interfaces.utils import JWTKeyUtilsInterface
 from app.domain.schemas.jwks import JWK
 from app.utils.jwt_rotation import Key
 
@@ -34,7 +35,7 @@ def _b64url_uint(integer: int) -> str:
     return base64.urlsafe_b64encode(as_bytes).rstrip(b"=").decode("ascii")
 
 
-class JWTKeyUtils:
+class JWTKeyUtils(JWTKeyUtilsInterface):
     """Utility class for JWT key operations."""
 
     def __init__(self, config: Configuration):

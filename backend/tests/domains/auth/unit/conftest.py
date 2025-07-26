@@ -7,12 +7,16 @@ import pytest
 
 from app.api.endpoints.auth import Auth
 from app.core.config import Configuration
+from app.domain.interfaces.services import EmailServiceInterface
+from app.domain.interfaces.utils import (
+    JWTUtilsInterface,
+    RateLimiterUtilsInterface,
+)
 from app.repositories.email_verification_repository import (
     EmailVerificationRepository,
 )
 from app.repositories.refresh_token_repository import RefreshTokenRepository
 from app.repositories.user_repository import UserRepository
-from app.services.email_service import EmailService
 from app.usecase.auth_usecase import AuthUsecase
 from app.utils.jwt import JWTUtils
 from app.utils.logging import Audit
@@ -65,13 +69,13 @@ def mock_refresh_token_repo():
 @pytest.fixture
 def mock_email_service():
     """Mock EmailService."""
-    return Mock(spec=EmailService)
+    return Mock(spec=EmailServiceInterface)
 
 
 @pytest.fixture
 def mock_jwt_utils():
     """Mock JWTUtils."""
-    mock = Mock(spec=JWTUtils)
+    mock = Mock(spec=JWTUtilsInterface)
     mock.decode_token = Mock()
     mock.create_access_token = Mock()
     # Return a valid, decodable JWT for the refresh token
@@ -135,7 +139,7 @@ def mock_auth_usecase():
 @pytest.fixture
 def mock_rate_limiter_utils():
     """Mock RateLimiterUtils."""
-    mock = Mock(spec=RateLimiterUtils)
+    mock = Mock(spec=RateLimiterUtilsInterface)
     mock.login_rate_limiter = Mock()
     mock.login_rate_limiter.allow = Mock(return_value=True)
     mock.login_rate_limiter.reset = Mock()

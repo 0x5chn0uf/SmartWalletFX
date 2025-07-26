@@ -8,11 +8,12 @@ from typing import Optional
 from sqlalchemy.future import select
 
 from app.core.database import CoreDatabase
+from app.domain.interfaces.repositories import RefreshTokenRepositoryInterface
 from app.models.refresh_token import RefreshToken
 from app.utils.logging import Audit
 
 
-class RefreshTokenRepository:
+class RefreshTokenRepository(RefreshTokenRepositoryInterface):
     """Async repository handling refresh token persistence & queries."""
 
     def __init__(self, database: CoreDatabase, audit: Audit):
