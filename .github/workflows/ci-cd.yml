@@ -11,6 +11,7 @@ on:
       - main
     paths-ignore:
       - "README.md"
+  workflow_dispatch: # Allow manual trigger for testing
 
 env:
   PYTHON_VERSION: "3.12"
