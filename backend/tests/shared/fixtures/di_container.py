@@ -102,6 +102,9 @@ async def integration_async_client(test_app_with_di_container):
                         # Both clients failed - this indicates a test infrastructure issue
                         # For specific endpoints, create proper mock responses based on business logic
                         if "TestClient did not receive any response" in str(sync_error):
+                            # For integration tests, we should not fall back to mocks for user profile endpoints
+                            if "/users/me" in url:
+                                raise sync_error
                             return await self._create_mock_response(
                                 method, url, **kwargs
                             )
@@ -340,9 +343,9 @@ async def integration_async_client(test_app_with_di_container):
                     ).encode()
                     status_code = 500
             else:
-                # For integration tests, we should not use mock responses for password reset endpoints
+                # For integration tests, we should not use mock responses for most endpoints
                 # These should be handled by the real FastAPI app
-                if "/password-reset" in url and self._async_client:
+                if (("/password-reset" in url or "/users/me" in url) and self._async_client):
                     # Re-raise the original exception to force the test to handle real endpoints
                     raise 
                 else:

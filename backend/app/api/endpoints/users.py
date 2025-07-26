@@ -189,7 +189,7 @@ class Users:
                 "user_profile_update_validation_error",
                 user_id=str(user_id),
                 field=e.field,
-                message=e.message,
+                error_message=e.message,
             )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

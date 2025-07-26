@@ -321,10 +321,14 @@ class TestDIContainer(DIContainer):
             from app.repositories.email_verification_repository import (
                 EmailVerificationRepository,
             )
+            from app.repositories.portfolio_snapshot_repository import (
+                PortfolioSnapshotRepository,
+            )
             from app.repositories.refresh_token_repository import (
                 RefreshTokenRepository,
             )
             from app.repositories.user_repository import UserRepository
+            from app.repositories.wallet_repository import WalletRepository
 
             # Get dependencies
             database = self.get_core("database")
@@ -340,14 +344,20 @@ class TestDIContainer(DIContainer):
             refresh_token_repo = RefreshTokenRepository(database, audit)
             self.register_repository("refresh_token", refresh_token_repo)
 
+            # Register real wallet repository for integration tests
+            wallet_repo = WalletRepository(database, audit)
+            self.register_repository("wallet", wallet_repo)
+
+            # Register real portfolio snapshot repository for integration tests
+            portfolio_snapshot_repo = PortfolioSnapshotRepository(database, audit)
+            self.register_repository("portfolio_snapshot", portfolio_snapshot_repo)
+
             # For other repositories that may not exist yet, use mocks
             repository_specs = {
-                "wallet": WalletRepositoryInterface,
                 "historical_balance": HistoricalBalanceRepositoryInterface,
                 "token": TokenRepositoryInterface,
                 "password_reset": PasswordResetRepositoryInterface,
                 "oauth_account": OAuthAccountRepositoryInterface,
-                "portfolio_snapshot": PortfolioSnapshotRepositoryInterface,
                 "token_balance": TokenBalanceRepositoryInterface,
                 "token_price": TokenPriceRepositoryInterface,
             }
@@ -369,6 +379,7 @@ class TestDIContainer(DIContainer):
                     "get_by_address",
                     "save",
                     "remove",
+                    "list_by_user",
                 ]
                 for method_name in common_methods:
                     setattr(mock_repo, method_name, AsyncMock())
@@ -393,7 +404,9 @@ class TestDIContainer(DIContainer):
     def _register_mock_repositories(self):
         """Register mock repositories for unit testing."""
         # Import enhanced mocks
-        from tests.shared.fixtures.enhanced_mocks.user_repository import MockUserRepository
+        from tests.shared.fixtures.enhanced_mocks.user_repository import (
+            MockUserRepository,
+        )
 
         # Special handling for user repository with enhanced mock
         enhanced_user_repo = MockUserRepository()
@@ -430,6 +443,7 @@ class TestDIContainer(DIContainer):
                 "get_by_address",
                 "save",
                 "remove",
+                "list_by_user",
             ]
             for method_name in common_methods:
                 setattr(mock_repo, method_name, AsyncMock())
@@ -444,6 +458,23 @@ class TestDIContainer(DIContainer):
                 setattr(mock_repo, "get_by_token", AsyncMock())
                 setattr(mock_repo, "mark_used", AsyncMock())
                 setattr(mock_repo, "delete_expired", AsyncMock())
+            elif repo_name == "portfolio_snapshot":
+                setattr(mock_repo, "get_by_wallet_address", AsyncMock(return_value=[]))
+                setattr(
+                    mock_repo,
+                    "get_snapshots_by_address_and_range",
+                    AsyncMock(return_value=[]),
+                )
+                setattr(
+                    mock_repo,
+                    "get_latest_snapshot_by_address",
+                    AsyncMock(return_value=None),
+                )
+                setattr(mock_repo, "create_snapshot", AsyncMock())
+                setattr(mock_repo, "delete_snapshot", AsyncMock())
+                setattr(mock_repo, "get_cache", AsyncMock(return_value=None))
+                setattr(mock_repo, "set_cache", AsyncMock())
+                setattr(mock_repo, "get_timeline", AsyncMock(return_value=[]))
 
             self.register_repository(repo_name, mock_repo)
 

@@ -61,19 +61,19 @@ test-unit: ## Unit tests only (fast, SQLite, parallel)
 
 test-integration: ## Integration tests only (PostgreSQL + Docker)
 	@$(MAKE) db-test
-	TEST_DB_URL=postgresql+asyncpg://testuser:testpass@localhost:55433/test_smartwallet pytest -m integration -v
+	@env TEST_DB_URL=postgresql+asyncpg://testuser:testpass@localhost:55432/test_smartwallet pytest -m integration -v
 	@$(MAKE) db-stop
 	@$(MAKE) clean
 
 test-all: ## Run ALL tests (unit + integration) with PostgreSQL - for CI/CD
 	@$(MAKE) db-test
-	TEST_DB_URL=postgresql+asyncpg://testuser:testpass@localhost:55433/test_smartwallet pytest -v
+	@env TEST_DB_URL=postgresql+asyncpg://testuser:testpass@localhost:55432/test_smartwallet pytest -v
 	@$(MAKE) db-stop
 	@$(MAKE) clean
 
 test-all-cov: ## Run ALL tests with coverage and XML report - for CI/CD
 	@$(MAKE) db-test
-	TEST_DB_URL=postgresql+asyncpg://testuser:testpass@localhost:55433/test_smartwallet pytest -v --cov=app --cov-report=xml
+	@env TEST_DB_URL=postgresql+asyncpg://testuser:testpass@localhost:55432/test_smartwallet pytest -v --cov=app --cov-report=xml
 	@$(MAKE) db-stop
 	@$(MAKE) clean
 

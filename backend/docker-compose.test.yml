@@ -9,7 +9,7 @@ services:
       POSTGRES_DB: test_smartwallet
       POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
     ports:
-      - "55433:5432" # Different port from dev database
+      - "55432:5432" # Different port from dev database
     volumes:
       - test_postgres_data:/var/lib/postgresql/data
       - ../docker/postgres/01_init_extensions.sql:/docker-entrypoint-initdb.d/01_init_extensions.sql
