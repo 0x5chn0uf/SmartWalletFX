@@ -7,19 +7,18 @@ This guide covers the enhanced testing infrastructure implemented for better tes
 1. [Overview](#overview)
 2. [Test Architecture](#test-architecture)
 3. [Test Categories](#test-categories)
-4. [Enhanced Mock System](#enhanced-mock-system)
-5. [Docker Test Infrastructure](#docker-test-infrastructure)
-6. [Writing Tests](#writing-tests)
-7. [Running Tests](#running-tests)
-8. [CI/CD Integration](#cicd-integration)
-9. [Best Practices](#best-practices)
-10. [Migration Guide](#migration-guide)
+4. [Docker Test Infrastructure](#docker-test-infrastructure)
+5. [Writing Tests](#writing-tests)
+6. [Running Tests](#running-tests)
+7. [CI/CD Integration](#cicd-integration)
+8. [Best Practices](#best-practices)
+9. [Migration Guide](#migration-guide)
 
 ## Overview
 
 Our testing infrastructure provides multiple layers of testing with different levels of isolation and realism:
 
-- **Unit Tests**: Fast, isolated tests with enhanced mocking (SQLite in-memory)
+- **Unit Tests**: Fast, isolated tests with mocks (SQLite in-memory)
 - **Integration Tests**: Real database interactions with Docker containers
 - **Performance Tests**: Benchmarking and performance regression testing
 - **E2E Tests**: Full system testing with external services
@@ -50,7 +49,6 @@ tests/
 │   └── security/          # Security tests
 └── shared/                # Shared test utilities
     ├── fixtures/          # Test fixtures and mocks
-    │   ├── enhanced_mocks/    # Enhanced mock system
     │   ├── test_di_container.py # Test DI container
     │   ├── test_config.py       # Test configurations
     │   └── test_database.py     # Database test utilities
@@ -61,33 +59,22 @@ tests/
 
 ### Unit Tests
 
-Fast, isolated tests that use mocks for all external dependencies.
+Fast, isolated tests that rely on simple mocks for external dependencies.
 
 ```python
 # tests/domains/auth/unit/test_auth_service.py
 import pytest
-from tests.shared.fixtures.enhanced_mocks import MockBehavior
+from unittest.mock import AsyncMock
 
 @pytest.mark.asyncio
-async def test_login_success(
-    auth_service,
-    mock_user_repository_enhanced,
-    mock_assertions
-):
-    """Test successful user login with enhanced mocks."""
-    # Configure realistic mock behavior
-    mock_user_repository_enhanced.configure_repository_mock(
-        "user",
-        get_by_email=AsyncMock(return_value=test_user),
-        verify_password=AsyncMock(return_value=True)
-    )
+async def test_login_success(auth_service, mock_user_repository):
+    """Test successful user login with simple mocks."""
+    mock_user_repository.get_by_email = AsyncMock(return_value=test_user)
+    mock_user_repository.verify_password = AsyncMock(return_value=True)
 
     result = await auth_service.login("test@example.com", "password")
 
-    # Use enhanced assertions
-    mock_assertions.assert_called_once_with(
-        mock_user_repository_enhanced, "get_by_email", "test@example.com"
-    )
+    mock_user_repository.get_by_email.assert_called_once_with("test@example.com")
     assert result.access_token is not None
 ```
 
@@ -118,84 +105,6 @@ async def test_complete_auth_flow(
     # Verify user exists in database
     saved_user = await integration_test_session.get(User, user.id)
     assert saved_user.email == "test@example.com"
-```
-
-## Enhanced Mock System
-
-The enhanced mock system provides realistic behaviors and comprehensive tracking.
-
-### Basic Mock Usage
-
-```python
-from tests.shared.fixtures.enhanced_mocks import (
-    MockBehavior,
-    MockServiceFactory,
-)
-from tests.shared.fixtures.enhanced_mocks.assertions import MockAssertions
-
-# Create mocks with specific behaviors
-user_repo = MockServiceFactory.create_user_repository(MockBehavior.SUCCESS)
-email_service = MockServiceFactory.create_email_service(MockBehavior.SLOW_RESPONSE)
-failing_service = MockServiceFactory.create_file_upload_service(MockBehavior.FAILURE)
-```
-
-### Mock Behaviors
-
-```python
-class MockBehavior(Enum):
-    SUCCESS = "success"          # Normal operation
-    FAILURE = "failure"          # Service failures
-    TIMEOUT = "timeout"          # Network timeouts
-    RATE_LIMITED = "rate_limited"    # Rate limiting
-    SLOW_RESPONSE = "slow_response"  # Performance issues
-```
-
-### Stateful Mocks
-
-Enhanced mocks maintain state and track calls:
-
-```python
-@pytest.mark.asyncio
-async def test_user_creation_tracking(mock_user_repository_enhanced):
-    """Test user creation with call tracking."""
-
-    # Create users
-    await mock_user_repository_enhanced.create(user1_data)
-    await mock_user_repository_enhanced.create(user2_data)
-
-    # Verify call history
-    create_calls = mock_user_repository_enhanced.get_calls("create")
-    assert len(create_calls) == 2
-
-    # Check internal state
-    assert len(mock_user_repository_enhanced.users) == 2
-
-    # Test duplicate email validation
-    with pytest.raises(ValueError, match="Email already exists"):
-        await mock_user_repository_enhanced.create(duplicate_email_data)
-```
-
-### Failure Scenario Testing
-
-```python
-@pytest.mark.asyncio
-async def test_email_service_failure_handling(
-    email_verification_usecase,
-    failing_email_service
-):
-    """Test handling of email service failures."""
-
-    # Configure failure behavior
-    failing_email_service.set_behavior(MockBehavior.FAILURE)
-
-    # Test error handling
-    result = await email_verification_usecase.send_verification_email(
-        "test@example.com"
-    )
-
-    # Should handle failure gracefully
-    assert result.success is False
-    assert result.retry_after is not None
 ```
 
 ## Docker Test Infrastructure
@@ -261,7 +170,7 @@ def test_login_performance()               # Benchmarking
 @pytest.mark.asyncio
 async def test_unit_with_mocks(
     test_di_container_unit,           # Unit test DI container
-    mock_user_repository_enhanced,    # Enhanced mock
+    mock_user_repository,             # Simple mock
     mock_config                       # Mock configuration
 ):
     pass
@@ -303,10 +212,7 @@ def test_wallet(test_user):
 ```bash
 # Fast unit tests (recommended for development)
 make test-unit
-
-# All tests with enhanced mocking
-make test-enhanced
-
+# Complete unit and integration tests
 # Integration tests with Docker
 make test-integration-docker
 
@@ -399,90 +305,7 @@ class TestUserAuthentication:
         pass
 ```
 
-### 2. Mock Configuration
-
-```python
-# Configure mocks explicitly
-mock_service.configure_repository_mock(
-    "user",
-    get_by_email=AsyncMock(return_value=test_user),
-    create=AsyncMock(side_effect=create_user_side_effect)
-)
-
-# Use behavior-specific fixtures
-def test_with_failing_service(failing_email_service):
-    failing_email_service.set_behavior(MockBehavior.TIMEOUT)
-```
-
-### 3. Assertion Patterns
-
-```python
-# Use enhanced assertions
-mock_assertions.assert_called_once_with(
-    mock_service, "method_name", expected_arg
-)
-
-# Verify state changes
-assert len(mock_service.get_calls("create")) == 2
-assert mock_service.users["user_id"].email == "new@email.com"
-```
-
-### 4. Error Testing
-
-```python
-# Test all error scenarios
-@pytest.mark.parametrize("behavior,expected_error", [
-    (MockBehavior.FAILURE, ServiceError),
-    (MockBehavior.TIMEOUT, TimeoutError),
-    (MockBehavior.RATE_LIMITED, RateLimitError),
-])
-async def test_error_scenarios(behavior, expected_error, mock_service):
-    mock_service.set_behavior(behavior)
-
-    with pytest.raises(expected_error):
-        await service_under_test.perform_operation()
-```
-
 ## Migration Guide
-
-### From Old Mocks to Enhanced Mocks
-
-**Before:**
-
-```python
-def test_old_style(mock_user_repo):
-    mock_user_repo.get_by_id.return_value = user
-    mock_user_repo.create.return_value = user
-
-    # Test logic
-
-    mock_user_repo.get_by_id.assert_called_once_with(user_id)
-```
-
-**After:**
-
-```python
-def test_enhanced_style(
-    mock_user_repository_enhanced,
-    mock_assertions
-):
-    # Configure realistic behavior
-    mock_user_repository_enhanced.configure_repository_mock(
-        "user",
-        get_by_id=AsyncMock(return_value=user),
-        create=AsyncMock(return_value=user)
-    )
-
-    result = await service.create_user(user_data)
-
-    # Enhanced assertions with call tracking
-    mock_assertions.assert_called_once_with(
-        mock_user_repository_enhanced, "get_by_id", user_id
-    )
-
-    # Verify state
-    assert len(mock_user_repository_enhanced.users) == 1
-```
 
 ### From Basic Tests to Integration Tests
 
@@ -512,7 +335,6 @@ async def test_integration(
 
 ### Updating CI/CD
 
-1. **Replace old workflow** with `test-enhanced.yml`
 2. **Update branch protection** rules
 3. **Configure environment variables**
 4. **Set up Codecov integration**
@@ -521,7 +343,7 @@ async def test_integration(
 
 ### Common Issues
 
-1. **Import Errors**: Ensure all enhanced fixture imports are correct
+1. **Import Errors**: Ensure all fixture imports are correct
 2. **Mock Configuration**: Verify mock behaviors are set before test execution
 3. **Database Issues**: Check Docker services are running for integration tests
 4. **Performance**: Use unit tests for fast feedback, integration for verification
