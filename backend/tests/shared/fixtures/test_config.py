@@ -16,6 +16,8 @@ from app.core.config import Configuration
 
 
 class TestConfiguration(Configuration):
+    # Prevent pytest from collecting this helper class as a test case
+    __test__ = False
     """Test-specific configuration with optimized defaults."""
 
     def __init__(self, **overrides):
@@ -51,6 +53,7 @@ class TestConfiguration(Configuration):
 
 
 class UnitTestConfiguration(TestConfiguration):
+    __test__ = False
     """Configuration optimized for unit tests."""
 
     def __init__(self, **overrides):
@@ -66,6 +69,7 @@ class UnitTestConfiguration(TestConfiguration):
 
 
 class IntegrationTestConfiguration(TestConfiguration):
+    __test__ = False
     """Configuration for integration tests with real database."""
 
     def __init__(self, test_db_url: str, **overrides):
@@ -80,6 +84,7 @@ class IntegrationTestConfiguration(TestConfiguration):
 
 
 class MockConfiguration:
+    __test__ = False
     """Mock configuration for lightweight unit tests."""
 
     def __init__(self, **attributes):

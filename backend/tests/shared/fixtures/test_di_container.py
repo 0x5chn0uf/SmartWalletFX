@@ -51,6 +51,7 @@ except ImportError:
 
 
 class TestDIContainer(DIContainer):
+    __test__ = False
     """Test-specific DI container with mocking capabilities."""
 
     def __init__(

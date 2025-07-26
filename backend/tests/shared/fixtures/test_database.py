@@ -29,6 +29,7 @@ from app.models import Base
 
 
 class TestDatabaseManager:
+    __test__ = False
     """Manages test database lifecycle and configuration."""
 
     def __init__(self, use_docker: bool = True):

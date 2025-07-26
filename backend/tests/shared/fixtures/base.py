@@ -190,9 +190,13 @@ async def test_app(async_engine):
     from sqlalchemy import create_engine
 
     sync_url = os.environ["TEST_DB_URL"]
-    database_service.sync_engine = create_engine(
+    # Create a dedicated sync engine for the tests. We keep a reference so that we
+    # can explicitly dispose it in the *finally* block below and avoid SQLAlchemy
+    # "garbage collector is trying to clean up non-checked-in connection" warnings.
+    test_sync_engine = create_engine(
         sync_url, connect_args={"check_same_thread": False}
     )
+    database_service.sync_engine = test_sync_engine
 
     # Update session factories to use the test engines
     database_service.async_session_factory = async_sessionmaker(
@@ -210,6 +214,14 @@ async def test_app(async_engine):
     try:
         yield _app
     finally:
+        # Dispose temporary engines **before** restoring originals to ensure all
+        # pooled connections are properly returned and SAWarnings are not raised.
+        try:
+            test_sync_engine.dispose()
+        except Exception:
+            # Ensure cleanup continues even if disposal fails for some reason
+            pass
+
         # Restore original engines
         database_service.async_engine = original_async_engine
         database_service.sync_engine = original_sync_engine
