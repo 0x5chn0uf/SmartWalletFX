@@ -174,10 +174,13 @@ class TestRedisClientBuilder:
 
     @patch("app.utils.jwks_cache.Redis")
     @pytest.mark.unit
-    def test_build_redis_client(self, mock_redis_class):
+    def test_build_redis_client(self, mock_redis_class, monkeypatch):
         """Test Redis client creation with correct URL."""
         from app.utils import jwks_cache
 
+        # Ensure unit test environment is set up correctly
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/15")
+        
         jwks_cache._redis_singleton = None
 
         jwks_cache._build_redis_client()
