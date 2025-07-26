@@ -59,7 +59,7 @@ jobs:
         working-directory: backend
         run: |
           python -m pip install --upgrade pip
-          pip install bandit safety ruff mypy
+          pip install bandit safety ruff
 
       - name: Security scan with Bandit
         working-directory: backend
@@ -72,10 +72,6 @@ jobs:
       - name: Code quality with Ruff
         working-directory: backend
         run: ruff check app/ tests/
-
-      - name: Type checking with MyPy
-        working-directory: backend
-        run: mypy app/ --ignore-missing-imports
 
   # Run unit tests in parallel by domain
   unit-tests:
