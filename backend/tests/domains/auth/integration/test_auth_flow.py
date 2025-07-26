@@ -6,29 +6,9 @@ import pytest
 from fastapi import FastAPI
 from jose import jwt
 
-from app.domain.schemas.user import UserCreate
-from app.utils.rate_limiter import login_rate_limiter
 from tests.shared.utils.safe_client import safe_get, safe_post
 
 pytestmark = pytest.mark.integration
-
-
-@pytest.fixture(autouse=True)
-async def _cleanup_auth_state(test_di_container_with_db):
-    """Reset auth-related state between tests."""
-    # Reset rate-limiter to avoid bleed-through from other tests
-    login_rate_limiter.clear()
-
-    # Clear JWT global state to ensure test isolation
-    from app.utils.jwt import clear_jwt_state
-
-    clear_jwt_state()
-
-    # Clear JWT utils caches to ensure test isolation
-    jwt_utils = test_di_container_with_db.get_utility("jwt_utils")
-    jwt_utils.clear_caches()
-
-    yield
 
 
 @pytest.fixture
