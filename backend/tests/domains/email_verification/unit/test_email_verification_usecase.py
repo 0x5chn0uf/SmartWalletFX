@@ -19,6 +19,7 @@ from app.utils.rate_limiter import InMemoryRateLimiter
 class TestEmailVerificationUsecase:
     """Test EmailVerificationUsecase class."""
 
+    @pytest.mark.unit
     def test_init(self, email_verification_usecase_with_di):
         """Test EmailVerificationUsecase initialization."""
         usecase = email_verification_usecase_with_di
@@ -31,6 +32,7 @@ class TestEmailVerificationUsecase:
         assert usecase._EmailVerificationUsecase__config_service is not None
         assert usecase._EmailVerificationUsecase__audit is not None
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_verify_email_success(self, email_verification_usecase_with_di):
         """Test successful email verification."""
@@ -115,6 +117,7 @@ class TestEmailVerificationUsecase:
                 str(user_id)
             )
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_verify_email_invalid_token(self, email_verification_usecase_with_di):
         """Test email verification with invalid token."""
@@ -138,6 +141,7 @@ class TestEmailVerificationUsecase:
             "invalid_email_verification_token"
         )
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_verify_email_user_not_found(
         self, email_verification_usecase_with_di
@@ -173,6 +177,7 @@ class TestEmailVerificationUsecase:
         # Should also be called with general exception
         assert usecase._EmailVerificationUsecase__audit.error.call_count == 2
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_verify_email_with_default_role(
         self, email_verification_usecase_with_di
@@ -239,6 +244,7 @@ class TestEmailVerificationUsecase:
             assert additional_claims["roles"] == [UserRole.INDIVIDUAL_INVESTOR.value]
             assert additional_claims["attributes"] == {}
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_verify_email_exception_handling(
         self, email_verification_usecase_with_di
@@ -261,6 +267,7 @@ class TestEmailVerificationUsecase:
             "email_verification_failed", error="Database error"
         )
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_resend_verification_success(
         self, email_verification_usecase_with_di
@@ -320,6 +327,7 @@ class TestEmailVerificationUsecase:
                 "verification_email_resent", user_id=str(user_id)
             )
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_resend_verification_rate_limited(
         self, email_verification_usecase_with_di
@@ -347,6 +355,7 @@ class TestEmailVerificationUsecase:
         # Should also be called with general exception
         assert usecase._EmailVerificationUsecase__audit.error.call_count == 2
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_resend_verification_user_not_found(
         self, email_verification_usecase_with_di
@@ -376,6 +385,7 @@ class TestEmailVerificationUsecase:
         # Verify no background task was added
         background_tasks.add_task.assert_not_called()
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_resend_verification_user_already_verified(
         self, email_verification_usecase_with_di
@@ -407,6 +417,7 @@ class TestEmailVerificationUsecase:
         # Verify no background task was added
         background_tasks.add_task.assert_not_called()
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_resend_verification_exception_handling(
         self, email_verification_usecase_with_di
@@ -434,6 +445,7 @@ class TestEmailVerificationUsecase:
             "resend_verification_failed", email=email, error="Database error"
         )
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_resend_verification_frontend_url_stripping(
         self, email_verification_usecase_with_di

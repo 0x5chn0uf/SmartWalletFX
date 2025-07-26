@@ -24,6 +24,7 @@ def setup_mock_session(repository, mock_session):
     repository._HistoricalBalanceRepository__database.get_session = mock_get_session
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_historical_balance_repository_create(
     historical_balance_repository_with_di, mock_async_session
@@ -63,6 +64,7 @@ async def test_historical_balance_repository_create(
     mock_async_session.refresh.assert_awaited_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_historical_balance_repository_create_exception(
     historical_balance_repository_with_di, mock_async_session

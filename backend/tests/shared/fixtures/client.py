@@ -74,3 +74,26 @@ async def async_client_with_db(test_app, db_session):
 
     # Clean up dependency override
     test_app.dependency_overrides.pop(get_db_for_testing, None)
+
+
+@pytest_asyncio.fixture
+async def integration_async_client(test_app, db_session):
+    """
+    Integration test async client that prioritizes real FastAPI app over mocks.
+    This client should be used for integration tests where you want to test
+    the actual application behavior rather than mocked responses.
+    """
+
+    async def _override_get_db():
+        yield db_session
+
+    test_app.dependency_overrides[get_db_for_testing] = _override_get_db
+
+    # Create AsyncClient with explicit app reference to ensure TestClient fallback works
+    async with AsyncClient(app=test_app, base_url="http://test") as ac:
+        # Store the app reference so the patched AsyncClient knows this is an integration test
+        ac._app = test_app
+        yield ac
+
+    # Clean up dependency override
+    test_app.dependency_overrides.pop(get_db_for_testing, None)

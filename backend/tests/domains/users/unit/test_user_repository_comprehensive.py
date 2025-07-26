@@ -46,6 +46,7 @@ def user_repository(mock_database, mock_audit):
     return UserRepository(mock_database, mock_audit)
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_all_success(user_repository, mock_session):
     """Test successful retrieval of all users."""
@@ -74,6 +75,7 @@ async def test_get_all_success(user_repository, mock_session):
     user_repository._UserRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_all_exception_handling(user_repository, mock_session):
     """Test exception handling in get_all method."""
@@ -88,6 +90,7 @@ async def test_get_all_exception_handling(user_repository, mock_session):
     user_repository._UserRepository__audit.error.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_username_found(user_repository, mock_session):
     """Test getting user by username when user exists."""
@@ -112,6 +115,7 @@ async def test_get_by_username_found(user_repository, mock_session):
     user_repository._UserRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_username_not_found(user_repository, mock_session):
     """Test getting user by username when user doesn't exist."""
@@ -132,6 +136,7 @@ async def test_get_by_username_not_found(user_repository, mock_session):
     user_repository._UserRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_username_exception_handling(user_repository, mock_session):
     """Test exception handling in get_by_username method."""
@@ -146,6 +151,7 @@ async def test_get_by_username_exception_handling(user_repository, mock_session)
     user_repository._UserRepository__audit.error.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_email_found(user_repository, mock_session):
     """Test getting user by email when user exists."""
@@ -170,6 +176,7 @@ async def test_get_by_email_found(user_repository, mock_session):
     user_repository._UserRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_email_not_found(user_repository, mock_session):
     """Test getting user by email when user doesn't exist."""
@@ -190,6 +197,7 @@ async def test_get_by_email_not_found(user_repository, mock_session):
     user_repository._UserRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_email_exception_handling(user_repository, mock_session):
     """Test exception handling in get_by_email method."""
@@ -204,6 +212,7 @@ async def test_get_by_email_exception_handling(user_repository, mock_session):
     user_repository._UserRepository__audit.error.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_exists_by_username_true(user_repository, mock_session):
     """Test exists check returns True when user exists by username."""
@@ -224,6 +233,7 @@ async def test_exists_by_username_true(user_repository, mock_session):
     user_repository._UserRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_exists_by_email_true(user_repository, mock_session):
     """Test exists check returns True when user exists by email."""
@@ -244,6 +254,7 @@ async def test_exists_by_email_true(user_repository, mock_session):
     user_repository._UserRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_exists_by_both_username_and_email(user_repository, mock_session):
     """Test exists check with both username and email."""
@@ -265,6 +276,7 @@ async def test_exists_by_both_username_and_email(user_repository, mock_session):
     user_repository._UserRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_exists_false(user_repository, mock_session):
     """Test exists check returns False when user doesn't exist."""
@@ -285,6 +297,7 @@ async def test_exists_false(user_repository, mock_session):
     user_repository._UserRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_exists_exception_handling(user_repository, mock_session):
     """Test exception handling in exists method."""
@@ -299,6 +312,7 @@ async def test_exists_exception_handling(user_repository, mock_session):
     user_repository._UserRepository__audit.error.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_id_with_uuid(user_repository, mock_session):
     """Test getting user by ID when passed as UUID."""
@@ -319,6 +333,7 @@ async def test_get_by_id_with_uuid(user_repository, mock_session):
     user_repository._UserRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_id_with_string(user_repository, mock_session):
     """Test getting user by ID when passed as string."""
@@ -340,6 +355,7 @@ async def test_get_by_id_with_string(user_repository, mock_session):
     user_repository._UserRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_id_invalid_uuid_string(user_repository, mock_session):
     """Test getting user by ID with invalid UUID string."""
@@ -359,6 +375,7 @@ async def test_get_by_id_invalid_uuid_string(user_repository, mock_session):
     user_repository._UserRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_id_exception_handling(user_repository, mock_session):
     """Test exception handling in get_by_id method."""
@@ -373,6 +390,7 @@ async def test_get_by_id_exception_handling(user_repository, mock_session):
     user_repository._UserRepository__audit.error.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_save_success(user_repository, mock_session):
     """Test successful save of user."""
@@ -392,6 +410,7 @@ async def test_save_success(user_repository, mock_session):
     user_repository._UserRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_save_integrity_error(user_repository, mock_session):
     """Test save with integrity error handling."""
@@ -409,6 +428,7 @@ async def test_save_integrity_error(user_repository, mock_session):
     user_repository._UserRepository__audit.error.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_save_general_exception_handling(user_repository, mock_session):
     """Test general exception handling in save method."""
@@ -425,6 +445,7 @@ async def test_save_general_exception_handling(user_repository, mock_session):
     user_repository._UserRepository__audit.error.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_update_success(user_repository, mock_session):
     """Test successful update of user."""
@@ -451,6 +472,7 @@ async def test_update_success(user_repository, mock_session):
     user_repository._UserRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_update_with_invalid_field(user_repository, mock_session):
     """Test update ignores invalid fields."""
@@ -490,6 +512,7 @@ async def test_update_with_invalid_field(user_repository, mock_session):
     user_repository._UserRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_update_integrity_error(user_repository, mock_session):
     """Test update with integrity error handling."""
@@ -512,6 +535,7 @@ async def test_update_integrity_error(user_repository, mock_session):
     user_repository._UserRepository__audit.error.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_update_general_exception_handling(user_repository, mock_session):
     """Test general exception handling in update method."""
@@ -529,6 +553,7 @@ async def test_update_general_exception_handling(user_repository, mock_session):
     user_repository._UserRepository__audit.error.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_delete_success(user_repository, mock_session):
     """Test successful deletion of user."""
@@ -547,13 +572,15 @@ async def test_delete_success(user_repository, mock_session):
 
     # Assert
     assert result is None
-    mock_session.execute.assert_called_once()  # Delete refresh tokens
+    # Should call execute 5 times (RefreshToken, EmailVerification, PasswordReset, OAuthAccount, Wallet)
+    assert mock_session.execute.call_count == 5
     mock_session.merge.assert_called_once_with(user)
     mock_session.delete.assert_called_once_with(mock_merged_user)
     mock_session.commit.assert_called_once()
     user_repository._UserRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_delete_exception_handling(user_repository, mock_session):
     """Test exception handling in delete method."""
@@ -571,6 +598,7 @@ async def test_delete_exception_handling(user_repository, mock_session):
     user_repository._UserRepository__audit.error.assert_called_once()
 
 
+@pytest.mark.unit
 def test_user_repository_constructor_dependencies():
     """Test that UserRepository properly accepts dependencies in constructor."""
     # Arrange

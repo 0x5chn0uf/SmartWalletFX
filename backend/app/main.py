@@ -15,9 +15,16 @@ from app.domain.schemas.user import WeakPasswordError  # local import
 class ApplicationFactory:
     """Factory for creating FastAPI applications with dependency injection."""
 
-    def __init__(self, di_container: DIContainer):
+    def __init__(
+        self,
+        di_container: DIContainer,
+        skip_startup: bool = False,
+        skip_middleware: bool = False,
+    ):
         """Initialize with DIContainer."""
         self.di_container = di_container
+        self.skip_startup = skip_startup
+        self.skip_middleware = skip_middleware
 
     def create_app(self) -> FastAPI:
         """Create and configure the FastAPI application instance using DIContainer."""
@@ -40,11 +47,13 @@ class ApplicationFactory:
             allow_headers=["*"],
         )
 
-        # Correlation-ID middleware (must run early)
-        app.add_middleware(CorrelationIdMiddleware)
+        # Add middleware only if not skipped (for tests)
+        if not self.skip_middleware:
+            # Correlation-ID middleware (must run early)
+            app.add_middleware(CorrelationIdMiddleware)
 
-        # JWT Auth middleware (extract user_id from tokens)
-        app.add_middleware(JWTAuthMiddleware)
+            # JWT Auth middleware (extract user_id from tokens)
+            app.add_middleware(JWTAuthMiddleware, di_container=self.di_container)
 
         # Register global exception handlers
         error_handling = self.di_container.get_core("error_handling")
@@ -72,19 +81,25 @@ class ApplicationFactory:
         )
 
         # Initialize database tables on startup
-        @app.on_event("startup")
-        async def on_startup() -> None:
-            """FastAPI startup event handler."""
-            try:
-                logging = self.di_container.get_core("logging")
-                logging.info("Starting database initialization...")
-                await self.di_container.get_core("database").init_db()
-                logging.info("Database initialization completed successfully")
-            except Exception as e:
-                logging = self.di_container.get_core("logging")
-                logging.error(f"Database initialization failed: {str(e)}")
-                print(f"STARTUP ERROR: {str(e)}")  # Also print stdout for Docker logs
-                raise
+        if not self.skip_startup:
+
+            @app.on_event("startup")
+            async def on_startup() -> None:
+                """FastAPI startup event handler."""
+                try:
+                    logging_service = self.di_container.get_core("logging")
+                    logger = logging_service.get_logger("startup")
+                    logger.info("Starting database initialization...")
+                    await self.di_container.get_core("database").init_db()
+                    logger.info("Database initialization completed successfully")
+                except Exception as e:
+                    logging_service = self.di_container.get_core("logging")
+                    logger = logging_service.get_logger("startup")
+                    logger.error(f"Database initialization failed: {str(e)}")
+                    print(
+                        f"STARTUP ERROR: {str(e)}"
+                    )  # Also print stdout for Docker logs
+                    raise
 
         # Register singleton endpoint routers
         self._register_singleton_routers(app)

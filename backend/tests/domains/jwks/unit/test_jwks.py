@@ -6,6 +6,7 @@ import httpx
 import pytest
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_endpoint_returns_jwks_format(test_app):
     """JWKS endpoint should return a valid JWKSet format."""
@@ -21,6 +22,7 @@ async def test_jwks_endpoint_returns_jwks_format(test_app):
     assert isinstance(data["keys"], list)
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_endpoint_structure(test_app):
     """JWKS endpoint should return properly structured JWK objects."""
@@ -44,6 +46,7 @@ async def test_jwks_endpoint_structure(test_app):
         assert key["alg"] == "RS256"
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_endpoint_cache_hit(test_app, sample_jwks):
     """JWKS endpoint should serve cached response when available."""
@@ -62,6 +65,7 @@ async def test_jwks_endpoint_cache_hit(test_app, sample_jwks):
     assert data["keys"] == sample_jwks.model_dump()["keys"]
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_endpoint_cache_miss(test_app):
     """JWKS endpoint should generate fresh response on cache miss."""
@@ -83,6 +87,7 @@ async def test_jwks_endpoint_cache_miss(test_app):
     mock_redis.setex.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_endpoint_redis_error_graceful_fallback(test_app):
     """JWKS endpoint should work when Redis is unavailable."""
@@ -102,6 +107,7 @@ async def test_jwks_endpoint_redis_error_graceful_fallback(test_app):
     # Should still return a valid response despite Redis error
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_endpoint_cache_storage_error_graceful(test_app):
     """JWKS endpoint should work when cache storage fails."""
@@ -122,6 +128,7 @@ async def test_jwks_endpoint_cache_storage_error_graceful(test_app):
     # Should still return a valid response despite cache storage failure
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_endpoint_empty_key_set(test_app):
     """JWKS endpoint should return empty key set when no keys are available."""
@@ -148,6 +155,7 @@ async def test_jwks_endpoint_empty_key_set(test_app):
     assert data["keys"] == []  # Empty key set
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_endpoint_key_formatting_failure_graceful(test_app):
     """JWKS endpoint should handle key formatting failures gracefully."""
@@ -184,6 +192,7 @@ async def test_jwks_endpoint_key_formatting_failure_graceful(test_app):
     assert data["keys"] == []  # Should return empty key set when formatting fails
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_endpoint_mixed_key_formatting_success_and_failure(test_app):
     """JWKS endpoint should include successfully formatted keys even when some fail."""
@@ -237,6 +246,7 @@ async def test_jwks_endpoint_mixed_key_formatting_success_and_failure(test_app):
     assert data["keys"][0]["kid"] == "good-key"
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_endpoint_cache_close_failure_graceful(test_app):
     """JWKS endpoint should handle Redis close failures gracefully."""
@@ -257,6 +267,7 @@ async def test_jwks_endpoint_cache_close_failure_graceful(test_app):
     # Should still return a valid response despite Redis close failure
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_endpoint_concurrent_requests(test_app):
     """JWKS endpoint should handle concurrent requests correctly."""

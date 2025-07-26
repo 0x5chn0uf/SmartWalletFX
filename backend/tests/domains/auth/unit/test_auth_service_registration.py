@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from app.core.security.roles import UserRole
-from app.domain.schemas.user import UserCreate, WeakPasswordError
+from app.domain.schemas.user import UserCreate
 from app.models.user import User
 from app.usecase.auth_usecase import DuplicateError
 
@@ -15,6 +15,7 @@ from app.usecase.auth_usecase import DuplicateError
 class TestAuthServiceRegistration:
     """Test auth service registration functionality."""
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_register_success(self, auth_usecase, mock_user_repo):
         """Test successful user registration."""
@@ -41,6 +42,7 @@ class TestAuthServiceRegistration:
         mock_user_repo.get_by_email.assert_called_once_with("test@example.com")
         assert mock_user_repo.save.call_count == 1
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_register_duplicate_username(self, auth_usecase, mock_user_repo):
         """Test registration with duplicate username."""
@@ -55,6 +57,7 @@ class TestAuthServiceRegistration:
             )
         assert exc_info.value.field == "username"
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_register_duplicate_email(self, auth_usecase, mock_user_repo):
         """Test registration with duplicate email."""
@@ -69,16 +72,20 @@ class TestAuthServiceRegistration:
             )
         assert exc_info.value.field == "email"
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_register_weak_password(self, auth_usecase):
         """Test registration with weak password."""
-        with pytest.raises(WeakPasswordError):
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
             await auth_usecase.register(
                 UserCreate(
                     username="test", email="test@example.com", password="weakpass"
                 )  # 8 chars but no digit
             )
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_register_integrity_error(self, auth_usecase, mock_user_repo):
         """Test handling of database integrity error."""
@@ -94,6 +101,7 @@ class TestAuthServiceRegistration:
             )
         assert exc_info.value.field == "email"
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_register_duplicate_username_check_order(
         self, auth_usecase, mock_user_repo

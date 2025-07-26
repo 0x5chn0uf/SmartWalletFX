@@ -1,11 +1,14 @@
 from unittest.mock import patch
 
+import pytest
+
 from app.utils.rate_limiter import InMemoryRateLimiter
 
 
 class TestInMemoryRateLimiter:
     """Test the InMemoryRateLimiter functionality directly."""
 
+    @pytest.mark.unit
     def test_rate_limiter_allows_initial_requests(self):
         """Test that rate limiter allows requests within the limit."""
         limiter = InMemoryRateLimiter(max_attempts=3, window_seconds=60)
@@ -18,6 +21,7 @@ class TestInMemoryRateLimiter:
         # 4th request should be blocked
         assert limiter.allow("user1") is False
 
+    @pytest.mark.unit
     def test_rate_limiter_resets_after_window(self):
         """Test that rate limiter resets after the time window."""
         with patch("time.time") as mock_time:
@@ -34,6 +38,7 @@ class TestInMemoryRateLimiter:
             limiter = InMemoryRateLimiter(max_attempts=2, window_seconds=1)
             assert limiter.allow("user1") is True
 
+    @pytest.mark.unit
     def test_rate_limiter_is_user_specific(self):
         """Test that rate limiting is per-user."""
         limiter = InMemoryRateLimiter(max_attempts=1, window_seconds=60)
@@ -46,6 +51,7 @@ class TestInMemoryRateLimiter:
         assert limiter.allow("user2") is True
         assert limiter.allow("user2") is False
 
+    @pytest.mark.unit
     def test_clear_method_resets_all_users(self):
         """Test that clear() method resets all users."""
         limiter = InMemoryRateLimiter(max_attempts=1, window_seconds=60)

@@ -12,6 +12,7 @@ from app.api.endpoints.auth import Auth
 class TestAuthLogoutEndpoints:
     """Test auth logout endpoints."""
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_logout_success(self, auth_endpoint, mock_auth_usecase):
         """Test successful logout."""
@@ -44,6 +45,7 @@ class TestAuthLogoutEndpoints:
             # Check that cookies were deleted
             response.delete_cookie.assert_called()
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_logout_no_token(self, auth_endpoint, mock_auth_usecase):
         """Test logout with no token."""

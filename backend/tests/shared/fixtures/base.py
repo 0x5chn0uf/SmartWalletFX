@@ -94,10 +94,17 @@ def _make_test_db(tmp_path_factory: pytest.TempPathFactory) -> tuple[str, str]:
     # Branch 2 – SQLite (fallback)
     # ------------------------------------------------------------------
 
-    db_dir = tmp_path_factory.mktemp("db")
-    db_file = db_dir / "test.sqlite"
-    async_url = f"sqlite+aiosqlite:///{db_file}"
-    sync_url = f"sqlite:///{db_file}"
+    # Use in-memory SQLite for maximum speed in unit tests
+    if os.getenv("PYTEST_CURRENT_TEST"):
+        # In-memory database for tests
+        async_url = "sqlite+aiosqlite:///:memory:"
+        sync_url = "sqlite:///:memory:"
+    else:
+        # File-based database for development/debugging
+        db_dir = tmp_path_factory.mktemp("db")
+        db_file = db_dir / "test.sqlite"
+        async_url = f"sqlite+aiosqlite:///{db_file}"
+        sync_url = f"sqlite:///{db_file}"
 
     temp_engine = create_engine(sync_url, connect_args={"check_same_thread": False})
     Base.metadata.create_all(bind=temp_engine)
@@ -113,7 +120,10 @@ async def async_engine(tmp_path_factory: pytest.TempPathFactory):
     async_url, sync_url = _make_test_db(tmp_path_factory)
 
     # Expose to other fixtures (patch_sync_db) via environment variable
-    os.environ["TEST_DB_URL"] = sync_url
+    # Only set TEST_DB_URL if it's not explicitly set or is the default SQLite
+    current_test_db_url = os.environ.get("TEST_DB_URL", "")
+    if not current_test_db_url or current_test_db_url == "sqlite+aiosqlite:///:memory:":
+        os.environ["TEST_DB_URL"] = sync_url
 
     engine = create_async_engine(async_url, future=True)
     try:
@@ -160,31 +170,60 @@ async def test_app(async_engine):
     use the per-session *async_engine* fixture.
     """
 
-    # Patch engine and SessionLocal globally for the application
-    db_mod.engine = async_engine
-    db_mod.SessionLocal = async_sessionmaker(
-        bind=db_mod.engine, class_=AsyncSession, expire_on_commit=False
-    )
+    # Import the app and di_container from main
+    from app.main import app as _app
+    from app.main import di_container
 
-    # Also patch the sync engine to use the same test database
+    # Get the database service from the DI container and patch its engines
+    database_service = di_container.get_core("database")
+
+    # Store original engines for cleanup
+    original_async_engine = database_service.async_engine
+    original_sync_engine = database_service.sync_engine
+    original_async_session_factory = database_service.async_session_factory
+    original_sync_session_factory = database_service.sync_session_factory
+
+    # Patch the database service with test engines
+    database_service.async_engine = async_engine
+
+    # Create sync engine from TEST_DB_URL
     from sqlalchemy import create_engine
 
     sync_url = os.environ["TEST_DB_URL"]
-    db_mod.sync_engine = create_engine(
+    # Create a dedicated sync engine for the tests. We keep a reference so that we
+    # can explicitly dispose it in the *finally* block below and avoid SQLAlchemy
+    # "garbage collector is trying to clean up non-checked-in connection" warnings.
+    test_sync_engine = create_engine(
         sync_url, connect_args={"check_same_thread": False}
     )
-    db_mod.SyncSessionLocal = sessionmaker(
-        autocommit=False, autoflush=False, bind=db_mod.sync_engine
+    database_service.sync_engine = test_sync_engine
+
+    # Update session factories to use the test engines
+    database_service.async_session_factory = async_sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        bind=database_service.async_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
     )
 
-    # Reuse existing app instance instead of creating a new one each time
-    # Ensure other modules that imported `engine` directly (e.g., init_db)
-    # use the *patched* engine as well.  Those modules performed
-    # `from app.core.database import engine` at import-time and therefore hold
-    # a separate reference that needs to be updated manually.
-    import app.core.database as _init_db_mod
-    from app.main import app as _app
+    database_service.sync_session_factory = sessionmaker(
+        autocommit=False, autoflush=False, bind=database_service.sync_engine
+    )
 
-    _init_db_mod.engine = db_mod.engine
+    try:
+        yield _app
+    finally:
+        # Dispose temporary engines **before** restoring originals to ensure all
+        # pooled connections are properly returned and SAWarnings are not raised.
+        try:
+            test_sync_engine.dispose()
+        except Exception:
+            # Ensure cleanup continues even if disposal fails for some reason
+            pass
 
-    yield _app
+        # Restore original engines
+        database_service.async_engine = original_async_engine
+        database_service.sync_engine = original_sync_engine
+        database_service.async_session_factory = original_async_session_factory
+        database_service.sync_session_factory = original_sync_session_factory

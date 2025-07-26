@@ -12,6 +12,7 @@ from app.core.logging import CoreLogging
 class TestCoreLogging:
     """Test CoreLogging class."""
 
+    @pytest.mark.unit
     def test_init(self):
         """Test CoreLogging initialization."""
         config = Mock(spec=Configuration)
@@ -20,6 +21,7 @@ class TestCoreLogging:
         assert core_logging.config is config
         assert core_logging._is_setup is False
 
+    @pytest.mark.unit
     def test_setup_logging_first_time(self):
         """Test setup_logging when called for the first time."""
         config = Mock(spec=Configuration)
@@ -55,6 +57,7 @@ class TestCoreLogging:
 
             assert core_logging._is_setup is True
 
+    @pytest.mark.unit
     def test_setup_logging_with_existing_handlers(self):
         """Test setup_logging when handlers already exist."""
         config = Mock(spec=Configuration)
@@ -94,6 +97,7 @@ class TestCoreLogging:
 
             assert core_logging._is_setup is True
 
+    @pytest.mark.unit
     def test_setup_logging_duplicate_calls(self):
         """Test that setup_logging avoids duplicate setup."""
         config = Mock(spec=Configuration)
@@ -116,6 +120,7 @@ class TestCoreLogging:
             core_logging.setup_logging()
             assert mock_basic_config.call_count == 1  # Still only 1 call
 
+    @pytest.mark.unit
     def test_setup_logging_invalid_log_level(self):
         """Test setup_logging with invalid log level defaults to INFO."""
         config = Mock(spec=Configuration)
@@ -136,6 +141,7 @@ class TestCoreLogging:
             args, kwargs = mock_basic_config.call_args
             assert kwargs["level"] == logging.INFO
 
+    @pytest.mark.unit
     def test_get_logger_without_setup(self):
         """Test get_logger calls setup_logging if not already set up."""
         config = Mock(spec=Configuration)
@@ -160,6 +166,7 @@ class TestCoreLogging:
             assert result is mock_bound_logger
             mock_structlog_get_logger.assert_called_once_with("test_logger")
 
+    @pytest.mark.unit
     def test_get_logger_with_setup(self):
         """Test get_logger when setup has already been called."""
         config = Mock(spec=Configuration)
@@ -189,6 +196,7 @@ class TestCoreLogging:
             # Should not call getLogger again for setup
             mock_get_logger.assert_not_called()
 
+    @pytest.mark.unit
     def test_is_setup_initial_state(self):
         """Test is_setup returns False initially."""
         config = Mock(spec=Configuration)
@@ -196,6 +204,7 @@ class TestCoreLogging:
 
         assert core_logging.is_setup() is False
 
+    @pytest.mark.unit
     def test_is_setup_after_setup(self):
         """Test is_setup returns True after setup_logging."""
         config = Mock(spec=Configuration)
@@ -211,6 +220,7 @@ class TestCoreLogging:
 
             assert core_logging.is_setup() is True
 
+    @pytest.mark.unit
     def test_setup_logging_silences_noisy_loggers(self):
         """Test that setup_logging silences noisy dependencies."""
         config = Mock(spec=Configuration)

@@ -18,6 +18,7 @@ from app.usecase.portfolio_snapshot_usecase import PortfolioSnapshotUsecase
 class TestPortfolioSnapshotUsecase:
     """Test PortfolioSnapshotUsecase class."""
 
+    @pytest.mark.unit
     def test_init(self, portfolio_snapshot_usecase_with_di):
         """Test PortfolioSnapshotUsecase initialization."""
         usecase = portfolio_snapshot_usecase_with_di
@@ -26,6 +27,7 @@ class TestPortfolioSnapshotUsecase:
         assert usecase._PortfolioSnapshotUsecase__wallet_repo is not None
         assert usecase._PortfolioSnapshotUsecase__audit is not None
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_snapshots_by_wallet_success(
         self, portfolio_snapshot_usecase_with_di
@@ -105,6 +107,7 @@ class TestPortfolioSnapshotUsecase:
             snapshot_count=len(mock_snapshots),
         )
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_snapshots_by_wallet_not_found(
         self, portfolio_snapshot_usecase_with_di
@@ -131,6 +134,7 @@ class TestPortfolioSnapshotUsecase:
             wallet_address=wallet_address,
         )
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_snapshots_by_wallet_empty_result(
         self, portfolio_snapshot_usecase_with_di
@@ -163,6 +167,7 @@ class TestPortfolioSnapshotUsecase:
             snapshot_count=0,
         )
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_snapshots_by_wallet_exception_handling(
         self, portfolio_snapshot_usecase_with_di
@@ -187,6 +192,7 @@ class TestPortfolioSnapshotUsecase:
             error="Database error",
         )
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_timeline_cache_hit(self, portfolio_snapshot_usecase_with_di):
         """Test get_timeline with cache hit."""
@@ -245,6 +251,7 @@ class TestPortfolioSnapshotUsecase:
             snapshot_count=1,
         )
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_timeline_cache_miss(self, portfolio_snapshot_usecase_with_di):
         """Test get_timeline with cache miss."""
@@ -338,6 +345,7 @@ class TestPortfolioSnapshotUsecase:
             snapshot_count=2,
         )
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_timeline_default_parameters(
         self, portfolio_snapshot_usecase_with_di
@@ -364,11 +372,17 @@ class TestPortfolioSnapshotUsecase:
 
         # Verify default parameters were used
         usecase._PortfolioSnapshotUsecase__portfolio_snapshot_repo.get_timeline.assert_called_once_with(
-            user_address, from_ts, to_ts, 100, 0, "none"  # default values
+            user_address,
+            from_ts,
+            to_ts,
+            100,
+            0,
+            "none",  # default values
         )
 
         assert result == []
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_timeline_exception_handling(
         self, portfolio_snapshot_usecase_with_di
@@ -395,6 +409,7 @@ class TestPortfolioSnapshotUsecase:
             error="Cache error",
         )
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_timeline_json_serialization(
         self, portfolio_snapshot_usecase_with_di
@@ -465,6 +480,7 @@ class TestPortfolioSnapshotUsecase:
             "compound": {"collateral": 50.0},
         }
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_timeline_with_all_parameters(
         self, portfolio_snapshot_usecase_with_di
@@ -515,6 +531,7 @@ class TestPortfolioSnapshotUsecase:
 
         assert result == []
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_get_timeline_invalid_cached_json(
         self, portfolio_snapshot_usecase_with_di

@@ -20,6 +20,7 @@ from app.domain.schemas.password_reset import (
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_request_password_reset_rate_limited(
     password_reset_endpoint_with_di, mock_rate_limiter_utils
 ):
@@ -37,6 +38,7 @@ async def test_request_password_reset_rate_limited(
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_request_password_reset_unknown_email(
     password_reset_endpoint_with_di,
     mock_user_repository,
@@ -48,9 +50,6 @@ async def test_request_password_reset_unknown_email(
     # Mock rate limiter to allow request
     mock_rate_limiter_utils.login_rate_limiter.allow.return_value = True
 
-    # Mock user repository to return None (user not found)
-    mock_user_repository.get_by_email.return_value = None
-
     payload = PasswordResetRequest(email="nobody@example.com")
     await endpoint.request_password_reset(payload, BackgroundTasks())
 
@@ -59,6 +58,25 @@ async def test_request_password_reset_unknown_email(
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
+async def test_request_password_reset_user_repo_failure(
+    password_reset_endpoint_with_di,
+    mock_user_repository,
+    mock_rate_limiter_utils,
+):
+    """Test password reset when user repository fails."""
+    endpoint = password_reset_endpoint_with_di
+
+    mock_rate_limiter_utils.login_rate_limiter.allow.return_value = True
+    mock_user_repository.get_by_email.side_effect = ValueError("Database error")
+
+    payload = PasswordResetRequest(email="oops@example.com")
+    with pytest.raises(ValueError):
+        await endpoint.request_password_reset(payload, BackgroundTasks())
+
+
+@pytest.mark.asyncio
+@pytest.mark.unit
 async def test_request_password_reset_email_failure(
     password_reset_endpoint_with_di,
     mock_user_repository,
@@ -88,6 +106,7 @@ async def test_request_password_reset_email_failure(
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_request_password_reset_success(
     password_reset_endpoint_with_di,
     mock_user_repository,
@@ -123,6 +142,7 @@ async def test_request_password_reset_success(
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_verify_reset_token(
     password_reset_endpoint_with_di,
     mock_password_reset_repository,
@@ -142,6 +162,7 @@ async def test_verify_reset_token(
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_verify_reset_token_invalid(
     password_reset_endpoint_with_di,
     mock_password_reset_repository,
@@ -164,6 +185,7 @@ async def test_verify_reset_token_invalid(
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_reset_password_invalid_token(
     password_reset_endpoint_with_di,
     mock_password_reset_repository,
@@ -186,6 +208,7 @@ async def test_reset_password_invalid_token(
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_reset_password_user_not_found(
     password_reset_endpoint_with_di,
     mock_user_repository,
@@ -214,6 +237,7 @@ async def test_reset_password_user_not_found(
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_reset_password_success(
     password_reset_endpoint_with_di,
     mock_user_repository,

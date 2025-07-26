@@ -38,6 +38,7 @@ class _DummyEngine:
         return _DummyCtxMgr(self._conn)
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_init_db_success(monkeypatch):
     """init_db should open a connection and run Base.metadata.create_all."""
@@ -56,6 +57,7 @@ async def test_init_db_success(monkeypatch):
     assert conn.called_with.__name__ == "create_all"
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_init_db_error_propagation(monkeypatch):
     """If run_sync raises, the exception should propagate."""

@@ -29,9 +29,18 @@ def jwks_endpoint_with_di():
 @pytest.fixture
 def users_endpoint_with_di(mock_user_repository):
     """Create Users endpoint with mocked dependencies."""
+    from unittest.mock import Mock
+
     from app.api.endpoints.users import Users
 
-    return Users(mock_user_repository)
+    # Create mock user profile usecase
+    mock_user_profile_usecase = Mock()
+    # Create mock file upload service
+    mock_file_upload_service = Mock()
+
+    return Users(
+        mock_user_repository, mock_user_profile_usecase, mock_file_upload_service
+    )
 
 
 @pytest.fixture

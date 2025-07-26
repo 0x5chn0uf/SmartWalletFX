@@ -46,6 +46,7 @@ def mock_email_verification_repository():
     mock = Mock()
     mock.create = AsyncMock()
     mock.get_by_token = AsyncMock()
+    mock.get_valid = AsyncMock()
     mock.mark_used = AsyncMock()
     mock.delete_expired = AsyncMock()
     return mock

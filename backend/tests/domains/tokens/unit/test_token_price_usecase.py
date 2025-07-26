@@ -12,6 +12,7 @@ from app.usecase.token_price_usecase import TokenPriceUsecase
 class TestTokenPriceUsecase:
     """Test TokenPriceUsecase class."""
 
+    @pytest.mark.unit
     def test_init(self, token_price_usecase_with_di):
         """Test TokenPriceUsecase initialization."""
         usecase = token_price_usecase_with_di
@@ -21,6 +22,7 @@ class TestTokenPriceUsecase:
         assert usecase._TokenPriceUsecase__audit is not None
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_price_success(self, token_price_usecase_with_di):
         """Test successful token price creation."""
         usecase = token_price_usecase_with_di
@@ -65,6 +67,7 @@ class TestTokenPriceUsecase:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_price_with_symbol_attribute(
         self, token_price_usecase_with_di
     ):
@@ -102,6 +105,7 @@ class TestTokenPriceUsecase:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_price_zero_price(self, token_price_usecase_with_di):
         """Test token price creation with zero price."""
         usecase = token_price_usecase_with_di
@@ -135,6 +139,7 @@ class TestTokenPriceUsecase:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_price_very_small_price(
         self, token_price_usecase_with_di
     ):
@@ -164,6 +169,7 @@ class TestTokenPriceUsecase:
         assert result.price_usd == price_usd
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_price_very_large_price(
         self, token_price_usecase_with_di
     ):
@@ -193,6 +199,7 @@ class TestTokenPriceUsecase:
         assert result.price_usd == price_usd
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_price_repository_exception(
         self, token_price_usecase_with_di
     ):
@@ -224,6 +231,7 @@ class TestTokenPriceUsecase:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_price_validation_error(
         self, token_price_usecase_with_di
     ):
@@ -251,6 +259,7 @@ class TestTokenPriceUsecase:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_price_result_without_id(
         self, token_price_usecase_with_di
     ):
@@ -288,6 +297,7 @@ class TestTokenPriceUsecase:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_price_negative_price(self, token_price_usecase_with_di):
         """Test token price creation with negative price."""
         usecase = token_price_usecase_with_di
@@ -315,6 +325,7 @@ class TestTokenPriceUsecase:
         assert result.price_usd == price_usd  # Should handle negative prices
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_price_multiple_calls(self, token_price_usecase_with_di):
         """Test multiple token price creations."""
         usecase = token_price_usecase_with_di
@@ -361,6 +372,7 @@ class TestTokenPriceUsecase:
         )  # 2 started + 2 success
 
     @pytest.mark.asyncio
+    @pytest.mark.unit
     async def test_create_token_price_concurrent_calls(
         self, token_price_usecase_with_di
     ):

@@ -6,6 +6,10 @@ from fastapi import FastAPI
 from jose import jwt
 
 from app.domain.schemas.user import UserCreate
+from app.utils.rate_limiter import login_rate_limiter
+from tests.shared.utils.safe_client import safe_post
+
+pytestmark = pytest.mark.integration
 
 
 async def _register_and_login_with_di(
@@ -76,11 +80,10 @@ async def test_refresh_success(
 
 @pytest.mark.asyncio
 async def test_refresh_invalid_token(test_app_with_di_container: FastAPI):
-    async with httpx.AsyncClient(
-        app=test_app_with_di_container, base_url="http://test"
-    ) as client:
-        res = await client.post(
-            "/auth/refresh", json={"refresh_token": "invalid-token"}
-        )
-        assert res.status_code == 401
-        assert "Invalid refresh token" in res.json().get("detail", "")
+    res = await safe_post(
+        test_app_with_di_container,
+        "/auth/refresh",
+        json={"refresh_token": "invalid-token"},
+    )
+    assert res.status_code == 401
+    assert "Invalid refresh token" in res.json().get("detail", "")

@@ -1,8 +1,11 @@
 from pathlib import Path
 
+import pytest
+
 from tools.fixture_lint.parser import parse_file
 
 
+@pytest.mark.unit
 def test_parse_file_extracts_fixtures(tmp_path: Path) -> None:
     test_file = tmp_path / "test_sample.py"
     test_file.write_text(

@@ -6,6 +6,7 @@ import httpx
 import pytest
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_endpoint_cache_hit_metrics(test_app, sample_jwks):
     """Test that cache hits are properly tracked in metrics."""
@@ -31,6 +32,7 @@ async def test_jwks_endpoint_cache_hit_metrics(test_app, sample_jwks):
             # mock_metrics["cache_hit"].inc.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_endpoint_cache_miss_metrics(test_app):
     """Test that cache misses are properly tracked in metrics."""
@@ -56,6 +58,7 @@ async def test_jwks_endpoint_cache_miss_metrics(test_app):
             # mock_metrics["cache_miss"].inc.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_endpoint_error_metrics(test_app):
     """Test that errors are properly tracked in metrics."""
@@ -81,6 +84,7 @@ async def test_jwks_endpoint_error_metrics(test_app):
             # mock_metrics["error"].inc.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_cache_invalidation_metrics():
     """Test that cache invalidation metrics are properly tracked."""
@@ -101,6 +105,7 @@ async def test_jwks_cache_invalidation_metrics():
         # mock_metrics["cache_invalidation"].inc.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_cache_invalidation_failure_metrics():
     """Test that cache invalidation failure metrics are properly tracked."""
@@ -121,6 +126,7 @@ async def test_jwks_cache_invalidation_failure_metrics():
         # mock_metrics["cache_invalidation_error"].inc.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_endpoint_audit_events(test_app, sample_jwks):
     """Test that audit events are properly emitted for JWKS endpoint."""
@@ -147,6 +153,7 @@ async def test_jwks_endpoint_audit_events(test_app, sample_jwks):
             )
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_endpoint_cache_miss_audit_events(test_app):
     """Test that audit events are properly emitted for cache misses."""
@@ -173,6 +180,7 @@ async def test_jwks_endpoint_cache_miss_audit_events(test_app):
             )
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_endpoint_error_audit_events(test_app):
     """Test that audit events are properly emitted for errors."""
@@ -199,6 +207,7 @@ async def test_jwks_endpoint_error_audit_events(test_app):
             )
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_endpoint_performance_metrics(test_app):
     """Test that performance metrics are tracked for JWKS endpoint."""
@@ -223,6 +232,7 @@ async def test_jwks_endpoint_performance_metrics(test_app):
             # mock_metrics["response_time"].observe.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_endpoint_request_count_metrics(test_app):
     """Test that request count metrics are properly tracked."""
@@ -248,6 +258,7 @@ async def test_jwks_endpoint_request_count_metrics(test_app):
             # assert mock_metrics["requests_total"].inc.call_count == 3
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jwks_endpoint_error_rate_metrics(test_app):
     """Test that error rate metrics are properly tracked."""

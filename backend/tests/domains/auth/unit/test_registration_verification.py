@@ -8,6 +8,7 @@ from app.api.endpoints.auth import Auth
 from app.domain.schemas.user import UserCreate
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_register_user_sends_verification(monkeypatch):
     # Create a mock service that properly handles background_tasks

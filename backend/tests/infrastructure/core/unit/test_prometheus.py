@@ -15,6 +15,7 @@ from app.core.prometheus import (
 class TestPrometheusMetrics:
     """Test Prometheus metrics functionality."""
 
+    @pytest.mark.unit
     def test_is_available_with_prometheus_client(self):
         """Test is_available() when prometheus_client is available."""
         # This test should pass if prometheus_client is available
@@ -26,6 +27,7 @@ class TestPrometheusMetrics:
             result is True
         ), "Prometheus client should be available for metrics to work"
 
+    @pytest.mark.unit
     def test_get_registry_with_prometheus_client(self):
         """Test get_registry() when prometheus_client is available."""
         registry = get_registry()
@@ -35,6 +37,7 @@ class TestPrometheusMetrics:
             registry is not None
         ), "Registry should be available when prometheus_client is installed"
 
+    @pytest.mark.unit
     def test_generate_metrics_with_prometheus_client(self):
         """Test generate_metrics() when prometheus_client is available."""
         # This test should pass if prometheus_client is available
@@ -45,6 +48,7 @@ class TestPrometheusMetrics:
             content_type == "text/plain; version=0.0.4; charset=utf-8"
         ), "Content type should match Prometheus format"
 
+    @pytest.mark.unit
     def test_start_metrics_server_with_prometheus_client(self):
         """Test start_metrics_server() when prometheus_client is available."""
         # This test should pass if prometheus_client is available
@@ -56,6 +60,7 @@ class TestPrometheusMetrics:
                 9090, "127.0.0.1", registry=get_registry()
             )
 
+    @pytest.mark.unit
     @patch("app.core.prometheus._PROMETHEUS_AVAILABLE", False)
     def test_is_available_without_prometheus_client(self):
         """Test is_available() when prometheus_client is not available."""
@@ -64,6 +69,7 @@ class TestPrometheusMetrics:
             result is False
         ), "Should return False when prometheus_client is not available"
 
+    @pytest.mark.unit
     @patch("app.core.prometheus._PROMETHEUS_AVAILABLE", False)
     def test_get_registry_without_prometheus_client(self):
         """Test get_registry() when prometheus_client is not available."""
@@ -72,12 +78,14 @@ class TestPrometheusMetrics:
             registry is None
         ), "Should return None when prometheus_client is not available"
 
+    @pytest.mark.unit
     @patch("app.core.prometheus._PROMETHEUS_AVAILABLE", False)
     def test_generate_metrics_without_prometheus_client(self):
         """Test generate_metrics() when prometheus_client is not available."""
         with pytest.raises(RuntimeError, match="Prometheus client not available"):
             generate_metrics()
 
+    @pytest.mark.unit
     @patch("app.core.prometheus._PROMETHEUS_AVAILABLE", False)
     def test_start_metrics_server_without_prometheus_client(self):
         """Test start_metrics_server() when prometheus_client is not available."""

@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from app.api.endpoints import admin
 from app.api.endpoints.admin import Admin
 from app.models.user import User
 
@@ -27,6 +26,7 @@ def admin_endpoint(mock_user_repository):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_list_users_success(admin_endpoint, mock_user_repository):
     # Setup
     # Mock users data
@@ -51,6 +51,7 @@ async def test_list_users_success(admin_endpoint, mock_user_repository):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_get_analytics_admin_role():
     # Setup
     # Mock current user with admin role
@@ -73,6 +74,7 @@ async def test_get_analytics_admin_role():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_get_analytics_fund_manager_role():
     # Setup
     # Mock current user with fund_manager role
@@ -98,6 +100,7 @@ async def test_get_analytics_fund_manager_role():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_high_value_operations_success():
     # Setup
     # Mock current user with required attributes
@@ -125,6 +128,7 @@ async def test_high_value_operations_success():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_regional_features_us():
     # Setup
     # Mock current user with US geography
@@ -145,6 +149,7 @@ async def test_regional_features_us():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_regional_features_ca():
     # Setup
     # Mock current user with CA geography
@@ -165,6 +170,7 @@ async def test_regional_features_ca():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_regional_features_eu():
     # Setup
     # Mock current user with EU geography
@@ -185,6 +191,7 @@ async def test_regional_features_eu():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_regional_features_unknown():
     # Setup
     # Mock current user with unknown geography
@@ -205,6 +212,7 @@ async def test_regional_features_unknown():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_get_system_health():
     # Setup
     # Mock current user with admin role
@@ -231,6 +239,7 @@ async def test_get_system_health():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_assign_user_role_success(admin_endpoint, mock_user_repository):
     # Setup
     user_id = str(uuid.uuid4())
@@ -265,6 +274,7 @@ async def test_assign_user_role_success(admin_endpoint, mock_user_repository):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_assign_user_role_invalid_role(admin_endpoint, mock_user_repository):
     # Setup
     user_id = str(uuid.uuid4())
@@ -281,6 +291,7 @@ async def test_assign_user_role_invalid_role(admin_endpoint, mock_user_repositor
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_assign_user_role_user_not_found(admin_endpoint, mock_user_repository):
     # Setup
     user_id = str(uuid.uuid4())
@@ -300,6 +311,7 @@ async def test_assign_user_role_user_not_found(admin_endpoint, mock_user_reposit
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_assign_user_role_database_error(admin_endpoint, mock_user_repository):
     # Setup
     user_id = str(uuid.uuid4())
@@ -326,6 +338,7 @@ async def test_assign_user_role_database_error(admin_endpoint, mock_user_reposit
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_get_user_profile():
     # Setup
     user_id = uuid.uuid4()

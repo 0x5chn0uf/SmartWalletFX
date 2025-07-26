@@ -44,6 +44,7 @@ def refresh_token_repository(mock_database, mock_audit):
     return RefreshTokenRepository(mock_database, mock_audit)
 
 
+@pytest.mark.unit
 def test_refresh_token_repository_constructor_dependencies():
     """Test that RefreshTokenRepository properly accepts dependencies in constructor."""
     # Arrange
@@ -58,6 +59,7 @@ def test_refresh_token_repository_constructor_dependencies():
     assert repository._RefreshTokenRepository__audit == mock_audit
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_save_success(refresh_token_repository, mock_session):
     """Test successful save of refresh token."""
@@ -78,6 +80,7 @@ async def test_save_success(refresh_token_repository, mock_session):
     refresh_token_repository._RefreshTokenRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_save_exception_handling(refresh_token_repository, mock_session):
     """Test exception handling in save method."""
@@ -95,6 +98,7 @@ async def test_save_exception_handling(refresh_token_repository, mock_session):
     refresh_token_repository._RefreshTokenRepository__audit.error.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_jti_hash_found(refresh_token_repository, mock_session):
     """Test getting refresh token by JTI hash when token exists."""
@@ -119,6 +123,7 @@ async def test_get_by_jti_hash_found(refresh_token_repository, mock_session):
     refresh_token_repository._RefreshTokenRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_jti_hash_not_found(refresh_token_repository, mock_session):
     """Test getting refresh token by JTI hash when token doesn't exist."""
@@ -139,6 +144,7 @@ async def test_get_by_jti_hash_not_found(refresh_token_repository, mock_session)
     refresh_token_repository._RefreshTokenRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_jti_hash_exception_handling(
     refresh_token_repository, mock_session
@@ -157,6 +163,7 @@ async def test_get_by_jti_hash_exception_handling(
     refresh_token_repository._RefreshTokenRepository__audit.error.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_revoke_success(refresh_token_repository, mock_session):
     """Test successful revocation of refresh token."""
@@ -180,6 +187,7 @@ async def test_revoke_success(refresh_token_repository, mock_session):
     refresh_token_repository._RefreshTokenRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_revoke_exception_handling(refresh_token_repository, mock_session):
     """Test exception handling in revoke method."""
@@ -197,6 +205,7 @@ async def test_revoke_exception_handling(refresh_token_repository, mock_session)
     refresh_token_repository._RefreshTokenRepository__audit.error.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_delete_expired_success(refresh_token_repository, mock_session):
     """Test successful deletion of expired refresh tokens."""
@@ -217,6 +226,7 @@ async def test_delete_expired_success(refresh_token_repository, mock_session):
     refresh_token_repository._RefreshTokenRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_delete_expired_with_custom_cutoff(
     refresh_token_repository, mock_session
@@ -241,6 +251,7 @@ async def test_delete_expired_with_custom_cutoff(
     refresh_token_repository._RefreshTokenRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_delete_expired_exception_handling(
     refresh_token_repository, mock_session
@@ -257,6 +268,7 @@ async def test_delete_expired_exception_handling(
     refresh_token_repository._RefreshTokenRepository__audit.error.assert_called_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_create_from_jti_success(refresh_token_repository, mock_session):
     """Test successful creation of refresh token from JTI."""
@@ -280,6 +292,7 @@ async def test_create_from_jti_success(refresh_token_repository, mock_session):
     refresh_token_repository._RefreshTokenRepository__audit.info.assert_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_create_from_jti_exception_handling(
     refresh_token_repository, mock_session
@@ -301,6 +314,7 @@ async def test_create_from_jti_exception_handling(
     assert refresh_token_repository._RefreshTokenRepository__audit.error.call_count == 2
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_jti_hash_truncation_in_logging():
     """Test that JTI hash is properly truncated in audit logs."""
@@ -333,6 +347,7 @@ async def test_jti_hash_truncation_in_logging():
             assert len(token.jti_hash[:8]) == 8
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_refresh_token_repository_create_from_jti(
     refresh_token_repository_with_di,
@@ -352,6 +367,7 @@ async def test_refresh_token_repository_create_from_jti(
     assert token.expires_at is not None
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_refresh_token_repository_save(refresh_token_repository_with_di):
     """Test save method."""

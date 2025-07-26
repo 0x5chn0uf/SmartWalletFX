@@ -7,16 +7,19 @@
 
 ## Essential Setup
 
-### 1. Activate Virtual Environment
+### 🚨 PREREQUISITE: Virtual Environment
 
-**ALWAYS run this first** before any backend task:
+**Before running ANY command in this workflow**, ensure you are in the backend directory with the virtual environment activated:
 
 ```bash
-cd backend
-source .venv/bin/activate
+cd backend && source .venv/bin/activate
 ```
 
-### 2. Verify Environment
+This command is safe to run multiple times and should be your first step for any backend work.
+
+**All commands below assume you have already done this setup step.**
+
+### Verify Environment
 
 ```bash
 which python  # Should point to .venv/bin/python
@@ -27,38 +30,55 @@ pip list      # Check installed packages
 
 ## Testing Workflow
 
-### Primary Test Command (use this by default)
+### 🎯 Primary Test Command (TOKEN-EFFICIENT - use this by default)
 
 ```bash
-make test-quiet  # pytest -q --tb=short --color=no tests/
+make test-quiet
 ```
 
-### Single Test Debugging
+**⚠️ IMPORTANT**: Always use `make test-quiet` to minimize token usage. This provides essential test results without verbose output that consumes tokens unnecessarily.
 
-When working on specific failing tests:
+### 🔍 Single Test Debugging (TOKEN-EFFICIENT)
+
+When working on specific failing tests, target exactly what you need:
 
 ```bash
-# By pattern/expression
+# By pattern/expression (most efficient for specific tests)
 pytest -q --tb=short --color=no -k "test_wallet"
 
-# By exact test node
+# By exact test node (pinpoint testing)
 pytest -q --tb=short --color=no tests/test_wallets.py::TestWalletService::test_create_wallet
 
-# Specific test file
+# Specific test file only
 pytest -q --tb=short --color=no tests/test_wallets.py
 ```
 
-### Verbose Output (only when explicitly requested)
+### Additional Token-Saving Options
 
 ```bash
-make test        # Full verbose output
-pytest -v tests/ # Alternative verbose
+# Even more minimal output
+pytest -q --tb=no --no-header tests/
+
+# Fail fast (stop on first failure)
+pytest -q --tb=short --color=no -x tests/
+
+# Show only failures
+pytest -q --tb=short --color=no --lf tests/
 ```
+
+### 📊 Verbose Output (ONLY when debugging specific issues)
+
+```bash
+make test        # Full verbose output - AVOID unless necessary
+pytest -v tests/ # Alternative verbose - AVOID unless necessary
+```
+
+**🚨 WARNING**: Verbose test output consumes significant tokens. Only use when you need detailed debugging information for specific test failures.
 
 ### Coverage Reports
 
 ```bash
-make test-cov    # Generate coverage report
+make test-cov
 ```
 
 ---
@@ -183,14 +203,19 @@ pytest tests/test_database/ -v
 
 Before marking any backend task complete:
 
-- [ ] Virtual environment activated
-- [ ] All tests passing: `make test-quiet`
+- [ ] Virtual environment activated: `cd backend && source .venv/bin/activate`
+- [ ] **All tests passing (TOKEN-EFFICIENT)**: `make test-quiet`
 - [ ] Code properly formatted: `make format`
 - [ ] Linting passes: `make lint`
 - [ ] No security issues: `make bandit`
 - [ ] Changes committed with conventional commit message
 - [ ] Task Master updated: mark task as done
-- [ ] Memory Bank updated: - Archive created: .taskmaster/memory-bank/archive/archive-<task-id>.md - Reflection created: .taskmaster/memory-bank/reflection/reflection-<task-id>.md - Progress & activeContext updated
+- [ ] Memory Bank updated:
+  - Archive created: `.taskmaster/memory-bank/archive/archive-<task-id>.md`
+  - Reflection created: `.taskmaster/memory-bank/reflection/reflection-<task-id>.md`
+  - Progress & activeContext updated
+
+**🎯 TOKEN EFFICIENCY REMINDER**: Always use `make test-quiet` instead of `make test` to conserve tokens during development.
 
 ```
 

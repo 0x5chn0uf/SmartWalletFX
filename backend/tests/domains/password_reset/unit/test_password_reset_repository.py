@@ -36,6 +36,7 @@ def password_reset_repository(mock_database, mock_audit):
     return PasswordResetRepository(mock_database, mock_audit)
 
 
+@pytest.mark.unit
 def test_password_reset_repository_constructor_dependencies():
     """Test that PasswordResetRepository properly accepts dependencies in constructor."""
     # Arrange
@@ -51,6 +52,7 @@ def test_password_reset_repository_constructor_dependencies():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_create_success(password_reset_repository, mock_session):
     """Test successful creation of password reset token."""
     # Arrange
@@ -74,6 +76,7 @@ async def test_create_success(password_reset_repository, mock_session):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_create_exception_handling(password_reset_repository, mock_session):
     """Test exception handling in create method."""
     # Arrange
@@ -92,6 +95,7 @@ async def test_create_exception_handling(password_reset_repository, mock_session
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_get_valid_found(password_reset_repository, mock_session):
     """Test getting a valid password reset token that exists."""
     # Arrange
@@ -119,6 +123,7 @@ async def test_get_valid_found(password_reset_repository, mock_session):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_get_valid_not_found(password_reset_repository, mock_session):
     """Test getting a valid password reset token that doesn't exist."""
     # Arrange
@@ -139,6 +144,7 @@ async def test_get_valid_not_found(password_reset_repository, mock_session):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_get_valid_exception_handling(password_reset_repository, mock_session):
     """Test exception handling in get_valid method."""
     # Arrange
@@ -155,6 +161,7 @@ async def test_get_valid_exception_handling(password_reset_repository, mock_sess
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_mark_used_success(password_reset_repository, mock_session):
     """Test successful marking of password reset token as used."""
     # Arrange
@@ -179,6 +186,7 @@ async def test_mark_used_success(password_reset_repository, mock_session):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_mark_used_exception_handling(password_reset_repository, mock_session):
     """Test exception handling in mark_used method."""
     # Arrange
@@ -196,6 +204,7 @@ async def test_mark_used_exception_handling(password_reset_repository, mock_sess
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_delete_expired_success(password_reset_repository, mock_session):
     """Test successful deletion of expired password reset tokens."""
     # Arrange
@@ -216,6 +225,7 @@ async def test_delete_expired_success(password_reset_repository, mock_session):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_delete_expired_exception_handling(
     password_reset_repository, mock_session
 ):
@@ -232,6 +242,7 @@ async def test_delete_expired_exception_handling(
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_token_hashing_consistency():
     """Test that token hashing is consistent across methods."""
     # Arrange
@@ -263,6 +274,7 @@ async def test_token_hashing_consistency():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_audit_logging_patterns(password_reset_repository, mock_session):
     """Test that audit logging follows consistent patterns."""
     # Arrange
@@ -285,6 +297,7 @@ async def test_audit_logging_patterns(password_reset_repository, mock_session):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_get_valid_query_structure(password_reset_repository, mock_session):
     """Test that get_valid builds the correct SQL query structure."""
     # Arrange
@@ -311,6 +324,7 @@ async def test_get_valid_query_structure(password_reset_repository, mock_session
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_delete_expired_query_structure(password_reset_repository, mock_session):
     """Test that delete_expired builds the correct SQL query structure."""
     # Arrange

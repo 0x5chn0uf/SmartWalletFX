@@ -1,9 +1,12 @@
 import time
 from datetime import datetime, timezone
 
+import pytest
+
 from app.utils.token import generate_token, hash_token
 
 
+@pytest.mark.unit
 def test_generate_token_unique_and_expiry():
     t1, h1, exp1 = generate_token(1)
     time.sleep(0.01)
@@ -15,6 +18,7 @@ def test_generate_token_unique_and_expiry():
     assert (exp2 - exp1).seconds <= 60
 
 
+@pytest.mark.unit
 def test_hash_token_deterministic():
     token = "abc"
     assert hash_token(token) == hash_token(token)

@@ -8,7 +8,7 @@ import pytest
 from fastapi import HTTPException, Request, status
 
 from app.api.endpoints.auth import Auth
-from app.domain.schemas.user import UserCreate, WeakPasswordError
+from app.domain.schemas.user import UserCreate
 from app.models.user import User
 from app.usecase.auth_usecase import DuplicateError
 
@@ -16,6 +16,7 @@ from app.usecase.auth_usecase import DuplicateError
 class TestAuthRegistrationEndpoints:
     """Test auth registration endpoints."""
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_register_user_success(self, auth_endpoint, mock_auth_usecase):
         """Test successful user registration."""
@@ -50,6 +51,7 @@ class TestAuthRegistrationEndpoints:
             )
             mock_audit.info.assert_called()
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_register_user_duplicate_error(
         self, auth_endpoint, mock_auth_usecase
@@ -80,38 +82,28 @@ class TestAuthRegistrationEndpoints:
             )
             mock_audit.error.assert_called_once()
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_register_user_weak_password(self, auth_endpoint, mock_auth_usecase):
-        """Test registration with weak password."""
+        """Test registration with weak password - now handled by Pydantic validation."""
         # Setup
         request = Mock(spec=Request)
         request.client = Mock()
         request.client.host = "127.0.0.1"
 
-        background_tasks = Mock()
+        Mock()
 
-        # Create a valid user payload by mocking the validator
-        with patch(
-            "app.domain.schemas.user.validate_password_strength", return_value=True
-        ):
-            user_payload = UserCreate(
-                username="testuser", email="test@example.com", password="weak"
-            )
+        # With the updated schema, weak passwords are caught at Pydantic validation level
+        # This test now validates that ValidationError is raised during schema creation
+        from pydantic import ValidationError
 
-        # Mock service methods
-        mock_auth_usecase.register.side_effect = WeakPasswordError()
+        with pytest.raises(ValidationError) as excinfo:
+            UserCreate(username="testuser", email="test@example.com", password="weak")
 
-        # Execute and Assert
-        with pytest.raises(HTTPException) as excinfo:
-            await Auth.register_user(
-                request=request,
-                payload=user_payload,
-                background_tasks=background_tasks,
-            )
+        # Ensure the error is related to password strength
+        assert "strength requirements" in str(excinfo.value)
 
-        assert excinfo.value.status_code == status.HTTP_400_BAD_REQUEST
-        assert "Password does not meet strength requirements" in excinfo.value.detail
-
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_register_user_unexpected_error(
         self, auth_endpoint, mock_auth_usecase

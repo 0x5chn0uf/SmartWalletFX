@@ -25,6 +25,7 @@ def setup_mock_session(repository, mock_session):
 # Fixtures are imported from tests.fixtures
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_portfolio_snapshot_repository_crud(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -65,6 +66,7 @@ async def test_portfolio_snapshot_repository_crud(
     assert snapshot.total_borrowings == 500.0
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_portfolio_snapshot_repository_list_by_range(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -93,6 +95,7 @@ async def test_portfolio_snapshot_repository_list_by_range(
     mock_async_session.execute.assert_awaited_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_portfolio_snapshot_repository_get_latest(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -121,6 +124,7 @@ async def test_portfolio_snapshot_repository_get_latest(
     mock_async_session.execute.assert_awaited_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_portfolio_snapshot_repository_delete_old(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -150,6 +154,7 @@ async def test_portfolio_snapshot_repository_delete_old(
     mock_async_session.commit.assert_awaited_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_create_snapshot_success(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -192,6 +197,7 @@ async def test_create_snapshot_success(
     mock_async_session.refresh.assert_awaited_once_with(snapshot)
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_create_snapshot_exception_handling(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -224,6 +230,7 @@ async def test_create_snapshot_exception_handling(
         await portfolio_snapshot_repository_with_di.create_snapshot(snapshot)
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_wallet_address(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -249,6 +256,7 @@ async def test_get_by_wallet_address(
     mock_async_session.execute.assert_awaited_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_by_wallet_address_exception(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -274,6 +282,7 @@ async def test_get_by_wallet_address_exception(
         )
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_snapshots_by_address_and_range_exception(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -296,6 +305,7 @@ async def test_get_snapshots_by_address_and_range_exception(
         )
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_latest_snapshot_by_address_exception(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -316,6 +326,7 @@ async def test_get_latest_snapshot_by_address_exception(
         )
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_delete_snapshot_not_found(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -340,6 +351,7 @@ async def test_delete_snapshot_not_found(
     mock_async_session.commit.assert_not_called()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_delete_snapshot_exception(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -358,6 +370,7 @@ async def test_delete_snapshot_exception(
         await portfolio_snapshot_repository_with_di.delete_snapshot(snapshot_id)
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_cache_success(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -393,6 +406,7 @@ async def test_get_cache_success(
     mock_async_session.execute.assert_awaited_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_cache_not_found(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -425,6 +439,7 @@ async def test_get_cache_not_found(
     mock_async_session.execute.assert_awaited_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_cache_exception(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -450,6 +465,7 @@ async def test_get_cache_exception(
         )
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_set_cache_success(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -490,6 +506,7 @@ async def test_set_cache_success(
     mock_async_session.commit.assert_awaited_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_set_cache_exception(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -516,6 +533,7 @@ async def test_set_cache_exception(
         )
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_timeline_no_interval(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -551,6 +569,7 @@ async def test_get_timeline_no_interval(
     mock_async_session.execute.assert_awaited_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_timeline_daily_interval(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -587,6 +606,7 @@ async def test_get_timeline_daily_interval(
     mock_async_session.execute.assert_awaited_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_timeline_weekly_interval(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -623,6 +643,7 @@ async def test_get_timeline_weekly_interval(
     mock_async_session.execute.assert_awaited_once()
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_timeline_invalid_interval(
     portfolio_snapshot_repository_with_di, mock_async_session
@@ -651,6 +672,7 @@ async def test_get_timeline_invalid_interval(
         )
 
 
+@pytest.mark.unit
 @pytest.mark.asyncio
 async def test_get_timeline_exception(
     portfolio_snapshot_repository_with_di, mock_async_session

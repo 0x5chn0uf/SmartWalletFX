@@ -127,7 +127,7 @@ async def get_redis() -> AsyncGenerator["Redis", None]:  # type: ignore[name-def
         try:
             await client.close()
         except Exception:  # noqa: BLE001 – ignore shutdown errors
-            pass
+            pass  # nosec B110 – best-effort shutdown cleanup
 
 
 # ---------------------------------------------------------------------------

@@ -55,8 +55,18 @@ class CoreErrorHandling:
     ) -> JSONResponse:
         """Handle validation exceptions."""
         trace_id = self._get_trace_id(request)
+
+        # Check if this is a password strength validation error
+        detail = "Invalid request payload"
+        for error in exc.errors():
+            if error.get("loc") == ("password",) and "strength requirements" in str(
+                error.get("msg", "")
+            ):
+                detail = "Password does not meet strength requirements"
+                break
+
         payload = ErrorResponse(
-            detail="Invalid request payload",
+            detail=detail,
             code="VALIDATION_ERROR",
             status_code=422,
             trace_id=trace_id,

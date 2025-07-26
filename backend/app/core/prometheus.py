@@ -66,7 +66,7 @@ def generate_metrics() -> tuple[bytes, str]:
     return generate_latest(_REGISTRY), CONTENT_TYPE_LATEST
 
 
-def start_metrics_server(port: int = 8000, addr: str = "0.0.0.0") -> None:
+def start_metrics_server(port: int = 8000, addr: str = "0.0.0.0"):  # nosec B104
     """Start the Prometheus metrics HTTP server.
 
     Args:

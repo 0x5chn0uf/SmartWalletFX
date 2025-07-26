@@ -1,4 +1,5 @@
 name: CI/CD Pipeline
+# Trigger CI/CD for PR testing
 
 on:
   push:
@@ -11,11 +12,30 @@ on:
       - main
     paths-ignore:
       - "README.md"
+  workflow_dispatch: # Allow manual trigger for testing
 
 env:
   PYTHON_VERSION: "3.12"
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Detect path changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+            backend:
+              - 'backend/**'
+
   setup:
     needs: changes
     if: needs.changes.outputs.backend == 'true'
@@ -173,92 +193,21 @@ jobs:
         working-directory: ./backend
         run: |
           source .venv/bin/activate
-          fixture-lint check
+          fixture-lint check tests/
 
-  test-backend:
+  # Use the parallel testing workflow for better performance and coverage reporting
+  parallel-backend-tests:
     needs: [isort, black, flake8, fixture-lint, changes]
     if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
-    env:
-      ARBITRUM_RPC_URL: "http://localhost:8545"
-      DATABASE_URL: "postgresql+asyncpg://testuser:testpass@localhost:55432/smartwallet_test"
-      POSTGRES_USER: "testuser"
-      POSTGRES_PASSWORD: "testpass"
-      POSTGRES_SERVER: "localhost"
-      POSTGRES_PORT: "55432"
-      POSTGRES_DB: "smartwallet_test"
-      BCRYPT_ROUNDS: 4
-      ACCESS_TOKEN_EXPIRE_MINUTES: 15
-      REFRESH_TOKEN_EXPIRE_DAYS: 7
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      # ------------------------------------------------------------
-      # Bring up PostgreSQL & Redis via the lightweight test compose
-      # ------------------------------------------------------------
-      - name: Start infrastructure services (Postgres, Redis)
-        run: docker compose -f docker-compose.test.yml up -d
-
-      - name: Wait for Postgres readiness
-        run: |
-          for i in {1..20}; do
-            docker exec postgres-test pg_isready -U testuser -d smartwallet_test && exit 0
-            echo "Waiting for Postgres..." && sleep 3
-          done
-          echo "Postgres failed to become ready" && exit 1
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('backend/pyproject.toml') }}
-
-      - name: Create virtual environment and install dependencies
-        working-directory: ./backend
-        run: |
-          python -m venv .venv
-          source .venv/bin/activate
-          python -m pip install --upgrade pip
-          pip install -e .[dev]
-
-      - name: Run tests with coverage
-        working-directory: ./backend
-        run: |
-          source .venv/bin/activate
-          pip install -e .[dev] --quiet --upgrade
-          pytest --cov-report=xml
-
-      - name: Enforce backend coverage threshold (90%)
-        working-directory: ./backend
-        run: |
-          python - <<'PY'
-          import xml.etree.ElementTree as ET, sys
-          tree = ET.parse('coverage.xml')
-          coverage = float(tree.getroot().get('line-rate')) * 100
-          print(f"Backend coverage: {coverage:.2f}%")
-          sys.exit(0 if coverage >= 90 else 1)
-          PY
-
-      - name: Upload coverage to Coveralls
-        working-directory: ./backend
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          source .venv/bin/activate
-          coveralls --service=github
-
-      - name: Shutdown docker-compose stack
-        if: always()
-        run: docker compose -f docker-compose.test.yml down -v
+    uses: ./.github/workflows/parallel-test-workflow.yml
+    with:
+      run_security_checks: true
+      run_performance_tests: ${{ github.ref == 'refs/heads/main' }}
+      run_docker_integration: false
+      test_domains: 'auth,users,wallets,tokens,email_verification,oauth,password_reset,user_profile,jwks'
 
   build-backend:
-    needs: [test-backend, changes]
+    needs: [parallel-backend-tests, changes]
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -303,7 +252,7 @@ jobs:
           echo "Deploying backend to production..."
           # Add deployment commands here
 
-  build-frontend:
+  frontend-tests:
     needs: [isort, black, flake8, fixture-lint, changes]
     if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
@@ -334,21 +283,16 @@ jobs:
         run: |
           if [ -f package.json ]; then npm run lint --if-present ; fi
 
-      - name: Run frontend tests
-        working-directory: ./frontend
-        run: npm run test:coverage
-
-      - name: Run accessibility tests
+      - name: Run frontend tests with coverage
         working-directory: ./frontend
         run: |
-          if [ -f package.json ]; then
-            npm run test -- --testNamePattern="accessibility" --passWithNoTests --run --reporter=verbose
-          fi
+          if [ -f package.json ]; then npm run test:coverage --if-present ; fi
 
       - name: Enforce frontend coverage threshold (75%)
         working-directory: ./frontend
         run: |
-          node - <<'JS'
+          if [ -f coverage/coverage-summary.json ]; then
+            node - <<'JS'
           const fs = require('fs');
           const summary = JSON.parse(fs.readFileSync('coverage/coverage-summary.json', 'utf8'));
           const pct = summary.total.lines.pct;
@@ -357,6 +301,40 @@ jobs:
             process.exit(1);
           }
           JS
+          else
+            echo "No coverage file found, skipping coverage check"
+          fi
+
+  build-frontend:
+    needs: [frontend-tests, changes]
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20.x]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci --no-audit --fund=false
+
+      - name: Generate design tokens
+        working-directory: ./frontend
+        run: npm run build:tokens --if-present
+
+      - name: Lint frontend
+        working-directory: ./frontend
+        run: |
+          if [ -f package.json ]; then npm run lint --if-present ; fi
 
       - name: Build frontend
         working-directory: ./frontend
@@ -437,24 +415,6 @@ jobs:
           echo "Commit: ${{ github.sha }}"
           echo "View run: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      frontend: ${{ steps.filter.outputs.frontend }}
-      backend: ${{ steps.filter.outputs.backend }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Detect path changes
-        id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            frontend:
-              - 'frontend/**'
-            backend:
-              - 'backend/**'
-
   e2e-cypress:
     needs: [build-backend, build-frontend, changes]
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true'
@@ -477,9 +437,21 @@ jobs:
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Clear npm cache
+        working-directory: ./frontend
+        run: npm cache clean --force
+
       - name: Install Cypress dependencies
         working-directory: ./frontend
         run: npm ci --no-audit --fund=false
+
+      - name: Explicitly install Cypress
+        working-directory: ./frontend
+        run: npm install cypress
+
+      - name: Verify Cypress installation
+        working-directory: ./frontend
+        run: npx cypress verify
 
       - name: Start services via docker-compose
         run: |

@@ -19,6 +19,7 @@ def password_hasher():
         "Another$Tr0ngP@ss",
     ],
 )
+@pytest.mark.unit
 def test_hash_and_verify(password_hasher, password: str):
     hashed = password_hasher.hash_password(password)
     # Hash must differ from plaintext
@@ -39,6 +40,7 @@ def test_hash_and_verify(password_hasher, password: str):
         )
     )
 )
+@pytest.mark.unit
 def test_round_trip_random(password: str):
     password_hasher = PasswordHasher(Configuration())
     hashed = password_hasher.hash_password(password)

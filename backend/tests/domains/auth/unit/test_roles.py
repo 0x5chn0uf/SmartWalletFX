@@ -23,6 +23,7 @@ from app.domain.schemas.auth_roles import RoleAssignment, UserAttributes
 class TestUserRole:
     """Test user role enumeration and validation."""
 
+    @pytest.mark.unit
     def test_user_role_enum_values(self):
         """Test that all expected user roles are defined."""
         expected_roles = ["admin", "trader", "fund_manager", "individual_investor"]
@@ -32,6 +33,7 @@ class TestUserRole:
             role = getattr(UserRole, role_name.upper())
             assert role.value == role_name
 
+    @pytest.mark.unit
     def test_user_role_validation(self):
         """Test that invalid roles are rejected."""
         with pytest.raises(ValueError):
@@ -41,6 +43,7 @@ class TestUserRole:
 class TestPermission:
     """Test permission definitions and validation."""
 
+    @pytest.mark.unit
     def test_permission_enum_values(self):
         """Test that all expected permissions are defined."""
         expected_permissions = [
@@ -58,6 +61,7 @@ class TestPermission:
         for perm_name in expected_permissions:
             assert hasattr(Permission, perm_name.upper().replace(":", "_"))
 
+    @pytest.mark.unit
     def test_permission_validation(self):
         """Test that invalid permissions are rejected."""
         with pytest.raises(ValueError):
@@ -67,6 +71,7 @@ class TestPermission:
 class TestRoleAssignment:
     """Test role assignment schema validation."""
 
+    @pytest.mark.unit
     def test_valid_role_assignment(self):
         """Test creating a valid role assignment."""
         assignment = RoleAssignment(
@@ -81,6 +86,7 @@ class TestRoleAssignment:
         assert assignment.attributes["wallet_count"] == 5
         assert assignment.attributes["subscription_tier"] == "premium"
 
+    @pytest.mark.unit
     def test_invalid_role_assignment(self):
         """Test that invalid roles are rejected in assignment."""
         with pytest.raises(ValueError):
@@ -90,6 +96,7 @@ class TestRoleAssignment:
 class TestUserAttributes:
     """Test user attributes schema validation."""
 
+    @pytest.mark.unit
     def test_valid_user_attributes(self):
         """Test creating valid user attributes."""
         attributes = UserAttributes(
@@ -104,6 +111,7 @@ class TestUserAttributes:
         assert attributes.subscription_tier == "premium"
         assert "aave" in attributes.defi_positions
 
+    @pytest.mark.unit
     def test_optional_attributes(self):
         """Test that optional attributes can be omitted."""
         attributes = UserAttributes(wallet_count=1, portfolio_value=1000.0)
@@ -117,6 +125,7 @@ class TestUserAttributes:
 class TestRequireRoles:
     """Test role-based access control dependencies."""
 
+    @pytest.mark.unit
     def test_require_roles_success(self):
         """Test successful role check."""
         # Mock request with JWT payload containing required roles
@@ -130,6 +139,7 @@ class TestRequireRoles:
         result = role_dep(mock_request)
         assert result == mock_request
 
+    @pytest.mark.unit
     def test_require_roles_failure(self):
         """Test role check failure."""
         # Mock request with JWT payload without required roles
@@ -146,6 +156,7 @@ class TestRequireRoles:
         assert exc_info.value.status_code == 403
         assert "Access denied" in exc_info.value.detail
 
+    @pytest.mark.unit
     def test_require_roles_multiple(self):
         """Test role check with multiple required roles (OR logic)."""
         # Mock request with JWT payload containing one of multiple required roles
@@ -163,6 +174,7 @@ class TestRequireRoles:
 class TestRequireAttributes:
     """Test attribute-based access control dependencies."""
 
+    @pytest.mark.unit
     def test_require_attributes_success(self):
         """Test successful attribute check."""
         # Mock request with JWT payload containing required attributes
@@ -184,6 +196,7 @@ class TestRequireAttributes:
         result = attr_dep(mock_request)
         assert result == mock_request
 
+    @pytest.mark.unit
     def test_require_attributes_failure(self):
         """Test attribute check failure."""
         # Mock request with JWT payload without required attributes
@@ -202,6 +215,7 @@ class TestRequireAttributes:
         assert exc_info.value.status_code == 403
         assert "Access denied" in exc_info.value.detail
 
+    @pytest.mark.unit
     def test_require_attributes_complex(self):
         """Test complex attribute requirements."""
         # Mock request with JWT payload containing various attributes
@@ -232,6 +246,7 @@ class TestRequireAttributes:
 class TestRequirePermission:
     """Test permission-based access control dependencies."""
 
+    @pytest.mark.unit
     def test_require_permission_success(self):
         """Test successful permission check."""
         # Mock request with JWT payload containing trader role (has wallet:read permission)
@@ -245,6 +260,7 @@ class TestRequirePermission:
         result = perm_dep(mock_request)
         assert result == mock_request
 
+    @pytest.mark.unit
     def test_require_permission_failure(self):
         """Test permission check failure."""
         # Mock request with JWT payload containing individual_investor role (no admin permissions)

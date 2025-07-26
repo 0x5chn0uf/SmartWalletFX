@@ -6,6 +6,7 @@ from app.utils.redis_lock import acquire_lock
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_acquire_lock_successfully():
     """
     Tests that the lock can be acquired successfully when it's not already held.
@@ -21,6 +22,7 @@ async def test_acquire_lock_successfully():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_acquire_lock_fails_when_already_held():
     """
     Tests that acquiring a lock fails if it is already held by another process.
@@ -36,6 +38,7 @@ async def test_acquire_lock_fails_when_already_held():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_acquire_lock_cleanup_on_success():
     """Lock deletion is attempted when acquired."""
     mock_redis = AsyncMock()
@@ -49,6 +52,7 @@ async def test_acquire_lock_cleanup_on_success():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_acquire_lock_no_cleanup_when_not_acquired():
     """No delete call when the lock was not obtained."""
     mock_redis = AsyncMock()
@@ -61,6 +65,7 @@ async def test_acquire_lock_no_cleanup_when_not_acquired():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_acquire_lock_delete_error_propagates():
     """Exceptions during cleanup bubble up."""
     mock_redis = AsyncMock()
@@ -73,6 +78,7 @@ async def test_acquire_lock_delete_error_propagates():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_acquire_lock_set_error_propagates():
     """Errors acquiring the lock abort the context manager."""
     mock_redis = AsyncMock()

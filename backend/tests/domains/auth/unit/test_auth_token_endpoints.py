@@ -13,6 +13,7 @@ from app.domain.schemas.auth_token import TokenResponse
 class TestAuthTokenEndpoints:
     """Test auth token endpoints."""
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_refresh_access_token_with_payload(
         self, auth_endpoint, mock_auth_usecase
@@ -51,6 +52,7 @@ class TestAuthTokenEndpoints:
             mock_auth_usecase.refresh.assert_awaited_once_with("valid_refresh_token")
             mock_audit.info.assert_called()
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_refresh_access_token_with_cookie(
         self, auth_endpoint, mock_auth_usecase
@@ -88,6 +90,7 @@ class TestAuthTokenEndpoints:
             mock_auth_usecase.refresh.assert_awaited_once_with("cookie_refresh_token")
             mock_audit.info.assert_called()
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_refresh_access_token_no_token(
         self, auth_endpoint, mock_auth_usecase
@@ -114,6 +117,7 @@ class TestAuthTokenEndpoints:
             assert "Refresh token not provided" in excinfo.value.detail
             mock_audit.warning.assert_called()
 
+    @pytest.mark.unit
     @pytest.mark.asyncio
     async def test_refresh_access_token_invalid_token(
         self, auth_endpoint, mock_auth_usecase

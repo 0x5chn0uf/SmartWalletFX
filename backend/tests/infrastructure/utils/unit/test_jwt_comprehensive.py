@@ -43,6 +43,7 @@ class TestJWTUtils:
         _RETIRED_KEYS.clear()
         # LRU caches were removed from JWT methods
 
+    @pytest.mark.unit
     def test_get_sign_key_hs256_with_keys(self, mock_config):
         """Test _get_sign_key with HS256 and JWT_KEYS configured."""
         mock_config.JWT_ALGORITHM = "HS256"
@@ -53,6 +54,7 @@ class TestJWTUtils:
         result = jwt_utils._get_sign_key()
         assert result == "secret1"
 
+    @pytest.mark.unit
     def test_get_sign_key_hs256_without_keys(self, mock_config):
         """Test _get_sign_key with HS256 and no JWT_KEYS."""
         mock_config.JWT_ALGORITHM = "HS256"
@@ -63,6 +65,7 @@ class TestJWTUtils:
         result = jwt_utils._get_sign_key()
         assert result == "fallback_secret"
 
+    @pytest.mark.unit
     def test_get_sign_key_hs256_missing_active_kid(self, mock_config):
         """Test _get_sign_key with missing ACTIVE_JWT_KID."""
         mock_config.JWT_ALGORITHM = "HS256"
@@ -73,6 +76,7 @@ class TestJWTUtils:
         with pytest.raises(RuntimeError, match="ACTIVE_JWT_KID not found"):
             jwt_utils._get_sign_key()
 
+    @pytest.mark.unit
     def test_get_sign_key_hs256_missing_secret(self, mock_config):
         """Test _get_sign_key with missing JWT_SECRET_KEY."""
         mock_config.JWT_ALGORITHM = "HS256"
@@ -84,6 +88,7 @@ class TestJWTUtils:
             jwt_utils._get_sign_key()
 
     @patch("builtins.open", new_callable=mock_open, read_data="private_key_content")
+    @pytest.mark.unit
     def test_get_sign_key_rs256(self, mock_file, mock_config):
         """Test _get_sign_key with RS256 algorithm."""
         mock_config.JWT_ALGORITHM = "RS256"
@@ -94,6 +99,7 @@ class TestJWTUtils:
         assert result == "private_key_content"
         mock_file.assert_called_once_with("/path/to/private.key", "r", encoding="utf-8")
 
+    @pytest.mark.unit
     def test_get_sign_key_rs256_missing_private_key_path(self, mock_config):
         """Test _get_sign_key with RS256 and missing private key path."""
         mock_config.JWT_ALGORITHM = "RS256"
@@ -103,6 +109,7 @@ class TestJWTUtils:
         with pytest.raises(RuntimeError, match="JWT_PRIVATE_KEY_PATH must be set"):
             jwt_utils._get_sign_key()
 
+    @pytest.mark.unit
     def test_get_sign_key_unsupported_algorithm(self, mock_config):
         """Test _get_sign_key with unsupported algorithm."""
         mock_config.JWT_ALGORITHM = "ES256"
@@ -111,6 +118,7 @@ class TestJWTUtils:
         with pytest.raises(RuntimeError, match="Unsupported JWT_ALGORITHM"):
             jwt_utils._get_sign_key()
 
+    @pytest.mark.unit
     def test_get_verify_key_hs256_with_keys(self, mock_config):
         """Test _get_verify_key with HS256 and JWT_KEYS."""
         mock_config.JWT_ALGORITHM = "HS256"
@@ -121,6 +129,7 @@ class TestJWTUtils:
         result = jwt_utils._get_verify_key()
         assert result == "secret1"
 
+    @pytest.mark.unit
     def test_get_verify_key_hs256_fallback_to_first_key(self, mock_config):
         """Test _get_verify_key falls back to first key when active KID not found."""
         mock_config.JWT_ALGORITHM = "HS256"
@@ -131,6 +140,7 @@ class TestJWTUtils:
         result = jwt_utils._get_verify_key()
         assert result == "secret1"  # First key in dict
 
+    @pytest.mark.unit
     def test_get_verify_key_hs256_fallback_to_signing_key(self, mock_config):
         """Test _get_verify_key falls back to signing key when no JWT_KEYS."""
         mock_config.JWT_ALGORITHM = "HS256"
@@ -142,6 +152,7 @@ class TestJWTUtils:
         assert result == "fallback_secret"
 
     @patch("builtins.open", new_callable=mock_open, read_data="public_key_content")
+    @pytest.mark.unit
     def test_get_verify_key_rs256(self, mock_file, mock_config):
         """Test _get_verify_key with RS256 algorithm."""
         mock_config.JWT_ALGORITHM = "RS256"
@@ -152,6 +163,7 @@ class TestJWTUtils:
         assert result == "public_key_content"
         mock_file.assert_called_once_with("/path/to/public.key", "r", encoding="utf-8")
 
+    @pytest.mark.unit
     def test_get_verify_key_rs256_missing_public_key_path(self, mock_config):
         """Test _get_verify_key with RS256 and missing public key path."""
         mock_config.JWT_ALGORITHM = "RS256"
@@ -161,6 +173,7 @@ class TestJWTUtils:
         with pytest.raises(RuntimeError, match="JWT_PUBLIC_KEY_PATH must be set"):
             jwt_utils._get_verify_key()
 
+    @pytest.mark.unit
     def test_get_verify_key_unsupported_algorithm(self, mock_config):
         """Test _get_verify_key with unsupported algorithm."""
         mock_config.JWT_ALGORITHM = "ES256"
@@ -170,6 +183,7 @@ class TestJWTUtils:
             jwt_utils._get_verify_key()
 
     @patch("app.utils.jwt.jwt.encode")
+    @pytest.mark.unit
     def test_create_access_token_success(self, mock_encode, mock_config):
         """Test successful access token creation."""
         mock_config.JWT_ALGORITHM = "HS256"
@@ -189,6 +203,7 @@ class TestJWTUtils:
         assert call_args[1]["headers"] == {"kid": "kid1"}
 
     @patch("app.utils.jwt.jwt.encode")
+    @pytest.mark.unit
     def test_create_access_token_with_additional_claims(self, mock_encode, mock_config):
         """Test access token creation with additional claims."""
         mock_config.JWT_ALGORITHM = "HS256"
@@ -210,6 +225,7 @@ class TestJWTUtils:
         assert payload["permissions"] == ["read", "write"]
 
     @patch("app.utils.jwt.jwt.encode")
+    @pytest.mark.unit
     def test_create_access_token_with_custom_expiry(self, mock_encode, mock_config):
         """Test access token creation with custom expiry."""
         mock_config.JWT_ALGORITHM = "HS256"
@@ -229,6 +245,7 @@ class TestJWTUtils:
         assert "iat" in payload
 
     @patch("app.utils.jwt.jwt.encode")
+    @pytest.mark.unit
     def test_create_access_token_retry_with_alt_key_representation(
         self, mock_encode, mock_config
     ):
@@ -248,6 +265,7 @@ class TestJWTUtils:
         assert mock_encode.call_count == 2
 
     @patch("app.utils.jwt.jwt.encode")
+    @pytest.mark.unit
     def test_create_refresh_token_success(self, mock_encode, mock_config):
         """Test successful refresh token creation."""
         mock_config.JWT_ALGORITHM = "HS256"
@@ -268,6 +286,7 @@ class TestJWTUtils:
 
     @patch("app.utils.jwt.jwt.decode")
     @patch("app.utils.jwt.jwt.get_unverified_header")
+    @pytest.mark.unit
     def test_decode_token_success(self, mock_get_header, mock_decode, mock_config):
         """Test successful token decoding."""
         mock_config.JWT_ALGORITHM = "HS256"
@@ -298,6 +317,7 @@ class TestJWTUtils:
 
     @patch("app.utils.jwt.jwt.decode")
     @patch("app.utils.jwt.jwt.get_unverified_header")
+    @pytest.mark.unit
     def test_decode_token_expired_signature(
         self, mock_get_header, mock_decode, mock_config
     ):
@@ -313,6 +333,7 @@ class TestJWTUtils:
 
     @patch("app.utils.jwt.jwt.decode")
     @patch("app.utils.jwt.jwt.get_unverified_header")
+    @pytest.mark.unit
     def test_decode_token_jwt_error(self, mock_get_header, mock_decode, mock_config):
         """Test token decoding with JWT error."""
         mock_config.JWT_ALGORITHM = "HS256"
@@ -327,6 +348,7 @@ class TestJWTUtils:
     @patch("app.utils.jwt.jwt.decode")
     @patch("app.utils.jwt.jwt.get_unverified_header")
     @patch("app.utils.jwt._now_utc")
+    @pytest.mark.unit
     def test_decode_token_with_retired_keys(
         self, mock_now_utc, mock_get_header, mock_decode, mock_config
     ):
@@ -350,6 +372,7 @@ class TestJWTUtils:
     @patch("app.utils.jwt.jwt.encode")
     @patch("app.utils.jwt.jwt.decode")
     @patch("app.utils.jwt.jwt.get_unverified_header")
+    @pytest.mark.unit
     def test_decode_token_with_jwk_error_and_retry(
         self, mock_get_header, mock_decode, mock_encode, mock_config
     ):
@@ -387,6 +410,7 @@ class TestJWTUtils:
 
     @patch("app.utils.jwt.jwt.decode")
     @patch("app.utils.jwt.jwt.get_unverified_header")
+    @pytest.mark.unit
     def test_decode_token_all_keys_fail(
         self, mock_get_header, mock_decode, mock_config
     ):
@@ -404,6 +428,7 @@ class TestJWTUtils:
     @patch("app.utils.jwt.jwt.encode")
     @patch("app.utils.jwt.jwt.decode")
     @patch("app.utils.jwt.jwt.get_unverified_header")
+    @pytest.mark.unit
     def test_decode_token_signature_verification_failure(
         self, mock_get_header, mock_decode, mock_encode, mock_config
     ):
@@ -435,6 +460,7 @@ class TestJWTUtils:
 
     @patch("app.utils.jwt.jwt.decode")
     @patch("app.utils.jwt.jwt.get_unverified_header")
+    @pytest.mark.unit
     def test_decode_token_missing_sub_claim(
         self, mock_get_header, mock_decode, mock_config
     ):
@@ -460,6 +486,7 @@ class TestJWTUtils:
 
     @patch("app.utils.jwt.jwt.decode")
     @patch("app.utils.jwt.jwt.get_unverified_header")
+    @pytest.mark.unit
     def test_decode_token_empty_sub_claim(
         self, mock_get_header, mock_decode, mock_config
     ):
@@ -487,6 +514,7 @@ class TestJWTUtils:
     @patch("app.utils.jwt.jwt.encode")
     @patch("app.utils.jwt.jwt.decode")
     @patch("app.utils.jwt.jwt.get_unverified_header")
+    @pytest.mark.unit
     def test_decode_token_fallback_to_default_key(
         self, mock_get_header, mock_decode, mock_encode, mock_config
     ):
@@ -520,6 +548,7 @@ class TestJWTUtils:
         assert result["jti"] == "token123"
         assert result["exp"] == now + 3600
 
+    @pytest.mark.unit
     def test_load_key_success(self, mock_config):
         """Test loading a key from file."""
         with patch("builtins.open", mock_open(read_data="key_content")):
@@ -527,14 +556,17 @@ class TestJWTUtils:
             result = jwt_utils._load_key("key_path")
             assert result == "key_content"
 
+    @pytest.mark.unit
     def test_to_text_with_string(self):
         """Test _to_text with string input."""
         assert _to_text("test_string") == "test_string"
 
+    @pytest.mark.unit
     def test_to_text_with_bytes(self):
         """Test _to_text with bytes input."""
         assert _to_text(b"test_bytes") == "test_bytes"
 
+    @pytest.mark.unit
     def test_now_utc(self):
         """Test _now_utc returns datetime in UTC timezone."""
         result = _now_utc()
@@ -550,6 +582,7 @@ class TestRotateSigningKey:
         _RETIRED_KEYS.clear()
 
     @patch("app.utils.logging.Audit.info")
+    @pytest.mark.unit
     def test_rotate_signing_key_new_key(self, mock_audit, mock_config):
         """Test rotating to a new signing key."""
         mock_config.JWT_KEYS = {"old_kid": "old_secret"}
@@ -568,6 +601,7 @@ class TestRotateSigningKey:
         mock_audit.assert_called_once()
 
     @patch("app.utils.logging.Audit.info")
+    @pytest.mark.unit
     def test_rotate_signing_key_same_key(self, mock_audit, mock_config):
         """Test rotating to the same key ID."""
         mock_config.JWT_KEYS = {"kid1": "old_secret"}
@@ -582,6 +616,7 @@ class TestRotateSigningKey:
         mock_audit.assert_called_once()
 
     @patch("app.utils.logging.Audit.info")
+    @pytest.mark.unit
     def test_rotate_signing_key_no_existing_keys(self, mock_audit, mock_config):
         """Test rotating when no existing keys."""
         mock_config.JWT_KEYS = None
@@ -596,6 +631,7 @@ class TestRotateSigningKey:
         mock_audit.assert_called_once()
 
     @patch("app.utils.logging.Audit.info")
+    @pytest.mark.unit
     def test_rotate_signing_key_old_key_not_in_keys(self, mock_audit, mock_config):
         """Test rotating when old key not in keys."""
         mock_config.JWT_KEYS = {"kid1": "secret1"}

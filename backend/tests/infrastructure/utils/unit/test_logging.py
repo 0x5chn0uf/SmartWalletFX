@@ -19,6 +19,7 @@ from app.utils.audit import AuditValidationError
 from app.utils.logging import Audit
 
 
+@pytest.mark.unit
 def test_audit_logging_includes_trace_id(monkeypatch):
     """Ensure audit() attaches trace_id from structlog contextvars when present."""
 
@@ -57,6 +58,7 @@ def test_audit_logging_includes_trace_id(monkeypatch):
 
 
 class TestStructuredAuditLogging:
+    @pytest.mark.unit
     def test_log_structured_audit_event_basic(self, caplog):
         """Test basic structured audit logging."""
         event = AuditEventBase(
@@ -77,6 +79,7 @@ class TestStructuredAuditLogging:
             assert payload["action"] == "test_event"
             assert "timestamp" in payload
 
+    @pytest.mark.unit
     def test_log_structured_audit_event_with_trace_id(self, caplog):
         """Test structured audit logging with trace ID from context."""
         # Set up trace ID in context
@@ -103,6 +106,7 @@ class TestStructuredAuditLogging:
         finally:
             clear_contextvars()
 
+    @pytest.mark.unit
     def test_log_structured_audit_event_validation_failure(self, caplog):
         """Test handling of validation failures in structured audit logging."""
         caplog.set_level(logging.INFO, logger="audit")
@@ -118,6 +122,7 @@ class TestStructuredAuditLogging:
 
 
 class TestAuditLogging:
+    @pytest.mark.unit
     def test_audit_basic(self, caplog):
         """Test basic audit logging."""
         # Mock the audit logger's info method to capture what gets logged
@@ -135,6 +140,7 @@ class TestAuditLogging:
             assert payload["action_type"] == "login"
             # No "id" or "timestamp" keys expected in logged JSON
 
+    @pytest.mark.unit
     def test_audit_with_trace_id(self, caplog):
         """Test audit logging with trace ID from context."""
         # Set up trace ID in context
@@ -157,6 +163,7 @@ class TestAuditLogging:
         finally:
             clear_contextvars()
 
+    @pytest.mark.unit
     def test_audit_with_validation_failure(self, caplog, monkeypatch):
         """Test handling of validation failures in audit logging."""
         mock_validate = Mock(side_effect=AuditValidationError("Test validation error"))
@@ -167,6 +174,7 @@ class TestAuditLogging:
             Audit.info("test_event")
 
     @patch("structlog.contextvars.get_contextvars")
+    @pytest.mark.unit
     def test_audit_with_context_error(self, mock_get_contextvars, caplog):
         """Test audit logging when context access fails."""
         mock_get_contextvars.side_effect = Exception("Context error")

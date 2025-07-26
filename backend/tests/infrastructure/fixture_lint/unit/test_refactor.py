@@ -1,10 +1,13 @@
 from pathlib import Path
 
+import pytest
+
 from tools.fixture_lint.duplication import find_duplicates
 from tools.fixture_lint.parser import parse_paths
 from tools.fixture_lint.refactor import apply_deduplication
 
 
+@pytest.mark.unit
 def test_apply_deduplication(tmp_path: Path) -> None:
     file_a = tmp_path / "test_a.py"
     file_a.write_text(

@@ -6,6 +6,10 @@ import pytest
 from fastapi import FastAPI
 
 from app.domain.schemas.user import UserCreate
+from app.utils.rate_limiter import login_rate_limiter
+from tests.shared.utils.safe_client import safe_post
+
+pytestmark = pytest.mark.integration
 
 
 @pytest.mark.asyncio
@@ -61,7 +65,7 @@ async def test_obtain_token_bad_credentials(
 
     async with httpx.AsyncClient(
         app=test_app_with_di_container, base_url="http://test"
-    ) as client:
+    ):
         # Register user using auth usecase
         user_data = UserCreate(username=username, email=email, password=password)
         user = await auth_usecase.register(user_data)
@@ -70,7 +74,8 @@ async def test_obtain_token_bad_credentials(
         user.email_verified = True
         await user_repo.save(user)
 
-        res = await client.post(
+        res = await safe_post(
+            test_app_with_di_container,
             "/auth/token",
             data={"username": username, "password": "wrongpass"},
             headers={"Content-Type": "application/x-www-form-urlencoded"},
