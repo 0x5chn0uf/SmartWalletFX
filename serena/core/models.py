@@ -8,7 +8,115 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
+from sqlalchemy import (
+    REAL,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    LargeBinary,
+    String,
+    Text,
+    func,
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
+
+# SQLAlchemy Base and Models
+class Base(DeclarativeBase):
+    """Base class for all SQLAlchemy models."""
+
+    pass
+
+
+class Archive(Base):
+    """Archive model for storing task memories."""
+
+    __tablename__ = "archives"
+
+    task_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    filepath: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    kind: Mapped[str] = mapped_column(
+        String(20), 
+        nullable=False,
+        default="archive"
+    )
+    status: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    embedding_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=func.now(), onupdate=func.now()
+    )
+    embedding_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    last_embedded_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Relationships
+    embeddings: Mapped[list["Embedding"]] = relationship(
+        "Embedding", back_populates="archive", cascade="all, delete-orphan"
+    )
+
+    # Constraints
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('archive', 'reflection', 'doc', 'rule', 'code')",
+            name="ck_archives_kind"
+        ),
+    )
+
+
+class Embedding(Base):
+    """Embedding model for storing vector embeddings."""
+
+    __tablename__ = "embeddings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    task_id: Mapped[str] = mapped_column(
+        String(255), ForeignKey("archives.task_id"), nullable=False
+    )
+    chunk_id: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    vector: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+
+    # Relationships
+    archive: Mapped["Archive"] = relationship("Archive", back_populates="embeddings")
+
+
+class MaintenanceLog(Base):
+    """Maintenance log model for tracking database operations."""
+
+    __tablename__ = "maintenance_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    operation: Mapped[str] = mapped_column(String(20), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=func.now()
+    )
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    duration_seconds: Mapped[Optional[float]] = mapped_column(REAL, nullable=True)
+    success: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    db_size_before_mb: Mapped[Optional[float]] = mapped_column(REAL, nullable=True)
+    db_size_after_mb: Mapped[Optional[float]] = mapped_column(REAL, nullable=True)
+    space_saved_bytes: Mapped[int] = mapped_column(Integer, nullable=True, default=0)
+
+    # Constraints
+    __table_args__ = (
+        CheckConstraint(
+            "operation IN ('checkpoint', 'vacuum', 'health_check')",
+            name="ck_maintenance_log_operation"
+        ),
+    )
+
+
+# Legacy Enums and Dataclasses (kept for compatibility)
 class TaskKind(Enum):
     """Types of tasks/documents in the memory bridge."""
 
@@ -288,6 +396,11 @@ def generate_summary(content: str, max_length: int = 400) -> str:
 
 # Re-export public names for * import convenience inside the package
 __all__ = [
+    # SQLAlchemy Models
+    "Base",
+    "Archive", 
+    "Embedding",
+    "MaintenanceLog",
     # Enums
     "TaskKind",
     "TaskStatus",

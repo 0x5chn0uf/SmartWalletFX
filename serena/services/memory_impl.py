@@ -1,19 +1,22 @@
 from __future__ import annotations
 
-"""Memory service implementation."""
+"""Memory service implementation using SQLAlchemy ORM."""
 
 import logging
 import os
-import sqlite3
+import struct
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from sqlalchemy import and_, or_
+from sqlalchemy.orm import Session
+
 from serena import config
 from serena.core.models import (
-    ArchiveRecord,
-    EmbeddingRecord,
+    Archive,
+    Embedding,
     HealthInfo,
     SearchResult,
     TaskKind,
@@ -25,9 +28,9 @@ from serena.core.models import (
 )
 from serena.infrastructure.database import (
     checkpoint_database,
-    get_connection,
     init_database,
 )
+from serena.database.session import get_db_session as get_session
 from serena.infrastructure.embeddings import (
     EmbeddingGenerator,
     chunk_content,
@@ -86,19 +89,20 @@ class Memory:
     @lru_cache(maxsize=512)
     def get(self, task_id: str) -> Optional[Dict[str, Any]]:
         try:
-            conn = get_connection(self.db_path)
-            cursor = conn.execute(
-                """
-                SELECT task_id, title, filepath, kind, status, completed_at,
-                       summary, content
-                FROM archives
-                WHERE task_id = ?
-            """,
-                (task_id,),
-            )
-            row = cursor.fetchone()
-            conn.close()
-            return dict(row) if row else None
+            with get_session(self.db_path) as session:
+                archive = session.query(Archive).filter_by(task_id=task_id).first()
+                if archive:
+                    return {
+                        "task_id": archive.task_id,
+                        "title": archive.title,
+                        "filepath": archive.filepath,
+                        "kind": archive.kind,
+                        "status": archive.status,
+                        "completed_at": archive.completed_at,
+                        "summary": archive.summary,
+                        "content": None,  # Content not stored in Archive model
+                    }
+                return None
         except Exception as exc:  # noqa: BLE001
             logger.error("Failed to fetch task %s: %s", task_id, exc)
             return None
@@ -154,69 +158,61 @@ class Memory:
         chunks = chunk_content(clean_content)
 
         try:
-            conn = get_connection(self.db_path)
-            cur = conn.cursor()
-
-            # Upsert main archive row
-            cur.execute(
-                """
-                INSERT INTO archives (task_id, title, filepath, sha256, kind, status, completed_at, summary)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(task_id) DO UPDATE SET
-                    title=excluded.title,
-                    filepath=excluded.filepath,
-                    sha256=excluded.sha256,
-                    kind=excluded.kind,
-                    status=excluded.status,
-                    completed_at=excluded.completed_at,
-                    updated_at=CURRENT_TIMESTAMP
-            """,
-                (
-                    task_id,
-                    title or extract_title(markdown_text),
-                    filepath or f"archive-{task_id}.md",
-                    compute_content_hash(markdown_text),
-                    (kind or TaskKind.ARCHIVE).value,
-                    status.value if status else None,
-                    completed_at.isoformat() if completed_at else None,
-                    generate_summary(markdown_text),
-                ),
-            )
-
-            # Delete existing embeddings for this task
-            cur.execute("DELETE FROM embeddings WHERE task_id = ?", (task_id,))
-
-            if chunks and self.embedding_generator.model is not None:
-                embeddings = self.embedding_generator.generate_embeddings_batch(
-                    [chunk for _, chunk in chunks]
-                )
-                for (chunk_id, _), vector in zip(chunks, embeddings):
-                    cur.execute(
-                        """
-                        INSERT INTO embeddings (task_id, chunk_id, position, vector)
-                        VALUES (?, ?, 0, ?)
-                    """,
-                        (
-                            task_id,
-                            chunk_id,
-                            sqlite3.Binary(
-                                bytearray(
-                                    (
-                                        byte
-                                        for f in vector
-                                        for byte in memoryview(
-                                            bytearray(struct.pack("<f", f))
-                                        )
-                                    )
-                                )
-                            ),
-                        ),
+            with get_session(self.db_path) as session:
+                # Upsert main archive row
+                archive = session.query(Archive).filter_by(task_id=task_id).first()
+                
+                if archive:
+                    # Update existing archive
+                    archive.title = title or extract_title(markdown_text)
+                    archive.filepath = filepath or f"archive-{task_id}.md"
+                    archive.sha256 = compute_content_hash(markdown_text)
+                    archive.kind = (kind or TaskKind.ARCHIVE).value
+                    archive.status = status.value if status else None
+                    archive.completed_at = completed_at
+                    archive.summary = generate_summary(markdown_text)
+                    archive.updated_at = datetime.now()
+                else:
+                    # Create new archive
+                    archive = Archive(
+                        task_id=task_id,
+                        title=title or extract_title(markdown_text),
+                        filepath=filepath or f"archive-{task_id}.md",
+                        sha256=compute_content_hash(markdown_text),
+                        kind=(kind or TaskKind.ARCHIVE).value,
+                        status=status.value if status else None,
+                        completed_at=completed_at,
+                        summary=generate_summary(markdown_text),
                     )
+                    session.add(archive)
 
-            conn.commit()
-            conn.close()
-            logger.debug("Upserted task %s", task_id)
-            return True
+                # Delete existing embeddings for this task
+                session.query(Embedding).filter_by(task_id=task_id).delete()
+
+                # Add new embeddings if available
+                if chunks and self.embedding_generator.model is not None:
+                    embeddings = self.embedding_generator.generate_embeddings_batch(
+                        [chunk for _, chunk in chunks]
+                    )
+                    for (chunk_id, _), vector in zip(chunks, embeddings):
+                        # Convert vector to bytes
+                        vector_bytes = bytearray(
+                            byte
+                            for f in vector
+                            for byte in memoryview(bytearray(struct.pack("<f", f)))
+                        )
+                        
+                        embedding = Embedding(
+                            task_id=task_id,
+                            chunk_id=chunk_id,
+                            position=0,
+                            vector=bytes(vector_bytes),
+                        )
+                        session.add(embedding)
+
+                # Session commit happens automatically via context manager
+                logger.debug("Upserted task %s", task_id)
+                return True
         except Exception as exc:  # noqa: BLE001
             logger.error("Upsert failed for %s: %s", task_id, exc)
             return False
@@ -237,19 +233,30 @@ class Memory:
         return get_latest_tasks(n, db_path=self.db_path)
 
     def health(self) -> HealthInfo:
-        # Implementation identical to original, simplified here
-        conn = get_connection(self.db_path)
-        row = conn.execute("SELECT COUNT(*) FROM archives").fetchone()
-        archive_count = row[0] if row else 0
-        conn.close()
-        return HealthInfo(
-            archive_count=archive_count,
-            embedding_count=0,
-            last_migration=None,
-            wal_checkpoint_age=None,
-            database_size=os.path.getsize(self.db_path),
-            embedding_versions={},
-        )
+        """Get database health information."""
+        try:
+            with get_session(self.db_path) as session:
+                archive_count = session.query(Archive).count()
+                embedding_count = session.query(Embedding).count()
+                
+                return HealthInfo(
+                    archive_count=archive_count,
+                    embedding_count=embedding_count,
+                    last_migration=None,
+                    wal_checkpoint_age=None,
+                    database_size=os.path.getsize(self.db_path) if os.path.exists(self.db_path) else 0,
+                    embedding_versions={},
+                )
+        except Exception as exc:
+            logger.error("Health check failed: %s", exc)
+            return HealthInfo(
+                archive_count=0,
+                embedding_count=0,
+                last_migration=None,
+                wal_checkpoint_age=None,
+                database_size=0,
+                embedding_versions={},
+            )
 
 
 # Helper to extract title from markdown (simple)
