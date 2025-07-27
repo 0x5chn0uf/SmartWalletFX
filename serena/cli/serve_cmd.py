@@ -9,26 +9,25 @@ from typing import Any
 def cmd_serve(args) -> None:
     """Run local HTTP server exposing memory API."""
     logger = logging.getLogger(__name__)
-    
+
     try:
         import uvicorn
         from serena.infrastructure.server import create_app
-        
+
         app = create_app()
-        
+
         print(f"🚀 Starting Serena server on {args.host}:{args.port}")
         print(f"📖 API docs available at http://{args.host}:{args.port}/docs")
-        
-        uvicorn.run(
-            app,
-            host=args.host,
-            port=args.port,
-            log_level="info"
+
+        uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+
+    except ImportError as e:
+        logger.error(
+            "FastAPI/Uvicorn not available. {e}\nInstall with: pip install fastapi uvicorn"
         )
-        
-    except ImportError:
-        logger.error("FastAPI/Uvicorn not available. Install with: pip install fastapi uvicorn")
-        print("❌ Server dependencies not installed. Install with: pip install fastapi uvicorn")
+        print(
+            "❌ Server dependencies not installed. Install with: pip install fastapi uvicorn"
+        )
     except Exception as e:
         logger.error(f"Failed to start server: {e}")
         print(f"❌ Failed to start server: {e}")

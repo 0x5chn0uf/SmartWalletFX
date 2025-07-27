@@ -6,7 +6,7 @@ from typing import AsyncGenerator, Dict, Any
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
-from serena.infrastructure.session import get_db_session
+from serena.database.session import get_db_session
 from serena.core.models import Archive, Embedding, SearchResult
 from sqlalchemy.orm import Session
 
