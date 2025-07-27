@@ -1,0 +1,33 @@
+{
+  "intervals": {
+    "health_check": "1d",
+    "checkpoint": "7d",
+    "vacuum": "30d"
+  },
+  "enabled": {
+    "health_check": true,
+    "checkpoint": true,
+    "vacuum": true
+  },
+  "thresholds": {
+    "large_db_size_mb": 1000,
+    "large_entry_count": 100000,
+    "warning_db_size_mb": 500,
+    "critical_db_size_mb": 2000
+  },
+  "notifications": {
+    "enable_console_output": true,
+    "enable_file_logging": true,
+    "log_file": "database/maintenance.log"
+  },
+  "performance": {
+    "max_checkpoint_duration_seconds": 300,
+    "max_vacuum_duration_seconds": 1800,
+    "auto_optimize_intervals": true
+  },
+  "backup": {
+    "enable_pre_vacuum_backup": false,
+    "backup_directory": "database/backups",
+    "max_backup_files": 5
+  }
+}

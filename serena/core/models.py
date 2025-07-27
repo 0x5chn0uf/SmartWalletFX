@@ -1,0 +1,304 @@
+"""
+Domain data models and utility helpers.
+"""
+
+import hashlib
+from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
+from typing import List, Optional
+
+
+class TaskKind(Enum):
+    """Types of tasks/documents in the memory bridge."""
+
+    ARCHIVE = "archive"
+    REFLECTION = "reflection"
+    DOC = "doc"
+    RULE = "rule"
+    CODE = "code"
+
+
+class TaskStatus(Enum):
+    """Task status values."""
+
+    PENDING = "pending"
+    IN_PROGRESS = "in-progress"
+    DONE = "done"
+    DEFERRED = "deferred"
+    CANCELLED = "cancelled"
+    BLOCKED = "blocked"
+
+
+@dataclass
+class ArchiveRecord:
+    """Represents a task archive record in the database."""
+
+    task_id: str
+    title: str
+    filepath: str
+    sha256: str
+    kind: TaskKind
+    status: Optional[TaskStatus] = None
+    completed_at: Optional[datetime] = None
+    embedding_id: Optional[int] = None
+    summary: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    embedding_version: int = 1
+    last_embedded_at: Optional[datetime] = None
+
+    @classmethod
+    def from_content(
+        cls,
+        task_id: str,
+        title: str,
+        filepath: str,
+        content: str,
+        kind: TaskKind,
+        status: Optional[TaskStatus] = None,
+        completed_at: Optional[datetime] = None,
+    ) -> "ArchiveRecord":
+        """Create an ArchiveRecord from content with computed SHA-256."""
+        sha256 = compute_content_hash(content)
+        return cls(
+            task_id=task_id,
+            title=title,
+            filepath=filepath,
+            sha256=sha256,
+            kind=kind,
+            status=status,
+            completed_at=completed_at,
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+        )
+
+
+@dataclass
+class EmbeddingRecord:
+    """Represents an embedding record in the database."""
+
+    id: Optional[int]
+    task_id: str
+    chunk_id: int
+    position: int
+    vector: bytes
+
+    @classmethod
+    def from_vector(
+        cls, task_id: str, vector: List[float], chunk_id: int = 0, position: int = 0
+    ) -> "EmbeddingRecord":
+        """Create an EmbeddingRecord from a vector."""
+        import numpy as np
+
+        vector_bytes = np.array(vector, dtype=np.float32).tobytes()
+        return cls(
+            id=None,
+            task_id=task_id,
+            chunk_id=chunk_id,
+            position=position,
+            vector=vector_bytes,
+        )
+
+    def to_vector(self) -> List[float]:
+        """Convert bytes back to vector."""
+        import numpy as np
+
+        return np.frombuffer(self.vector, dtype=np.float32).tolist()
+
+
+@dataclass
+class SearchResult:
+    """Represents a search result with metadata."""
+
+    task_id: str
+    title: str
+    score: float
+    excerpt: str
+    kind: TaskKind
+    status: Optional[TaskStatus]
+    completed_at: Optional[datetime]
+    filepath: str
+
+    def __str__(self) -> str:
+        """Human-readable string representation."""
+        status_str = f" [{self.status.value}]" if self.status else ""
+        date_str = f" ({self.completed_at.date()})" if self.completed_at else ""
+        return f"[{self.score:.3f}] {self.task_id}: {self.title}{status_str}{date_str}"
+
+
+@dataclass
+class HealthInfo:
+    """Database health and statistics information."""
+
+    archive_count: int
+    embedding_count: int
+    last_migration: Optional[datetime]
+    wal_checkpoint_age: Optional[int]  # seconds since last checkpoint
+    database_size: int  # bytes
+    embedding_versions: dict  # version -> count mapping
+
+    def __str__(self) -> str:
+        """Human-readable health summary."""
+        size_mb = self.database_size / (1024 * 1024)
+        return (
+            f"Archives: {self.archive_count}, "
+            f"Embeddings: {self.embedding_count}, "
+            f"Size: {size_mb:.1f}MB"
+        )
+
+
+# ----------------------------------------------------------------------
+# Helper functions
+# ----------------------------------------------------------------------
+
+
+def compute_content_hash(content: str) -> str:
+    """
+    Compute SHA-256 hash of cleaned content for deduplication.
+
+    Args:
+        content: Raw markdown content
+
+    Returns:
+        str: Hexadecimal SHA-256 hash
+    """
+    # Clean content by normalizing whitespace and removing metadata
+    cleaned = content.strip()
+
+    # Remove YAML frontmatter if present
+    if cleaned.startswith("---"):
+        parts = cleaned.split("---", 2)
+        if len(parts) >= 3:
+            cleaned = parts[2].strip()
+
+    # Normalize line endings and compress whitespace
+    cleaned = "\n".join(line.strip() for line in cleaned.split("\n") if line.strip())
+
+    return hashlib.sha256(cleaned.encode("utf-8")).hexdigest()
+
+
+def extract_task_id_from_path(filepath: str) -> Optional[str]:
+    """
+    Extract task ID from file path.
+
+    Args:
+        filepath: Path to the file
+
+    Returns:
+        Optional[str]: Extracted task ID or None
+    """
+    from pathlib import Path
+
+    filename = Path(filepath).stem
+
+    # Handle various naming patterns
+    # archive-123.md -> 123
+    # reflection-123.md -> 123
+    # task-123.md -> 123
+    # 123.md -> 123
+
+    if filename.startswith(("archive-", "reflection-", "task-")):
+        return filename.split("-", 1)[1]
+    elif filename.isdigit():
+        return filename
+    elif "." in filename and filename.split(".")[0].isdigit():
+        return filename.split(".")[0]
+
+    # For common duplicate files, return None to trigger path-based ID generation
+    # This allows the indexer to create unique IDs based on directory structure
+    common_duplicates = ["readme", "index", "main", "config", "settings"]
+    if filename.lower() in common_duplicates:
+        return None
+
+    return None
+
+
+def determine_task_kind(filepath: str) -> TaskKind:
+    """
+    Determine task kind from file path.
+
+    Args:
+        filepath: Path to the file
+
+    Returns:
+        TaskKind: Determined kind
+    """
+    filepath_lower = filepath.lower()
+
+    if "archive" in filepath_lower:
+        return TaskKind.ARCHIVE
+    elif "reflection" in filepath_lower:
+        return TaskKind.REFLECTION
+    elif any(
+        doc_indicator in filepath_lower for doc_indicator in ["doc", "readme", "guide"]
+    ):
+        return TaskKind.DOC
+    elif "rule" in filepath_lower:
+        return TaskKind.RULE
+    else:
+        # Default to archive for most task files
+        return TaskKind.ARCHIVE
+
+
+def generate_summary(content: str, max_length: int = 400) -> str:
+    """
+    Generate a brief summary of the content.
+
+    Args:
+        content: Full content text
+        max_length: Maximum summary length
+
+    Returns:
+        str: Generated summary
+    """
+    # Simple extractive summary - take first meaningful paragraphs
+    lines = [line.strip() for line in content.split("\n") if line.strip()]
+
+    # Skip YAML frontmatter
+    start_idx = 0
+    if lines and lines[0].startswith("---"):
+        for i, line in enumerate(lines[1:], 1):
+            if line.startswith("---"):
+                start_idx = i + 1
+                break
+
+    # Find first substantial paragraph
+    summary_parts: list[str] = []
+    current_length = 0
+
+    for line in lines[start_idx:]:
+        # Skip markdown headers and empty lines
+        if line.startswith("#") or not line:
+            continue
+
+        # Add line if it fits
+        if current_length + len(line) <= max_length:
+            summary_parts.append(line)
+            current_length += len(line) + 1  # +1 for space
+        else:
+            # Truncate last line if needed
+            remaining = max_length - current_length
+            if remaining > 20:  # Only truncate if reasonable space left
+                summary_parts.append(line[: remaining - 3] + "...")
+            break
+
+    return " ".join(summary_parts) if summary_parts else content[:max_length]
+
+
+# Re-export public names for * import convenience inside the package
+__all__ = [
+    # Enums
+    "TaskKind",
+    "TaskStatus",
+    # Dataclasses
+    "ArchiveRecord",
+    "EmbeddingRecord",
+    "SearchResult",
+    "HealthInfo",
+    # Helpers
+    "compute_content_hash",
+    "extract_task_id_from_path",
+    "determine_task_kind",
+    "generate_summary",
+]

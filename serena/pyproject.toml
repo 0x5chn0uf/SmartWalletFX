@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "serena"
+version = "0.1.0"
+description = "Serena Memory Bridge: semantic task memory module pluggable into any project."
+readme = "serena/README.md"
+authors = [
+    { name = "SmartWalletFX Team" }
+]
+requires-python = ">=3.12"
+# Core runtime dependencies
+dependencies = [
+    "watchdog>=3.0.0",
+    "sentence-transformers>=2.2.2",
+    "tqdm>=4.64.0",
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.23.0",
+]
+
+[project.optional-dependencies]
+fts5 = ["pysqlite3>=0.5.2"]
+
+[project.urls]
+Homepage = "https://github.com/SmartWalletFX/serena"
+Documentation = "https://github.com/SmartWalletFX/serena#readme"
+
+[project.scripts]
+serena = "serena.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["serena*"]
