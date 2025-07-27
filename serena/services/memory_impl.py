@@ -33,7 +33,8 @@ from serena.infrastructure.embeddings import (
     chunk_content,
     preprocess_content,
 )
-from serena.infrastructure.search.engine import SearchEngine, get_latest_tasks
+from serena.infrastructure.search import SearchEngine
+from serena.infrastructure.search.search_utils import get_latest_tasks
 from serena.infrastructure.write_queue import write_queue
 
 logger = logging.getLogger(__name__)
