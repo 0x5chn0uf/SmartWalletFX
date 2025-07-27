@@ -28,7 +28,7 @@ _COMMAND_MODULES = [
     "init_cmd",
     "index_cmd",
     "search_cmd",
-    "serve",
+    "serve_cmd",
 ]
 
 
@@ -43,8 +43,11 @@ def _register_commands(subparsers: argparse._SubParsersAction) -> None:  # type:
 # Public entry-point
 # ---------------------------------------------------------------------------
 
+
 def main(argv: list[str] | None = None) -> None:  # noqa: D401
-    parser = argparse.ArgumentParser("serena", description="Serena memory CLI (modular)")
+    parser = argparse.ArgumentParser(
+        "serena", description="Serena memory CLI (modular)"
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     _register_commands(sub)
@@ -62,4 +65,4 @@ def main(argv: list[str] | None = None) -> None:  # noqa: D401
 
 
 if __name__ == "__main__":  # pragma: no cover
-    main() 
+    main()

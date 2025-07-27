@@ -126,51 +126,62 @@ class MemoryIndexer:
         self, files: List[str], force_reindex: bool, stats: Dict[str, int]
     ) -> None:
         """Process files with progress display."""
-        total_files = len(files)
-
-        for i, file_path in enumerate(files, 1):
-            try:
-                if self._process_single_file(file_path, force_reindex):
-                    stats["files_indexed"] += 1
-                else:
-                    stats["files_skipped"] += 1
-
-                # Show progress every 10 files or at end
-                if i % 10 == 0 or i == total_files:
-                    progress = (i / total_files) * 100
-                    print(
-                        f"Progress: {i}/{total_files} ({progress:.1f}%) - "
-                        f"Indexed: {stats['files_indexed']}, "
-                        f"Skipped: {stats['files_skipped']}"
-                    )
-
-            except Exception as e:  # noqa: BLE001
-                logger.error(f"Failed to process {file_path}: {e}")
-                stats["files_failed"] += 1
+        self._process_files(files, force_reindex, stats, show_progress=True)
 
     def _process_files_batch(
         self, files: List[str], force_reindex: bool, stats: Dict[str, int]
     ) -> None:
         """Process files in parallel batches."""
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            futures = []
+        self._process_files(files, force_reindex, stats, show_progress=False)
 
-            for file_path in files:
-                future = executor.submit(
-                    self._process_single_file, file_path, force_reindex
-                )
-                futures.append((future, file_path))
-
-            # Collect results
-            for future, file_path in futures:
+    def _process_files(
+        self, files: List[str], force_reindex: bool, stats: Dict[str, int], show_progress: bool = True
+    ) -> None:
+        """Process files with unified logic for both progress and batch processing."""
+        total_files = len(files)
+        
+        if show_progress:
+            # Sequential processing with progress display
+            for i, file_path in enumerate(files, 1):
                 try:
-                    if future.result():
+                    if self._process_single_file(file_path, force_reindex):
                         stats["files_indexed"] += 1
                     else:
                         stats["files_skipped"] += 1
+
+                    # Show progress every 10 files or at end
+                    if i % 10 == 0 or i == total_files:
+                        progress = (i / total_files) * 100
+                        print(
+                            f"Progress: {i}/{total_files} ({progress:.1f}%) - "
+                            f"Indexed: {stats['files_indexed']}, "
+                            f"Skipped: {stats['files_skipped']}"
+                        )
+
                 except Exception as e:  # noqa: BLE001
                     logger.error(f"Failed to process {file_path}: {e}")
                     stats["files_failed"] += 1
+        else:
+            # Parallel processing without progress display
+            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                futures = []
+
+                for file_path in files:
+                    future = executor.submit(
+                        self._process_single_file, file_path, force_reindex
+                    )
+                    futures.append((future, file_path))
+
+                # Collect results
+                for future, file_path in futures:
+                    try:
+                        if future.result():
+                            stats["files_indexed"] += 1
+                        else:
+                            stats["files_skipped"] += 1
+                    except Exception as e:  # noqa: BLE001
+                        logger.error(f"Failed to process {file_path}: {e}")
+                        stats["files_failed"] += 1
 
     def _process_single_file(self, file_path: str, force_reindex: bool) -> bool:
         """Process a single file for indexing."""

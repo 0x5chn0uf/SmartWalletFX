@@ -12,6 +12,8 @@ from typing import List, Optional
 
 import numpy as np
 
+from serena import config
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,8 +33,8 @@ class EmbeddingGenerator:
     # ------------------------------------------------------------------
     @property
     def model(self):  # noqa: D401
-        if os.getenv("SERENA_DISABLE_EMBEDDINGS", "0") in {"1", "true", "yes"}:
-            logger.warning("Embeddings disabled via SERENA_DISABLE_EMBEDDINGS")
+        if not config.embeddings_enabled():
+            logger.warning("Embeddings disabled via configuration")
             return None
 
         if self._model is None:

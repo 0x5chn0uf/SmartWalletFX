@@ -30,7 +30,7 @@ Homepage = "https://github.com/SmartWalletFX/serena"
 Documentation = "https://github.com/SmartWalletFX/serena#readme"
 
 [project.scripts]
-serena = "serena.cli:main"
+serena = "serena.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
