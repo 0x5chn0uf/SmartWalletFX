@@ -426,13 +426,22 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
             )
             logging.getLogger().addHandler(handler)
 
-        # Log initialization
-        self.logger.info("🔧 MaintenanceService initialized")
-        self.logger.info(f"   - Health check interval: {self.interval}s")
-        self.logger.info(f"   - Checkpoint interval: {settings.maintenance.intervals.checkpoint}")
-        self.logger.info(f"   - Vacuum interval: {settings.maintenance.intervals.vacuum}")
-        self.logger.info(f"   - Last checkpoint: {self._format_timestamp(self._last_checkpoint)}")
-        self.logger.info(f"   - Last vacuum: {self._format_timestamp(self._last_vacuum)}")
+        # Log initialization with both logging and print for visibility
+        init_msg = "🔧 MaintenanceService initialized"
+        print(init_msg)
+        self.logger.info(init_msg)
+        
+        config_msgs = [
+            f"   - Health check interval: {self.interval}s",
+            f"   - Checkpoint interval: {settings.maintenance.intervals.checkpoint}",
+            f"   - Vacuum interval: {settings.maintenance.intervals.vacuum}",
+            f"   - Last checkpoint: {self._format_timestamp(self._last_checkpoint)}",
+            f"   - Last vacuum: {self._format_timestamp(self._last_vacuum)}"
+        ]
+        
+        for msg in config_msgs:
+            print(msg)
+            self.logger.info(msg)
 
     def _format_timestamp(self, timestamp: float) -> str:
         """Format a Unix timestamp for logging."""
@@ -449,10 +458,16 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
             self.logger.debug("Background service already running")
             return
 
-        self.logger.info("🚀 Starting maintenance background service")
+        start_msg = "🚀 Starting maintenance background service"
+        print(start_msg)
+        self.logger.info(start_msg)
+        
         self._thread = threading.Thread(target=self._run_loop, daemon=True)
         self._thread.start()
-        self.logger.info("✅ Maintenance background service started successfully")
+        
+        success_msg = "✅ Maintenance background service started successfully"
+        print(success_msg)
+        self.logger.info(success_msg)
 
     def stop(self):
         self.logger.info("🛑 Stopping maintenance background service")
@@ -509,7 +524,9 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
             return
 
         start_time = time.time()
-        self.logger.info(f"🔄 Starting maintenance operation: {operation}")
+        op_start_msg = f"🔄 Starting maintenance operation: {operation}"
+        print(op_start_msg)
+        self.logger.info(op_start_msg)
 
         try:
             if operation == "checkpoint":
@@ -519,7 +536,9 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
                 self._last_checkpoint = now
                 self._store_meta_timestamp("last_checkpoint", now)
                 elapsed = now - start_time
-                self.logger.info(f"✅ Checkpoint completed successfully in {elapsed:.2f}s")
+                checkpoint_msg = f"✅ Checkpoint completed successfully in {elapsed:.2f}s"
+                print(checkpoint_msg)
+                self.logger.info(checkpoint_msg)
                 
             elif operation == "vacuum":
                 self.logger.debug("   - Performing database vacuum...")
@@ -532,7 +551,9 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
                 self._last_vacuum = now
                 self._store_meta_timestamp("last_vacuum", now)
                 elapsed = now - start_time
-                self.logger.info(f"✅ Vacuum completed successfully in {elapsed:.2f}s")
+                vacuum_msg = f"✅ Vacuum completed successfully in {elapsed:.2f}s"
+                print(vacuum_msg)
+                self.logger.info(vacuum_msg)
                 
             elif operation == "health_check":
                 self.logger.debug("   - Performing health check...")
@@ -571,7 +592,9 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
         last_vacuum = self._last_vacuum or time.time()
         cycle_count = 0
         
-        self.logger.info("🔄 Maintenance loop started")
+        loop_msg = "🔄 Maintenance loop started"
+        print(loop_msg)
+        self.logger.info(loop_msg)
 
         while not self._stop.is_set():
             now = time.time()
