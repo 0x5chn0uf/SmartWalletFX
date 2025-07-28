@@ -74,7 +74,8 @@ class Memory:
     @property
     def embedding_generator(self) -> EmbeddingGenerator:  # noqa: D401
         if self._embedding_generator is None:
-            self._embedding_generator = EmbeddingGenerator()
+            from serena.infrastructure.embeddings import get_default_generator
+            self._embedding_generator = get_default_generator()
         return self._embedding_generator
 
     @property

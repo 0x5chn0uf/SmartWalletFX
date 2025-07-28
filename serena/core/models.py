@@ -116,7 +116,7 @@ class MaintenanceLog(Base):
     )
 
 
-# Legacy Enums and Dataclasses (kept for compatibility)
+# Task Enums and Dataclasses
 class TaskKind(Enum):
     """Types of tasks/documents in the memory bridge."""
 

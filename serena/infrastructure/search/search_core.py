@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from serena.core.models import SearchResult, TaskKind, TaskStatus
-from serena.infrastructure.database import get_connection
+from serena.database.session import get_db_session as get_session
 from serena.infrastructure.embeddings import batch_cosine_similarity, generate_embedding
 
 logger = logging.getLogger(__name__)
@@ -146,7 +146,7 @@ class SearchEngine:
         results: List[SearchResult] = []
         
         # Use session context manager correctly
-        with get_connection(self.db_path) as session:
+        with get_session(self.db_path) as session:
             from sqlalchemy import text
             import sqlite3
             
@@ -263,7 +263,7 @@ class SearchEngine:
         seen_task_ids = set()
         
         # Use session context manager correctly
-        with get_connection(self.db_path) as session:
+        with get_session(self.db_path) as session:
             from sqlalchemy import text
             result = session.execute(text(query), params)
             
@@ -334,7 +334,7 @@ class SearchEngine:
     def _calculate_bm25_score(self, task_id: str, query: str) -> float:
         """Calculate BM25 score using FTS5 if available."""
         try:
-            conn = get_connection(self.db_path)
+            conn = get_session(self.db_path)
 
             # Use FTS5 to get BM25 score
             cursor = conn.execute(

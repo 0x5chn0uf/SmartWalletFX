@@ -19,51 +19,74 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     from serena.infrastructure.embeddings import get_default_generator
     from serena import config
     
-    logger = logging.getLogger(__name__)
+    # Use both print and logging to ensure visibility
+    print("🚀 Serena server startup beginning...")
+    
+    logger = logging.getLogger("serena.server")
+    logger.setLevel(logging.INFO)
     startup_start = time.time()
+    
+    print("📋 Configuration check:")
+    print(f"   - Embeddings enabled: {config.embeddings_enabled()}")
+    print(f"   - Database path: {config.memory_db_path()}")
     
     logger.info("🚀 Serena server startup beginning...")
     logger.info("📋 Configuration check:")
     logger.info("   - Embeddings enabled: %s", config.embeddings_enabled())
-    logger.info("   - Database path: %s", config.get_database_path())
+    logger.info("   - Database path: %s", config.memory_db_path())
     
     if config.embeddings_enabled():
+        print("🤖 Initializing embedding model...")
         logger.info("🤖 Initializing embedding model...")
         model_start = time.time()
         try:
             generator = get_default_generator()
+            print(f"   - Model name: {generator.model_name}")
+            print(f"   - Expected dimension: {generator.embedding_dim}")
             logger.info("   - Model name: %s", generator.model_name)
             logger.info("   - Expected dimension: %d", generator.embedding_dim)
             
             # Force synchronous model loading
+            print("   - Loading model weights...")
             logger.info("   - Loading model weights...")
             success = generator.load_model_now()
             model_time = time.time() - model_start
             
             if success:
+                print(f"✅ Embedding model loaded successfully in {model_time:.2f}s")
+                print(f"   - Model: {generator.model_name}")
+                print(f"   - Dimension: {generator.embedding_dim}")
+                print("   - Status: Ready for semantic search")
                 logger.info("✅ Embedding model loaded successfully in %.2fs", model_time)
                 logger.info("   - Model: %s", generator.model_name)
                 logger.info("   - Dimension: %d", generator.embedding_dim)
                 logger.info("   - Status: Ready for semantic search")
             else:
+                print(f"⚠️ Embedding model failed to load after {model_time:.2f}s")
+                print("   - Fallback: Text-based search will be used")
                 logger.warning("⚠️ Embedding model failed to load after %.2fs", model_time)
                 logger.warning("   - Fallback: Text-based search will be used")
         except Exception as exc:
             model_time = time.time() - model_start
+            print(f"❌ Failed to preload embedding model after {model_time:.2f}s: {exc}")
+            print("   - Fallback: Text-based search will be used")
             logger.error("❌ Failed to preload embedding model after %.2fs: %s", model_time, exc)
             logger.error("   - Fallback: Text-based search will be used")
     else:
+        print("ℹ️ Embeddings disabled via configuration")
+        print("   - Search mode: Text-based only")
         logger.info("ℹ️ Embeddings disabled via configuration")
         logger.info("   - Search mode: Text-based only")
     
     startup_time = time.time() - startup_start
+    print(f"🎉 Serena server startup completed in {startup_time:.2f}s")
     logger.info("🎉 Serena server startup completed in %.2fs", startup_time)
     
     yield
     
     # Shutdown
-    logger.info("🛑 Serena server shutting down...")
-    # Shutdown
+    print("🛑 Serena server shutting down...")
+    logger.info("🛑 Serena server shutting down...")    # Shutdown
 
 
 def create_app() -> FastAPI:

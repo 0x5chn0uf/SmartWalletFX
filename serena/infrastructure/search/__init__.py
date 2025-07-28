@@ -2,7 +2,6 @@
 
 from .search_core import SearchEngine
 from .search_utils import (
-    create_enhanced_memory,
     get_latest_tasks,
     search_memories,
 )
@@ -19,5 +18,4 @@ __all__ = [
     "search_memories_advanced",
     "get_context_suggestions",
     "get_latest_tasks",
-    "create_enhanced_memory",
 ]

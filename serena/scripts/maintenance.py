@@ -27,7 +27,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from serena.infrastructure.database import (
     checkpoint_database,
-    get_connection,
+    get_database_path,
+    get_session,
     init_database,
     vacuum_database,
 )
@@ -100,21 +101,26 @@ def cmd_reembed(args) -> None:
         )
 
         memory = Memory(db_path=args.db_path)
-        conn = get_connection(args.db_path)
-
-        # Find stale embeddings
-        cursor = conn.execute(
-            """
-            SELECT task_id, title, filepath, last_embedded_at
-            FROM archives
-            WHERE last_embedded_at < ? OR last_embedded_at IS NULL
-            ORDER BY last_embedded_at ASC NULLS FIRST
-        """,
-            (cutoff_date.isoformat(),),
-        )
-
-        stale_tasks = cursor.fetchall()
-        conn.close()
+        
+        # Find stale embeddings using session
+        with get_session(args.db_path) as session:
+            from serena.core.models import Archive
+            
+            # Find archives with stale embeddings
+            stale_archives = session.query(Archive).filter(
+                (Archive.last_embedded_at < cutoff_date) | 
+                (Archive.last_embedded_at.is_(None))
+            ).order_by(Archive.last_embedded_at.asc()).all()
+            
+            stale_tasks = [
+                {
+                    "task_id": archive.task_id,
+                    "title": archive.title,
+                    "filepath": archive.filepath,
+                    "last_embedded_at": archive.last_embedded_at
+                }
+                for archive in stale_archives
+            ]
 
         if not stale_tasks:
             logger.info("No stale embeddings found")
@@ -184,73 +190,70 @@ def cmd_health(args) -> None:
 
     if args.detailed:
         try:
-            conn = get_connection(args.db_path)
+            with get_session(args.db_path) as session:
+                from serena.core.models import Archive
+                from sqlalchemy import func
 
-            # Task kind distribution
-            cursor = conn.execute(
-                """
-                SELECT kind, COUNT(*) as count
-                FROM archives
-                GROUP BY kind
-                ORDER BY count DESC
-            """
-            )
+                # Task kind distribution
+                kind_stats = session.query(
+                    Archive.kind, 
+                    func.count(Archive.task_id).label('count')
+                ).group_by(Archive.kind).order_by(func.count(Archive.task_id).desc()).all()
 
-            print("\nTask distribution by kind:")
-            for row in cursor:
-                print(f"  {row['kind']}: {row['count']}")
+                print("
+Task distribution by kind:")
+                for kind, count in kind_stats:
+                    print(f"  {kind}: {count}")
 
-            # Status distribution
-            cursor = conn.execute(
-                """
-                SELECT status, COUNT(*) as count
-                FROM archives
-                WHERE status IS NOT NULL
-                GROUP BY status
-                ORDER BY count DESC
-            """
-            )
+                # Status distribution
+                status_stats = session.query(
+                    Archive.status,
+                    func.count(Archive.task_id).label('count')
+                ).filter(Archive.status.isnot(None)).group_by(Archive.status).order_by(func.count(Archive.task_id).desc()).all()
 
-            print("\nTask distribution by status:")
-            for row in cursor:
-                print(f"  {row['status']}: {row['count']}")
+                print("
+Task distribution by status:")
+                for status, count in status_stats:
+                    print(f"  {status}: {count}")
 
-            # Recent activity
-            cursor = conn.execute(
-                """
-                SELECT COUNT(*) as count
-                FROM archives
-                WHERE created_at > datetime('now', '-7 days')
-            """
-            )
+                # Recent activity (last 7 days)
+                from datetime import datetime, timedelta
+                seven_days_ago = datetime.now() - timedelta(days=7)
+                recent_count = session.query(Archive).filter(Archive.created_at > seven_days_ago).count()
+                print(f"
+Recent activity (last 7 days): {recent_count} new archives")
 
-            recent_count = cursor.fetchone()["count"]
-            print(f"\nRecent activity (last 7 days): {recent_count} new archives")
+                # Embedding age distribution
+                one_day_ago = datetime.now() - timedelta(days=1)
+                one_week_ago = datetime.now() - timedelta(days=7)
+                one_month_ago = datetime.now() - timedelta(days=30)
+                six_months_ago = datetime.now() - timedelta(days=180)
+                
+                # Calculate age groups
+                age_groups = [
+                    ("Last 24h", session.query(Archive).filter(Archive.last_embedded_at > one_day_ago).count()),
+                    ("Last week", session.query(Archive).filter(
+                        (Archive.last_embedded_at <= one_day_ago) & 
+                        (Archive.last_embedded_at > one_week_ago)
+                    ).count()),
+                    ("Last month", session.query(Archive).filter(
+                        (Archive.last_embedded_at <= one_week_ago) & 
+                        (Archive.last_embedded_at > one_month_ago)
+                    ).count()),
+                    ("Last 6 months", session.query(Archive).filter(
+                        (Archive.last_embedded_at <= one_month_ago) & 
+                        (Archive.last_embedded_at > six_months_ago)
+                    ).count()),
+                    ("Older than 6 months", session.query(Archive).filter(
+                        Archive.last_embedded_at <= six_months_ago
+                    ).count())
+                ]
 
-            # Embedding age distribution
-            cursor = conn.execute(
-                """
-                SELECT 
-                    CASE 
-                        WHEN last_embedded_at > datetime('now', '-1 day') THEN 'Last 24h'
-                        WHEN last_embedded_at > datetime('now', '-7 days') THEN 'Last week'
-                        WHEN last_embedded_at > datetime('now', '-30 days') THEN 'Last month'
-                        WHEN last_embedded_at > datetime('now', '-180 days') THEN 'Last 6 months'
-                        ELSE 'Older than 6 months'
-                    END as age_group,
-                    COUNT(*) as count
-                FROM archives
-                WHERE last_embedded_at IS NOT NULL
-                GROUP BY age_group
-                ORDER BY count DESC
-            """
-            )
-
-            print("\nEmbedding age distribution:")
-            for row in cursor:
-                print(f"  {row['age_group']}: {row['count']}")
-
-            conn.close()
+                print("
+Embedding age distribution:")
+                for age_group, count in age_groups:
+                    if count > 0:
+                        print(f"  {age_group}: {count}")
 
         except Exception as e:
             logger.error(f"Failed to get detailed health info: {e}")

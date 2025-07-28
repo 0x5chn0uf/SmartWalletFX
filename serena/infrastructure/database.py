@@ -66,13 +66,7 @@ def get_session(db_path: Optional[str] = None):
     return get_db_session(db_path)
 
 
-def get_connection(db_path: Optional[str] = None):
-    """Get database connection (compatibility function).
-    
-    Note: This returns a session context manager, not a raw connection.
-    Use get_session() for new code.
-    """
-    return get_session(db_path)
+
 
 
 def checkpoint_database(db_path: Optional[str] = None) -> None:

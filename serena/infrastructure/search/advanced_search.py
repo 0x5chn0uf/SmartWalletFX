@@ -120,11 +120,11 @@ def search_memories_advanced(
     db_path: Optional[str] = None,
 ) -> List[SearchResult]:
     """Advanced search with context awareness."""
-    from serena.infrastructure.database import get_connection
+    from serena.database.session import get_session
     
     if db_path is None:
-        conn = get_connection(db_path)
-        db_path = conn.execute("PRAGMA database_list").fetchone()[2]
+        from serena import config
+        db_path = config.memory_db_path()
 
     engine = AdvancedSearchEngine(db_path)
     return engine.search_with_context(query, limit, context)
@@ -134,11 +134,11 @@ def get_context_suggestions(
     context: Dict[str, Any], limit: int = 5, db_path: Optional[str] = None
 ) -> List[str]:
     """Get context-aware search suggestions."""
-    from serena.infrastructure.database import get_connection
+    from serena.database.session import get_session
     
     if db_path is None:
-        conn = get_connection(db_path)
-        db_path = conn.execute("PRAGMA database_list").fetchone()[2]
+        from serena import config
+        db_path = config.memory_db_path()
 
     engine = AdvancedSearchEngine(db_path)
     return engine.get_context_suggestions(context, limit)
