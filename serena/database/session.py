@@ -44,16 +44,12 @@ class DatabaseManager:
         # Use sqlite:/// URL format for SQLAlchemy
         db_url = f"sqlite:///{self.db_path}"
         
-        # Configure connection pooling for better performance
+        # Configure connection pooling for SQLite
         engine = create_engine(
             db_url,
             echo=False,  # Set to True for SQL debugging
             poolclass=StaticPool,  # Use StaticPool for SQLite to maintain connection
             pool_pre_ping=True,  # Verify connections before use
-            pool_recycle=3600,  # Recycle connections every hour
-            pool_size=10,  # Maintain 10 connections in pool
-            max_overflow=20,  # Allow up to 20 overflow connections
-            pool_timeout=30,  # Timeout for getting connection from pool
             connect_args={
                 "check_same_thread": False,  # Allow multi-threading
                 "timeout": 20,  # SQLite connection timeout
