@@ -3,11 +3,12 @@
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator, Dict, Any
 
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from serena.database.session import get_db_session
 from serena.core.models import Archive, Embedding, SearchResult
+from serena.settings import settings
 from sqlalchemy.orm import Session
 
 
@@ -17,7 +18,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     import logging
     import time
     from serena.infrastructure.embeddings import get_default_generator
-    from serena import config
+    from serena.scripts.maintenance import MaintenanceService
+    # use consolidated settings object
+    # from serena import config (removed)
     
     # Use both print and logging to ensure visibility
     print("🚀 Serena server startup beginning...")
@@ -27,11 +30,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     startup_start = time.time()
     
     print("📋 Configuration check:")
-    print(f"   - Database path: {config.memory_db_path()}")
+    print(f"   - Database path: {settings.memory_db}")
     
     logger.info("🚀 Serena server startup beginning...")
     logger.info("📋 Configuration check:")
-    logger.info("   - Database path: %s", config.memory_db_path())
+    logger.info("   - Database path: %s", settings.memory_db)
     
     # Embeddings are always required; load model synchronously
     print("🤖 Initializing embedding model...")
@@ -76,6 +79,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         print("   - Fallback: Text-based search will be used")
         logger.error("❌ Failed to preload embedding model after %.2fs: %s", model_time, exc)
         logger.error("   - Fallback: Text-based search will be used")
+
+    # Start maintenance service
+    maintenance_service = MaintenanceService()
+    maintenance_service.start_background_service()
+    app.state.maintenance_service = maintenance_service
     
     startup_time = time.time() - startup_start
     print(f"🎉 Serena server startup completed in {startup_time:.2f}s")
@@ -86,6 +94,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Shutdown
     print("🛑 Serena server shutting down...")
     logger.info("🛑 Serena server shutting down...")    # Shutdown
+    if app.state.maintenance_service:
+        app.state.maintenance_service.stop()
 
 
 def create_app() -> FastAPI:
@@ -98,14 +108,12 @@ def create_app() -> FastAPI:
     )
     
     # Configure CORS
-    from serena.config import cors_origins, cors_allow_credentials, cors_allow_methods, cors_allow_headers
-    
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=cors_origins(),
-        allow_credentials=cors_allow_credentials(),
-        allow_methods=cors_allow_methods(),
-        allow_headers=[cors_allow_headers()],
+        allow_origins=settings.cors_origins_list,
+        allow_credentials=settings.cors_allow_credentials,
+        allow_methods=settings.cors_methods_list,
+        allow_headers=[settings.cors_allow_headers],
     )
     
     # Add timing middleware
@@ -156,9 +164,6 @@ def create_app() -> FastAPI:
     @app.get("/health")
     async def health_check():
         """Health check endpoint."""
-        from serena.infrastructure.embeddings import get_default_generator
-        from serena import config
-        from pathlib import Path
         
         # Simple database health check
         try:
@@ -199,6 +204,28 @@ def create_app() -> FastAPI:
         
         return response
     
+    @app.get("/maintenance/status")
+    async def get_maintenance_status(request: "Request"):
+        """Get the status of the maintenance service."""
+        service = request.app.state.maintenance_service
+        if not service:
+            raise HTTPException(status_code=503, detail="Maintenance service not running")
+        return service.get_status()
+
+    @app.post("/maintenance/run/{operation}")
+    async def run_maintenance_operation(operation: str, request: "Request"):
+        """Trigger a specific maintenance operation."""
+        service = request.app.state.maintenance_service
+        if not service:
+            raise HTTPException(status_code=503, detail="Maintenance service not running")
+        try:
+            service.run_operation(operation)
+            return {"message": f"Operation '{operation}' triggered successfully"}
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid operation: {operation}")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Operation failed: {e}")
+
     @app.get("/archives")
     async def list_archives(
         limit: int = 20,
@@ -461,5 +488,10 @@ def create_app() -> FastAPI:
         except Exception as exc:
             logger.error(f"Error generating embeddings: {exc}")
             raise HTTPException(status_code=500, detail=f"Failed to generate embeddings: {str(exc)}")
+    
+    @app.get("/settings", tags=["meta"])
+    async def get_settings():
+        """Return the effective Serena configuration for operators."""
+        return settings.dict()
     
     return app

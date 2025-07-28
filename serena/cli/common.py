@@ -7,6 +7,9 @@ import sys
 from pathlib import Path
 from typing import List
 
+# consolidated settings
+from serena.settings import settings
+
 
 def setup_logging(verbose: bool = False) -> None:
     """Set up logging configuration."""
@@ -48,8 +51,7 @@ class RemoteMemory:
     """Remote memory client that uses server API for operations."""
     
     def __init__(self, server_url: str = None):
-        from serena import config
-        self.server_url = server_url or config.server_url()
+        self.server_url = server_url or settings.server_url
         if not self.server_url.startswith('http'):
             self.server_url = f"http://{self.server_url}"
     
@@ -79,10 +81,19 @@ class RemoteMemory:
     
     def get(self, task_id: str):
         """Get archive by task ID using server API."""
+        import requests
+        url = f"{self.server_url.rstrip('/')}/archives/{task_id}"
+        
         try:
-            return self._make_request('GET', f'/archives/{task_id}')
-        except Exception as e:
-            logging.error(f"Remote get failed for {task_id}: {e}")
+            response = requests.get(url, timeout=30)
+            if response.status_code == 404:
+                # 404 is expected when checking if archive exists
+                return None
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            if "404" not in str(e):  # Only log non-404 errors
+                logging.error(f"Remote get failed for {task_id}: {e}")
             return None
     
     def upsert(self, task_id: str, markdown_text: str, filepath: str = None, 

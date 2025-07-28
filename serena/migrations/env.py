@@ -7,6 +7,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from serena.core.models import Base
+from serena.settings import settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -30,8 +31,7 @@ target_metadata = Base.metadata
 def get_database_url():
     """Get database URL from config or environment."""
     try:
-        from serena import config as serena_config
-        db_path = serena_config.memory_db_path()
+        db_path = settings.memory_db
         return f"sqlite:///{db_path}"
     except ImportError:
         # Fallback to default path
