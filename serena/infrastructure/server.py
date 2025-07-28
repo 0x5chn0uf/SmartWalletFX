@@ -206,7 +206,11 @@ def create_app() -> FastAPI:
         db: Session = Depends(get_db)
     ):
         """List archived tasks."""
-        archives = db.query(Archive).offset(offset).limit(limit).all()
+        # Sort by latest completion date, with fallback to updated_at for NULL completed_at
+        archives = db.query(Archive).order_by(
+            Archive.completed_at.desc().nulls_last(),
+            Archive.updated_at.desc()
+        ).offset(offset).limit(limit).all()
         
         return {
             "archives": [
@@ -248,6 +252,24 @@ def create_app() -> FastAPI:
             "updated_at": archive.updated_at.isoformat(),
             "embedding_version": archive.embedding_version,
             "last_embedded_at": archive.last_embedded_at.isoformat() if archive.last_embedded_at else None,
+        }
+    
+    @app.delete("/archives/{task_id}")
+    async def delete_archive(task_id: str, db: Session = Depends(get_db)):
+        """Delete archive by task ID."""
+        archive = db.query(Archive).filter(Archive.task_id == task_id).first()
+        
+        if not archive:
+            raise HTTPException(status_code=404, detail="Archive not found")
+        
+        # Delete the archive (embeddings will be cascade deleted)
+        db.delete(archive)
+        db.commit()
+        
+        return {
+            "message": f"Archive {task_id} deleted successfully",
+            "task_id": task_id,
+            "title": archive.title
         }
     
     @app.get("/search")

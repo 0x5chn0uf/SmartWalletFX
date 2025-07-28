@@ -60,15 +60,18 @@ def get_latest_tasks(
     """
     with get_session(db_path) as session:
         from serena.core.models import Archive
+        from sqlalchemy import func
         
         query = session.query(Archive)
         
         if kind_filter:
             query = query.filter(Archive.kind.in_(kind_filter))
         
+        # Sort by the most recent completion date, using updated_at as fallback for NULL completed_at
+        # NULLS LAST ensures NULL completed_at values don't interfere with the sorting
         archives = query.order_by(
-            Archive.completed_at.desc(),
-            Archive.created_at.desc()
+            Archive.completed_at.desc().nulls_last(),
+            Archive.updated_at.desc()
         ).limit(n).all()
         
         results = []

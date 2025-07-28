@@ -30,12 +30,33 @@ class MemoryIndexer:
     """Scans and indexes files from TaskMaster and Serena directories."""
 
     def __init__(
-        self, memory: Optional[Memory] = None, max_workers: int = 4, watcher=None
+        self, memory: Optional[Memory] = None, max_workers: int = 4, watcher=None,
+        use_server: bool = True
     ):
         """Initialize the indexer."""
-        self.memory = memory or Memory()
+        self.use_server = use_server
         self.max_workers = max_workers
         self.watcher = watcher
+        
+        # Initialize memory (local or remote)
+        if memory:
+            self.memory = memory
+        elif use_server:
+            # Try to use remote memory first, fall back to local
+            from serena.cli.common import RemoteMemory
+            try:
+                remote_memory = RemoteMemory()
+                if remote_memory.is_server_available():
+                    self.memory = remote_memory
+                    logger.info("Using server-based memory for indexing")
+                else:
+                    logger.warning("Server not available, falling back to local memory")
+                    self.memory = Memory()
+            except Exception as e:
+                logger.warning(f"Failed to connect to server, using local memory: {e}")
+                self.memory = Memory()
+        else:
+            self.memory = Memory()
 
         # Default scan directories
         self.scan_dirs = [
@@ -159,7 +180,7 @@ class MemoryIndexer:
                         )
 
                 except Exception as e:  # noqa: BLE001
-                    logger.error(f"Failed to process {file_path}: {e}")
+                    logger.exception("Failed to process %s", file_path)
                     stats["files_failed"] += 1
         else:
             # Parallel processing without progress display
@@ -180,7 +201,7 @@ class MemoryIndexer:
                         else:
                             stats["files_skipped"] += 1
                     except Exception as e:  # noqa: BLE001
-                        logger.error(f"Failed to process {file_path}: {e}")
+                        logger.exception("Failed to process %s", file_path)
                         stats["files_failed"] += 1
 
     def _process_single_file(self, file_path: str, force_reindex: bool) -> bool:
@@ -207,8 +228,8 @@ class MemoryIndexer:
             try:
                 with open(file_path, "r", encoding="utf-8") as f:
                     raw_content = f.read()
-            except Exception as e:  # noqa: BLE001
-                logger.error(f"Failed to read file {file_path}: {e}")
+            except Exception:  # noqa: BLE001
+                logger.exception("Failed to read file %s", file_path)
                 return False
 
             if not raw_content.strip():
@@ -227,16 +248,29 @@ class MemoryIndexer:
             status = extract_status_from_content(content)
             completed_at = extract_completion_date(content, file_path)
 
-            # Index the file
-            success = self.memory.upsert(
-                task_id=task_id,
-                markdown_text=content,
-                filepath=file_path,
-                title=title,
-                kind=kind,
-                status=status,
-                completed_at=completed_at,
-            )
+            # Index the file - handle both local and remote memory
+            if hasattr(self.memory, 'server_url'):
+                # Remote memory - convert parameters for API
+                success = self.memory.upsert(
+                    task_id=task_id,
+                    markdown_text=content,
+                    filepath=file_path,
+                    title=title,
+                    kind=kind.value if kind else "archive",
+                    status=status.value if status else None,
+                    completed_at=completed_at.isoformat() if completed_at else None,
+                )
+            else:
+                # Local memory - use original format
+                success = self.memory.upsert(
+                    task_id=task_id,
+                    markdown_text=content,
+                    filepath=file_path,
+                    title=title,
+                    kind=kind,
+                    status=status,
+                    completed_at=completed_at,
+                )
 
             if success:
                 self._processed_files.add(file_path)
@@ -251,8 +285,8 @@ class MemoryIndexer:
                 logger.warning(f"Failed to index {file_path}")
                 return False
 
-        except Exception as e:  # noqa: BLE001
-            logger.error(f"Error processing file {file_path}: {e}")
+        except Exception:  # noqa: BLE001
+            logger.exception("Error processing file %s", file_path)
             return False
 
     def _generate_id_for_file(self, file_path: str) -> Optional[str]:

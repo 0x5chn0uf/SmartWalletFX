@@ -24,10 +24,14 @@ def cmd_index(args) -> None:
                 print("⚠️ No directories found to index. Use --directories to specify manually.")
                 return
         
-        # Create indexer and scan
-        indexer = MemoryIndexer(max_workers=args.workers)
+        # Create indexer with server preference
+        use_server = not getattr(args, 'local_only', False)  # Default to server unless --local-only
+        indexer = MemoryIndexer(max_workers=args.workers, use_server=use_server)
         
-        print(f"🔍 Indexing directories: {', '.join(directories)}")
+        # Show which mode we're using
+        memory_type = "server" if hasattr(indexer.memory, 'server_url') else "local"
+        print(f"🔍 Indexing directories using {memory_type} memory: {', '.join(directories)}")
+        
         stats = indexer.scan_directories(
             directories=directories,
             force_reindex=args.force,
@@ -53,5 +57,6 @@ def register(sub: Any) -> None:
     p.add_argument("--directories", help="Comma-separated directories to scan")
     p.add_argument("--force", action="store_true", help="Force reindex")
     p.add_argument("--workers", type=int, default=4)
+    p.add_argument("--local-only", action="store_true", help="Use local memory only, don't try server")
     p.add_argument("-v", "--verbose", action="store_true")
     p.set_defaults(func=cmd_index)

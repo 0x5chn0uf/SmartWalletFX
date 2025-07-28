@@ -29,6 +29,9 @@ _COMMAND_MODULES = [
     "index_cmd",
     "search_cmd",
     "serve_cmd",
+    "get_cmd",
+    "latest_cmd",
+    "delete_cmd",
 ]
 
 
