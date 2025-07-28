@@ -8,15 +8,16 @@ from typing import Any, Optional
 
 from serena.core.models import Archive
 from serena.database.session import DatabaseManager
+from serena.settings import settings
 
 
 def _try_server_delete(task_id: str) -> bool:
     """Try to use server API for deletion if server is running."""
     import requests
-    from serena import config
+    # consolidated settings
+    server_url = settings.server_url
     
     try:
-        server_url = config.server_url()
         response = requests.delete(
             f"{server_url}/archives/{task_id}",
             timeout=5

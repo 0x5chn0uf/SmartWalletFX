@@ -123,8 +123,8 @@ def search_memories_advanced(
     from serena.database.session import get_session
     
     if db_path is None:
-        from serena import config
-        db_path = config.memory_db_path()
+        from serena.settings import settings
+        db_path = settings.memory_db
 
     engine = AdvancedSearchEngine(db_path)
     return engine.search_with_context(query, limit, context)
@@ -137,8 +137,8 @@ def get_context_suggestions(
     from serena.database.session import get_session
     
     if db_path is None:
-        from serena import config
-        db_path = config.memory_db_path()
+        from serena.settings import settings
+        db_path = settings.memory_db
 
     engine = AdvancedSearchEngine(db_path)
     return engine.get_context_suggestions(context, limit)

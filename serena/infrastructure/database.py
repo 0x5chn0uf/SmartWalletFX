@@ -9,13 +9,14 @@ import logging
 from pathlib import Path
 from typing import Optional
 
+from serena.settings import settings
+
 logger = logging.getLogger(__name__)
 
 
 def get_database_path() -> str:
     """Return the configured SQLite database path."""
-    from serena import config
-    return config.memory_db_path()
+    return settings.memory_db
 
 
 def init_database(db_path: Optional[str] = None) -> str:

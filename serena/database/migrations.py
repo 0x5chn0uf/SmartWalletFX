@@ -11,6 +11,8 @@ from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine
 
+from serena.settings import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,8 +26,7 @@ class MigrationManager:
             db_path: Path to SQLite database file
         """
         if db_path is None:
-            from serena import config
-            db_path = config.memory_db_path()
+            db_path = settings.memory_db
             
         self.db_path = db_path
         self.db_url = f"sqlite:///{db_path}"

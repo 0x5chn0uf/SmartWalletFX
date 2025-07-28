@@ -6,16 +6,17 @@ import logging
 import sys
 from typing import Any
 
+from serena.settings import settings
+
 
 
 
 def _try_server_search(query: str, limit: int):
     """Try to use server API for search if server is running."""
     import requests
-    from serena import config
     
     try:
-        server_url = config.server_url()
+        server_url = settings.server_url
         response = requests.get(
             f"{server_url}/search",
             params={"q": query, "limit": limit},
