@@ -14,30 +14,55 @@ from sqlalchemy.orm import Session
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application lifespan events."""
-    # Startup - preload embedding model
     import logging
+    import time
     from serena.infrastructure.embeddings import get_default_generator
     from serena import config
     
     logger = logging.getLogger(__name__)
+    startup_start = time.time()
+    
+    logger.info("🚀 Serena server startup beginning...")
+    logger.info("📋 Configuration check:")
+    logger.info("   - Embeddings enabled: %s", config.embeddings_enabled())
+    logger.info("   - Database path: %s", config.get_database_path())
     
     if config.embeddings_enabled():
-        logger.info("Preloading embedding model on server startup...")
+        logger.info("🤖 Initializing embedding model...")
+        model_start = time.time()
         try:
             generator = get_default_generator()
+            logger.info("   - Model name: %s", generator.model_name)
+            logger.info("   - Expected dimension: %d", generator.embedding_dim)
+            
             # Force synchronous model loading
+            logger.info("   - Loading model weights...")
             success = generator.load_model_now()
+            model_time = time.time() - model_start
+            
             if success:
-                logger.info("✅ Embedding model loaded successfully: %s", generator.model_name)
-                logger.info("Model dimension: %d", generator.embedding_dim)
+                logger.info("✅ Embedding model loaded successfully in %.2fs", model_time)
+                logger.info("   - Model: %s", generator.model_name)
+                logger.info("   - Dimension: %d", generator.embedding_dim)
+                logger.info("   - Status: Ready for semantic search")
             else:
-                logger.warning("⚠️ Embedding model failed to load")
+                logger.warning("⚠️ Embedding model failed to load after %.2fs", model_time)
+                logger.warning("   - Fallback: Text-based search will be used")
         except Exception as exc:
-            logger.error("❌ Failed to preload embedding model: %s", exc)
+            model_time = time.time() - model_start
+            logger.error("❌ Failed to preload embedding model after %.2fs: %s", model_time, exc)
+            logger.error("   - Fallback: Text-based search will be used")
     else:
-        logger.info("ℹ️ Embeddings disabled via configuration, skipping model preload")
+        logger.info("ℹ️ Embeddings disabled via configuration")
+        logger.info("   - Search mode: Text-based only")
+    
+    startup_time = time.time() - startup_start
+    logger.info("🎉 Serena server startup completed in %.2fs", startup_time)
     
     yield
+    
+    # Shutdown
+    logger.info("🛑 Serena server shutting down...")
     # Shutdown
 
 
@@ -62,7 +87,7 @@ def create_app() -> FastAPI:
     )
     
     # Dependency for database session
-    def get_db() -> Session:
+    def get_db():
         with get_db_session() as session:
             yield session
     
@@ -74,12 +99,19 @@ def create_app() -> FastAPI:
     @app.get("/health")
     async def health_check():
         """Health check endpoint."""
-        from serena.database.session import DatabaseManager
         from serena.infrastructure.embeddings import get_default_generator
         from serena import config
+        from pathlib import Path
         
-        db_manager = DatabaseManager()
-        is_db_healthy = db_manager.health_check()
+        # Simple database health check
+        try:
+            from serena.database.session import get_db_session
+            with get_db_session() as session:
+                from sqlalchemy import text
+                session.execute(text("SELECT 1")).fetchone()
+                is_db_healthy = True
+        except Exception:
+            is_db_healthy = False
         
         # Check embedding model status
         embedding_status = "disabled"
