@@ -41,8 +41,8 @@ def generate_readme_id(file_path: str) -> str:
     # /project/docs/api/README.md -> doc-readme.docs.api
     parent_path = str(path_obj.parent).replace("/", ".").replace("\\", ".")
 
-    # Remove common prefixes to keep IDs clean
-    if parent_path.startswith("./"):
+    # Remove common prefixes to keep IDs clean (only if it's exactly "./" prefix)
+    if parent_path.startswith("./") and len(parent_path) > 2 and parent_path[2] != ".":
         parent_path = parent_path[2:]
 
     return f"doc-readme.{parent_path}"
@@ -61,8 +61,8 @@ def generate_path_based_id(file_path: str, base_name: str) -> str:
     # /project/backend/config.py -> doc-config.backend
     parent_path = str(path_obj.parent).replace("/", ".").replace("\\", ".")
 
-    # Remove common prefixes to keep IDs clean
-    if parent_path.startswith("./"):
+    # Remove common prefixes to keep IDs clean (only if it's exactly "./" prefix)
+    if parent_path.startswith("./") and len(parent_path) > 2 and parent_path[2] != ".":
         parent_path = parent_path[2:]
 
     return f"doc-{base_name}.{parent_path}"

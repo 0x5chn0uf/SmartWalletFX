@@ -9,6 +9,9 @@ from typing import Any, Dict, List, Optional
 from serena.core.models import SearchResult, TaskKind, TaskStatus
 from serena.database.session import get_db_session as get_session
 from serena.infrastructure.embeddings import batch_cosine_similarity, generate_embedding
+from serena.utils.error_handling import log_exceptions
+
+from sqlalchemy import MetaData, Table, func, select, text  # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -17,14 +20,9 @@ class SearchEngine:
     """Handles semantic search with hybrid ranking."""
 
     def __init__(self, db_path: Optional[str] = None):
-        """
-        Initialize search engine.
-
-        Args:
-            db_path: Optional database path
-        """
         self.db_path = db_path
 
+    @log_exceptions(logger=logger, default_return=[])
     def search(
         self,
         query: str,
@@ -49,163 +47,77 @@ class SearchEngine:
         if not query.strip():
             return []
 
-        try:
-            # Generate query embedding
-            query_embedding = generate_embedding(query)
+        # Generate query embedding
+        query_embedding = generate_embedding(query)
 
-            # Detect if embeddings are effectively disabled (all-zero vector)
-            if not any(abs(x) > 1e-6 for x in query_embedding):
-                logger.info(
-                    "Embeddings disabled or unavailable – falling back to FTS/LIKE search"
-                )
-                return self._fallback_keyword_search(
-                    query, k, kind_filter, status_filter
-                )
-
-            # Get candidate embeddings (only first chunk per task for speed)
-            candidates = self._get_candidates(
-                kind_filter, status_filter, first_chunk_only=True
+        # Embeddings must be available
+        if not any(abs(x) > 1e-6 for x in query_embedding):
+            raise RuntimeError(
+                "Embeddings are disabled or unavailable; semantic search cannot proceed."
             )
 
-            if not candidates:
-                return []
+        # Get candidate embeddings (only first chunk per task for speed)
+        candidates = self._get_candidates(
+            kind_filter, status_filter, first_chunk_only=True
+        )
 
-            # Calculate semantic similarities
-            vectors = [candidate["vector"] for candidate in candidates]
-            similarities = batch_cosine_similarity(query_embedding, vectors)
-
-            scored = []
-            for candidate, similarity in zip(candidates, similarities):
-                if similarity < min_score:
-                    continue
-
-                score = self._calculate_hybrid_score(similarity, candidate, query)
-                scored.append((score, similarity, candidate))
-
-            # Pick top-k by score without computing excerpts yet
-            top = sorted(scored, key=lambda x: x[0], reverse=True)[:k]
-
-            results: List[SearchResult] = []
-            for score, similarity, candidate in top:
-                excerpt = self._generate_excerpt(candidate, query)
-                results.append(
-                    SearchResult(
-                        task_id=candidate["task_id"],
-                        title=candidate["title"],
-                        score=score,
-                        excerpt=excerpt,
-                        kind=TaskKind(candidate["kind"]),
-                        status=TaskStatus(candidate["status"])
-                        if candidate["status"]
-                        else None,
-                        completed_at=datetime.fromisoformat(candidate["completed_at"])
-                        if candidate["completed_at"]
-                        else None,
-                        filepath=candidate["filepath"],
-                    )
-                )
-
-            return results
-
-        except Exception as e:
-            logger.error(f"Search failed: {e}")
+        if not candidates:
             return []
 
-    def _fallback_keyword_search(
-        self,
-        query: str,
-        k: int,
-        kind_filter: Optional[List[TaskKind]] = None,
-        status_filter: Optional[List[TaskStatus]] = None,
-    ) -> List[SearchResult]:
-        """Fallback search when embeddings are unavailable."""
-        
-        where_conditions = []
-        params: List[Any] = []
+        vectors = [candidate["vector"] for candidate in candidates]
 
-        if kind_filter:
-            placeholders = ",".join("?" * len(kind_filter))
-            where_conditions.append(f"a.kind IN ({placeholders})")
-            params.extend(
-                [
-                    knd.value if hasattr(knd, "value") else str(knd)
-                    for knd in kind_filter
-                ]
-            )
+        def _score_candidates(
+            emb: List[float], search_text: str
+        ) -> List[tuple[float, float, Dict[str, Any]]]:
+            """Return (score, similarity, candidate) tuples above threshold."""
 
-        if status_filter:
-            placeholders = ",".join("?" * len(status_filter))
-            where_conditions.append(f"a.status IN ({placeholders})")
-            params.extend(
-                [
-                    sts.value if hasattr(sts, "value") else str(sts)
-                    for sts in status_filter
-                ]
-            )
+            sims = batch_cosine_similarity(emb, vectors)
+            tuples: List[tuple[float, float, Dict[str, Any]]] = []
+            for cand, sim in zip(candidates, sims):
+                if sim < min_score:
+                    continue
+                tuples.append((self._calculate_hybrid_score(sim, cand, search_text), sim, cand))
+            return tuples
+
+        scored = _score_candidates(query_embedding, query)
+
+        # If no result, broaden by individual tokens (length >=3)
+        if not scored and " " in query:
+            tokens = [t for t in query.split() if len(t) >= 3]
+            for tok in tokens:
+                tok_emb = generate_embedding(tok)
+                scored.extend(_score_candidates(tok_emb, tok))
+
+        if not scored:
+            return []
+
+        # Deduplicate by task_id keep highest score
+        best_map: Dict[str, tuple[float, float, Dict[str, Any]]] = {}
+        for score, sim, cand in scored:
+            tid = cand["task_id"]
+            if tid not in best_map or score > best_map[tid][0]:
+                best_map[tid] = (score, sim, cand)
+
+        top = sorted(best_map.values(), key=lambda x: x[0], reverse=True)[:k]
 
         results: List[SearchResult] = []
-        
-        # Use session context manager correctly
-        with get_session(self.db_path) as session:
-            from sqlalchemy import text
-            import sqlite3
-            
-            # Try FTS table first
-            use_fts = False
-            try:
-                session.execute(text("SELECT 1 FROM archives_fts LIMIT 1"))
-                use_fts = True
-            except Exception:
-                use_fts = False
-
-            if use_fts:
-                where_clause = (
-                    "WHERE " + " AND ".join(where_conditions) if where_conditions else ""
+        for score, similarity, candidate in top:
+            excerpt = self._generate_excerpt(candidate, query)
+            results.append(
+                SearchResult(
+                    task_id=candidate["task_id"],
+                    title=candidate["title"],
+                    score=score,
+                    excerpt=excerpt,
+                    kind=TaskKind(candidate["kind"]),
+                    status=TaskStatus(candidate["status"])
+                    if candidate["status"]
+                    else None,
+                    completed_at=datetime.fromisoformat(candidate["completed_at"])
+                    if candidate["completed_at"]
+                    else None,
+                    filepath=candidate["filepath"],
                 )
-                sql = f"""
-                    SELECT a.task_id, a.title, a.kind, a.status, a.completed_at, a.filepath,
-                           bm25(archives_fts) AS rank
-                    FROM archives_fts
-                    JOIN archives a USING(task_id)
-                    WHERE archives_fts MATCH ? {where_clause}
-                    ORDER BY rank LIMIT ?
-                """
-                params = [query] + params + [k]
-                result = session.execute(text(sql), params)
-            else:
-                # Simple LIKE on title as last resort
-                where_conditions.append("a.title LIKE ?")
-                params.append(f"%{query}%")
-                where_clause = "WHERE " + " AND ".join(where_conditions)
-                sql = f"""
-                    SELECT a.task_id, a.title, a.kind, a.status, a.completed_at, a.filepath,
-                           0 as rank
-                    FROM archives a {where_clause}
-                    ORDER BY a.completed_at DESC LIMIT ?
-                """
-                params.append(k)
-                result = session.execute(text(sql), params)
-
-            for row in result:
-                results.append(
-                    SearchResult(
-                        task_id=row[0],  # task_id
-                        title=row[1],    # title  
-                        score=float(row[6]),  # rank
-                        excerpt="",
-                        kind=TaskKind(row[2]),  # kind
-                        status=TaskStatus(row[3]) if row[3] else None,  # status
-                        completed_at=datetime.fromisoformat(row[4])  # completed_at
-                        if row[4]
-                        else None,
-                        filepath=row[5],  # filepath
-                    )
-                )
-
-        # Generate excerpts lazily
-        for res in results:
-            res.excerpt = self._generate_excerpt(
-                {"filepath": res.filepath, "title": res.title}, query
             )
 
         return results
@@ -297,16 +209,10 @@ class SearchEngine:
         self, similarity: float, candidate: Dict[str, Any], query: str
     ) -> float:
         """Calculate hybrid score combining similarity, BM25, and recency."""
-        # Base score from semantic similarity (70% weight)
         score = 0.7 * similarity
 
-        # Try to add BM25 score if FTS is available (30% weight)
-        try:
-            bm25_score = self._calculate_bm25_score(candidate["task_id"], query)
-            score += 0.3 * bm25_score
-        except Exception:
-            # FTS not available, use pure semantic similarity
-            pass
+        bm25_score = self._calculate_bm25_score(candidate["task_id"], query)
+        score += 0.3 * bm25_score
 
         # Apply recency boost
         if candidate["completed_at"]:
@@ -334,31 +240,30 @@ class SearchEngine:
     def _calculate_bm25_score(self, task_id: str, query: str) -> float:
         """Calculate BM25 score using FTS5 if available."""
         try:
-            conn = get_session(self.db_path)
+            with get_session(self.db_path) as session:
+                # Reflect the FTS virtual table dynamically.  We avoid declaring it
+                # in the SQLAlchemy models because it is created by the migration
+                # script and has no primary key.
+                metadata = MetaData()
+                archives_fts = Table("archives_fts", metadata, autoload_with=session.get_bind())
 
-            # Use FTS5 to get BM25 score
-            cursor = conn.execute(
-                """
-                SELECT bm25(archives_fts) as score
-                FROM archives_fts
-                WHERE archives_fts MATCH ?
-                AND task_id = ?
-            """,
-                (query, task_id),
-            )
+                stmt = (
+                    select(func.bm25(archives_fts).label("score"))
+                    .where(archives_fts.c.task_id == task_id)
+                    .where(text("archives_fts MATCH :query"))
+                    .params(query=query)
+                )
 
-            row = cursor.fetchone()
-            conn.close()
+                result = session.execute(stmt).scalar_one_or_none()
 
-            if row and row["score"] is not None:
-                # FTS5 BM25 scores are negative, normalize to 0-1
-                raw_score = abs(row["score"])
+                if result is None:
+                    return 0.0  # No match found, return neutral score
+
+                raw_score: float = abs(float(result))  # FTS5 returns negative values
                 return min(1.0, raw_score / 10.0)  # Rough normalization
-
         except Exception:
-            pass
-
-        return 0.0
+            # FTS table doesn't exist or other error - return neutral score
+            return 0.0
 
     def _generate_excerpt(self, candidate: Dict[str, Any], query: str) -> str:
         """Generate a relevant excerpt from the content."""
@@ -394,7 +299,5 @@ class SearchEngine:
                 excerpt = excerpt[:253] + "..."
 
             return excerpt
-
         except Exception:
-            # Fallback to title if file reading fails
             return candidate.get("title", "")[:256]

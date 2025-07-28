@@ -23,7 +23,6 @@ def cmd_serve(args) -> None:
         # Configure uvicorn logging
         log_config = uvicorn.config.LOGGING_CONFIG
         log_config["formatters"]["default"]["fmt"] = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        log_config["formatters"]["access"]["fmt"] = '%(asctime)s - %(client_addr)s - "%(request_line)s" %(status_code)s'
         
         # Set log level based on args
         log_level = "debug" if args.verbose else "info"
@@ -35,7 +34,7 @@ def cmd_serve(args) -> None:
             log_level=log_level,
             log_config=log_config,
             reload=args.watch,
-            access_log=True
+            access_log=False  # Disable default access log, use our custom middleware
         )
 
     except ImportError as e:

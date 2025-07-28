@@ -27,56 +27,55 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     startup_start = time.time()
     
     print("📋 Configuration check:")
-    print(f"   - Embeddings enabled: {config.embeddings_enabled()}")
     print(f"   - Database path: {config.memory_db_path()}")
     
     logger.info("🚀 Serena server startup beginning...")
     logger.info("📋 Configuration check:")
-    logger.info("   - Embeddings enabled: %s", config.embeddings_enabled())
     logger.info("   - Database path: %s", config.memory_db_path())
     
-    if config.embeddings_enabled():
-        print("🤖 Initializing embedding model...")
-        logger.info("🤖 Initializing embedding model...")
-        model_start = time.time()
-        try:
-            generator = get_default_generator()
-            print(f"   - Model name: {generator.model_name}")
-            print(f"   - Expected dimension: {generator.embedding_dim}")
-            logger.info("   - Model name: %s", generator.model_name)
-            logger.info("   - Expected dimension: %d", generator.embedding_dim)
-            
-            # Force synchronous model loading
-            print("   - Loading model weights...")
-            logger.info("   - Loading model weights...")
-            success = generator.load_model_now()
-            model_time = time.time() - model_start
-            
-            if success:
-                print(f"✅ Embedding model loaded successfully in {model_time:.2f}s")
-                print(f"   - Model: {generator.model_name}")
-                print(f"   - Dimension: {generator.embedding_dim}")
-                print("   - Status: Ready for semantic search")
-                logger.info("✅ Embedding model loaded successfully in %.2fs", model_time)
-                logger.info("   - Model: %s", generator.model_name)
-                logger.info("   - Dimension: %d", generator.embedding_dim)
-                logger.info("   - Status: Ready for semantic search")
-            else:
-                print(f"⚠️ Embedding model failed to load after {model_time:.2f}s")
-                print("   - Fallback: Text-based search will be used")
-                logger.warning("⚠️ Embedding model failed to load after %.2fs", model_time)
-                logger.warning("   - Fallback: Text-based search will be used")
-        except Exception as exc:
-            model_time = time.time() - model_start
-            print(f"❌ Failed to preload embedding model after {model_time:.2f}s: {exc}")
-            print("   - Fallback: Text-based search will be used")
-            logger.error("❌ Failed to preload embedding model after %.2fs: %s", model_time, exc)
-            logger.error("   - Fallback: Text-based search will be used")
-    else:
-        print("ℹ️ Embeddings disabled via configuration")
-        print("   - Search mode: Text-based only")
-        logger.info("ℹ️ Embeddings disabled via configuration")
-        logger.info("   - Search mode: Text-based only")
+    # Embeddings are always required; load model synchronously
+    print("🤖 Initializing embedding model...")
+    logger.info("🤖 Initializing embedding model...")
+    model_start = time.time()
+    try:
+        generator = get_default_generator()
+        print(f"   - Model name: {generator.model_name}")
+        print(f"   - Expected dimension: {generator.embedding_dim}")
+        logger.info("   - Model name: %s", generator.model_name)
+        logger.info("   - Expected dimension: %d", generator.embedding_dim)
+        
+        # Force synchronous model loading
+        print("   - Loading model weights...")
+        logger.info("   - Loading model weights...")
+        success = generator.load_model_now()
+        model_time = time.time() - model_start
+
+        if not success:
+            # Embeddings were expected but model could not be loaded → abort.
+            print(
+                f"❌ Failed to load embedding model after {model_time:.2f}s – aborting startup"
+            )
+            logger.critical(
+                "Embedding model missing or failed to load; exiting to prevent zero-vector indexing"
+            )
+            raise RuntimeError("Embedding model failed to load; startup aborted")
+
+        print(f"✅ Embedding model loaded successfully in {model_time:.2f}s")
+        print(f"   - Model: {generator.model_name}")
+        print(f"   - Dimension: {generator.embedding_dim}")
+        print("   - Status: Ready for semantic search")
+        logger.info(
+            "✅ Embedding model loaded successfully in %.2fs", model_time
+        )
+        logger.info("   - Model: %s", generator.model_name)
+        logger.info("   - Dimension: %d", generator.embedding_dim)
+        logger.info("   - Status: Ready for semantic search")
+    except Exception as exc:
+        model_time = time.time() - model_start
+        print(f"❌ Failed to preload embedding model after {model_time:.2f}s: {exc}")
+        print("   - Fallback: Text-based search will be used")
+        logger.error("❌ Failed to preload embedding model after %.2fs: %s", model_time, exc)
+        logger.error("   - Fallback: Text-based search will be used")
     
     startup_time = time.time() - startup_start
     print(f"🎉 Serena server startup completed in {startup_time:.2f}s")
@@ -123,13 +122,17 @@ def create_app() -> FastAPI:
         response.headers["X-Process-Time"] = str(round(process_time, 4))
         
         # Log execution time for API endpoints
-        logger = logging.getLogger("serena.api")
         if request.url.path not in ["/", "/health"]:  # Skip root and health check
             # Build full URL with query parameters
             url_with_query = str(request.url.path)
             if request.url.query:
                 url_with_query += "?" + request.url.query
             
+            # Use print for immediate visibility
+            print(f"{request.method} {url_with_query} - {process_time:.4f}s - {response.status_code}")
+            
+            # Also log via logger
+            logger = logging.getLogger("serena.api")
             logger.info(
                 "%s %s - %.4fs - %d",
                 request.method,
@@ -170,16 +173,16 @@ def create_app() -> FastAPI:
         # Check embedding model status
         embedding_status = "disabled"
         model_name = None
-        if config.embeddings_enabled():
-            try:
-                generator = get_default_generator()
-                if generator.model is not None:
-                    embedding_status = "loaded"
-                    model_name = generator.model_name
-                else:
-                    embedding_status = "failed"
-            except Exception:
-                embedding_status = "error"
+        # Embeddings are always required; load model synchronously
+        try:
+            generator = get_default_generator()
+            if generator.model is not None:
+                embedding_status = "loaded"
+                model_name = generator.model_name
+            else:
+                embedding_status = "failed"
+        except Exception:
+            embedding_status = "error"
         
         overall_healthy = is_db_healthy and (embedding_status in ["loaded", "disabled"])
         
@@ -189,7 +192,7 @@ def create_app() -> FastAPI:
             "embeddings": {
                 "status": embedding_status,
                 "model": model_name,
-                "enabled": config.embeddings_enabled()
+                "enabled": True
             },
             "version": "0.1.0"
         }
@@ -344,5 +347,97 @@ def create_app() -> FastAPI:
             "by_kind": kind_counts,
             "by_status": status_counts,
         }
+    
+    @app.post("/archives")
+    async def upsert_archive(
+        request: dict,
+        db: Session = Depends(get_db)
+    ):
+        """Upsert (insert or update) an archive using the server's embedding model."""
+        from serena.services.memory_impl import Memory
+        from datetime import datetime
+        from serena.core.models import TaskKind, TaskStatus
+        
+        try:
+            # Extract data from request
+            task_id = request.get('task_id')
+            markdown_text = request.get('markdown_text')
+            filepath = request.get('filepath')
+            title = request.get('title')
+            kind = request.get('kind', 'archive')
+            status = request.get('status')
+            completed_at = request.get('completed_at')
+            
+            if not task_id or not markdown_text:
+                raise HTTPException(status_code=400, detail="task_id and markdown_text are required")
+            
+            # Parse completed_at if provided
+            parsed_completed_at = None
+            if completed_at:
+                try:
+                    parsed_completed_at = datetime.fromisoformat(completed_at.replace('Z', '+00:00'))
+                except Exception:
+                    pass
+            
+            # Parse enum values
+            task_kind = None
+            if kind:
+                try:
+                    task_kind = TaskKind(kind)
+                except ValueError:
+                    task_kind = TaskKind.ARCHIVE
+            
+            task_status = None
+            if status:
+                try:
+                    task_status = TaskStatus(status)
+                except ValueError:
+                    pass
+            
+            # Use the server's Memory instance (which uses the pre-loaded model)
+            memory = Memory()
+            success = memory.upsert(
+                task_id=task_id,
+                markdown_text=markdown_text,
+                filepath=filepath,
+                title=title,
+                kind=task_kind,
+                status=task_status,
+                completed_at=parsed_completed_at,
+                async_write=False  # Force synchronous for API consistency
+            )
+            
+            if success:
+                return {"task_id": task_id, "status": "success", "message": "Archive upserted successfully"}
+            else:
+                raise HTTPException(status_code=500, detail="Failed to upsert archive")
+                
+        except Exception as exc:
+            logger.error(f"Error upserting archive {task_id}: {exc}")
+            raise HTTPException(status_code=500, detail=f"Internal server error: {str(exc)}")
+    
+    @app.post("/generate-embeddings")
+    async def generate_embeddings(
+        texts: list[str],
+        db: Session = Depends(get_db)
+    ):
+        """Generate embeddings using the server's pre-loaded model."""
+        from serena.infrastructure.embeddings import get_default_generator
+        
+        try:
+            generator = get_default_generator()
+            if generator.model is None:
+                raise HTTPException(status_code=503, detail="Embedding model not available")
+            
+            embeddings = generator.generate_embeddings_batch(texts)
+            
+            return {
+                "embeddings": embeddings,
+                "model": generator.model_name,
+                "count": len(embeddings)
+            }
+        except Exception as exc:
+            logger.error(f"Error generating embeddings: {exc}")
+            raise HTTPException(status_code=500, detail=f"Failed to generate embeddings: {str(exc)}")
     
     return app
