@@ -109,6 +109,37 @@ def create_app() -> FastAPI:
         allow_headers=[cors_allow_headers()],
     )
     
+    # Add timing middleware
+    @app.middleware("http")
+    async def add_timing_header(request, call_next):
+        import time
+        import logging
+        
+        start_time = time.time()
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        
+        # Add execution time to response headers
+        response.headers["X-Process-Time"] = str(round(process_time, 4))
+        
+        # Log execution time for API endpoints
+        logger = logging.getLogger("serena.api")
+        if request.url.path not in ["/", "/health"]:  # Skip root and health check
+            # Build full URL with query parameters
+            url_with_query = str(request.url.path)
+            if request.url.query:
+                url_with_query += "?" + request.url.query
+            
+            logger.info(
+                "%s %s - %.4fs - %d",
+                request.method,
+                url_with_query,
+                process_time,
+                response.status_code
+            )
+        
+        return response
+    
     # Dependency for database session
     def get_db():
         with get_db_session() as session:
@@ -220,7 +251,7 @@ def create_app() -> FastAPI:
     async def search_archives(
         q: str,
         limit: int = 10,
-        threshold: float = 0.7,
+        threshold: float = 0.1,
         db: Session = Depends(get_db)
     ):
         """Search archives using semantic similarity."""
