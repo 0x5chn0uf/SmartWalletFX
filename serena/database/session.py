@@ -8,8 +8,10 @@ from typing import Generator, Optional
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool, QueuePool
 
 from serena.core.models import Base
+from serena.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +26,7 @@ class DatabaseManager:
             db_path: Path to SQLite database file
         """
         if db_path is None:
-            from serena import config
-            db_path = config.memory_db_path()
+            db_path = settings.memory_db
             
         self.db_path = db_path
         self.engine = self._create_engine()
@@ -38,29 +39,44 @@ class DatabaseManager:
         self._create_tables()
 
     def _create_engine(self) -> Engine:
-        """Create SQLAlchemy engine with SQLite optimizations."""
+        """Create SQLAlchemy engine with connection pooling and SQLite optimizations."""
         # Use sqlite:/// URL format for SQLAlchemy
         db_url = f"sqlite:///{self.db_path}"
         
+        # Configure connection pooling for better performance
         engine = create_engine(
             db_url,
             echo=False,  # Set to True for SQL debugging
-            pool_pre_ping=True,
-            pool_recycle=300,
+            poolclass=StaticPool,  # Use StaticPool for SQLite to maintain connection
+            pool_pre_ping=True,  # Verify connections before use
+            pool_recycle=3600,  # Recycle connections every hour
+            pool_size=10,  # Maintain 10 connections in pool
+            max_overflow=20,  # Allow up to 20 overflow connections
+            pool_timeout=30,  # Timeout for getting connection from pool
             connect_args={
                 "check_same_thread": False,  # Allow multi-threading
+                "timeout": 20,  # SQLite connection timeout
             }
+        )
+        
+        logger.info(
+            "Database engine created with connection pooling: "
+            "pool_size=10, max_overflow=20, pool_timeout=30s"
         )
         
         # Configure SQLite pragmas for performance
         @event.listens_for(engine, "connect")
         def set_sqlite_pragma(dbapi_connection, connection_record):
             cursor = dbapi_connection.cursor()
+            # Performance-oriented SQLite pragmas
             cursor.execute("PRAGMA journal_mode=WAL")
             cursor.execute("PRAGMA synchronous=NORMAL")
             cursor.execute("PRAGMA foreign_keys=ON")
             cursor.execute("PRAGMA temp_store=MEMORY")
             cursor.execute("PRAGMA mmap_size=268435456")  # 256MB
+            cursor.execute("PRAGMA cache_size=-64000")  # 64MB cache
+            cursor.execute("PRAGMA busy_timeout=30000")  # 30s busy timeout
+            cursor.execute("PRAGMA wal_autocheckpoint=1000")  # Checkpoint every 1000 pages
             cursor.close()
             
         return engine
@@ -157,10 +173,34 @@ class DatabaseManager:
             logger.error("WAL checkpoint failed: %s", exc)
             raise
 
+    def get_pool_status(self) -> dict:
+        """Get connection pool status information."""
+        try:
+            pool = self.engine.pool
+            return {
+                "pool_size": getattr(pool, 'size', lambda: 0)(),
+                "pool_checked_in": getattr(pool, 'checkedin', lambda: 0)(),
+                "pool_checked_out": getattr(pool, 'checkedout', lambda: 0)(),
+                "pool_overflow": getattr(pool, 'overflow', lambda: 0)(),
+                "pool_invalid": getattr(pool, 'invalidated', lambda: 0)(),
+            }
+        except Exception as exc:
+            logger.error("Failed to get pool status: %s", exc)
+            return {}
+    
     def close(self) -> None:
-        """Close the database engine."""
+        """Close the database engine and cleanup connections."""
         if hasattr(self, 'engine'):
-            self.engine.dispose()
+            try:
+                # Log final pool status
+                status = self.get_pool_status()
+                logger.info("Closing database engine. Final pool status: %s", status)
+                
+                # Dispose of all connections in pool
+                self.engine.dispose()
+                logger.info("Database engine closed successfully")
+            except Exception as exc:
+                logger.error("Error closing database engine: %s", exc)
 
 
 # Global database manager instance
@@ -190,12 +230,40 @@ def get_db_session(db_path: Optional[str] = None) -> Generator[Session, None, No
         db_path: Path to database file
         
     Yields:
-        Session: SQLAlchemy session
+        Session: SQLAlchemy session with connection pool monitoring
         
     Example:
         with get_db_session() as session:
             archives = session.query(Archive).limit(10).all()
     """
     db_manager = get_db_manager(db_path)
+    
+    # Log pool status on high usage (for monitoring)
+    try:
+        status = db_manager.get_pool_status()
+        checked_out = status.get("pool_checked_out", 0)
+        pool_size = status.get("pool_size", 0)
+        
+        if checked_out > pool_size * 0.8:  # Log when 80% of pool is used
+            logger.warning(
+                "High database connection usage: %d/%d connections in use",
+                checked_out, pool_size
+            )
+    except Exception:
+        pass  # Don't fail session creation due to monitoring
+    
     with db_manager.get_session() as session:
         yield session
+
+
+def get_pool_metrics(db_path: Optional[str] = None) -> dict:
+    """Get detailed connection pool metrics for monitoring.
+    
+    Args:
+        db_path: Path to database file
+        
+    Returns:
+        dict: Pool metrics
+    """
+    db_manager = get_db_manager(db_path)
+    return db_manager.get_pool_status()

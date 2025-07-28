@@ -32,6 +32,7 @@ _COMMAND_MODULES = [
     "get_cmd",
     "latest_cmd",
     "delete_cmd",
+    "pool_cmd",
 ]
 
 

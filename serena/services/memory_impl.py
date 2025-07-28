@@ -11,7 +11,8 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
-from serena import config
+# Use centralised settings object
+from serena.settings import settings
 from serena.core.models import (
     Archive,
     Embedding,
@@ -49,7 +50,7 @@ class Memory:
         if db_path is not None:
             self.db_path = db_path
         else:
-            self.db_path = config.memory_db_path()
+            self.db_path = settings.memory_db
         self.cache_size = cache_size
         self._embedding_generator: Optional[EmbeddingGenerator] = None
         self._search_engine: Optional[SearchEngine] = None
@@ -198,24 +199,28 @@ class Memory:
                     embeddings = self.embedding_generator.generate_embeddings_batch(
                         [chunk for chunk, _ in chunks]
                     )
-                    for (chunk_text, chunk_pos), vector in zip(chunks, embeddings):
-                        # Use efficient numpy-based vector serialization from models
-                        from serena.core.models import EmbeddingRecord
-                        
-                        embedding_record = EmbeddingRecord.from_vector(
-                            task_id=task_id,
-                            vector=vector,
-                            chunk_id=chunk_pos,
-                            position=0
-                        )
-                        
-                        embedding = Embedding(
-                            task_id=embedding_record.task_id,
-                            chunk_id=embedding_record.chunk_id,
-                            position=embedding_record.position,
-                            vector=embedding_record.vector,
-                        )
-                        session.add(embedding)
+                    try:
+                        for (chunk_text, chunk_pos), vector in zip(chunks, embeddings):
+                            # Use efficient numpy-based vector serialization from models
+                            from serena.core.models import EmbeddingRecord
+                            
+                            embedding_record = EmbeddingRecord.from_vector(
+                                task_id=task_id,
+                                vector=vector,
+                                chunk_id=chunk_pos,
+                                position=0
+                            )
+                            
+                            embedding = Embedding(
+                                task_id=embedding_record.task_id,
+                                chunk_id=embedding_record.chunk_id,
+                                position=embedding_record.position,
+                                vector=embedding_record.vector,
+                            )
+                            session.add(embedding)
+                    finally:
+                        # Ensure memory cleanup of large embedding batch
+                        del embeddings
 
                 # Session commit happens automatically via context manager
                 logger.debug("Upserted task %s", task_id)
