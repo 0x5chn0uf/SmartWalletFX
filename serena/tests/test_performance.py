@@ -4,6 +4,7 @@ Tests latency requirements and scalability benchmarks.
 """
 
 import concurrent.futures
+import gc
 import os
 import tempfile
 import threading
@@ -505,3 +506,69 @@ class TestMemoryStressTest:
         print(f"Stress test: {total_operations} operations in {duration}s")
         print(f"Throughput: {throughput:.1f} operations/second")
         print(f"Error rate: {error_rate:.3%}")
+
+    @pytest.mark.benchmark
+    def test_memory_leak_prevention(self, large_dataset_db):
+        """Test that vector processing doesn't accumulate memory over time."""
+        memory = Memory(db_path=large_dataset_db)
+        
+        # Force garbage collection before starting
+        gc.collect()
+        
+        # Get initial memory usage
+        try:
+            import psutil
+            process = psutil.Process()
+            initial_memory = process.memory_info().rss / (1024 * 1024)  # MB
+        except ImportError:
+            pytest.skip("psutil not available for memory monitoring")
+        
+        # Perform multiple search operations that would trigger vector processing
+        search_queries = [
+            "Python backend implementation",
+            "JavaScript frontend component", 
+            "Docker infrastructure setup",
+            "authentication middleware security",
+            "performance optimization caching",
+        ]
+        
+        # Run searches multiple times to detect memory accumulation
+        for iteration in range(10):  # 10 iterations to stress test memory
+            for query in search_queries:
+                results = memory.search(query, k=5)
+                assert len(results) >= 0  # Basic validation
+                
+                # Force garbage collection between searches
+                gc.collect()
+        
+        # Check final memory usage
+        final_memory = process.memory_info().rss / (1024 * 1024)  # MB
+        memory_growth = final_memory - initial_memory
+        
+        # Memory growth should be minimal (< 50MB) after vector operations
+        assert memory_growth < 50, (
+            f"Memory grew by {memory_growth:.2f}MB, indicating potential memory leak"
+        )
+        
+        print(f"Initial memory: {initial_memory:.2f}MB")
+        print(f"Final memory: {final_memory:.2f}MB") 
+        print(f"Memory growth: {memory_growth:.2f}MB")
+        
+        # Additional test: verify vector cleanup in batch operations
+        large_texts = [f"Large content block {i} " * 100 for i in range(20)]
+        
+        # Force generation of many embeddings
+        for text in large_texts:
+            memory.upsert(f"memory-test-{hash(text)}", text, title="Memory Test")
+            gc.collect()
+        
+        # Check memory hasn't grown excessively
+        batch_final_memory = process.memory_info().rss / (1024 * 1024)
+        batch_growth = batch_final_memory - final_memory
+        
+        assert batch_growth < 100, (
+            f"Batch operations caused {batch_growth:.2f}MB growth, indicating memory leak"
+        )
+        
+        print(f"Memory after batch operations: {batch_final_memory:.2f}MB")
+        print(f"Batch operation growth: {batch_growth:.2f}MB")

@@ -77,6 +77,9 @@ class SearchEngine:
                 if sim < min_score:
                     continue
                 tuples.append((self._calculate_hybrid_score(sim, cand, search_text), sim, cand))
+            
+            # Cleanup similarity scores list
+            del sims
             return tuples
 
         scored = _score_candidates(query_embedding, query)
@@ -120,6 +123,9 @@ class SearchEngine:
                 )
             )
 
+        # Cleanup vectors and candidates lists to free memory
+        del vectors, candidates, scored, top
+        
         return results
 
     def _get_candidates(
@@ -188,7 +194,9 @@ class SearchEngine:
 
                 # Convert vector bytes back to list
                 import numpy as np
-                vector = np.frombuffer(row[6], dtype=np.float32).tolist()  # vector is 7th column
+                vec_array = np.frombuffer(row[6], dtype=np.float32)
+                vector = vec_array.tolist()
+                del vec_array  # Explicit cleanup of numpy array
 
                 candidate = {
                     "task_id": row[0],

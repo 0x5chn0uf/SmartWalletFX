@@ -4,9 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-import struct
 from datetime import datetime
-from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -30,7 +28,7 @@ from serena.infrastructure.database import (
     checkpoint_database,
     init_database,
 )
-from serena.database.session import get_db_session as get_session
+from serena.database.session import get_db_session as get_session, get_db_manager
 from serena.infrastructure.embeddings import (
     EmbeddingGenerator,
     chunk_content,
@@ -87,7 +85,6 @@ class Memory:
     # ------------------------------------------------------------------
     # CRUD API
     # ------------------------------------------------------------------
-    @lru_cache(maxsize=512)
     def get(self, task_id: str) -> Optional[Dict[str, Any]]:
         try:
             with get_session(self.db_path) as session:
@@ -163,8 +160,8 @@ class Memory:
 
         try:
             with get_session(self.db_path) as session:
-                # Upsert main archive row
-                archive = session.query(Archive).filter_by(task_id=task_id).first()
+                # Upsert main archive row with row-level locking to prevent race conditions
+                archive = session.query(Archive).filter_by(task_id=task_id).with_for_update().first()
                 
                 if archive:
                     # Update existing archive
@@ -202,16 +199,21 @@ class Memory:
                         [chunk for chunk, _ in chunks]
                     )
                     for (chunk_text, chunk_pos), vector in zip(chunks, embeddings):
-                        # Convert vector to bytes (simplified)
-                        vector_bytes = bytearray()
-                        for f in vector:
-                            vector_bytes.extend(struct.pack("<f", f))
+                        # Use efficient numpy-based vector serialization from models
+                        from serena.core.models import EmbeddingRecord
+                        
+                        embedding_record = EmbeddingRecord.from_vector(
+                            task_id=task_id,
+                            vector=vector,
+                            chunk_id=chunk_pos,
+                            position=0
+                        )
                         
                         embedding = Embedding(
-                            task_id=task_id,
-                            chunk_id=chunk_pos,
-                            position=0,
-                            vector=bytes(vector_bytes),
+                            task_id=embedding_record.task_id,
+                            chunk_id=embedding_record.chunk_id,
+                            position=embedding_record.position,
+                            vector=embedding_record.vector,
                         )
                         session.add(embedding)
 
@@ -241,11 +243,15 @@ class Memory:
         return get_latest_tasks(n, db_path=self.db_path)
 
     def health(self) -> HealthInfo:
-        """Get database health information."""
+        """Get database health information including connection pool status."""
         try:
             with get_session(self.db_path) as session:
                 archive_count = session.query(Archive).count()
                 embedding_count = session.query(Embedding).count()
+                
+                # Get connection pool metrics
+                db_manager = get_db_manager(self.db_path)
+                pool_status = db_manager.get_pool_status()
                 
                 return HealthInfo(
                     archive_count=archive_count,
@@ -265,6 +271,19 @@ class Memory:
                 database_size=0,
                 embedding_versions={},
             )
+    
+    def get_connection_metrics(self) -> dict:
+        """Get connection pool metrics for monitoring.
+        
+        Returns:
+            dict: Connection pool status and metrics
+        """
+        try:
+            db_manager = get_db_manager(self.db_path)
+            return db_manager.get_pool_status()
+        except Exception as exc:
+            logger.error("Failed to get connection metrics: %s", exc)
+            return {}
 
 
 # Helper to extract title from markdown (simple)
