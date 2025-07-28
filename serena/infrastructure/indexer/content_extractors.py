@@ -247,8 +247,8 @@ def extract_title_from_content(content: str, file_path: str = "") -> Optional[st
         except Exception:
             pass
 
-    # Fallback to filename for docs
-    if file_path.startswith("docs/"):
+    # Fallback to filename
+    if file_path:
         return Path(file_path).stem.replace("_", " ").replace("-", " ").title()
 
-    return None
+    return "Untitled"

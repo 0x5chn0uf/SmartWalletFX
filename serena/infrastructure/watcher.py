@@ -15,7 +15,8 @@ from serena.core.models import (
     determine_task_kind,
     extract_task_id_from_path,
 )
-from serena.infrastructure.database import get_connection
+from serena.core.models import Archive, Embedding
+from serena.database.session import get_session
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,6 @@ class _SerenaEventHandler(FileSystemEventHandler):
         if event.is_directory:
             return
         self._watcher.process_change(event.src_path)
-
 
     def on_deleted(self, event):  # noqa: D401, ANN001
         if event.is_directory:
@@ -113,21 +113,26 @@ class _WatchdogMemoryWatcher:
 
         db_path = getattr(self.memory, "db_path", None)
         if db_path and Path(db_path).exists():
-            conn = get_connection(db_path)
-            for row in conn.execute("SELECT task_id, filepath, sha256 FROM archives"):
-                path = row["filepath"]
-                self._tracked[path] = {
-                    "task_id": row["task_id"],
-                    "sha256": row["sha256"],
-                }
-            conn.close()
+            try:
+                with get_session(db_path) as session:
+                    archives = session.query(Archive).all()
+                    for archive in archives:
+                        if archive.filepath:
+                            self._tracked[archive.filepath] = {
+                                "task_id": archive.task_id,
+                                "sha256": archive.sha256 or "",
+                            }
+            except Exception as exc:
+                logger.warning("Failed to load existing archives: %s", exc)
 
         if self.auto_add_taskmaster:
             from serena.cli.common import detect_taskmaster_directories  # lazy import
 
             for directory in detect_taskmaster_directories():
                 for md_file in Path(directory).rglob("*.md"):
-                    task_id = extract_task_id_from_path(str(md_file)) or str(md_file.stem)
+                    task_id = extract_task_id_from_path(str(md_file)) or str(
+                        md_file.stem
+                    )
                     self._tracked[str(md_file)] = {
                         "task_id": task_id,
                         "sha256": "",  # Unknown until computed
@@ -161,17 +166,17 @@ class _WatchdogMemoryWatcher:
             except Exception as exc:  # noqa: BLE001
                 logger.error("Backend delete failed for %s: %s", task_id, exc)
         else:
-            # Local DB path – manual SQL removal
+            # Local DB path – use ORM for deletion
             db_path = getattr(self.memory, "db_path", None)
             if db_path and Path(db_path).exists():
                 try:
-                    conn = get_connection(db_path)
-                    conn.execute("DELETE FROM embeddings WHERE task_id = ?", (task_id,))
-                    conn.execute("DELETE FROM archives   WHERE task_id = ?", (task_id,))
-                    conn.commit()
-                    conn.close()
-                    deleted = True
-                except Exception as exc:  # noqa: BLE001
+                    with get_session(db_path) as session:
+                        archive = session.query(Archive).filter_by(task_id=task_id).first()
+                        if archive:
+                            session.delete(archive)
+                            session.commit()
+                            deleted = True
+                except Exception as exc:
                     logger.error("Local delete failed for %s: %s", task_id, exc)
 
         if deleted:
@@ -196,7 +201,11 @@ class _WatchdogMemoryWatcher:
         if meta and meta.get("sha256") == sha256:
             return  # No change
 
-        task_id = meta["task_id"] if meta else extract_task_id_from_path(path) or Path(path).stem
+        task_id = (
+            meta["task_id"]
+            if meta
+            else extract_task_id_from_path(path) or Path(path).stem
+        )
 
         kind = determine_task_kind(path)
 
@@ -212,14 +221,15 @@ class _WatchdogMemoryWatcher:
             logger.error("Upsert failed for %s: %s", path, exc)
 
 
-
 def default_change_callback(action: str, task_id: str, file_path: str):  # noqa: D401
     """Default console logger used by CLI when --quiet is not passed."""
 
     logger.info("%s – %s (%s)", action.upper(), task_id, file_path)
 
 
-def create_memory_watcher(*, memory, auto_add_taskmaster: bool = True, callback=None):  # noqa: ANN001
+def create_memory_watcher(
+    *, memory, auto_add_taskmaster: bool = True, callback=None
+):  # noqa: ANN001
     """Create a :class:`_WatchdogMemoryWatcher` instance.
 
     *watchdog* is a hard dependency; if the import at module-import time failed
@@ -235,4 +245,4 @@ def create_memory_watcher(*, memory, auto_add_taskmaster: bool = True, callback=
 __all__ = [
     "create_memory_watcher",
     "default_change_callback",
-] 
+]

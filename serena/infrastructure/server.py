@@ -29,12 +29,14 @@ def create_app() -> FastAPI:
     )
     
     # Configure CORS
+    from serena.config import cors_origins, cors_allow_credentials, cors_allow_methods, cors_allow_headers
+    
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Configure appropriately for production
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_origins=cors_origins(),
+        allow_credentials=cors_allow_credentials(),
+        allow_methods=cors_allow_methods(),
+        allow_headers=[cors_allow_headers()],
     )
     
     # Dependency for database session

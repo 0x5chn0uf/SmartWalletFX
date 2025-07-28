@@ -29,6 +29,11 @@ _DEFAULTS: Dict[str, Any] = {
     # Features
     "disable_embeddings": False,
     "server_url": "http://localhost:8765",  # Default local API server
+    # CORS settings
+    "cors_origins": "http://localhost:3000,http://localhost:8080",  # Development defaults
+    "cors_allow_credentials": True,
+    "cors_allow_methods": "GET,POST,PUT,DELETE,OPTIONS",
+    "cors_allow_headers": "*",
 }
 
 _CONFIG_PATH = Path(__file__).with_suffix(".json")  # serena/config.json
@@ -130,3 +135,24 @@ def embeddings_enabled(cli_override: Optional[bool] = None) -> bool:
 def server_url(cli_override: Optional[str] = None) -> str:
     """Return configured API server base URL."""
     return str(get("server_url", cli_override=cli_override))
+
+def cors_origins(cli_override: Optional[str] = None) -> list[str]:
+    """Return configured CORS origins as a list."""
+    origins_str = str(get("cors_origins", cli_override=cli_override))
+    return [origin.strip() for origin in origins_str.split(",") if origin.strip()]
+
+
+def cors_allow_credentials(cli_override: Optional[bool] = None) -> bool:
+    """Return CORS allow credentials setting."""
+    return get_bool("cors_allow_credentials", cli_override=cli_override)
+
+
+def cors_allow_methods(cli_override: Optional[str] = None) -> list[str]:
+    """Return configured CORS methods as a list."""
+    methods_str = str(get("cors_allow_methods", cli_override=cli_override))
+    return [method.strip() for method in methods_str.split(",") if method.strip()]
+
+
+def cors_allow_headers(cli_override: Optional[str] = None) -> str:
+    """Return configured CORS headers."""
+    return str(get("cors_allow_headers", cli_override=cli_override))

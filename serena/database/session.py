@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator, Optional
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -128,7 +128,7 @@ class DatabaseManager:
         try:
             with self.get_session() as session:
                 # Simple query to test connectivity
-                session.execute("SELECT 1").fetchone()
+                session.execute(text("SELECT 1")).fetchone()
                 return True
         except Exception as exc:
             logger.error("Database health check failed: %s", exc)

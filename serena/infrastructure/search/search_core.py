@@ -119,8 +119,7 @@ class SearchEngine:
         status_filter: Optional[List[TaskStatus]] = None,
     ) -> List[SearchResult]:
         """Fallback search when embeddings are unavailable."""
-        conn = get_connection(self.db_path)
-
+        
         where_conditions = []
         params: List[Any] = []
 
@@ -144,58 +143,64 @@ class SearchEngine:
                 ]
             )
 
-        # Try FTS table first
-        use_fts = False
-        try:
-            conn.execute("SELECT 1 FROM archives_fts LIMIT 1")
-            use_fts = True
-        except sqlite3.OperationalError:
-            use_fts = False
-
-        if use_fts:
-            where_clause = (
-                "WHERE " + " AND ".join(where_conditions) if where_conditions else ""
-            )
-            sql = f"""
-                SELECT a.task_id, a.title, a.kind, a.status, a.completed_at, a.filepath,
-                       bm25(archives_fts) AS rank
-                FROM archives_fts
-                JOIN archives a USING(task_id)
-                WHERE archives_fts MATCH ? {where_clause}
-                ORDER BY rank LIMIT ?
-            """
-            params = [query] + params + [k]
-            cursor = conn.execute(sql, params)
-        else:
-            # Simple LIKE on title as last resort
-            where_conditions.append("a.title LIKE ?")
-            params.append(f"%{query}%")
-            where_clause = "WHERE " + " AND ".join(where_conditions)
-            sql = f"""
-                SELECT a.task_id, a.title, a.kind, a.status, a.completed_at, a.filepath,
-                       0 as rank
-                FROM archives a {where_clause}
-                ORDER BY a.completed_at DESC LIMIT ?
-            """
-            params.append(k)
-            cursor = conn.execute(sql, params)
-
         results: List[SearchResult] = []
-        for row in cursor:
-            results.append(
-                SearchResult(
-                    task_id=row["task_id"],
-                    title=row["title"],
-                    score=float(row["rank"]),
-                    excerpt="",
-                    kind=TaskKind(row["kind"]),
-                    status=TaskStatus(row["status"]) if row["status"] else None,
-                    completed_at=datetime.fromisoformat(row["completed_at"])
-                    if row["completed_at"]
-                    else None,
-                    filepath=row["filepath"],
+        
+        # Use session context manager correctly
+        with get_connection(self.db_path) as session:
+            from sqlalchemy import text
+            import sqlite3
+            
+            # Try FTS table first
+            use_fts = False
+            try:
+                session.execute(text("SELECT 1 FROM archives_fts LIMIT 1"))
+                use_fts = True
+            except Exception:
+                use_fts = False
+
+            if use_fts:
+                where_clause = (
+                    "WHERE " + " AND ".join(where_conditions) if where_conditions else ""
                 )
-            )
+                sql = f"""
+                    SELECT a.task_id, a.title, a.kind, a.status, a.completed_at, a.filepath,
+                           bm25(archives_fts) AS rank
+                    FROM archives_fts
+                    JOIN archives a USING(task_id)
+                    WHERE archives_fts MATCH ? {where_clause}
+                    ORDER BY rank LIMIT ?
+                """
+                params = [query] + params + [k]
+                result = session.execute(text(sql), params)
+            else:
+                # Simple LIKE on title as last resort
+                where_conditions.append("a.title LIKE ?")
+                params.append(f"%{query}%")
+                where_clause = "WHERE " + " AND ".join(where_conditions)
+                sql = f"""
+                    SELECT a.task_id, a.title, a.kind, a.status, a.completed_at, a.filepath,
+                           0 as rank
+                    FROM archives a {where_clause}
+                    ORDER BY a.completed_at DESC LIMIT ?
+                """
+                params.append(k)
+                result = session.execute(text(sql), params)
+
+            for row in result:
+                results.append(
+                    SearchResult(
+                        task_id=row[0],  # task_id
+                        title=row[1],    # title  
+                        score=float(row[6]),  # rank
+                        excerpt="",
+                        kind=TaskKind(row[2]),  # kind
+                        status=TaskStatus(row[3]) if row[3] else None,  # status
+                        completed_at=datetime.fromisoformat(row[4])  # completed_at
+                        if row[4]
+                        else None,
+                        filepath=row[5],  # filepath
+                    )
+                )
 
         # Generate excerpts lazily
         for res in results:
@@ -212,8 +217,7 @@ class SearchEngine:
         first_chunk_only: bool = False,
     ) -> List[Dict[str, Any]]:
         """Get candidate records with embeddings from database."""
-        conn = get_connection(self.db_path)
-
+        
         # Build WHERE clause for filters
         where_conditions = []
         params = []
@@ -255,36 +259,38 @@ class SearchEngine:
             ORDER BY a.completed_at DESC NULLS LAST, e.chunk_id ASC
         """
 
-        cursor = conn.execute(query, params)
         candidates = []
         seen_task_ids = set()
+        
+        # Use session context manager correctly
+        with get_connection(self.db_path) as session:
+            from sqlalchemy import text
+            result = session.execute(text(query), params)
+            
+            for row in result:
+                # Skip if we've already seen this task_id (deduplication)
+                if row[0] in seen_task_ids:  # task_id is first column
+                    continue
 
-        for row in cursor:
-            # Skip if we've already seen this task_id (deduplication)
-            if row["task_id"] in seen_task_ids:
-                continue
+                seen_task_ids.add(row[0])
 
-            seen_task_ids.add(row["task_id"])
+                # Convert vector bytes back to list
+                import numpy as np
+                vector = np.frombuffer(row[6], dtype=np.float32).tolist()  # vector is 7th column
 
-            # Convert vector bytes back to list
-            import numpy as np
+                candidate = {
+                    "task_id": row[0],
+                    "title": row[1],
+                    "kind": row[2],
+                    "status": row[3],
+                    "completed_at": row[4],
+                    "filepath": row[5],
+                    "vector": vector,
+                    "chunk_id": row[7],
+                    "position": row[8],
+                }
+                candidates.append(candidate)
 
-            vector = np.frombuffer(row["vector"], dtype=np.float32).tolist()
-
-            candidate = {
-                "task_id": row["task_id"],
-                "title": row["title"],
-                "kind": row["kind"],
-                "status": row["status"],
-                "completed_at": row["completed_at"],
-                "filepath": row["filepath"],
-                "vector": vector,
-                "chunk_id": row["chunk_id"],
-                "position": row["position"],
-            }
-            candidates.append(candidate)
-
-        conn.close()
         return candidates
 
     def _calculate_hybrid_score(

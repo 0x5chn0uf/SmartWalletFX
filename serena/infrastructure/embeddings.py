@@ -103,11 +103,26 @@ class EmbeddingGenerator:
         if self.model is None:
             return [[0.0] * self.embedding_dim for _ in texts]
         try:
+            logger.debug("Starting batch encoding for %d texts", len(texts))
             vecs = self.model.encode(texts, convert_to_numpy=True, batch_size=32)  # type: ignore[attr-defined]
-            return vecs.tolist()
+            logger.debug("Model encode successful, type: %s, shape: %s", type(vecs), getattr(vecs, 'shape', 'no shape'))
+            result = vecs.tolist()
+            logger.debug("tolist() successful, returning %d embeddings", len(result))
+            return result
         except Exception as exc:
+            import traceback
             logger.error("Batch embedding generation failed: %s", exc)
-            return [[0.0] * self.embedding_dim for _ in texts]
+            logger.error("Full traceback: %s", traceback.format_exc())
+            logger.debug("Error details - embedding_dim type: %s, value: %s", type(self.embedding_dim), self.embedding_dim)
+            logger.debug("Texts length: %s", len(texts))
+            try:
+                # Try to create fallback embeddings one by one to isolate the error
+                fallback = [[0.0] * self.embedding_dim for _ in texts]
+                return fallback
+            except Exception as fallback_exc:
+                logger.error("Even fallback embedding creation failed: %s", fallback_exc)
+                # Return minimal fallback
+                return [[0.0] * 384 for _ in texts]
 
 
 # ------------------------------------------------------------------

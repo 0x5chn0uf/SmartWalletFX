@@ -3,6 +3,7 @@ from __future__ import annotations
 """`serena search` and related sub-commands."""
 
 import logging
+import sys
 from typing import Any
 
 from serena.services.memory_impl import Memory
@@ -29,25 +30,28 @@ def cmd_search(args) -> None:
         print("-" * 50)
         
         for i, result in enumerate(results, 1):
-            score = result.get('score', 0)
-            task_id = result.get('task_id', 'unknown')
-            title = result.get('title', 'Untitled')
-            filepath = result.get('filepath', '')
-            kind = result.get('kind', '')
-            
-            print(f"{i}. [{task_id}] {title}")
-            if filepath:
-                print(f"   📁 {filepath}")
-            if kind:
-                print(f"   🏷️ {kind}")
-            if score:
-                print(f"   📊 Score: {score:.3f}")
+            print(f"{i}. [{result.task_id}] {result.title}")
+            if result.filepath:
+                print(f"   📁 {result.filepath}")
+            if result.kind:
+                print(f"   🏷️ {result.kind.value}")
+            if result.score:
+                print(f"   📊 Score: {result.score:.3f}")
+            if result.excerpt:
+                print(f"   📝 {result.excerpt[:100]}...")
             print()
         
+    except KeyboardInterrupt:
+        print("\n🛑 Search cancelled by user")
+        sys.exit(1)
+    except ImportError as e:
+        logger.error("Missing dependency: %s", e)
+        print(f"❌ Missing dependency: {e}")
+        sys.exit(1)
     except Exception as e:
-        logger.error(f"Search failed: {e}")
+        logger.error("Search failed: %s", e)
         print(f"❌ Search failed: {e}")
-        raise
+        sys.exit(1)
 
 
 def register(sub: Any) -> None:

@@ -40,6 +40,9 @@ class MigrationManager:
         self.alembic_cfg = Config(str(self.alembic_cfg_path))
         # Override the database URL
         self.alembic_cfg.set_main_option("sqlalchemy.url", self.db_url)
+        # Set the correct script location relative to serena root
+        migrations_path = serena_root / "migrations"
+        self.alembic_cfg.set_main_option("script_location", str(migrations_path))
 
     def get_current_revision(self) -> Optional[str]:
         """Get the current database revision.

@@ -103,8 +103,11 @@ class Memory:
                         "content": None,  # Content not stored in Archive model
                     }
                 return None
-        except Exception as exc:  # noqa: BLE001
-            logger.error("Failed to fetch task %s: %s", task_id, exc)
+        except (OSError, IOError) as exc:
+            logger.error("Database I/O error fetching task %s: %s", task_id, exc)
+            return None
+        except Exception as exc:
+            logger.error("Unexpected error fetching task %s: %s", task_id, exc)
             return None
 
     def upsert(
@@ -192,19 +195,17 @@ class Memory:
                 # Add new embeddings if available
                 if chunks and self.embedding_generator.model is not None:
                     embeddings = self.embedding_generator.generate_embeddings_batch(
-                        [chunk for _, chunk in chunks]
+                        [chunk for chunk, _ in chunks]
                     )
-                    for (chunk_id, _), vector in zip(chunks, embeddings):
-                        # Convert vector to bytes
-                        vector_bytes = bytearray(
-                            byte
-                            for f in vector
-                            for byte in memoryview(bytearray(struct.pack("<f", f)))
-                        )
+                    for (chunk_text, chunk_pos), vector in zip(chunks, embeddings):
+                        # Convert vector to bytes (simplified)
+                        vector_bytes = bytearray()
+                        for f in vector:
+                            vector_bytes.extend(struct.pack("<f", f))
                         
                         embedding = Embedding(
                             task_id=task_id,
-                            chunk_id=chunk_id,
+                            chunk_id=chunk_pos,
                             position=0,
                             vector=bytes(vector_bytes),
                         )
@@ -213,8 +214,11 @@ class Memory:
                 # Session commit happens automatically via context manager
                 logger.debug("Upserted task %s", task_id)
                 return True
-        except Exception as exc:  # noqa: BLE001
-            logger.error("Upsert failed for %s: %s", task_id, exc)
+        except (OSError, IOError) as exc:
+            logger.error("Database I/O error during upsert for %s: %s", task_id, exc)
+            return False
+        except Exception as exc:
+            logger.error("Unexpected error during upsert for %s: %s", task_id, exc)
             return False
 
     # ------------------------------------------------------------------

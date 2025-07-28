@@ -264,6 +264,9 @@ class MemoryIndexer:
             return generate_design_id(file_path)
         elif file_path.startswith(("backend/", "frontend/")):
             return generate_code_id(file_path)
+        elif file_path.startswith((".taskmaster/", ".serena/")):
+            # Generate path-based ID for TaskMaster and Serena files
+            return generate_path_based_id(file_path, Path(file_path).stem)
         elif Path(file_path).name.lower().startswith("readme"):
             return generate_readme_id(file_path)
         else:
