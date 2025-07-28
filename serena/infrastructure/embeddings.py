@@ -58,6 +58,25 @@ class EmbeddingGenerator:
             self._load_model_sync()
         return self._model
 
+    def load_model_now(self) -> bool:
+        """Force synchronous model loading, waiting for completion if needed."""
+        if not config.embeddings_enabled():
+            return False
+
+        if self._model is not None:
+            return True  # Already loaded
+
+        # If we're in an async context and threading is being used
+        if self._loading_thread and self._loading_thread.is_alive():
+            logger.info("Waiting for background model loading to complete...")
+            self._loading_thread.join(timeout=30)  # Wait up to 30 seconds
+
+        # If still not loaded, force synchronous loading
+        if self._model is None:
+            self._load_model_sync()
+
+        return self._model is not None
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------

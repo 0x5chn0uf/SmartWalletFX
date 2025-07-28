@@ -14,7 +14,29 @@ from sqlalchemy.orm import Session
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application lifespan events."""
-    # Startup
+    # Startup - preload embedding model
+    import logging
+    from serena.infrastructure.embeddings import get_default_generator
+    from serena import config
+    
+    logger = logging.getLogger(__name__)
+    
+    if config.embeddings_enabled():
+        logger.info("Preloading embedding model on server startup...")
+        try:
+            generator = get_default_generator()
+            # Force synchronous model loading
+            success = generator.load_model_now()
+            if success:
+                logger.info("✅ Embedding model loaded successfully: %s", generator.model_name)
+                logger.info("Model dimension: %d", generator.embedding_dim)
+            else:
+                logger.warning("⚠️ Embedding model failed to load")
+        except Exception as exc:
+            logger.error("❌ Failed to preload embedding model: %s", exc)
+    else:
+        logger.info("ℹ️ Embeddings disabled via configuration, skipping model preload")
+    
     yield
     # Shutdown
 
@@ -52,15 +74,41 @@ def create_app() -> FastAPI:
     @app.get("/health")
     async def health_check():
         """Health check endpoint."""
-        from serena.infrastructure.session import get_db_manager
+        from serena.database.session import DatabaseManager
+        from serena.infrastructure.embeddings import get_default_generator
+        from serena import config
         
-        db_manager = get_db_manager()
-        is_healthy = db_manager.health_check()
+        db_manager = DatabaseManager()
+        is_db_healthy = db_manager.health_check()
         
-        return {
-            "status": "healthy" if is_healthy else "unhealthy",
-            "database": "connected" if is_healthy else "disconnected"
+        # Check embedding model status
+        embedding_status = "disabled"
+        model_name = None
+        if config.embeddings_enabled():
+            try:
+                generator = get_default_generator()
+                if generator.model is not None:
+                    embedding_status = "loaded"
+                    model_name = generator.model_name
+                else:
+                    embedding_status = "failed"
+            except Exception:
+                embedding_status = "error"
+        
+        overall_healthy = is_db_healthy and (embedding_status in ["loaded", "disabled"])
+        
+        response = {
+            "status": "healthy" if overall_healthy else "unhealthy",
+            "database": "connected" if is_db_healthy else "disconnected",
+            "embeddings": {
+                "status": embedding_status,
+                "model": model_name,
+                "enabled": config.embeddings_enabled()
+            },
+            "version": "0.1.0"
         }
+        
+        return response
     
     @app.get("/archives")
     async def list_archives(
@@ -121,38 +169,67 @@ def create_app() -> FastAPI:
         db: Session = Depends(get_db)
     ):
         """Search archives using semantic similarity."""
-        # For now, implement simple text search
-        # TODO: Implement proper semantic search with embeddings
-        archives = (
-            db.query(Archive)
-            .filter(
-                Archive.title.contains(q) | 
-                Archive.summary.contains(q)
-            )
-            .limit(limit)
-            .all()
-        )
+        from serena.services.memory_impl import Memory
         
-        results = [
-            {
-                "task_id": archive.task_id,
-                "title": archive.title,
-                "score": 1.0,  # Placeholder score
-                "excerpt": archive.summary or archive.title,
-                "kind": archive.kind,
-                "status": archive.status,
-                "completed_at": archive.completed_at.isoformat() if archive.completed_at else None,
-                "filepath": archive.filepath,
+        try:
+            memory = Memory()
+            search_results = memory.search(query=q, k=limit)
+            
+            results = [
+                {
+                    "task_id": result.task_id,
+                    "title": result.title,
+                    "score": result.score or 0.0,
+                    "excerpt": result.excerpt or "",
+                    "kind": result.kind.value if result.kind else None,
+                    "status": result.status.value if result.status else None,
+                    "completed_at": result.completed_at.isoformat() if result.completed_at else None,
+                    "filepath": result.filepath,
+                }
+                for result in search_results
+                if result.score is None or result.score >= threshold
+            ]
+            
+            return {
+                "query": q,
+                "results": results,
+                "total": len(results),
+                "threshold": threshold,
             }
-            for archive in archives
-        ]
-        
-        return {
-            "query": q,
-            "results": results,
-            "total": len(results),
-            "threshold": threshold,
-        }
+        except Exception as exc:
+            # Fallback to simple text search if semantic search fails
+            archives = (
+                db.query(Archive)
+                .filter(
+                    Archive.title.contains(q) | 
+                    Archive.summary.contains(q)
+                )
+                .limit(limit)
+                .all()
+            )
+            
+            results = [
+                {
+                    "task_id": archive.task_id,
+                    "title": archive.title,
+                    "score": 1.0,  # Placeholder score
+                    "excerpt": archive.summary or archive.title,
+                    "kind": archive.kind,
+                    "status": archive.status,
+                    "completed_at": archive.completed_at.isoformat() if archive.completed_at else None,
+                    "filepath": archive.filepath,
+                }
+                for archive in archives
+            ]
+            
+            return {
+                "query": q,
+                "results": results,
+                "total": len(results),
+                "threshold": threshold,
+                "fallback": True,
+                "error": str(exc),
+            }
     
     @app.get("/stats")
     async def get_statistics(db: Session = Depends(get_db)):
