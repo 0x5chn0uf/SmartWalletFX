@@ -6,7 +6,47 @@ import logging
 import sys
 from typing import Any
 
-from serena.services.memory_impl import Memory
+
+
+
+def _try_server_search(query: str, limit: int):
+    """Try to use server API for search if server is running."""
+    import requests
+    from serena import config
+    
+    try:
+        server_url = config.server_url()
+        response = requests.get(
+            f"{server_url}/search",
+            params={"q": query, "limit": limit},
+            timeout=5
+        )
+        if response.status_code == 200:
+            data = response.json()
+            
+            # Convert API response to SearchResult objects
+            from serena.core.models import SearchResult, TaskKind, TaskStatus
+            from datetime import datetime
+            
+            results = []
+            for item in data.get("results", []):
+                result = SearchResult(
+                    task_id=item["task_id"],
+                    title=item["title"],
+                    score=item["score"],
+                    excerpt=item["excerpt"],
+                    kind=TaskKind(item["kind"]) if item["kind"] else None,
+                    status=TaskStatus(item["status"]) if item["status"] else None,
+                    completed_at=datetime.fromisoformat(item["completed_at"]) if item["completed_at"] else None,
+                    filepath=item["filepath"]
+                )
+                results.append(result)
+            
+            return results, True  # Success
+    except Exception:
+        pass  # Server not available
+    
+    return [], False  # Failed
 
 
 def cmd_search(args) -> None:
@@ -14,13 +54,15 @@ def cmd_search(args) -> None:
     logger = logging.getLogger(__name__)
     
     try:
-        memory = Memory()
-        
         print(f"🔍 Searching for: '{args.query}'")
-        results = memory.search(
-            query=args.query,
-            k=args.limit
-        )
+        results, server_success = _try_server_search(args.query, args.limit)
+        
+        if server_success:
+            print("   ⚡ Using server API (preloaded model)")
+        else:
+            print("❌ Server not available. Please start the server with 'serena serve'")
+            print("   Run: serena serve")
+            sys.exit(1)
         
         if not results:
             print("❌ No results found")
@@ -58,7 +100,7 @@ def register(sub: Any) -> None:
     """Register the search command."""
     p = sub.add_parser("search", help="Semantic search across memories")
     p.add_argument("query", help="Query string")
-    p.add_argument("--limit", type=int, default=10)
+    p.add_argument("--limit", type=int, default=10, help="Number of results to return")
     p.add_argument("--advanced", action="store_true", help="Use advanced mode")
-    p.add_argument("-v", "--verbose", action="store_true")
+    p.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
     p.set_defaults(func=cmd_search)

@@ -156,3 +156,8 @@ def cors_allow_methods(cli_override: Optional[str] = None) -> list[str]:
 def cors_allow_headers(cli_override: Optional[str] = None) -> str:
     """Return configured CORS headers."""
     return str(get("cors_allow_headers", cli_override=cli_override))
+
+
+def fast_cli_search_enabled(cli_override: Optional[bool] = None) -> bool:
+    """Return whether fast CLI search mode is enabled."""
+    return get_bool("fast_cli_search", cli_override=cli_override)

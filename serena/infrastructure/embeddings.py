@@ -94,9 +94,21 @@ class EmbeddingGenerator:
 
         try:
             from sentence_transformers import SentenceTransformer  # noqa: WPS433
+            from pathlib import Path
 
+            # Use local cache directory for faster loading
+            cache_dir = Path.home() / ".cache" / "serena" / "models"
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            
             logger.info("Loading embedding model: %s", self.model_name)
-            self._model = SentenceTransformer(self.model_name)
+            logger.debug("Using cache directory: %s", cache_dir)
+            
+            # Load with local cache and optimizations
+            self._model = SentenceTransformer(
+                self.model_name,
+                cache_folder=str(cache_dir),
+                device="cpu",  # Force CPU for consistent performance
+            )
         except ImportError:
             logger.warning("sentence-transformers not installed – embeddings disabled")
         except Exception as exc:  # pragma: no cover
