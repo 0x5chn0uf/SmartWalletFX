@@ -15,7 +15,9 @@ Usage:
     python scripts/maintenance.py --health --detailed
 """
 
+import argparse
 import logging
+import os
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -127,7 +129,8 @@ def cmd_reembed(args) -> None:
         memory = Memory(db_path=args.db_path)
         
         # Find stale embeddings using session
-        with get_session(args.db_path) as session:
+        from serena.database.session import get_db_session
+        with get_db_session() as session:
             from serena.core.models import Archive
             
             # Find archives with stale embeddings
@@ -214,7 +217,8 @@ def cmd_health(args) -> None:
 
     if args.detailed:
         try:
-            with get_session(args.db_path) as session:
+            from serena.database.session import get_db_session
+            with get_db_session() as session:
                 from serena.core.models import Archive
                 from sqlalchemy import func
 
@@ -404,6 +408,7 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
     """
 
     def __init__(self):
+        self.logger = logging.getLogger(f"{__name__}.MaintenanceService")
         self.interval = parse_duration(settings.maintenance.intervals.health_check).total_seconds()
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
@@ -421,21 +426,43 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
             )
             logging.getLogger().addHandler(handler)
 
+        # Log initialization
+        self.logger.info("🔧 MaintenanceService initialized")
+        self.logger.info(f"   - Health check interval: {self.interval}s")
+        self.logger.info(f"   - Checkpoint interval: {settings.maintenance.intervals.checkpoint}")
+        self.logger.info(f"   - Vacuum interval: {settings.maintenance.intervals.vacuum}")
+        self.logger.info(f"   - Last checkpoint: {self._format_timestamp(self._last_checkpoint)}")
+        self.logger.info(f"   - Last vacuum: {self._format_timestamp(self._last_vacuum)}")
+
+    def _format_timestamp(self, timestamp: float) -> str:
+        """Format a Unix timestamp for logging."""
+        if timestamp == 0.0:
+            return "Never"
+        return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+
     # ------------------------------------------------------------------
     # Public API expected by CLI Handler
     # ------------------------------------------------------------------
 
     def start_background_service(self):
         if self._thread and self._thread.is_alive():
+            self.logger.debug("Background service already running")
             return
 
+        self.logger.info("🚀 Starting maintenance background service")
         self._thread = threading.Thread(target=self._run_loop, daemon=True)
         self._thread.start()
+        self.logger.info("✅ Maintenance background service started successfully")
 
     def stop(self):
+        self.logger.info("🛑 Stopping maintenance background service")
         self._stop.set()
         if self._thread:
             self._thread.join(timeout=2)
+            if self._thread.is_alive():
+                self.logger.warning("⚠️  Background service thread did not stop within timeout")
+            else:
+                self.logger.info("✅ Maintenance background service stopped successfully")
 
     # ------------------------------------------------------------------
     # Persistence helpers
@@ -444,9 +471,9 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
     @staticmethod
     def _load_meta_timestamp(key: str) -> float:
         """Return stored UNIX timestamp for *key* or 0 if none."""
-        from serena.infrastructure.database import get_session
+        from serena.database.session import get_db_session
         try:
-            with get_session() as session:
+            with get_db_session() as session:
                 ts = session.execute(
                     text("CREATE TABLE IF NOT EXISTS maintenance_meta (key TEXT PRIMARY KEY, value TEXT);")
                 )  # noqa: F841 – ensure table exists
@@ -460,8 +487,8 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
 
     @staticmethod
     def _store_meta_timestamp(key: str, ts: float) -> None:
-        from serena.infrastructure.database import get_session
-        with get_session() as session:
+        from serena.database.session import get_db_session
+        with get_db_session() as session:
             session.execute(
                 text("CREATE TABLE IF NOT EXISTS maintenance_meta (key TEXT PRIMARY KEY, value TEXT);")
             )
@@ -478,27 +505,50 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
 
     def run_operation(self, operation: str):
         if not getattr(settings.maintenance.enabled, operation, False):
-            logger.debug("Skipping disabled maintenance operation: %s", operation)
+            self.logger.debug(f"⏭️ Skipping disabled maintenance operation: {operation}")
             return
 
-        if operation == "checkpoint":
-            checkpoint_database()
-            now = time.time()
-            self._last_checkpoint = now
-            self._store_meta_timestamp("last_checkpoint", now)
-        elif operation == "vacuum":
-            # Create a mock args object for cmd_vacuum
-            class MockArgs:
-                db_path = get_database_path()
+        start_time = time.time()
+        self.logger.info(f"🔄 Starting maintenance operation: {operation}")
 
-            cmd_vacuum(MockArgs())
-            now = time.time()
-            self._last_vacuum = now
-            self._store_meta_timestamp("last_vacuum", now)
-        elif operation == "health_check":
-            self._last_status = Memory().health().__dict__
-        else:
-            raise ValueError(operation)
+        try:
+            if operation == "checkpoint":
+                self.logger.debug("   - Performing WAL checkpoint...")
+                checkpoint_database()
+                now = time.time()
+                self._last_checkpoint = now
+                self._store_meta_timestamp("last_checkpoint", now)
+                elapsed = now - start_time
+                self.logger.info(f"✅ Checkpoint completed successfully in {elapsed:.2f}s")
+                
+            elif operation == "vacuum":
+                self.logger.debug("   - Performing database vacuum...")
+                # Create a mock args object for cmd_vacuum
+                class MockArgs:
+                    db_path = get_database_path()
+
+                cmd_vacuum(MockArgs())
+                now = time.time()
+                self._last_vacuum = now
+                self._store_meta_timestamp("last_vacuum", now)
+                elapsed = now - start_time
+                self.logger.info(f"✅ Vacuum completed successfully in {elapsed:.2f}s")
+                
+            elif operation == "health_check":
+                self.logger.debug("   - Performing health check...")
+                health = Memory().health()
+                self._last_status = health.__dict__
+                elapsed = time.time() - start_time
+                self.logger.debug(f"📊 Health check completed: {health.archive_count} archives, "
+                                f"{health.embedding_count} embeddings, "
+                                f"{health.database_size / (1024*1024):.1f}MB ({elapsed:.2f}s)")
+            else:
+                raise ValueError(f"Unknown maintenance operation: {operation}")
+                
+        except Exception as e:
+            elapsed = time.time() - start_time
+            self.logger.error(f"❌ Maintenance operation '{operation}' failed after {elapsed:.2f}s: {e}")
+            raise
 
     # Alias used earlier in CLI
     def run_specific_operation(self, operation: str):
@@ -519,9 +569,26 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
     def _run_loop(self):
         last_checkpoint = self._last_checkpoint or time.time()
         last_vacuum = self._last_vacuum or time.time()
+        cycle_count = 0
+        
+        self.logger.info("🔄 Maintenance loop started")
 
         while not self._stop.is_set():
             now = time.time()
+            cycle_count += 1
+            
+            # Log cycle info every 10 cycles (for health check every ~5min, log every ~50min)
+            if cycle_count % 10 == 1:
+                checkpoint_interval = parse_duration(settings.maintenance.intervals.checkpoint).total_seconds()
+                vacuum_interval = parse_duration(settings.maintenance.intervals.vacuum).total_seconds()
+                
+                next_checkpoint = max(0, checkpoint_interval - (now - last_checkpoint))
+                next_vacuum = max(0, vacuum_interval - (now - last_vacuum))
+                
+                self.logger.debug(f"🕐 Maintenance cycle #{cycle_count}")
+                self.logger.debug(f"   - Next checkpoint in: {next_checkpoint/60:.1f} minutes")
+                self.logger.debug(f"   - Next vacuum in: {next_vacuum/3600:.1f} hours")
+            
             try:
                 # Health check always runs at the main interval
                 self.run_operation("health_check")
@@ -543,13 +610,11 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
                     last_vacuum = now
 
             except Exception:  # pragma: no cover
-                import logging
-                import traceback
-
-                logging.getLogger(__name__).warning(
-                    "Maintenance operation failed:\n%s", traceback.format_exc()
-                )
+                self.logger.warning("Maintenance operation failed", exc_info=True)
+                
             self._stop.wait(self.interval)
+            
+        self.logger.info("🏁 Maintenance loop ended")
 
     def _elapsed_since_last(self) -> float:
         import time
