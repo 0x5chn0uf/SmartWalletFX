@@ -193,7 +193,10 @@ class Memory:
                 # Delete existing embeddings for this task
                 session.query(Embedding).filter_by(task_id=task_id).delete()
 
-                # Add new embeddings if available
+                # Add new embeddings – mandatory when embeddings are enabled
+                if self.embedding_generator.model is None:
+                    raise RuntimeError("Embedding model not loaded – aborting upsert")
+
                 if chunks and self.embedding_generator.model is not None:
                     embeddings = self.embedding_generator.generate_embeddings_batch(
                         [chunk for chunk, _ in chunks]

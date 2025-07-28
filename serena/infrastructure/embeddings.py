@@ -12,8 +12,6 @@ from typing import List, Optional
 
 import numpy as np
 
-from serena import config
-
 logger = logging.getLogger(__name__)
 
 
@@ -33,10 +31,6 @@ class EmbeddingGenerator:
     # ------------------------------------------------------------------
     @property
     def model(self):  # noqa: D401
-        if not config.embeddings_enabled():
-            logger.warning("Embeddings disabled via configuration")
-            return None
-
         if self._model is None:
             # Avoid blocking event loop
             in_loop = False
@@ -60,9 +54,6 @@ class EmbeddingGenerator:
 
     def load_model_now(self) -> bool:
         """Force synchronous model loading, waiting for completion if needed."""
-        if not config.embeddings_enabled():
-            return False
-
         if self._model is not None:
             return True  # Already loaded
 
@@ -120,40 +111,26 @@ class EmbeddingGenerator:
     def generate_embedding(self, text: str) -> List[float]:
         if not text.strip():
             return [0.0] * self.embedding_dim
+
         if self.model is None:
-            return [0.0] * self.embedding_dim
-        try:
-            return self.model.encode(text, convert_to_numpy=True).tolist()  # type: ignore[attr-defined]
-        except Exception as exc:  # noqa: BLE001
-            logger.error("Embedding generation failed: %s", exc)
-            return [0.0] * self.embedding_dim
+            # Embedding model was expected but failed to load – abort early.
+            raise RuntimeError("Embedding model not loaded; aborting pipeline")
+
+        # Happy-path: model present
+        return self.model.encode(text, convert_to_numpy=True).tolist()  # type: ignore[attr-defined]
 
     def generate_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
         if not texts:
             return []
+
         if self.model is None:
-            return [[0.0] * self.embedding_dim for _ in texts]
-        try:
-            logger.debug("Starting batch encoding for %d texts", len(texts))
-            vecs = self.model.encode(texts, convert_to_numpy=True, batch_size=32)  # type: ignore[attr-defined]
-            logger.debug("Model encode successful, type: %s, shape: %s", type(vecs), getattr(vecs, 'shape', 'no shape'))
-            result = vecs.tolist()
-            logger.debug("tolist() successful, returning %d embeddings", len(result))
-            return result
-        except Exception as exc:
-            import traceback
-            logger.error("Batch embedding generation failed: %s", exc)
-            logger.error("Full traceback: %s", traceback.format_exc())
-            logger.debug("Error details - embedding_dim type: %s, value: %s", type(self.embedding_dim), self.embedding_dim)
-            logger.debug("Texts length: %s", len(texts))
-            try:
-                # Try to create fallback embeddings one by one to isolate the error
-                fallback = [[0.0] * self.embedding_dim for _ in texts]
-                return fallback
-            except Exception as fallback_exc:
-                logger.error("Even fallback embedding creation failed: %s", fallback_exc)
-                # Return minimal fallback
-                return [[0.0] * 384 for _ in texts]
+            raise RuntimeError("Embedding model not loaded; aborting pipeline")
+
+        # Happy-path batch encode – any exception bubbles up to caller
+        logger.debug("Starting batch encoding for %d texts", len(texts))
+        vecs = self.model.encode(texts, convert_to_numpy=True, batch_size=32)  # type: ignore[attr-defined]
+        logger.debug("Batch encode successful (shape=%s)", getattr(vecs, 'shape', 'unknown'))
+        return vecs.tolist()
 
 
 # ------------------------------------------------------------------

@@ -43,8 +43,8 @@ def _try_server_search(query: str, limit: int):
                 results.append(result)
             
             return results, True  # Success
-    except Exception:
-        pass  # Server not available
+    except Exception as exc:
+        logging.getLogger(__name__).debug("Server search failed: %s", exc, exc_info=True)
     
     return [], False  # Failed
 
@@ -60,8 +60,8 @@ def cmd_search(args) -> None:
         if server_success:
             print("   ⚡ Using server API (preloaded model)")
         else:
-            print("❌ Server not available. Please start the server with 'serena serve'")
-            print("   Run: serena serve")
+            print("❌ Serena server not available or semantic search disabled.")
+            print("   Start the server with: serena serve")
             sys.exit(1)
         
         if not results:
@@ -90,9 +90,9 @@ def cmd_search(args) -> None:
         logger.error("Missing dependency: %s", e)
         print(f"❌ Missing dependency: {e}")
         sys.exit(1)
-    except Exception as e:
-        logger.error("Search failed: %s", e)
-        print(f"❌ Search failed: {e}")
+    except Exception:
+        logger.exception("Search failed")
+        print("❌ Search failed: unexpected error. See logs for details.")
         sys.exit(1)
 
 

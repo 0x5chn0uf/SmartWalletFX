@@ -113,7 +113,10 @@ db-restore: ## Delegate to backend/db-restore target
 # -----------------------------------------------------------------------------
 # Clean & misc
 # -----------------------------------------------------------------------------
-clean: clean-backend ## Remove temporary files & caches
+clean: ## Remove temporary files & caches (recursive)
+	rm -rf .coverage htmlcov .coverage.*
+	rm -rf uvicorn.log
+	find . -type d \( -name '__pycache__' -o -name '.pytest_cache' -o -name '.ruff_cache' -o -name '.hypothesis' -o -name '.benchmarks' \) -exec rm -rf {} +
 
 clean-backend:
 	$(MAKE) -C $(BACKEND_DIR) clean

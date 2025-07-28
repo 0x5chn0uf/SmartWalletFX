@@ -69,6 +69,22 @@ Run HTTP API server with automatic documentation.
 - `--watch`: Watch for file changes (planned feature)
 - `-v, --verbose`: Enable verbose logging
 
+#### `serena delete <task_id> [options]`
+Delete indexed entries manually by task ID.
+- `--list`: List available entries with their task IDs
+- `--limit <int>`: Number of entries to show when listing (default: 20)
+- `--show-remaining`: Show remaining entries after deletion
+- `-v, --verbose`: Enable verbose logging
+
+#### `serena get <task_id> [options]`
+Get specific archive by task ID.
+- `-v, --verbose`: Enable verbose logging
+
+#### `serena latest [options]`
+Show latest archived entries.
+- `--limit <int>`: Number of entries to show (default: 10)
+- `-v, --verbose`: Enable verbose logging
+
 ### Content Types
 
 Serena automatically categorizes content by type:

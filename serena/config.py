@@ -27,7 +27,6 @@ _DEFAULTS: Dict[str, Any] = {
         Path(__file__).parent / "database" / "maintenance_config.json"
     ),
     # Features
-    "disable_embeddings": False,
     "server_url": "http://localhost:8765",  # Default local API server
     # CORS settings
     "cors_origins": "http://localhost:3000,http://localhost:8080",  # Development defaults
@@ -126,10 +125,6 @@ def memory_db_path(cli_override: Optional[str] = None) -> str:
 
 def maintenance_config_path(cli_override: Optional[str] = None) -> str:
     return str(get("maintenance_config", cli_override=cli_override))
-
-
-def embeddings_enabled(cli_override: Optional[bool] = None) -> bool:
-    return not get_bool("disable_embeddings", cli_override=cli_override)
 
 
 def server_url(cli_override: Optional[str] = None) -> str:
