@@ -1,6 +1,7 @@
 """Database session management with SQLAlchemy ORM."""
 
 import logging
+import threading
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Generator, Optional
@@ -203,12 +204,13 @@ class DatabaseManager:
                 logger.error("Error closing database engine: %s", exc)
 
 
-# Global database manager instance
+# Global database manager instance with thread safety
 _db_manager: Optional[DatabaseManager] = None
+_db_manager_lock = threading.Lock()
 
 
 def get_db_manager(db_path: Optional[str] = None) -> DatabaseManager:
-    """Get global database manager instance.
+    """Get global database manager instance (thread-safe).
     
     Args:
         db_path: Path to database file (only used on first call)
@@ -218,7 +220,10 @@ def get_db_manager(db_path: Optional[str] = None) -> DatabaseManager:
     """
     global _db_manager
     if _db_manager is None:
-        _db_manager = DatabaseManager(db_path)
+        with _db_manager_lock:
+            # Double-check after acquiring lock
+            if _db_manager is None:
+                _db_manager = DatabaseManager(db_path)
     return _db_manager
 
 
