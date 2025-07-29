@@ -7,6 +7,7 @@ import asyncio
 import logging
 import os
 import threading
+import time
 from functools import lru_cache
 from typing import List, Optional
 
@@ -27,7 +28,24 @@ class EmbeddingGenerator:
         self.embedding_dim = 384  # Default for MiniLM
         self._device = device or self._detect_optimal_device()
         self._lock = threading.Lock()  # Thread safety for model loading
-        logger.info("EmbeddingGenerator initialized with device: %s", self._device)
+        
+        # Model lifecycle management
+        self._last_used = time.time()
+        self._cleanup_timer: Optional[threading.Timer] = None
+        self._idle_timeout = 900  # 15 minutes idle timeout
+        self._cleanup_enabled = True
+        
+        # Performance monitoring
+        self._usage_stats = {
+            "total_requests": 0,
+            "batch_requests": 0,
+            "total_processing_time": 0.0,
+            "last_cleanup": None,
+            "memory_peak_mb": 0.0
+        }
+        
+        logger.info("EmbeddingGenerator initialized with device: %s, idle_timeout: %ds", 
+                   self._device, self._idle_timeout)
 
     # ------------------------------------------------------------------
     # Device detection
@@ -165,6 +183,150 @@ class EmbeddingGenerator:
             logger.warning("sentence-transformers not installed – embeddings disabled")
         except Exception as exc:  # pragma: no cover
             logger.error("Failed to load embedding model: %s", exc)
+
+    
+    # ------------------------------------------------------------------
+    # Model lifecycle management
+    # ------------------------------------------------------------------
+    def _update_usage_stats(self, processing_time: float, is_batch: bool = False) -> None:
+        """Update usage statistics and trigger cleanup timer reset."""
+        self._last_used = time.time()
+        self._usage_stats["total_requests"] += 1
+        self._usage_stats["total_processing_time"] += processing_time
+        
+        if is_batch:
+            self._usage_stats["batch_requests"] += 1
+        
+        # Reset cleanup timer
+        self._reset_cleanup_timer()
+        
+        # Monitor memory usage (optional, lightweight check)
+        try:
+            import psutil
+            process = psutil.Process()
+            memory_mb = process.memory_info().rss / 1024 / 1024
+            if memory_mb > self._usage_stats["memory_peak_mb"]:
+                self._usage_stats["memory_peak_mb"] = memory_mb
+        except ImportError:
+            pass  # psutil not available, skip memory monitoring
+        except Exception:
+            pass  # Ignore memory monitoring errors
+    
+    def _reset_cleanup_timer(self) -> None:
+        """Reset the model cleanup timer."""
+        if not self._cleanup_enabled:
+            return
+            
+        # Cancel existing timer
+        if self._cleanup_timer:
+            self._cleanup_timer.cancel()
+            
+        # Start new timer
+        self._cleanup_timer = threading.Timer(
+            self._idle_timeout, 
+            self._cleanup_model_if_idle
+        )
+        self._cleanup_timer.daemon = True
+        self._cleanup_timer.start()
+    
+    def _cleanup_model_if_idle(self) -> None:
+        """Clean up model if it has been idle for too long."""
+        if not self._cleanup_enabled:
+            return
+            
+        current_time = time.time()
+        idle_time = current_time - self._last_used
+        
+        # Only cleanup if truly idle and cleanup is still enabled
+        if idle_time >= self._idle_timeout and self._model is not None:
+            logger.info(
+                "Cleaning up embedding model after %.1f minutes of inactivity",
+                idle_time / 60
+            )
+            
+            with self._lock:
+                # Double-check in case model was used between timer fire and lock acquisition
+                if current_time - self._last_used >= self._idle_timeout:
+                    try:
+                        # Free model memory
+                        if self._model is not None:
+                            # Try to free GPU memory if applicable
+                            try:
+                                if hasattr(self._model, 'device') and 'cuda' in str(self._model.device):
+                                    import torch
+                                    torch.cuda.empty_cache()
+                            except Exception:
+                                pass  # Ignore GPU cleanup errors
+                            
+                            # Clear model reference
+                            self._model = None
+                            
+                        # Record cleanup time
+                        self._usage_stats["last_cleanup"] = current_time
+                        
+                        logger.debug("Embedding model cleanup completed")
+                        
+                    except Exception as exc:
+                        logger.warning("Model cleanup failed: %s", exc)
+    
+    def get_usage_stats(self) -> dict:
+        """Get current usage statistics."""
+        current_time = time.time()
+        return {
+            **self._usage_stats,
+            "model_loaded": self._model is not None,
+            "idle_time_seconds": current_time - self._last_used,
+            "device": self._device,
+            "cleanup_enabled": self._cleanup_enabled,
+        }
+    
+    def disable_cleanup(self) -> None:
+        """Disable automatic model cleanup (useful for high-frequency usage)."""
+        self._cleanup_enabled = False
+        if self._cleanup_timer:
+            self._cleanup_timer.cancel()
+            self._cleanup_timer = None
+        logger.info("Model cleanup disabled")
+    
+    def enable_cleanup(self, idle_timeout: Optional[int] = None) -> None:
+        """Enable automatic model cleanup with optional timeout override."""
+        self._cleanup_enabled = True
+        if idle_timeout is not None:
+            self._idle_timeout = idle_timeout
+        self._reset_cleanup_timer()
+        logger.info("Model cleanup enabled with %d second timeout", self._idle_timeout)
+    
+    def force_cleanup(self) -> bool:
+        """Force immediate model cleanup, returns True if model was cleaned up."""
+        if self._model is None:
+            return False
+            
+        with self._lock:
+            if self._model is not None:
+                try:
+                    # Cancel any pending cleanup timer
+                    if self._cleanup_timer:
+                        self._cleanup_timer.cancel()
+                        self._cleanup_timer = None
+                    
+                    # Free GPU memory if applicable
+                    try:
+                        if hasattr(self._model, 'device') and 'cuda' in str(self._model.device):
+                            import torch
+                            torch.cuda.empty_cache()
+                    except Exception:
+                        pass
+                    
+                    self._model = None
+                    self._usage_stats["last_cleanup"] = time.time()
+                    
+                    logger.info("Forced embedding model cleanup completed")
+                    return True
+                    
+                except Exception as exc:
+                    logger.error("Forced cleanup failed: %s", exc)
+                    
+        return False
 
     # ------------------------------------------------------------------
     # Public API
