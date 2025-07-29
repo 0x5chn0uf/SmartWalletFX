@@ -12,7 +12,8 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool, QueuePool
 
 from serena.core.models import Base
-from serena.settings import settings
+from serena.settings import settings, database_config
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -26,66 +27,198 @@ class DatabaseManager:
         Args:
             db_path: Path to SQLite database file
         """
-        if db_path is None:
-            db_path = settings.memory_db
+        # Use centralized database configuration
+        if db_path is not None:
+            self.db_config = settings.get_database_config(db_path)
+        else:
+            self.db_config = database_config
             
-        self.db_path = db_path
+        # Validate configuration early
+        try:
+            self.db_config.validate_configuration()
+        except Exception as e:
+            logger.error("Database configuration validation failed: %s", e)
+            raise
+            
+        self.db_path = self.db_config.db_path
         self.engine = self._create_engine()
         self.SessionLocal = sessionmaker(bind=self.engine)
         
-        # Ensure database directory exists
-        Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
+        # Ensure database directory exists using centralized method
+        self.db_config.ensure_database_directory()
         
         # Create tables if they don't exist
         self._create_tables()
 
     def _create_engine(self) -> Engine:
-        """Create SQLAlchemy engine with connection pooling and SQLite optimizations."""
-        # Use sqlite:/// URL format for SQLAlchemy
-        db_url = f"sqlite:///{self.db_path}"
+        """Create SQLAlchemy engine with environment-optimized settings."""
+        # Use centralized database URL
+        db_url = self.db_config.db_url
         
-        # Configure connection pooling for SQLite
-        engine = create_engine(
-            db_url,
-            echo=False,  # Set to True for SQL debugging
-            poolclass=StaticPool,  # Use StaticPool for SQLite to maintain connection
-            pool_pre_ping=True,  # Verify connections before use
-            connect_args={
-                "check_same_thread": False,  # Allow multi-threading
-                "timeout": 20,  # SQLite connection timeout
+        # Environment-specific engine configuration
+        if settings.is_production:
+            # Production: Optimize for reliability and performance
+            engine_kwargs = {
+                "poolclass": QueuePool,
+                "pool_size": 5,
+                "max_overflow": 10,
+                "pool_timeout": 30,
+                "pool_recycle": 3600,  # Recycle connections every hour
+                "pool_pre_ping": True,
+                "connect_args": {
+                    "check_same_thread": False,
+                    "timeout": 30,  # Longer timeout in production
+                },
+                "echo": False,
             }
-        )
+        else:
+            # Development: Optimize for debugging and development
+            engine_kwargs = {
+                "poolclass": StaticPool,
+                "pool_pre_ping": True,
+                "connect_args": {
+                    "check_same_thread": False,
+                    "timeout": 20,
+                },
+                "echo": settings.log_level.upper() == "DEBUG",
+            }
+        
+        engine = create_engine(db_url, **engine_kwargs)
         
         logger.info(
-            "Database engine created with connection pooling: "
-            "pool_size=10, max_overflow=20, pool_timeout=30s"
+            "Database engine created for %s environment with %s pooling",
+            settings.environment,
+            engine_kwargs["poolclass"].__name__
         )
         
-        # Configure SQLite pragmas for performance
+        # Configure SQLite pragmas with environment-specific settings
         @event.listens_for(engine, "connect")
         def set_sqlite_pragma(dbapi_connection, connection_record):
             cursor = dbapi_connection.cursor()
-            # Performance-oriented SQLite pragmas
-            cursor.execute("PRAGMA journal_mode=WAL")
-            cursor.execute("PRAGMA synchronous=NORMAL")
-            cursor.execute("PRAGMA foreign_keys=ON")
-            cursor.execute("PRAGMA temp_store=MEMORY")
-            cursor.execute("PRAGMA mmap_size=268435456")  # 256MB
-            cursor.execute("PRAGMA cache_size=-64000")  # 64MB cache
-            cursor.execute("PRAGMA busy_timeout=30000")  # 30s busy timeout
-            cursor.execute("PRAGMA wal_autocheckpoint=1000")  # Checkpoint every 1000 pages
-            cursor.close()
+            
+            try:
+                # Enable WAL mode for better concurrency
+                cursor.execute("PRAGMA journal_mode=WAL")
+                
+                # Environment-specific optimizations
+                if settings.is_production:
+                    # Production: Prioritize data safety and performance
+                    cursor.execute("PRAGMA synchronous=FULL")     # Maximum safety
+                    cursor.execute("PRAGMA cache_size=-32000")    # 32MB cache
+                    cursor.execute("PRAGMA mmap_size=536870912")  # 512MB memory map
+                    cursor.execute("PRAGMA wal_autocheckpoint=1000")  # Conservative checkpointing
+                    cursor.execute("PRAGMA busy_timeout=60000")   # 60s busy timeout
+                else:
+                    # Development: Balance safety and speed
+                    cursor.execute("PRAGMA synchronous=NORMAL")   # Balance safety and speed
+                    cursor.execute("PRAGMA cache_size=-16000")    # 16MB cache
+                    cursor.execute("PRAGMA mmap_size=268435456")  # 256MB memory map
+                    cursor.execute("PRAGMA wal_autocheckpoint=500")   # More frequent checkpoints
+                    cursor.execute("PRAGMA busy_timeout=30000")   # 30s busy timeout
+                
+                # Common settings for all environments
+                cursor.execute("PRAGMA temp_store=MEMORY")   # Use memory for temp tables
+                cursor.execute("PRAGMA foreign_keys=ON")     # Enable foreign key constraints
+                cursor.execute("PRAGMA optimize")            # Run optimization on connect
+                cursor.execute("PRAGMA query_only=OFF")      # Allow writes
+                cursor.execute("PRAGMA recursive_triggers=ON")  # Enable recursive triggers
+                
+            except Exception as e:
+                logger.warning(f"Failed to set SQLite pragma: {e}")
+            finally:
+                cursor.close()
             
         return engine
 
     def _create_tables(self) -> None:
-        """Create database tables if they don't exist."""
+        """Create and initialize database tables with proper error handling."""
         try:
+            # Create tables
             Base.metadata.create_all(bind=self.engine)
-            logger.info("Database tables ready at %s", self.db_path)
+            
+            # Verify table creation and create indexes
+            with self.get_session() as session:
+                # Verify core tables exist
+                tables_to_check = ['archives', 'embeddings']
+                for table_name in tables_to_check:
+                    result = session.execute(
+                        text(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'")
+                    ).fetchone()
+                    if not result:
+                        raise Exception(f"Table '{table_name}' was not created")
+                
+                # Create performance indexes if they don't exist
+                session.execute(text(
+                    "CREATE INDEX IF NOT EXISTS idx_archives_task_id ON archives(task_id)"
+                ))
+                session.execute(text(
+                    "CREATE INDEX IF NOT EXISTS idx_archives_completed_at ON archives(completed_at DESC)"
+                ))
+                session.execute(text(
+                    "CREATE INDEX IF NOT EXISTS idx_embeddings_task_id ON embeddings(task_id)"
+                ))
+                
+                # Create FTS table for text search
+                session.execute(text(
+                    "CREATE VIRTUAL TABLE IF NOT EXISTS archives_fts USING fts5(task_id, title, summary)"
+                ))
+                
+                session.commit()
+            
+            logger.info("Database tables and indexes initialized at %s", self.db_path)
+            
         except Exception as exc:
-            logger.error("Failed to create tables: %s", exc)
+            logger.error("Failed to initialize database tables: %s", exc)
             raise
+    
+    def initialize_for_deployment(self) -> dict:
+        """Initialize database for deployment with comprehensive validation."""
+        init_info = {
+            "status": "success",
+            "steps": [],
+            "warnings": [],
+            "errors": []
+        }
+        
+        try:
+            # Step 1: Ensure directory exists
+            init_info["steps"].append("Creating database directory")
+            self.db_config.ensure_database_directory()
+            
+            # Step 2: Test database connectivity
+            init_info["steps"].append("Testing database connectivity")
+            health = self.health_check()
+            if health["status"] == "unhealthy":
+                init_info["errors"].extend(["Database connectivity test failed"] + health.get("warnings", []))
+                init_info["status"] = "failed"
+                return init_info
+            
+            # Step 3: Initialize schema
+            init_info["steps"].append("Initializing database schema")
+            try:
+                self._create_tables()
+            except Exception as e:
+                init_info["errors"].append(f"Schema initialization failed: {e}")
+                init_info["status"] = "failed"
+                return init_info
+            
+            # Step 4: Final validation
+            init_info["steps"].append("Validating deployment readiness")
+            final_health = self.health_check()
+            if final_health["warnings"]:
+                init_info["warnings"].extend(final_health["warnings"])
+            
+            if final_health["status"] == "unhealthy":
+                init_info["status"] = "degraded"
+                init_info["errors"].append("Post-initialization health check failed")
+            
+            init_info["steps"].append("Database initialization completed successfully")
+            
+        except Exception as e:
+            init_info["errors"].append(f"Initialization failed: {e}")
+            init_info["status"] = "failed"
+        
+        return init_info
 
     @contextmanager
     def get_session(self) -> Generator[Session, None, None]:
@@ -132,20 +265,105 @@ class DatabaseManager:
         finally:
             session.close()
 
-    def health_check(self) -> bool:
-        """Check database connectivity and basic operations.
+    def health_check(self) -> dict:
+        """Comprehensive database health check with detailed metrics.
         
         Returns:
-            bool: True if database is healthy
+            dict: Health check results with status and metrics
         """
+        import time
+        from pathlib import Path
+        
+        start_time = time.time()
+        health_info = {
+            "status": "healthy",
+            "checks": {},
+            "metrics": {},
+            "warnings": []
+        }
+        
         try:
+            # Test basic connectivity
             with self.get_session() as session:
-                # Simple query to test connectivity
+                # Basic connectivity test
+                connect_start = time.time()
                 session.execute(text("SELECT 1")).fetchone()
-                return True
-        except Exception as exc:
-            logger.error("Database health check failed: %s", exc)
-            return False
+                connect_time = (time.time() - connect_start) * 1000
+                
+                health_info["checks"]["connectivity"] = {
+                    "status": "ok",
+                    "response_time_ms": round(connect_time, 2)
+                }
+                
+                # Check database file stats
+                db_path = Path(self.db_path)
+                if db_path.exists():
+                    db_stat = db_path.stat()
+                    health_info["metrics"]["file"] = {
+                        "size_mb": round(db_stat.st_size / (1024 * 1024), 2),
+                        "path": str(db_path),
+                        "writable": os.access(db_path, os.W_OK)
+                    }
+                
+                # Test table existence and get counts
+                try:
+                    archive_count = session.execute(text("SELECT COUNT(*) FROM archives")).scalar()
+                    embedding_count = session.execute(text("SELECT COUNT(*) FROM embeddings")).scalar()
+                    
+                    health_info["metrics"]["tables"] = {
+                        "archives": archive_count,
+                        "embeddings": embedding_count
+                    }
+                    
+                    health_info["checks"]["tables"] = {"status": "ok"}
+                    
+                except Exception as e:
+                    health_info["checks"]["tables"] = {
+                        "status": "error",
+                        "message": f"Table access failed: {e}"
+                    }
+                    health_info["warnings"].append("Database tables may need initialization")
+                
+                # Check database settings
+                try:
+                    wal_mode = session.execute(text("PRAGMA journal_mode")).scalar()
+                    foreign_keys = session.execute(text("PRAGMA foreign_keys")).scalar()
+                    cache_size = session.execute(text("PRAGMA cache_size")).scalar()
+                    
+                    health_info["metrics"]["settings"] = {
+                        "journal_mode": wal_mode,
+                        "foreign_keys_enabled": bool(foreign_keys),
+                        "cache_size": cache_size
+                    }
+                    
+                    if wal_mode != "wal":
+                        health_info["warnings"].append("Database not using WAL mode - performance may be suboptimal")
+                        
+                except Exception as e:
+                    health_info["warnings"].append(f"Could not check database settings: {e}")
+                    
+                # Check connection pool status
+                pool_status = self.get_pool_status()
+                if pool_status:
+                    health_info["metrics"]["pool"] = pool_status
+        
+        except Exception as e:
+            health_info["status"] = "unhealthy"
+            health_info["checks"]["connectivity"] = {
+                "status": "error",
+                "error": str(e)
+            }
+            logger.error("Database health check failed: %s", e)
+        
+        # Overall health determination
+        total_time = (time.time() - start_time) * 1000
+        health_info["response_time_ms"] = round(total_time, 2)
+        
+        # Check for conditions that should affect status
+        if health_info["warnings"] and health_info["status"] == "healthy":
+            health_info["status"] = "degraded"
+        
+        return health_info
 
     def vacuum(self) -> None:
         """Run VACUUM operation to reclaim space."""

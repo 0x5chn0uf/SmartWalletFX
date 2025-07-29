@@ -7,7 +7,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from serena.core.models import Base
-from serena.settings import settings
+from serena.settings import settings, database_config
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -29,13 +29,18 @@ target_metadata = Base.metadata
 
 
 def get_database_url():
-    """Get database URL from config or environment."""
+    """Get database URL from centralized configuration."""
     try:
-        db_path = settings.memory_db
-        return f"sqlite:///{db_path}"
-    except ImportError:
-        # Fallback to default path
-        return "sqlite:///database/memory_index.db"
+        # Use centralized database configuration
+        return database_config.db_url
+    except Exception:
+        # Fallback to settings if database_config fails
+        try:
+            db_path = settings.memory_db
+            return f"sqlite:///{db_path}"
+        except ImportError:
+            # Final fallback to default path
+            return "sqlite:///database/memory_index.db"
 
 
 def run_migrations_offline() -> None:

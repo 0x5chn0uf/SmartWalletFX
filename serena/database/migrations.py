@@ -11,7 +11,7 @@ from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine
 
-from serena.settings import settings
+from serena.settings import settings, database_config
 
 logger = logging.getLogger(__name__)
 
@@ -25,15 +25,22 @@ class MigrationManager:
         Args:
             db_path: Path to SQLite database file
         """
-        if db_path is None:
-            db_path = settings.memory_db
+        # Use centralized database configuration
+        if db_path is not None:
+            self.db_config = settings.get_database_config(db_path)
+        else:
+            self.db_config = database_config
             
-        self.db_path = db_path
-        self.db_url = f"sqlite:///{db_path}"
-        
-        # Get the alembic.ini path relative to this module
-        serena_root = Path(__file__).parent.parent
-        self.alembic_cfg_path = serena_root / "alembic.ini"
+        # Validate configuration early
+        try:
+            self.db_config.validate_configuration()
+        except Exception as e:
+            logger.error("Migration configuration validation failed: %s", e)
+            raise
+            
+        self.db_path = self.db_config.db_path
+        self.db_url = self.db_config.db_url
+        self.alembic_cfg_path = self.db_config.alembic_config_path
         
         if not self.alembic_cfg_path.exists():
             raise FileNotFoundError(f"Alembic config not found: {self.alembic_cfg_path}")
@@ -41,9 +48,8 @@ class MigrationManager:
         self.alembic_cfg = Config(str(self.alembic_cfg_path))
         # Override the database URL
         self.alembic_cfg.set_main_option("sqlalchemy.url", self.db_url)
-        # Set the correct script location relative to serena root
-        migrations_path = serena_root / "migrations"
-        self.alembic_cfg.set_main_option("script_location", str(migrations_path))
+        # Set the correct script location using centralized config
+        self.alembic_cfg.set_main_option("script_location", str(self.db_config.migrations_path))
 
     def get_current_revision(self) -> Optional[str]:
         """Get the current database revision.
@@ -127,8 +133,8 @@ class MigrationManager:
             revision: Target revision (default: "head")
         """
         try:
-            # Ensure database directory exists
-            Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
+            # Ensure database directory exists using centralized method
+            self.db_config.ensure_database_directory()
             
             command.upgrade(self.alembic_cfg, revision)
             logger.info("Upgraded database to %s", revision)
@@ -156,8 +162,8 @@ class MigrationManager:
             revision: Revision to stamp (default: "head")
         """
         try:
-            # Ensure database directory exists
-            Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
+            # Ensure database directory exists using centralized method
+            self.db_config.ensure_database_directory()
             
             command.stamp(self.alembic_cfg, revision)
             logger.info("Stamped database with %s", revision)
