@@ -1,13 +1,10 @@
 """File processing utilities and filters."""
 
-import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Set
 
 from serena.core.models import TaskKind, TaskStatus, determine_task_kind
-
-logger = logging.getLogger(__name__)
 
 
 def should_process_file(file_path: str, strategic_code_paths: Set[str]) -> bool:

@@ -59,21 +59,25 @@ def get_latest_tasks(
         List[SearchResult]: Latest tasks
     """
     with get_session(db_path) as session:
-        from serena.core.models import Archive
         from sqlalchemy import func
-        
+
+        from serena.core.models import Archive
+
         query = session.query(Archive)
-        
+
         if kind_filter:
             query = query.filter(Archive.kind.in_(kind_filter))
-        
+
         # Sort by the most recent completion date, using updated_at as fallback for NULL completed_at
         # NULLS LAST ensures NULL completed_at values don't interfere with the sorting
-        archives = query.order_by(
-            Archive.completed_at.desc().nulls_last(),
-            Archive.updated_at.desc()
-        ).limit(n).all()
-        
+        archives = (
+            query.order_by(
+                Archive.completed_at.desc().nulls_last(), Archive.updated_at.desc()
+            )
+            .limit(n)
+            .all()
+        )
+
         results = []
         for archive in archives:
             result = SearchResult(
@@ -87,7 +91,5 @@ def get_latest_tasks(
                 filepath=archive.filepath,
             )
             results.append(result)
-        
+
         return results
-
-

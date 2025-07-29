@@ -1,52 +1,45 @@
 """Core memory indexer functionality."""
 
-import logging
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set
 
 from serena.core.models import extract_task_id_from_path
 
-from .content_extractors import extract_code_content, extract_title_from_content
-from .file_processors import (
-    determine_content_kind,
-    extract_completion_date,
-    extract_status_from_content,
-    should_process_file,
-)
-from .id_generators import (
-    generate_code_id,
-    generate_design_id,
-    generate_doc_id,
-    generate_path_based_id,
-    generate_readme_id,
-)
-
-logger = logging.getLogger(__name__)
+from .content_extractors import (extract_code_content,
+                                 extract_title_from_content)
+from .file_processors import (determine_content_kind, extract_completion_date,
+                              extract_status_from_content, should_process_file)
+from .id_generators import (generate_code_id, generate_design_id,
+                            generate_doc_id, generate_path_based_id,
+                            generate_readme_id)
 
 
 class MemoryIndexer:
     """Scans and indexes files from TaskMaster and Serena directories."""
 
-    def __init__(
-        self, memory=None, max_workers: int = 4, watcher=None
-    ):
+    def __init__(self, memory=None, max_workers: int = 4, watcher=None):
         """Initialize the indexer."""
         self.max_workers = max_workers
         self.watcher = watcher
-        
+
         # Initialize memory (remote only)
         if memory:
             self.memory = memory
         else:
             # Only remote memory is supported - no fallbacks
             from serena.cli.common import RemoteMemory
+
             remote_memory = RemoteMemory()
             if not remote_memory.is_server_available():
-                raise RuntimeError("❌ Server not available - indexing requires Serena server to be running. Start it with: serena serve")
+                raise RuntimeError(
+                    "❌ Server not available - indexing requires Serena server to be running. Start it with: serena serve"
+                )
             self.memory = remote_memory
-            logger.info("✅ Using server-based memory for indexing (async writes enabled)")
+            print(
+                "✅ Using server-based memory for indexing (async writes enabled)"
+            )
 
         # Default scan directories
         self.scan_dirs = [
@@ -86,7 +79,7 @@ class MemoryIndexer:
     ) -> Dict[str, int]:
         """Scan directories for markdown files and index them."""
         start_time = time.time()
-        
+
         if directories is None:
             directories = self.scan_dirs
 
@@ -105,7 +98,7 @@ class MemoryIndexer:
         scan_start = time.time()
 
         for entry in directories:
-            logger.info(f"Scanning directory: {entry}")
+            print(f"Scanning directory: {entry}")
 
             p = Path(entry)
 
@@ -113,31 +106,33 @@ class MemoryIndexer:
                 if p.suffix.lower() in self.extensions:
                     files_to_process.append(str(p))
                 else:
-                    logger.debug(f"Skipping non-supported file: {p}")
+                    print(f"Skipping non-supported file: {p}")
                 continue
 
             if not p.exists():
-                logger.warning(f"Directory not found: {entry}")
+                print(f"Directory not found: {entry}")
                 continue
 
             for file_path in p.rglob("*"):
                 if file_path.suffix.lower() in self.extensions:
                     files_to_process.append(str(file_path))
-        
+
         scan_time = time.time() - scan_start
         stats["scan_time_seconds"] = scan_time
         stats["files_found"] = len(files_to_process)
 
         if not files_to_process:
-            logger.info("No files found to index")
+            print("No files found to index")
             stats["total_time_seconds"] = time.time() - start_time
             return stats
 
-        logger.info(f"Found {len(files_to_process)} files to process in {scan_time:.2f}s")
+        print(
+            f"Found {len(files_to_process)} files to process in {scan_time:.2f}s"
+        )
 
         # Process files with progress tracking
         indexing_start = time.time()
-        
+
         if show_progress:
             self._process_files_with_progress(files_to_process, force_reindex, stats)
         else:
@@ -145,14 +140,16 @@ class MemoryIndexer:
 
         indexing_time = time.time() - indexing_start
         total_time = time.time() - start_time
-        
+
         stats["indexing_time_seconds"] = indexing_time
         stats["total_time_seconds"] = total_time
 
         # Calculate throughput
-        files_per_second = stats["files_indexed"] / indexing_time if indexing_time > 0 else 0
+        files_per_second = (
+            stats["files_indexed"] / indexing_time if indexing_time > 0 else 0
+        )
 
-        logger.info(
+        print(
             f"Indexing complete: {stats['files_indexed']} files indexed in {total_time:.2f}s "
             f"({files_per_second:.1f} files/sec)"
         )
@@ -171,12 +168,16 @@ class MemoryIndexer:
         self._process_files(files, force_reindex, stats, show_progress=False)
 
     def _process_files(
-        self, files: List[str], force_reindex: bool, stats: Dict[str, int], show_progress: bool = True
+        self,
+        files: List[str],
+        force_reindex: bool,
+        stats: Dict[str, int],
+        show_progress: bool = True,
     ) -> None:
         """Process files with unified logic for both progress and batch processing."""
         total_files = len(files)
         processing_start = time.time()
-        
+
         if show_progress:
             # Sequential processing with progress display
             for i, file_path in enumerate(files, 1):
@@ -192,7 +193,7 @@ class MemoryIndexer:
                         progress = (i / total_files) * 100
                         rate = i / elapsed if elapsed > 0 else 0
                         eta = (total_files - i) / rate if rate > 0 else 0
-                        
+
                         print(
                             f"Progress: {i}/{total_files} ({progress:.1f}%) - "
                             f"Indexed: {stats['files_indexed']}, "
@@ -202,7 +203,7 @@ class MemoryIndexer:
                         )
 
                 except Exception as e:  # noqa: BLE001
-                    logger.exception("Failed to process %s", file_path)
+                    print("Failed to process %s", file_path)
                     stats["files_failed"] += 1
         else:
             # Enhanced parallel processing - always use individual processing for remote API
@@ -224,9 +225,8 @@ class MemoryIndexer:
                         else:
                             stats["files_skipped"] += 1
                     except Exception as e:  # noqa: BLE001
-                        logger.exception("Failed to process %s", file_path)
+                        print("Failed to process %s", file_path)
                         stats["files_failed"] += 1
-
 
     def _process_single_file(self, file_path: str, force_reindex: bool) -> bool:
         """Process a single file for indexing."""
@@ -240,7 +240,7 @@ class MemoryIndexer:
             if not task_id:
                 task_id = self._generate_id_for_file(file_path)
                 if not task_id:
-                    logger.debug(f"Could not extract task ID from {file_path}")
+                    print(f"Could not extract task ID from {file_path}")
                     return False
 
             # Check if task already exists and skip if not forcing reindex
@@ -253,11 +253,11 @@ class MemoryIndexer:
                 with open(file_path, "r", encoding="utf-8") as f:
                     raw_content = f.read()
             except Exception:  # noqa: BLE001
-                logger.exception("Failed to read file %s", file_path)
+                print("Failed to read file %s", file_path)
                 return False
 
             if not raw_content.strip():
-                logger.debug(f"Empty file: {file_path}")
+                print(f"Empty file: {file_path}")
                 return False
 
             # Apply smart content extraction for code files
@@ -285,7 +285,7 @@ class MemoryIndexer:
 
             if success:
                 self._processed_files.add(file_path)
-                logger.debug(f"Indexed {file_path} as task {task_id}")
+                print(f"Indexed {file_path} as task {task_id}")
 
                 # Notify watcher to auto-add directory if configured
                 if self.watcher:
@@ -293,11 +293,11 @@ class MemoryIndexer:
 
                 return True
             else:
-                logger.warning(f"Failed to index {file_path}")
+                print(f"Failed to index {file_path}")
                 return False
 
         except Exception:  # noqa: BLE001
-            logger.exception("Error processing file %s", file_path)
+            print("Error processing file %s", file_path)
             return False
 
     def _generate_id_for_file(self, file_path: str) -> Optional[str]:
@@ -326,5 +326,5 @@ class MemoryIndexer:
         """Watch directories for changes and auto-index new/modified files."""
         # TODO: Implement file watching with inotify/watchdog
         # For now, this is a placeholder for future enhancement
-        logger.info("File watching not yet implemented")
+        print("File watching not yet implemented")
         pass

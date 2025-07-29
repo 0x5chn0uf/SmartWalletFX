@@ -50,7 +50,7 @@ class AdvancedSearchEngine(SearchEngine):
         # For now, fall back to basic search - advanced features to be implemented
         # This provides a clean migration path
         results = self.search(query, k=limit)
-        
+
         # Cache results
         self.query_cache[cache_key] = results
         return results
@@ -76,7 +76,7 @@ class AdvancedSearchEngine(SearchEngine):
         # Basic suggestions based on domain
         domain = context.get("domain", "general")
         suggestions = self._get_domain_suggestions(domain)
-        
+
         # Cache and return
         self.suggestion_cache[cache_key] = suggestions
         return suggestions[:limit]
@@ -86,14 +86,14 @@ class AdvancedSearchEngine(SearchEngine):
         suggestions_map = {
             "backend": [
                 "fastapi patterns",
-                "database migrations", 
+                "database migrations",
                 "api security",
                 "async patterns",
             ],
             "frontend": [
                 "react components",
                 "state management",
-                "ui patterns", 
+                "ui patterns",
                 "testing strategies",
             ],
             "security": [
@@ -121,9 +121,10 @@ def search_memories_advanced(
 ) -> List[SearchResult]:
     """Advanced search with context awareness."""
     from serena.database.session import get_session
-    
+
     if db_path is None:
         from serena.settings import settings
+
         db_path = settings.memory_db
 
     engine = AdvancedSearchEngine(db_path)
@@ -135,9 +136,10 @@ def get_context_suggestions(
 ) -> List[str]:
     """Get context-aware search suggestions."""
     from serena.database.session import get_session
-    
+
     if db_path is None:
         from serena.settings import settings
+
         db_path = settings.memory_db
 
     engine = AdvancedSearchEngine(db_path)

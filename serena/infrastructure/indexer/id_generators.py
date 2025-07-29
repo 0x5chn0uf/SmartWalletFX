@@ -19,9 +19,7 @@ def generate_doc_id(file_path: str) -> str:
 def generate_design_id(file_path: str) -> str:
     """Generate a unique ID for design files."""
     # Remove 'design/' prefix and file extension, replace separators with dots
-    design_path = (
-        file_path.replace("design/", "").replace("/", ".").replace("\\", ".")
-    )
+    design_path = file_path.replace("design/", "").replace("/", ".").replace("\\", ".")
     if design_path.endswith(".json"):
         design_path = design_path[:-5]
     return f"design.{design_path}"
