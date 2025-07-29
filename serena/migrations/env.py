@@ -1,13 +1,12 @@
 """Alembic environment configuration for Serena migrations."""
 
-import logging
 from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from serena.core.models import Base
-from serena.settings import settings, database_config
+from serena.settings import database_config, settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -76,7 +75,7 @@ def run_migrations_online() -> None:
     """
     # Override the sqlalchemy.url in alembic.ini
     config.set_main_option("sqlalchemy.url", get_database_url())
-    
+
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
@@ -84,9 +83,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()
