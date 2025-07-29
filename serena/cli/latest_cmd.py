@@ -4,7 +4,6 @@ import logging
 from typing import Any
 
 from serena.cli.common import RemoteMemory
-from serena.services.memory_impl import Memory
 
 
 def cmd_latest(args) -> None:

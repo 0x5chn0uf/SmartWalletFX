@@ -11,7 +11,6 @@ from typing import Any, Dict, List, Optional
 
 from serena.core.models import TaskKind, TaskStatus
 from serena.infrastructure.write_queue import WriteOperationType
-from serena.services.memory_impl import Memory
 from serena.settings import settings
 
 logger = logging.getLogger(__name__)
