@@ -33,6 +33,8 @@ _COMMAND_MODULES = [
     "latest_cmd",
     "delete_cmd",
     "pool_cmd",
+    "import_cmd",
+    "maintenance_cmd",
 ]
 
 
