@@ -3,22 +3,16 @@
 
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set
 
 from watchdog.events import FileSystemEventHandler  # noqa: WPS433
 from watchdog.observers import Observer
 
-from serena.core.models import (
-    compute_content_hash,
-    determine_task_kind,
-    extract_task_id_from_path,
-)
-from serena.core.models import Archive, Embedding
+from serena.core.models import (Archive, Embedding, compute_content_hash,
+                                determine_task_kind, extract_task_id_from_path)
 from serena.database.session import get_session
 
-logger = logging.getLogger(__name__)
 
 
 class _SerenaEventHandler(FileSystemEventHandler):
@@ -80,7 +74,7 @@ class _WatchdogMemoryWatcher:
             return
 
         if not self._tracked:
-            logger.warning("No files/directories to watch – falling back to no-op")
+            print("No files/directories to watch – falling back to no-op")
             return
 
         # Perform offline catch-up scan BEFORE starting observer so that we
@@ -123,10 +117,11 @@ class _WatchdogMemoryWatcher:
                                 "sha256": archive.sha256 or "",
                             }
             except Exception as exc:
-                logger.warning("Failed to load existing archives: %s", exc)
+                print("Failed to load existing archives: %s", exc)
 
         if self.auto_add_taskmaster:
-            from serena.cli.common import detect_taskmaster_directories  # lazy import
+            from serena.cli.common import \
+                detect_taskmaster_directories  # lazy import
 
             for directory in detect_taskmaster_directories():
                 for md_file in Path(directory).rglob("*.md"):
@@ -141,7 +136,7 @@ class _WatchdogMemoryWatcher:
     def _initial_crawl(self) -> None:
         """Detect changes that occurred while the watcher was offline."""
 
-        logger.debug("Running initial crawl across %d files", len(self._tracked))
+        print("Running initial crawl across %d files", len(self._tracked))
         for path in list(self._tracked.keys()):
             if Path(path).exists():
                 self._maybe_upsert(path, initial_scan=True)
@@ -164,23 +159,25 @@ class _WatchdogMemoryWatcher:
             try:
                 deleted = bool(self.memory.delete(task_id))  # type: ignore[arg-type]
             except Exception as exc:  # noqa: BLE001
-                logger.error("Backend delete failed for %s: %s", task_id, exc)
+                print("Backend delete failed for %s: %s", task_id, exc)
         else:
             # Local DB path – use ORM for deletion
             db_path = getattr(self.memory, "db_path", None)
             if db_path and Path(db_path).exists():
                 try:
                     with get_session(db_path) as session:
-                        archive = session.query(Archive).filter_by(task_id=task_id).first()
+                        archive = (
+                            session.query(Archive).filter_by(task_id=task_id).first()
+                        )
                         if archive:
                             session.delete(archive)
                             session.commit()
                             deleted = True
                 except Exception as exc:
-                    logger.error("Local delete failed for %s: %s", task_id, exc)
+                    print("Local delete failed for %s: %s", task_id, exc)
 
         if deleted:
-            logger.debug("Deleted task %s due to file removal", task_id)
+            print("Deleted task %s due to file removal", task_id)
             self.callback("deleted", task_id, path)
 
     def _maybe_upsert(self, path: str, *, initial_scan: bool) -> None:
@@ -192,7 +189,7 @@ class _WatchdogMemoryWatcher:
         try:
             content = Path(path).read_text(encoding="utf-8")
         except Exception as exc:  # noqa: BLE001
-            logger.warning("Unable to read %s: %s", path, exc)
+            print("Unable to read %s: %s", path, exc)
             return
 
         sha256 = compute_content_hash(content)
@@ -216,15 +213,9 @@ class _WatchdogMemoryWatcher:
 
             action = "indexed" if initial_scan else "modified"
             self.callback(action, task_id, path)
-            logger.debug("Upserted %s (%s)", task_id, action)
+            print("Upserted %s (%s)", task_id, action)
         except Exception as exc:  # noqa: BLE001
-            logger.error("Upsert failed for %s: %s", path, exc)
-
-
-def default_change_callback(action: str, task_id: str, file_path: str):  # noqa: D401
-    """Default console logger used by CLI when --quiet is not passed."""
-
-    logger.info("%s – %s (%s)", action.upper(), task_id, file_path)
+            print("Upsert failed for %s: %s", path, exc)
 
 
 def create_memory_watcher(
@@ -243,6 +234,5 @@ def create_memory_watcher(
 
 
 __all__ = [
-    "create_memory_watcher",
-    "default_change_callback",
+    "create_memory_watcher"
 ]

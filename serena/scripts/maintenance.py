@@ -19,20 +19,18 @@ import argparse
 import logging
 import os
 import sys
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
-import time
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from serena.infrastructure.database import (
-    checkpoint_database,
-    get_database_path,
-    vacuum_database,
-)
 from sqlalchemy import text
-from serena.services.memory_impl import Memory
+
+from serena.cli.common import RemoteMemory
+from serena.infrastructure.database import (checkpoint_database,
+                                            get_database_path, vacuum_database)
 from serena.settings import settings
 
 
@@ -67,16 +65,13 @@ def parse_duration(duration_str: str) -> timedelta:
 
 def cmd_checkpoint(args) -> None:
     """Perform WAL checkpoint and optimization."""
-    logger = logging.getLogger(__name__)
-
-    logger.info("Performing WAL checkpoint...")
+    print("Performing WAL checkpoint...")
     checkpoint_database(args.db_path)
-    logger.info("WAL checkpoint completed")
+    print("WAL checkpoint completed")
 
 
 def cmd_vacuum(args) -> None:
     """Perform database vacuum."""
-    logger = logging.getLogger(__name__)
 
     # Pre-vacuum backup (optional)
     if settings.maintenance.backup.enable_pre_vacuum_backup:
@@ -89,74 +84,80 @@ def cmd_vacuum(args) -> None:
         from shutil import copyfile
 
         try:
-            logger.info("Performing pre-vacuum backup to %s", backup_path)
+            print("Performing pre-vacuum backup to %s", backup_path)
             copyfile(args.db_path, backup_path)
 
             # Clean up old backups
             backups = sorted(backup_dir.glob("pre_vacuum_backup_*.db"), reverse=True)
             if len(backups) > settings.maintenance.backup.max_backup_files:
-                for old_backup in backups[settings.maintenance.backup.max_backup_files :]:
-                    logger.info("Removing old backup: %s", old_backup)
+                for old_backup in backups[
+                    settings.maintenance.backup.max_backup_files :
+                ]:
+                    print("Removing old backup: %s", old_backup)
                     old_backup.unlink()
 
         except Exception as e:
-            logger.error("Pre-vacuum backup failed: %s", e)
+            print("Pre-vacuum backup failed: %s", e)
             # Do not proceed with vacuum if backup fails
             return
 
-    logger.info("Performing database vacuum...")
+    print("Performing database vacuum...")
     vacuum_database(args.db_path)
-    logger.info("Database vacuum completed")
+    print("Database vacuum completed")
 
 
 def cmd_reembed(args) -> None:
     """Re-embed stale content with updated models."""
-    logger = logging.getLogger(__name__)
-
     if not args.if_stale:
-        logger.error("--if-stale duration is required for re-embedding")
+        print("--if-stale duration is required for re-embedding")
         return
 
     try:
         stale_threshold = parse_duration(args.if_stale)
         cutoff_date = datetime.now() - stale_threshold
 
-        logger.info(
+        print(
             f"Re-embedding content older than {args.if_stale} "
             f"(before {cutoff_date.isoformat()})"
         )
 
-        memory = Memory(db_path=args.db_path)
-        
+        memory = RemoteMemory()
+
         # Find stale embeddings using session
         from serena.database.session import get_db_session
+
         with get_db_session() as session:
             from serena.core.models import Archive
-            
+
             # Find archives with stale embeddings
-            stale_archives = session.query(Archive).filter(
-                (Archive.last_embedded_at < cutoff_date) | 
-                (Archive.last_embedded_at.is_(None))
-            ).order_by(Archive.last_embedded_at.asc()).all()
-            
+            stale_archives = (
+                session.query(Archive)
+                .filter(
+                    (Archive.last_embedded_at < cutoff_date)
+                    | (Archive.last_embedded_at.is_(None))
+                )
+                .order_by(Archive.last_embedded_at.asc())
+                .all()
+            )
+
             stale_tasks = [
                 {
                     "task_id": archive.task_id,
                     "title": archive.title,
                     "filepath": archive.filepath,
-                    "last_embedded_at": archive.last_embedded_at
+                    "last_embedded_at": archive.last_embedded_at,
                 }
                 for archive in stale_archives
             ]
 
         if not stale_tasks:
-            logger.info("No stale embeddings found")
+            print("No stale embeddings found")
             return
 
-        logger.info(f"Found {len(stale_tasks)} tasks with stale embeddings")
+        print(f"Found {len(stale_tasks)} tasks with stale embeddings")
 
         if args.dry_run:
-            logger.info("DRY RUN - Would re-embed the following tasks:")
+            print("DRY RUN - Would re-embed the following tasks:")
             for task in stale_tasks:
                 last_embedded = task["last_embedded_at"] or "Never"
                 print(f"  {task['task_id']}: {task['title']} (last: {last_embedded})")
@@ -173,9 +174,9 @@ def cmd_reembed(args) -> None:
                 # Re-index with new embeddings
                 if memory.upsert(task["task_id"], content, filepath=task["filepath"]):
                     success_count += 1
-                    logger.debug(f"Re-embedded task {task['task_id']}")
+                    print(f"Re-embedded task {task['task_id']}")
                 else:
-                    logger.warning(f"Failed to re-embed task {task['task_id']}")
+                    print(f"Failed to re-embed task {task['task_id']}")
 
                 # Show progress
                 if i % 10 == 0 or i == len(stale_tasks):
@@ -183,21 +184,19 @@ def cmd_reembed(args) -> None:
                     print(f"Progress: {i}/{len(stale_tasks)} ({progress:.1f}%)")
 
             except Exception as e:
-                logger.error(f"Failed to process task {task['task_id']}: {e}")
+                print(f"Failed to process task {task['task_id']}: {e}")
 
-        logger.info(
+        print(
             f"Re-embedding completed: {success_count}/{len(stale_tasks)} successful"
         )
 
     except Exception as e:
-        logger.error(f"Re-embedding failed: {e}")
+        print(f"Re-embedding failed: {e}")
 
 
 def cmd_health(args) -> None:
     """Show detailed health information."""
-    logger = logging.getLogger(__name__)
-
-    memory = Memory(db_path=args.db_path)
+    memory = RemoteMemory()
     health = memory.health()
 
     print("Memory Bridge Health Report")
@@ -218,25 +217,36 @@ def cmd_health(args) -> None:
     if args.detailed:
         try:
             from serena.database.session import get_db_session
+
             with get_db_session() as session:
-                from serena.core.models import Archive
                 from sqlalchemy import func
 
+                from serena.core.models import Archive
+
                 # Task kind distribution
-                kind_stats = session.query(
-                    Archive.kind, 
-                    func.count(Archive.task_id).label('count')
-                ).group_by(Archive.kind).order_by(func.count(Archive.task_id).desc()).all()
+                kind_stats = (
+                    session.query(
+                        Archive.kind, func.count(Archive.task_id).label("count")
+                    )
+                    .group_by(Archive.kind)
+                    .order_by(func.count(Archive.task_id).desc())
+                    .all()
+                )
 
                 print("\nTask distribution by kind:")
                 for kind, count in kind_stats:
                     print(f"  {kind}: {count}")
 
                 # Status distribution
-                status_stats = session.query(
-                    Archive.status,
-                    func.count(Archive.task_id).label('count')
-                ).filter(Archive.status.isnot(None)).group_by(Archive.status).order_by(func.count(Archive.task_id).desc()).all()
+                status_stats = (
+                    session.query(
+                        Archive.status, func.count(Archive.task_id).label("count")
+                    )
+                    .filter(Archive.status.isnot(None))
+                    .group_by(Archive.status)
+                    .order_by(func.count(Archive.task_id).desc())
+                    .all()
+                )
 
                 print("\nTask distribution by status:")
                 for status, count in status_stats:
@@ -244,8 +254,13 @@ def cmd_health(args) -> None:
 
                 # Recent activity (last 7 days)
                 from datetime import datetime, timedelta
+
                 seven_days_ago = datetime.now() - timedelta(days=7)
-                recent_count = session.query(Archive).filter(Archive.created_at > seven_days_ago).count()
+                recent_count = (
+                    session.query(Archive)
+                    .filter(Archive.created_at > seven_days_ago)
+                    .count()
+                )
                 print(f"\nRecent activity (last 7 days): {recent_count} new archives")
 
                 # Embedding age distribution
@@ -253,25 +268,48 @@ def cmd_health(args) -> None:
                 one_week_ago = datetime.now() - timedelta(days=7)
                 one_month_ago = datetime.now() - timedelta(days=30)
                 six_months_ago = datetime.now() - timedelta(days=180)
-                
+
                 # Calculate age groups
                 age_groups = [
-                    ("Last 24h", session.query(Archive).filter(Archive.last_embedded_at > one_day_ago).count()),
-                    ("Last week", session.query(Archive).filter(
-                        (Archive.last_embedded_at <= one_day_ago) & 
-                        (Archive.last_embedded_at > one_week_ago)
-                    ).count()),
-                    ("Last month", session.query(Archive).filter(
-                        (Archive.last_embedded_at <= one_week_ago) & 
-                        (Archive.last_embedded_at > one_month_ago)
-                    ).count()),
-                    ("Last 6 months", session.query(Archive).filter(
-                        (Archive.last_embedded_at <= one_month_ago) & 
-                        (Archive.last_embedded_at > six_months_ago)
-                    ).count()),
-                    ("Older than 6 months", session.query(Archive).filter(
-                        Archive.last_embedded_at <= six_months_ago
-                    ).count())
+                    (
+                        "Last 24h",
+                        session.query(Archive)
+                        .filter(Archive.last_embedded_at > one_day_ago)
+                        .count(),
+                    ),
+                    (
+                        "Last week",
+                        session.query(Archive)
+                        .filter(
+                            (Archive.last_embedded_at <= one_day_ago)
+                            & (Archive.last_embedded_at > one_week_ago)
+                        )
+                        .count(),
+                    ),
+                    (
+                        "Last month",
+                        session.query(Archive)
+                        .filter(
+                            (Archive.last_embedded_at <= one_week_ago)
+                            & (Archive.last_embedded_at > one_month_ago)
+                        )
+                        .count(),
+                    ),
+                    (
+                        "Last 6 months",
+                        session.query(Archive)
+                        .filter(
+                            (Archive.last_embedded_at <= one_month_ago)
+                            & (Archive.last_embedded_at > six_months_ago)
+                        )
+                        .count(),
+                    ),
+                    (
+                        "Older than 6 months",
+                        session.query(Archive)
+                        .filter(Archive.last_embedded_at <= six_months_ago)
+                        .count(),
+                    ),
                 ]
 
                 print("\nEmbedding age distribution:")
@@ -280,7 +318,7 @@ def cmd_health(args) -> None:
                         print(f"  {age_group}: {count}")
 
         except Exception as e:
-            logger.error(f"Failed to get detailed health info: {e}")
+            print(f"Failed to get detailed health info: {e}")
 
 
 def main():
@@ -345,7 +383,6 @@ def main():
         parser.error("At least one operation must be specified")
 
     setup_logging(args.verbose)
-    logger = logging.getLogger(__name__)
 
     try:
         # Set database path if provided
@@ -355,8 +392,8 @@ def main():
         db_path = get_database_path()
 
         if not Path(db_path).exists():
-            logger.error(f"Database not found: {db_path}")
-            logger.error("Run migration script first to initialize the database")
+            print(f"Database not found: {db_path}")
+            print("Run migration script first to initialize the database")
             sys.exit(1)
 
         args.db_path = db_path
@@ -374,13 +411,13 @@ def main():
         if args.health:
             cmd_health(args)
 
-        logger.info("Maintenance operations completed successfully")
+        print("Maintenance operations completed successfully")
 
     except KeyboardInterrupt:
         print("\nMaintenance cancelled by user")
         sys.exit(1)
     except Exception as e:
-        logger.error(f"Maintenance failed: {e}")
+        print(f"Maintenance failed: {e}")
         if args.verbose:
             import traceback
 
@@ -408,8 +445,9 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
     """
 
     def __init__(self):
-        self.logger = logging.getLogger(f"{__name__}.MaintenanceService")
-        self.interval = parse_duration(settings.maintenance.intervals.health_check).total_seconds()
+        self.interval = parse_duration(
+            settings.maintenance.intervals.health_check
+        ).total_seconds()
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
         self._last_status: dict = {}
@@ -418,30 +456,19 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
         self._last_checkpoint = self._load_meta_timestamp("last_checkpoint")
         self._last_vacuum = self._load_meta_timestamp("last_vacuum")
 
-        if settings.maintenance.notifications.enable_file_logging:
-            log_file = settings.maintenance.notifications.log_file
-            handler = logging.FileHandler(log_file)
-            handler.setFormatter(
-                logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-            )
-            logging.getLogger().addHandler(handler)
+        print("🔧 MaintenanceService initialized")
 
-        # Log initialization with both logging and print for visibility
-        init_msg = "🔧 MaintenanceService initialized"
-        print(init_msg)
-        self.logger.info(init_msg)
-        
         config_msgs = [
             f"   - Health check interval: {self.interval}s",
             f"   - Checkpoint interval: {settings.maintenance.intervals.checkpoint}",
             f"   - Vacuum interval: {settings.maintenance.intervals.vacuum}",
             f"   - Last checkpoint: {self._format_timestamp(self._last_checkpoint)}",
-            f"   - Last vacuum: {self._format_timestamp(self._last_vacuum)}"
+            f"   - Last vacuum: {self._format_timestamp(self._last_vacuum)}",
         ]
-        
+
         for msg in config_msgs:
             print(msg)
-            self.logger.info(msg)
+            print(msg)
 
     def _format_timestamp(self, timestamp: float) -> str:
         """Format a Unix timestamp for logging."""
@@ -455,29 +482,29 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
 
     def start_background_service(self):
         if self._thread and self._thread.is_alive():
-            self.logger.debug("Background service already running")
+            print("Background service already running")
             return
 
-        start_msg = "🚀 Starting maintenance background service"
-        print(start_msg)
-        self.logger.info(start_msg)
-        
+        print("🚀 Starting maintenance background service")
+
         self._thread = threading.Thread(target=self._run_loop, daemon=True)
         self._thread.start()
-        
-        success_msg = "✅ Maintenance background service started successfully"
-        print(success_msg)
-        self.logger.info(success_msg)
+
+        print("✅ Maintenance background service started successfully")
 
     def stop(self):
-        self.logger.info("🛑 Stopping maintenance background service")
+        print("🛑 Stopping maintenance background service")
         self._stop.set()
         if self._thread:
             self._thread.join(timeout=2)
             if self._thread.is_alive():
-                self.logger.warning("⚠️  Background service thread did not stop within timeout")
+                print(
+                    "⚠️  Background service thread did not stop within timeout"
+                )
             else:
-                self.logger.info("✅ Maintenance background service stopped successfully")
+                print(
+                    "✅ Maintenance background service stopped successfully"
+                )
 
     # ------------------------------------------------------------------
     # Persistence helpers
@@ -487,10 +514,13 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
     def _load_meta_timestamp(key: str) -> float:
         """Return stored UNIX timestamp for *key* or 0 if none."""
         from serena.database.session import get_db_session
+
         try:
             with get_db_session() as session:
                 ts = session.execute(
-                    text("CREATE TABLE IF NOT EXISTS maintenance_meta (key TEXT PRIMARY KEY, value TEXT);")
+                    text(
+                        "CREATE TABLE IF NOT EXISTS maintenance_meta (key TEXT PRIMARY KEY, value TEXT);"
+                    )
                 )  # noqa: F841 – ensure table exists
                 value = session.execute(
                     text("SELECT value FROM maintenance_meta WHERE key = :k"),
@@ -503,9 +533,12 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
     @staticmethod
     def _store_meta_timestamp(key: str, ts: float) -> None:
         from serena.database.session import get_db_session
+
         with get_db_session() as session:
             session.execute(
-                text("CREATE TABLE IF NOT EXISTS maintenance_meta (key TEXT PRIMARY KEY, value TEXT);")
+                text(
+                    "CREATE TABLE IF NOT EXISTS maintenance_meta (key TEXT PRIMARY KEY, value TEXT);"
+                )
             )
             session.execute(
                 text(
@@ -520,28 +553,27 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
 
     def run_operation(self, operation: str):
         if not getattr(settings.maintenance.enabled, operation, False):
-            self.logger.debug(f"⏭️ Skipping disabled maintenance operation: {operation}")
+            print(
+                f"⏭️ Skipping disabled maintenance operation: {operation}"
+            )
             return
 
         start_time = time.time()
-        op_start_msg = f"🔄 Starting maintenance operation: {operation}"
-        print(op_start_msg)
-        self.logger.info(op_start_msg)
+        print(f"🔄 Starting maintenance operation: {operation}")
 
         try:
             if operation == "checkpoint":
-                self.logger.debug("   - Performing WAL checkpoint...")
+                print("   - Performing WAL checkpoint...")
                 checkpoint_database()
                 now = time.time()
                 self._last_checkpoint = now
                 self._store_meta_timestamp("last_checkpoint", now)
                 elapsed = now - start_time
-                checkpoint_msg = f"✅ Checkpoint completed successfully in {elapsed:.2f}s"
-                print(checkpoint_msg)
-                self.logger.info(checkpoint_msg)
-                
+                print(f"✅ Checkpoint completed successfully in {elapsed:.2f}s")
+
             elif operation == "vacuum":
-                self.logger.debug("   - Performing database vacuum...")
+                print("   - Performing database vacuum...")
+
                 # Create a mock args object for cmd_vacuum
                 class MockArgs:
                     db_path = get_database_path()
@@ -551,24 +583,49 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
                 self._last_vacuum = now
                 self._store_meta_timestamp("last_vacuum", now)
                 elapsed = now - start_time
-                vacuum_msg = f"✅ Vacuum completed successfully in {elapsed:.2f}s"
-                print(vacuum_msg)
-                self.logger.info(vacuum_msg)
-                
+                print(f"✅ Vacuum completed successfully in {elapsed:.2f}s")
+
             elif operation == "health_check":
-                self.logger.debug("   - Performing health check...")
-                health = Memory().health()
+                print("   - Performing health check...")
+                # Server-side health check should use local database access
+                from sqlalchemy import func
+
+                from serena.core.models import Archive, Embedding
+                from serena.infrastructure.database import get_session
+
+                with get_session() as session:
+                    archive_count = (
+                        session.query(func.count(Archive.task_id)).scalar() or 0
+                    )
+                    embedding_count = (
+                        session.query(func.count(Embedding.id)).scalar() or 0
+                    )
+
+                    # Simple health status
+                    health = type(
+                        "Health",
+                        (),
+                        {
+                            "archive_count": archive_count,
+                            "embedding_count": embedding_count,
+                            "database_size": 0,  # Simplified for now
+                        },
+                    )()
                 self._last_status = health.__dict__
                 elapsed = time.time() - start_time
-                self.logger.debug(f"📊 Health check completed: {health.archive_count} archives, "
-                                f"{health.embedding_count} embeddings, "
-                                f"{health.database_size / (1024*1024):.1f}MB ({elapsed:.2f}s)")
+                print(
+                    f"📊 Health check completed: {health.archive_count} archives, "
+                    f"{health.embedding_count} embeddings, "
+                    f"{health.database_size / (1024*1024):.1f}MB ({elapsed:.2f}s)"
+                )
             else:
                 raise ValueError(f"Unknown maintenance operation: {operation}")
-                
+
         except Exception as e:
             elapsed = time.time() - start_time
-            self.logger.error(f"❌ Maintenance operation '{operation}' failed after {elapsed:.2f}s: {e}")
+            print(
+                f"❌ Maintenance operation '{operation}' failed after {elapsed:.2f}s: {e}"
+            )
             raise
 
     # Alias used earlier in CLI
@@ -591,27 +648,29 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
         last_checkpoint = self._last_checkpoint or time.time()
         last_vacuum = self._last_vacuum or time.time()
         cycle_count = 0
-        
-        loop_msg = "🔄 Maintenance loop started"
-        print(loop_msg)
-        self.logger.info(loop_msg)
+
+        print("🔄 Maintenance loop started")
 
         while not self._stop.is_set():
             now = time.time()
             cycle_count += 1
-            
+
             # Log cycle info every 10 cycles (for health check every ~5min, log every ~50min)
             if cycle_count % 10 == 1:
-                checkpoint_interval = parse_duration(settings.maintenance.intervals.checkpoint).total_seconds()
-                vacuum_interval = parse_duration(settings.maintenance.intervals.vacuum).total_seconds()
-                
+                checkpoint_interval = parse_duration(
+                    settings.maintenance.intervals.checkpoint
+                ).total_seconds()
+                vacuum_interval = parse_duration(
+                    settings.maintenance.intervals.vacuum
+                ).total_seconds()
+
                 next_checkpoint = max(0, checkpoint_interval - (now - last_checkpoint))
                 next_vacuum = max(0, vacuum_interval - (now - last_vacuum))
-                
-                self.logger.debug(f"🕐 Maintenance cycle #{cycle_count}")
-                self.logger.debug(f"   - Next checkpoint in: {next_checkpoint/60:.1f} minutes")
-                self.logger.debug(f"   - Next vacuum in: {next_vacuum/3600:.1f} hours")
-            
+
+                print(f"🕐 Maintenance cycle #{cycle_count}")
+                print(f"   - Next checkpoint in: {next_checkpoint/60:.1f} minutes")
+                print(f"   - Next vacuum in: {next_vacuum/3600:.1f} hours")
+
             try:
                 # Health check always runs at the main interval
                 self.run_operation("health_check")
@@ -633,11 +692,11 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
                     last_vacuum = now
 
             except Exception:  # pragma: no cover
-                self.logger.warning("Maintenance operation failed", exc_info=True)
-                
+                print("Maintenance operation failed", exc_info=True)
+
             self._stop.wait(self.interval)
-            
-        self.logger.info("🏁 Maintenance loop ended")
+
+        print("🏁 Maintenance loop ended")
 
     def _elapsed_since_last(self) -> float:
         import time
