@@ -10,31 +10,21 @@ from serena.services.memory_impl import Memory
 def cmd_get(args) -> None:
     """Get specific archive by task ID."""
     logger = logging.getLogger(__name__)
+    remote_memory = None
     
     if not args.task_id:
         print("❌ Task ID is required")
         return
     
     try:
-        # Try server first, fallback to local
-        use_server = not getattr(args, 'local_only', False)
+        # Remote-only mode - fail if server not available
+        remote_memory = RemoteMemory()
+        if not remote_memory.is_server_available():
+            print("❌ Server not available - remote operations only")
+            return
         
-        if use_server:
-            try:
-                remote_memory = RemoteMemory()
-                if remote_memory.is_server_available():
-                    memory = remote_memory
-                    memory_type = "server"
-                else:
-                    memory = Memory()
-                    memory_type = "local"
-            except Exception as e:
-                logger.warning(f"Failed to connect to server: {e}")
-                memory = Memory()
-                memory_type = "local"
-        else:
-            memory = Memory()
-            memory_type = "local"
+        memory = remote_memory
+        memory_type = "server"
         
         # Get the archive
         result = memory.get(args.task_id)
@@ -84,6 +74,30 @@ def cmd_get(args) -> None:
     except Exception as e:
         logger.error(f"Failed to get archive {args.task_id}: {e}")
         print(f"❌ Failed to get archive: {e}")
+    
+    finally:
+        # Cleanup connections to prevent hanging
+        if remote_memory:
+            try:
+                # Wait for server completion and close connections
+                remote_memory.wait_for_server_completion(timeout=5.0)
+                remote_memory.close()
+            except Exception as cleanup_e:
+                logger.debug(f"Cleanup warning: {cleanup_e}")
+        
+        # Shutdown write queue to prevent hanging
+        try:
+            from serena.infrastructure.write_queue import write_queue
+            shutdown_success = write_queue.shutdown(timeout=5.0)
+            if shutdown_success:
+                logger.debug("✅ Write queue shutdown completed")
+            else:
+                logger.debug("⚠️ Write queue shutdown timeout")
+        except ImportError:
+            # Write queue not available - normal for some configurations
+            pass
+        except Exception as queue_e:
+            logger.debug(f"Write queue cleanup warning: {queue_e}")
 
 
 def register(sub: Any) -> None:
@@ -91,6 +105,5 @@ def register(sub: Any) -> None:
     p = sub.add_parser("get", help="Get specific archive by task ID")
     p.add_argument("task_id", help="Task ID to retrieve")
     p.add_argument("--content", action="store_true", help="Show full content")
-    p.add_argument("--local-only", action="store_true", help="Use local memory only")
     p.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
     p.set_defaults(func=cmd_get)

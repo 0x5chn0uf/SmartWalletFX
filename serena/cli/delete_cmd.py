@@ -6,8 +6,6 @@ import logging
 import sys
 from typing import Any, Optional
 
-from serena.core.models import Archive
-from serena.database.session import DatabaseManager
 from serena.settings import settings
 
 
@@ -29,59 +27,69 @@ def _try_server_delete(task_id: str) -> bool:
     return False
 
 
-def _local_delete(task_id: str, db_path: Optional[str] = None) -> bool:
-    """Delete entry directly from local database."""
-    try:
-        db_manager = DatabaseManager(db_path)
-        
-        with db_manager.get_session() as session:
-            # Find the archive entry
-            archive = session.query(Archive).filter(Archive.task_id == task_id).first()
-            
-            if not archive:
-                return False
-            
-            # Delete the archive (embeddings will be cascade deleted)
-            session.delete(archive)
-            session.commit()
-            
-            return True
-            
-    except Exception as exc:
-        logging.getLogger(__name__).error("Local delete failed: %s", exc, exc_info=True)
-        return False
 
 
-def _list_entries(limit: int = 20, db_path: Optional[str] = None) -> None:
-    """List available entries for reference."""
+def _list_entries_remote(limit: int = 20) -> None:
+    """List available entries via server API."""
+    remote_memory = None
     try:
-        db_manager = DatabaseManager(db_path)
+        from serena.cli.common import RemoteMemory
         
-        with db_manager.get_session() as session:
-            archives = session.query(Archive).order_by(
-                Archive.completed_at.desc().nulls_last(),
-                Archive.updated_at.desc()
-            ).limit(limit).all()
+        remote_memory = RemoteMemory()
+        if not remote_memory.is_server_available():
+            print("❌ Server not available - cannot list entries")
+            return
+        
+        # Get archives via server API
+        response = remote_memory._make_request('GET', '/archives', params={
+            'limit': limit,
+            'offset': 0
+        })
+        archives = response.get('archives', [])
+        
+        if not archives:
+            print("📭 No entries found")
+            return
+        
+        print(f"📚 Available entries (showing {len(archives)} most recent):")
+        print("-" * 70)
+        
+        for archive in archives:
+            status_str = f" [{archive.get('status')}]" if archive.get('status') else ""
+            kind_str = f" ({archive.get('kind')})" if archive.get('kind') else ""
+            date_str = f" - {archive.get('completed_at', '').split('T')[0]}" if archive.get('completed_at') else ""
             
-            if not archives:
-                print("❌ No entries found in database")
-                return
+            print(f"🆔 {archive.get('task_id')}: {archive.get('title')}{status_str}{kind_str}{date_str}")
+            print(f"   📁 {archive.get('filepath', 'N/A')}")
+            print()
             
-            print(f"📚 Available entries (showing {len(archives)} most recent):")
-            print("-" * 70)
-            
-            for archive in archives:
-                status_str = f" [{archive.status}]" if archive.status else ""
-                kind_str = f" ({archive.kind})" if archive.kind else ""
-                date_str = f" - {archive.completed_at.date()}" if archive.completed_at else ""
-                
-                print(f"🆔 {archive.task_id}: {archive.title}{status_str}{kind_str}{date_str}")
-                print(f"   📁 {archive.filepath}")
-                print()
-                
     except Exception as exc:
         logging.getLogger(__name__).error("Failed to list entries: %s", exc, exc_info=True)
         print("❌ Failed to list entries")
+    
+    finally:
+        # Cleanup connections to prevent hanging
+        if remote_memory:
+            try:
+                # Wait for server completion and close connections
+                remote_memory.wait_for_server_completion(timeout=5.0)
+                remote_memory.close()
+            except Exception as cleanup_e:
+                logging.getLogger(__name__).debug(f"Cleanup warning: {cleanup_e}")
+        
+        # Shutdown write queue to prevent hanging
+        try:
+            from serena.infrastructure.write_queue import write_queue
+            shutdown_success = write_queue.shutdown(timeout=5.0)
+            if shutdown_success:
+                logging.getLogger(__name__).debug("✅ Write queue shutdown completed")
+            else:
+                logging.getLogger(__name__).debug("⚠️ Write queue shutdown timeout")
+        except ImportError:
+            # Write queue not available - normal for some configurations
+            pass
+        except Exception as queue_e:
+            logging.getLogger(__name__).debug(f"Write queue cleanup warning: {queue_e}")
 
 
 def cmd_delete(args) -> None:
@@ -89,9 +97,9 @@ def cmd_delete(args) -> None:
     logger = logging.getLogger(__name__)
     
     try:
-        # If list flag is provided, show available entries
+        # If list flag is provided, show available entries via server
         if args.list:
-            _list_entries(args.limit, getattr(args, 'db_path', None))
+            _list_entries_remote(args.limit)
             return
         
         if not args.task_id:
@@ -101,17 +109,15 @@ def cmd_delete(args) -> None:
         task_id = args.task_id
         print(f"🗑️  Attempting to delete entry: {task_id}")
         
-        # Try server first, then fall back to local
+        # Server mode only - fail if server not available
         deleted = False
         
         if _try_server_delete(task_id):
             print("   ⚡ Deleted via server API")
             deleted = True
         else:
-            print("   💾 Server not available, trying local database...")
-            if _local_delete(task_id, getattr(args, 'db_path', None)):
-                print("   ✅ Deleted from local database")
-                deleted = True
+            print("❌ Server not available - only remote operations are supported")
+            sys.exit(1)
         
         if deleted:
             print(f"✅ Successfully deleted entry: {task_id}")
@@ -119,7 +125,7 @@ def cmd_delete(args) -> None:
             # Show remaining entries only if explicitly requested
             if args.show_remaining:
                 print("\n📋 Remaining entries:")
-                _list_entries(5, getattr(args, 'db_path', None))
+                _list_entries_remote(5)
         else:
             print(f"❌ Entry not found or could not be deleted: {task_id}")
             print("   Use --list to see available entries")

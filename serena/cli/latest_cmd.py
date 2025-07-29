@@ -10,36 +10,22 @@ from serena.services.memory_impl import Memory
 def cmd_latest(args) -> None:
     """Show latest archives."""
     logger = logging.getLogger(__name__)
+    remote_memory = None
     
     try:
-        # Try server first, fallback to local
-        use_server = not getattr(args, 'local_only', False)
+        # Remote-only mode - fail if server not available
+        remote_memory = RemoteMemory()
+        if not remote_memory.is_server_available():
+            print("❌ Server not available - remote operations only")
+            return
         
-        if use_server:
-            try:
-                remote_memory = RemoteMemory()
-                if remote_memory.is_server_available():
-                    # Use server API
-                    response = remote_memory._make_request('GET', '/archives', params={
-                        'limit': args.limit,
-                        'offset': 0
-                    })
-                    archives = response.get('archives', [])
-                    memory_type = "server"
-                else:
-                    # Fallback to local
-                    memory = Memory()
-                    archives = memory.latest(n=args.limit)
-                    memory_type = "local"
-            except Exception as e:
-                logger.warning(f"Failed to connect to server: {e}")
-                memory = Memory()
-                archives = memory.latest(n=args.limit)
-                memory_type = "local"
-        else:
-            memory = Memory()
-            archives = memory.latest(n=args.limit)
-            memory_type = "local"
+        # Use server API
+        response = remote_memory._make_request('GET', '/archives', params={
+            'limit': args.limit,
+            'offset': 0
+        })
+        archives = response.get('archives', [])
+        memory_type = "server"
         
         if not archives:
             print("📭 No archives found")
@@ -52,27 +38,15 @@ def cmd_latest(args) -> None:
         print(f"📚 Latest {len(archives)} archives:")
         print()
         
-        # Display archives
+        # Display archives (server API format only)
         for i, archive in enumerate(archives, 1):
-            # Handle both server API format and local Memory format
-            if hasattr(archive, 'task_id'):
-                # Local Memory result format (SearchResult object)
-                task_id = archive.task_id
-                title = archive.title
-                kind = archive.kind.value if hasattr(archive.kind, 'value') else str(archive.kind)
-                status = archive.status.value if hasattr(archive.status, 'value') else str(archive.status) if archive.status else None
-                completed_at = archive.completed_at.isoformat() if archive.completed_at else None
-                created_at = None  # SearchResult doesn't have created_at
-                filepath = archive.filepath
-            else:
-                # Server API result format
-                task_id = archive.get('task_id')
-                title = archive.get('title')
-                kind = archive.get('kind')
-                status = archive.get('status')
-                completed_at = archive.get('completed_at')
-                created_at = archive.get('created_at')
-                filepath = archive.get('filepath', 'N/A')
+            task_id = archive.get('task_id')
+            title = archive.get('title')
+            kind = archive.get('kind')
+            status = archive.get('status')
+            completed_at = archive.get('completed_at')
+            created_at = archive.get('created_at')
+            filepath = archive.get('filepath', 'N/A')
             
             print(f"{i:2d}. 📄 {task_id}")
             print(f"    📝 {title}")
@@ -102,6 +76,30 @@ def cmd_latest(args) -> None:
     except Exception as e:
         logger.error(f"Failed to get latest archives: {e}")
         print(f"❌ Failed to get latest archives: {e}")
+    
+    finally:
+        # Cleanup connections to prevent hanging
+        if remote_memory:
+            try:
+                # Wait for server completion and close connections
+                remote_memory.wait_for_server_completion(timeout=5.0)
+                remote_memory.close()
+            except Exception as cleanup_e:
+                logger.debug(f"Cleanup warning: {cleanup_e}")
+        
+        # Shutdown write queue to prevent hanging
+        try:
+            from serena.infrastructure.write_queue import write_queue
+            shutdown_success = write_queue.shutdown(timeout=5.0)
+            if shutdown_success:
+                logger.debug("✅ Write queue shutdown completed")
+            else:
+                logger.debug("⚠️ Write queue shutdown timeout")
+        except ImportError:
+            # Write queue not available - normal for some configurations
+            pass
+        except Exception as queue_e:
+            logger.debug(f"Write queue cleanup warning: {queue_e}")
 
 
 def register(sub: Any) -> None:
@@ -109,6 +107,5 @@ def register(sub: Any) -> None:
     p = sub.add_parser("latest", help="Show latest archives")
     p.add_argument("-n", "--limit", type=int, default=10, help="Number of recent archives to show (default: 10)")
     p.add_argument("--show-path", action="store_true", help="Show file paths")
-    p.add_argument("--local-only", action="store_true", help="Use local memory only")
     p.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
     p.set_defaults(func=cmd_latest)
