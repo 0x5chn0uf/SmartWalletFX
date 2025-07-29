@@ -22,14 +22,17 @@ The legacy helper functions in ``serena.config`` have been re-implemented to
 proxy to this object so external imports stay backward-compatible.
 """
 
+import os
 from pathlib import Path
+from typing import Optional
 from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 # ---------------------------------------------------------------------------
 # Pydantic Settings implementation
 # ---------------------------------------------------------------------------
+
 
 class _Intervals(BaseModel):
     health_check: str = "1d"
@@ -81,9 +84,148 @@ class MaintenanceConfig(BaseModel):
     class Config:
         validate_assignment = True
 
+class DatabaseConfig(BaseModel):
+    """Centralized database configuration with path resolution and validation."""
+    
+    def __init__(self, db_path: Optional[str] = None, **data):
+        super().__init__(**data)
+        self._db_path = db_path
+        self._serena_root: Optional[Path] = None
+        self._validated = False
+        
+    @property
+    def serena_root(self) -> Path:
+        """Get the Serena package root directory."""
+        if self._serena_root is None:
+            self._serena_root = Path(__file__).parent
+        return self._serena_root
+    
+    @property
+    def db_path(self) -> str:
+        """Get the resolved database path."""
+        if self._db_path is not None:
+            return self._db_path
+        
+        # Import settings here to avoid circular import
+        from serena.settings import settings
+        return settings.memory_db
+    
+    @property
+    def db_url(self) -> str:
+        """Get the SQLAlchemy database URL."""
+        return f"sqlite:///{self.db_path}"
+    
+    @property
+    def alembic_config_path(self) -> Path:
+        """Get the path to alembic.ini."""
+        return self.serena_root / "alembic.ini"
+    
+    @property
+    def migrations_path(self) -> Path:
+        """Get the path to migrations directory."""
+        return self.serena_root / "migrations"
+    
+    def validate_configuration(self) -> None:
+        """Validate all configuration paths and settings.
+        
+        Raises:
+            SerenaException: If configuration is invalid
+        """
+        if self._validated:
+            return
+            
+        errors = []
+        
+        # Validate database path
+        try:
+            db_path = Path(self.db_path)
+            
+            # Check if parent directory exists or can be created
+            db_dir = db_path.parent
+            if not db_dir.exists():
+                try:
+                    db_dir.mkdir(parents=True, exist_ok=True)
+                except PermissionError:
+                    errors.append(f"Cannot create database directory: {db_dir} (permission denied)")
+                except OSError as e:
+                    errors.append(f"Cannot create database directory: {db_dir} ({e})")
+            
+            # Check write permissions
+            if db_path.exists() and not os.access(db_path, os.W_OK):
+                errors.append(f"Database file is not writable: {db_path}")
+            elif not os.access(db_dir, os.W_OK):
+                errors.append(f"Database directory is not writable: {db_dir}")
+                
+        except Exception as e:
+            errors.append(f"Invalid database path '{self.db_path}': {e}")
+        
+        # Validate alembic configuration
+        if not self.alembic_config_path.exists():
+            errors.append(f"Alembic configuration not found: {self.alembic_config_path}")
+        
+        # Validate migrations directory
+        if not self.migrations_path.exists():
+            errors.append(f"Migrations directory not found: {self.migrations_path}")
+        
+        if errors:
+            from serena.core.errors import ValidationError
+            raise ValidationError(
+                message="Database configuration validation failed",
+                details={"validation_errors": errors}
+            )
+        
+        self._validated = True
+    
+    def ensure_database_directory(self) -> None:
+        """Ensure the database directory exists."""
+        db_path = Path(self.db_path)
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    def get_user_friendly_status(self) -> dict:
+        """Get user-friendly configuration status."""
+        try:
+            self.validate_configuration()
+            return {
+                "status": "valid",
+                "db_path": self.db_path,
+                "db_exists": Path(self.db_path).exists(),
+                "alembic_config": str(self.alembic_config_path),
+                "migrations_dir": str(self.migrations_path)
+            }
+        except Exception as e:
+            return {
+                "status": "invalid",
+                "error": str(e),
+                "db_path": self.db_path if hasattr(self, '_db_path') else "unknown"
+            }
+
 
 class SerenaSettings(BaseSettings):
     """All runtime configuration for Serena in one place."""
+    
+    # Environment configuration
+    environment: str = Field(
+        default="development",
+        env="SERENA_ENVIRONMENT",
+        description="Environment: development, testing, production",
+    )
+    
+    # Logging configuration
+    log_level: str = Field(
+        default="INFO",
+        env="SERENA_LOG_LEVEL",
+        description="Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL",
+    )
+    log_format: str = Field(
+        default="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        env="SERENA_LOG_FORMAT",
+        description="Log message format string",
+    )
+    log_file: str | None = Field(
+        default=None,
+        env="SERENA_LOG_FILE",
+        description="Optional file path for log output",
+    )
 
     # Paths
     memory_db: str = Field(
@@ -93,10 +235,37 @@ class SerenaSettings(BaseSettings):
     )
 
     # HTTP server
+    server_host: str = Field(
+        default="127.0.0.1",
+        env="SERENA_SERVER_HOST",
+        description="Host address to bind the server to",
+    )
+    server_port: int = Field(
+        default=8765,
+        env="SERENA_SERVER_PORT",
+        description="Port to bind the server to",
+    )
     server_url: str = Field(
         default="http://localhost:8765",
         env="SERENA_SERVER_URL",
         description="Base URL where a Serena HTTP server is running.",
+    )
+    
+    # Server behavior
+    max_request_size: int = Field(
+        default=10 * 1024 * 1024,  # 10MB
+        env="SERENA_MAX_REQUEST_SIZE",
+        description="Maximum request size in bytes",
+    )
+    request_timeout: int = Field(
+        default=30,
+        env="SERENA_REQUEST_TIMEOUT",
+        description="Request timeout in seconds",
+    )
+    worker_timeout: int = Field(
+        default=120,
+        env="SERENA_WORKER_TIMEOUT",
+        description="Worker timeout in seconds",
     )
 
     # CORS
@@ -133,11 +302,38 @@ class SerenaSettings(BaseSettings):
         description="Computation device override (cpu | cuda | mps).",
     )
 
-    # Behaviour flags
+    # Performance configuration
     async_write: bool = Field(
-        default=False,
+        default=True,
         env="SERENA_ASYNC_WRITE",
         description="Write to DB via background queue instead of sync call.",
+    )
+    write_queue_size: int = Field(
+        default=1000,
+        env="SERENA_WRITE_QUEUE_SIZE",
+        description="Maximum size of the write queue",
+    )
+    write_batch_size: int = Field(
+        default=10,
+        env="SERENA_WRITE_BATCH_SIZE",
+        description="Batch size for write operations",
+    )
+    write_batch_timeout_ms: int = Field(
+        default=500,
+        env="SERENA_WRITE_BATCH_TIMEOUT_MS",
+        description="Timeout for batching write operations in milliseconds",
+    )
+    
+    # Resource limits
+    max_embedding_batch_size: int = Field(
+        default=100,
+        env="SERENA_MAX_EMBEDDING_BATCH_SIZE",
+        description="Maximum batch size for embedding generation",
+    )
+    max_content_size_mb: int = Field(
+        default=10,
+        env="SERENA_MAX_CONTENT_SIZE_MB",
+        description="Maximum content size in MB for indexing",
     )
 
     # Maintenance section (parsed from JSON defaults, override via env prefixes
@@ -153,7 +349,184 @@ class SerenaSettings(BaseSettings):
     @property
     def cors_methods_list(self) -> list[str]:
         return [m.strip() for m in self.cors_allow_methods.split(",") if m.strip()]
+    
+    @property
+    def is_production(self) -> bool:
+        """Check if running in production environment."""
+        return self.environment.lower() == "production"
+    
+    @property
+    def is_development(self) -> bool:
+        """Check if running in development environment."""
+        return self.environment.lower() == "development"
+    
+    def get_effective_log_level(self) -> str:
+        """Get effective log level based on environment."""
+        if self.is_production:
+            # In production, be more conservative with logging
+            level_map = {"DEBUG": "INFO", "INFO": "INFO", "WARNING": "WARNING", "ERROR": "ERROR", "CRITICAL": "CRITICAL"}
+            return level_map.get(self.log_level.upper(), "INFO")
+        return self.log_level.upper()
+    
+    def validate_early(self) -> None:
+        """Perform early validation of critical settings.
+        
+        This should be called immediately after settings initialization
+        to catch configuration issues before they cause runtime failures.
+        
+        Raises:
+            ValidationError: If critical configuration is invalid
+        """
+        errors = []
+        
+        # Validate database path
+        try:
+            db_path = Path(self.memory_db)
+            db_dir = db_path.parent
+            
+            # Check if parent directory can be created
+            if not db_dir.exists():
+                try:
+                    # Test directory creation (but don't actually create it yet)
+                    test_path = db_dir
+                    while not test_path.exists() and test_path != test_path.parent:
+                        test_path = test_path.parent
+                    if not os.access(test_path, os.W_OK):
+                        errors.append(f"Cannot create database directory: {db_dir} (permission denied)")
+                except Exception as e:
+                    errors.append(f"Invalid database path '{self.memory_db}': {e}")
+                    
+        except Exception as e:
+            errors.append(f"Invalid database path configuration: {e}")
+        
+        # Validate server URL format
+        if not self.server_url.startswith(('http://', 'https://')):
+            errors.append(f"Invalid server URL format: {self.server_url}")
+        
+        if errors:
+            from serena.core.errors import ValidationError
+            raise ValidationError(
+                message="Settings validation failed during startup",
+                details={"validation_errors": errors}
+            )
+    
+    def get_database_config(self, db_path: Optional[str] = None) -> "DatabaseConfig":
+        """Get a database configuration instance.
+        
+        Args:
+            db_path: Optional database path override
+            
+        Returns:
+            DatabaseConfig: Configured database configuration
+        """
+        return DatabaseConfig(db_path=db_path)
+    
+    def configure_logging(self) -> None:
+        """Configure logging based on settings."""
+        import logging
+        import sys
+        
+        # Set log level
+        level = getattr(logging, self.get_effective_log_level(), logging.INFO)
+        
+        # Configure root logger
+        root_logger = logging.getLogger()
+        root_logger.setLevel(level)
+        
+        # Remove existing handlers
+        for handler in root_logger.handlers[:]:
+            root_logger.removeHandler(handler)
+        
+        # Create formatter
+        formatter = logging.Formatter(self.log_format)
+        
+        # Console handler
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(level)
+        console_handler.setFormatter(formatter)
+        root_logger.addHandler(console_handler)
+        
+        # File handler (if specified)
+        if self.log_file:
+            try:
+                file_handler = logging.FileHandler(self.log_file)
+                file_handler.setLevel(level)
+                file_handler.setFormatter(formatter)
+                root_logger.addHandler(file_handler)
+            except Exception as e:
+                print(f"Warning: Could not set up file logging to {self.log_file}: {e}")
+        
+        # Suppress noisy third-party loggers in production
+        if self.is_production:
+            logging.getLogger("urllib3").setLevel(logging.WARNING)
+            logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
+            logging.getLogger("transformers").setLevel(logging.WARNING)
+    
+    def get_deployment_info(self) -> dict:
+        """Get deployment information for health checks and debugging."""
+        import platform
+        import sys
+        
+        return {
+            "environment": self.environment,
+            "python_version": sys.version,
+            "platform": platform.platform(),
+            "hostname": platform.node(),
+            "memory_db_path": self.memory_db,
+            "server_url": self.server_url,
+            "log_level": self.get_effective_log_level(),
+            "async_write_enabled": self.async_write,
+        }
 
 
 # Singleton instance used throughout the package
-settings = SerenaSettings() 
+settings = SerenaSettings()
+
+# Global database configuration instance
+database_config = settings.get_database_config()
+
+# Perform early validation (with graceful error handling for CLI commands)
+def validate_settings_on_import() -> bool:
+    """Validate settings on module import with graceful error handling.
+    
+    Returns:
+        bool: True if validation passed, False if validation failed
+    """
+    try:
+        settings.validate_early()
+        # Configure logging on successful validation
+        settings.configure_logging()
+        return True
+    except Exception:
+        # Don't fail on import - let individual commands handle validation
+        # This allows CLI commands to show user-friendly error messages
+        return False
+
+# Validate settings (but don't fail on import)
+_settings_valid = validate_settings_on_import()
+
+# Environment-specific configuration helpers
+def load_environment_config(env_name: str) -> SerenaSettings:
+    """Load configuration for specific environment."""
+    return SerenaSettings(environment=env_name)
+
+def get_production_config() -> SerenaSettings:
+    """Get production-optimized configuration."""
+    return SerenaSettings(
+        environment="production",
+        log_level="INFO",
+        async_write=True,
+        write_batch_size=20,  # Larger batches in production
+        write_queue_size=2000,  # Larger queue in production
+        max_embedding_batch_size=50,  # More efficient batching
+    )
+
+def get_development_config() -> SerenaSettings:
+    """Get development-optimized configuration."""
+    return SerenaSettings(
+        environment="development",
+        log_level="DEBUG",
+        async_write=True,
+        write_batch_size=5,  # Smaller batches for faster feedback
+        write_queue_size=100,  # Smaller queue for development
+    )
