@@ -8,18 +8,8 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional
 
-from sqlalchemy import (
-    REAL,
-    Boolean,
-    CheckConstraint,
-    DateTime,
-    ForeignKey,
-    Integer,
-    LargeBinary,
-    String,
-    Text,
-    func,
-)
+from sqlalchemy import (REAL, Boolean, CheckConstraint, DateTime, ForeignKey,
+                        Integer, LargeBinary, String, Text, func)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -39,11 +29,7 @@ class Archive(Base):
     title: Mapped[str] = mapped_column(Text, nullable=False)
     filepath: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     sha256: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
-    kind: Mapped[str] = mapped_column(
-        String(20), 
-        nullable=False,
-        default="archive"
-    )
+    kind: Mapped[str] = mapped_column(String(20), nullable=False, default="archive")
     status: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     embedding_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
@@ -55,7 +41,9 @@ class Archive(Base):
         DateTime, nullable=False, default=func.now(), onupdate=func.now()
     )
     embedding_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    last_embedded_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_embedded_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True
+    )
 
     # Relationships
     embeddings: Mapped[list["Embedding"]] = relationship(
@@ -66,7 +54,7 @@ class Archive(Base):
     __table_args__ = (
         CheckConstraint(
             "kind IN ('archive', 'reflection', 'doc', 'rule', 'code')",
-            name="ck_archives_kind"
+            name="ck_archives_kind",
         ),
     )
 
@@ -111,7 +99,7 @@ class MaintenanceLog(Base):
     __table_args__ = (
         CheckConstraint(
             "operation IN ('checkpoint', 'vacuum', 'health_check')",
-            name="ck_maintenance_log_operation"
+            name="ck_maintenance_log_operation",
         ),
     )
 
@@ -398,7 +386,7 @@ def generate_summary(content: str, max_length: int = 400) -> str:
 __all__ = [
     # SQLAlchemy Models
     "Base",
-    "Archive", 
+    "Archive",
     "Embedding",
     "MaintenanceLog",
     # Enums

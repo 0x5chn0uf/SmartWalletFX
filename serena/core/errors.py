@@ -9,39 +9,39 @@ from typing import Any, Dict, Optional
 
 class ErrorCode(Enum):
     """Standardized error codes for Serena operations."""
-    
+
     # Server/Connection Errors
     SERVER_UNAVAILABLE = "SERVER_UNAVAILABLE"
     SERVER_CONNECTION_FAILED = "SERVER_CONNECTION_FAILED"
     SERVER_TIMEOUT = "SERVER_TIMEOUT"
-    
+
     # Resource Errors
     RESOURCE_NOT_FOUND = "RESOURCE_NOT_FOUND"
     RESOURCE_ALREADY_EXISTS = "RESOURCE_ALREADY_EXISTS"
-    
+
     # Validation Errors
     INVALID_INPUT = "INVALID_INPUT"
     MISSING_REQUIRED_FIELD = "MISSING_REQUIRED_FIELD"
     INVALID_TASK_ID = "INVALID_TASK_ID"
     INVALID_CONTENT_FORMAT = "INVALID_CONTENT_FORMAT"
-    
+
     # Database Errors
     DATABASE_CONNECTION_FAILED = "DATABASE_CONNECTION_FAILED"
     DATABASE_QUERY_FAILED = "DATABASE_QUERY_FAILED"
-    
+
     # Embedding/Search Errors
     EMBEDDING_SERVICE_UNAVAILABLE = "EMBEDDING_SERVICE_UNAVAILABLE"
     EMBEDDING_GENERATION_FAILED = "EMBEDDING_GENERATION_FAILED"
     SEARCH_QUERY_FAILED = "SEARCH_QUERY_FAILED"
-    
+
     # Content Processing Errors
     CONTENT_PROCESSING_FAILED = "CONTENT_PROCESSING_FAILED"
     FILE_READ_FAILED = "FILE_READ_FAILED"
     CONTENT_TOO_LARGE = "CONTENT_TOO_LARGE"
-    
+
     # Indexing Errors
     INDEXING_FAILED = "INDEXING_FAILED"
-    
+
     # Internal Errors
     INTERNAL_ERROR = "INTERNAL_ERROR"
     CONFIGURATION_ERROR = "CONFIGURATION_ERROR"
@@ -50,11 +50,11 @@ class ErrorCode(Enum):
 @dataclass
 class SerenaError:
     """Simple error response for Serena operations."""
-    
+
     code: ErrorCode
     message: str
     details: Optional[Dict[str, Any]] = None
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert error to dictionary format for API responses."""
         return {
@@ -62,20 +62,22 @@ class SerenaError:
             "error": {
                 "code": self.code.value,
                 "message": self.message,
-                "details": self.details or {}
-            }
+                "details": self.details or {},
+            },
         }
 
 
 class SerenaException(Exception):
     """Base exception class for Serena operations."""
-    
-    def __init__(self, code: ErrorCode, message: str, details: Optional[Dict[str, Any]] = None):
+
+    def __init__(
+        self, code: ErrorCode, message: str, details: Optional[Dict[str, Any]] = None
+    ):
         self.code = code
         self.message = message
         self.details = details or {}
         super().__init__(message)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert exception to dictionary format."""
         error = SerenaError(self.code, self.message, self.details)
@@ -84,90 +86,88 @@ class SerenaException(Exception):
 
 class ServerUnavailableError(SerenaException):
     """Raised when server is not available for remote operations."""
-    
+
     def __init__(self, server_url: str, cause: Optional[Exception] = None):
         details = {"server_url": server_url}
         if cause:
             details["cause"] = str(cause)
-        
+
         super().__init__(
             code=ErrorCode.SERVER_UNAVAILABLE,
             message=f"Server not available at {server_url}",
-            details=details
+            details=details,
         )
 
 
 class ResourceNotFoundError(SerenaException):
     """Raised when requested resource is not found."""
-    
+
     def __init__(self, resource_type: str, resource_id: str):
         super().__init__(
             code=ErrorCode.RESOURCE_NOT_FOUND,
             message=f"{resource_type} not found: {resource_id}",
-            details={"resource_type": resource_type, "resource_id": resource_id}
+            details={"resource_type": resource_type, "resource_id": resource_id},
         )
 
 
 class ValidationError(SerenaException):
     """Raised when input validation fails."""
-    
+
     def __init__(self, field: str, value: Any, reason: str):
         super().__init__(
             code=ErrorCode.INVALID_INPUT,
             message=f"Invalid {field}: {reason}",
-            details={"field": field, "value": str(value), "reason": reason}
+            details={"field": field, "value": str(value), "reason": reason},
         )
 
 
 class EmbeddingServiceError(SerenaException):
     """Raised when embedding service operations fail."""
-    
+
     def __init__(self, operation: str, cause: Optional[Exception] = None):
         details = {"operation": operation}
         if cause:
             details["cause"] = str(cause)
-        
+
         super().__init__(
             code=ErrorCode.EMBEDDING_SERVICE_UNAVAILABLE,
             message=f"Embedding service failed during {operation}",
-            details=details
+            details=details,
         )
 
 
 class DatabaseError(SerenaException):
     """Raised when database operations fail."""
-    
+
     def __init__(self, operation: str, cause: Optional[Exception] = None):
         details = {"operation": operation}
         if cause:
             details["cause"] = str(cause)
-        
+
         super().__init__(
             code=ErrorCode.DATABASE_QUERY_FAILED,
             message=f"Database operation failed: {operation}",
-            details=details
+            details=details,
         )
 
 
 class ContentProcessingError(SerenaException):
     """Raised when content processing fails."""
-    
+
     def __init__(self, file_path: str, reason: str, cause: Optional[Exception] = None):
         details = {"file_path": file_path, "reason": reason}
         if cause:
             details["cause"] = str(cause)
-        
+
         super().__init__(
             code=ErrorCode.CONTENT_PROCESSING_FAILED,
             message=f"Content processing failed for {file_path}: {reason}",
-            details=details
+            details=details,
         )
 
 
 def create_error_response(
-    code: ErrorCode,
-    message: str,
-    details: Optional[Dict[str, Any]] = None
+    code: ErrorCode, message: str, details: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """Create standardized error response."""
     error = SerenaError(code=code, message=message, details=details)
@@ -175,14 +175,10 @@ def create_error_response(
 
 
 def create_success_response(
-    data: Any = None,
-    message: Optional[str] = None
+    data: Any = None, message: Optional[str] = None
 ) -> Dict[str, Any]:
     """Create standardized success response."""
-    response = {
-        "success": True,
-        "data": data
-    }
+    response = {"success": True, "data": data}
     if message:
         response["message"] = message
     return response
