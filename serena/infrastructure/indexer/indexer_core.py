@@ -1,12 +1,12 @@
 """Core memory indexer functionality."""
 
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 from serena.core.models import extract_task_id_from_path
-from serena.services.memory_impl import Memory
 
 from .content_extractors import extract_code_content, extract_title_from_content
 from .file_processors import (
@@ -30,33 +30,23 @@ class MemoryIndexer:
     """Scans and indexes files from TaskMaster and Serena directories."""
 
     def __init__(
-        self, memory: Optional[Memory] = None, max_workers: int = 4, watcher=None,
-        use_server: bool = True
+        self, memory=None, max_workers: int = 4, watcher=None
     ):
         """Initialize the indexer."""
-        self.use_server = use_server
         self.max_workers = max_workers
         self.watcher = watcher
         
-        # Initialize memory (local or remote)
+        # Initialize memory (remote only)
         if memory:
             self.memory = memory
-        elif use_server:
-            # Try to use remote memory first, fall back to local
-            from serena.cli.common import RemoteMemory
-            try:
-                remote_memory = RemoteMemory()
-                if remote_memory.is_server_available():
-                    self.memory = remote_memory
-                    logger.info("Using server-based memory for indexing")
-                else:
-                    logger.warning("Server not available, falling back to local memory")
-                    self.memory = Memory()
-            except Exception as e:
-                logger.warning(f"Failed to connect to server, using local memory: {e}")
-                self.memory = Memory()
         else:
-            self.memory = Memory()
+            # Only remote memory is supported - no fallbacks
+            from serena.cli.common import RemoteMemory
+            remote_memory = RemoteMemory()
+            if not remote_memory.is_server_available():
+                raise RuntimeError("❌ Server not available - indexing requires Serena server to be running. Start it with: serena serve")
+            self.memory = remote_memory
+            logger.info("✅ Using server-based memory for indexing (async writes enabled)")
 
         # Default scan directories
         self.scan_dirs = [
@@ -95,6 +85,8 @@ class MemoryIndexer:
         show_progress: bool = True,
     ) -> Dict[str, int]:
         """Scan directories for markdown files and index them."""
+        start_time = time.time()
+        
         if directories is None:
             directories = self.scan_dirs
 
@@ -104,9 +96,13 @@ class MemoryIndexer:
             "files_skipped": 0,
             "files_failed": 0,
             "directories_scanned": len(directories),
+            "scan_time_seconds": 0.0,
+            "indexing_time_seconds": 0.0,
+            "total_time_seconds": 0.0,
         }
 
         files_to_process = []
+        scan_start = time.time()
 
         for entry in directories:
             logger.info(f"Scanning directory: {entry}")
@@ -127,20 +123,39 @@ class MemoryIndexer:
             for file_path in p.rglob("*"):
                 if file_path.suffix.lower() in self.extensions:
                     files_to_process.append(str(file_path))
+        
+        scan_time = time.time() - scan_start
+        stats["scan_time_seconds"] = scan_time
+        stats["files_found"] = len(files_to_process)
 
         if not files_to_process:
             logger.info("No files found to index")
+            stats["total_time_seconds"] = time.time() - start_time
             return stats
 
-        logger.info(f"Found {len(files_to_process)} files to process")
+        logger.info(f"Found {len(files_to_process)} files to process in {scan_time:.2f}s")
 
         # Process files with progress tracking
+        indexing_start = time.time()
+        
         if show_progress:
             self._process_files_with_progress(files_to_process, force_reindex, stats)
         else:
             self._process_files_batch(files_to_process, force_reindex, stats)
 
-        logger.info(f"Indexing complete: {stats}")
+        indexing_time = time.time() - indexing_start
+        total_time = time.time() - start_time
+        
+        stats["indexing_time_seconds"] = indexing_time
+        stats["total_time_seconds"] = total_time
+
+        # Calculate throughput
+        files_per_second = stats["files_indexed"] / indexing_time if indexing_time > 0 else 0
+
+        logger.info(
+            f"Indexing complete: {stats['files_indexed']} files indexed in {total_time:.2f}s "
+            f"({files_per_second:.1f} files/sec)"
+        )
         return stats
 
     def _process_files_with_progress(
@@ -160,6 +175,7 @@ class MemoryIndexer:
     ) -> None:
         """Process files with unified logic for both progress and batch processing."""
         total_files = len(files)
+        processing_start = time.time()
         
         if show_progress:
             # Sequential processing with progress display
@@ -172,18 +188,25 @@ class MemoryIndexer:
 
                     # Show progress every 10 files or at end
                     if i % 10 == 0 or i == total_files:
+                        elapsed = time.time() - processing_start
                         progress = (i / total_files) * 100
+                        rate = i / elapsed if elapsed > 0 else 0
+                        eta = (total_files - i) / rate if rate > 0 else 0
+                        
                         print(
                             f"Progress: {i}/{total_files} ({progress:.1f}%) - "
                             f"Indexed: {stats['files_indexed']}, "
-                            f"Skipped: {stats['files_skipped']}"
+                            f"Skipped: {stats['files_skipped']} - "
+                            f"Rate: {rate:.1f} files/s - "
+                            f"ETA: {eta:.0f}s"
                         )
 
                 except Exception as e:  # noqa: BLE001
                     logger.exception("Failed to process %s", file_path)
                     stats["files_failed"] += 1
         else:
-            # Parallel processing without progress display
+            # Enhanced parallel processing - always use individual processing for remote API
+            # (RemoteMemory doesn't support batch operations)
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
                 futures = []
 
@@ -203,6 +226,7 @@ class MemoryIndexer:
                     except Exception as e:  # noqa: BLE001
                         logger.exception("Failed to process %s", file_path)
                         stats["files_failed"] += 1
+
 
     def _process_single_file(self, file_path: str, force_reindex: bool) -> bool:
         """Process a single file for indexing."""
@@ -248,29 +272,16 @@ class MemoryIndexer:
             status = extract_status_from_content(content)
             completed_at = extract_completion_date(content, file_path)
 
-            # Index the file - handle both local and remote memory
-            if hasattr(self.memory, 'server_url'):
-                # Remote memory - convert parameters for API
-                success = self.memory.upsert(
-                    task_id=task_id,
-                    markdown_text=content,
-                    filepath=file_path,
-                    title=title,
-                    kind=kind.value if kind else "archive",
-                    status=status.value if status else None,
-                    completed_at=completed_at.isoformat() if completed_at else None,
-                )
-            else:
-                # Local memory - use original format
-                success = self.memory.upsert(
-                    task_id=task_id,
-                    markdown_text=content,
-                    filepath=file_path,
-                    title=title,
-                    kind=kind,
-                    status=status,
-                    completed_at=completed_at,
-                )
+            # Index the file via server API (RemoteMemory only)
+            success = self.memory.upsert(
+                task_id=task_id,
+                markdown_text=content,
+                filepath=file_path,
+                title=title,
+                kind=kind.value if kind else "archive",
+                status=status.value if status else None,
+                completed_at=completed_at.isoformat() if completed_at else None,
+            )
 
             if success:
                 self._processed_files.add(file_path)
