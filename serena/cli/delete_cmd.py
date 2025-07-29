@@ -20,9 +20,7 @@ def _try_server_delete(task_id: str) -> bool:
         response = requests.delete(f"{server_url}/archives/{task_id}", timeout=5)
         return response.status_code == 200
     except Exception as exc:
-        logging.getLogger(__name__).debug(
-            "Server delete failed: %s", exc, exc_info=True
-        )
+        print(f"Server delete failed: {exc}")
 
     return False
 
@@ -67,9 +65,6 @@ def _list_entries_remote(limit: int = 20) -> None:
             print()
 
     except Exception as exc:
-        logging.getLogger(__name__).error(
-            "Failed to list entries: %s", exc, exc_info=True
-        )
         print("❌ Failed to list entries")
 
     finally:
@@ -80,28 +75,13 @@ def _list_entries_remote(limit: int = 20) -> None:
                 remote_memory.wait_for_server_completion(timeout=5.0)
                 remote_memory.close()
             except Exception as cleanup_e:
-                logging.getLogger(__name__).debug(f"Cleanup warning: {cleanup_e}")
+                print(f"Cleanup warning: {cleanup_e}")
 
-        # Shutdown write queue to prevent hanging
-        try:
-            from serena.infrastructure.write_queue import write_queue
-
-            shutdown_success = write_queue.shutdown(timeout=5.0)
-            if shutdown_success:
-                logging.getLogger(__name__).debug("✅ Write queue shutdown completed")
-            else:
-                logging.getLogger(__name__).debug("⚠️ Write queue shutdown timeout")
-        except ImportError:
-            # Write queue not available - normal for some configurations
-            pass
-        except Exception as queue_e:
-            logging.getLogger(__name__).debug(f"Write queue cleanup warning: {queue_e}")
+        # No cleanup needed for RemoteMemory - it just makes HTTP requests
 
 
 def cmd_delete(args) -> None:
     """Delete an indexed entry by task ID."""
-    logger = logging.getLogger(__name__)
-
     try:
         # If list flag is provided, show available entries via server
         if args.list:
@@ -119,7 +99,7 @@ def cmd_delete(args) -> None:
         deleted = False
 
         if _try_server_delete(task_id):
-            print("   ⚡ Deleted via server API")
+            print("   ⚡ Deleted")
             deleted = True
         else:
             print("❌ Server not available - only remote operations are supported")
@@ -141,7 +121,6 @@ def cmd_delete(args) -> None:
         print("\n🛑 Delete operation cancelled by user")
         sys.exit(1)
     except Exception:
-        logger.exception("Delete operation failed")
         print("❌ Delete operation failed: unexpected error. See logs for details.")
         sys.exit(1)
 

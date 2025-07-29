@@ -12,8 +12,6 @@ from serena.infrastructure.indexer import MemoryIndexer
 
 def cmd_index(args) -> None:
     """Index memories from directories."""
-    logger = logging.getLogger(__name__)
-
     try:
         # Determine directories to scan
         if args.directories:
@@ -21,9 +19,6 @@ def cmd_index(args) -> None:
         else:
             directories = detect_taskmaster_directories()
             if not directories:
-                logger.warning(
-                    "No TaskMaster directories found. Use --directories to specify manually."
-                )
                 print(
                     "⚠️ No directories found to index. Use --directories to specify manually."
                 )
@@ -82,7 +77,6 @@ def cmd_index(args) -> None:
         _cleanup_indexing_resources(indexer)
 
     except Exception as e:
-        logger.error(f"Indexing failed: {e}")
         print(f"❌ Indexing failed: {e}")
         raise
 
@@ -105,13 +99,7 @@ def _cleanup_indexing_resources(indexer) -> None:
             indexer.memory.close()
             print("✅ Remote connections closed")
 
-        # Shutdown write queue to prevent hanging
-        from serena.infrastructure.write_queue import write_queue
-        shutdown_success = write_queue.shutdown(timeout=5.0)
-        if shutdown_success:
-            print("✅ Write queue shutdown completed")
-        else:
-            print("⚠️ Write queue shutdown timeout")
+        # No cleanup needed for RemoteMemory - it just makes HTTP requests
 
     except Exception as e:
         # Don't let cleanup errors prevent command completion

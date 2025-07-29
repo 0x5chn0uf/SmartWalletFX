@@ -2,7 +2,6 @@ from __future__ import annotations
 
 """`serena init` command."""
 
-import logging
 import sys
 from typing import Any
 
@@ -11,27 +10,23 @@ from serena.infrastructure.database import init_database
 
 def cmd_init(args) -> None:
     """Initialize Serena database and configuration."""
-    logger = logging.getLogger(__name__)
-    
     try:
         # Initialize the database
         init_database()
-        logger.info("Serena database initialized successfully")
-        
+        print("Serena database initialized successfully")
+
         # TODO: Add configuration file creation if needed
         # TODO: Add auto-detection of project structure
-        
+
         print("✅ Serena initialized successfully!")
-        
+
     except KeyboardInterrupt:
         print("\n🛑 Initialization cancelled by user")
         sys.exit(1)
     except PermissionError as e:
-        logger.error("Permission denied: %s", e)
         print(f"❌ Permission denied: {e}")
         sys.exit(1)
     except Exception as e:
-        logger.error("Failed to initialize Serena: %s", e)
         print(f"❌ Initialization failed: {e}")
         sys.exit(1)
 

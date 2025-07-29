@@ -6,7 +6,7 @@ import argparse
 import importlib
 import sys
 from pathlib import Path
-from typing import Callable, Any
+from typing import Any, Callable
 
 # Ensure `serena` package is importable when CLI executed as module script
 if __package__ is None or __package__ == "":  # pragma: no cover – direct script
@@ -33,7 +33,6 @@ _COMMAND_MODULES = [
     "latest_cmd",
     "delete_cmd",
     "pool_cmd",
-    "import_cmd",
     "maintenance_cmd",
 ]
 

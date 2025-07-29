@@ -14,7 +14,8 @@ inside :pymod:`serena.cli.*`.
 
 from importlib import import_module as _import_module
 from types import ModuleType as _ModuleType
-from typing import TYPE_CHECKING, Any as _Any
+from typing import TYPE_CHECKING
+from typing import Any as _Any
 
 
 def _lazy_import(name: str) -> _ModuleType:  # noqa: D401
@@ -35,4 +36,4 @@ else:
         raise AttributeError(attr)
 
 
-__all__ = ["main"] 
+__all__ = ["main"]
