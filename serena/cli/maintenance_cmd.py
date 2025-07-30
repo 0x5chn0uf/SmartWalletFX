@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional
 
 from serena.cli.common import RemoteMemory
 
-
 # All maintenance operations have been moved to server-side only
 # Local database maintenance is no longer supported
 
@@ -19,6 +18,13 @@ def cmd_maintenance(args) -> None:
     print("Starting maintenance operation")
 
     try:
+        # Check if server is available for all operations
+        remote_memory = RemoteMemory()
+        if not remote_memory.is_server_available():
+            print("❌ Server not available")
+            print("   💡 Start the server with: serena serve")
+            sys.exit(1)
+
         if args.operation == "cleanup":
             print("❌ Local maintenance is no longer supported.")
             print("   All maintenance operations must be performed through the server.")
@@ -28,12 +34,6 @@ def cmd_maintenance(args) -> None:
         elif args.operation == "status":
             print("📊 Server Status:")
             try:
-                remote_memory = RemoteMemory()
-                if not remote_memory.is_server_available():
-                    print("   ❌ Server not available")
-                    print("   💡 Start the server with: serena serve")
-                    return
-
                 # Get server health status
                 health_response = remote_memory._make_request("GET", "/health")
                 print(f"   Status: {health_response.get('status', 'unknown')}")
@@ -60,9 +60,46 @@ def cmd_maintenance(args) -> None:
             except Exception as e:
                 print(f"   ❌ Failed to get server status: {e}")
 
+        elif args.operation == "checkpoint":
+            print("🔧 Running database checkpoint...")
+            try:
+                response = remote_memory._make_request(
+                    "POST", "/maintenance/run/checkpoint"
+                )
+                # _make_request returns the data portion for successful responses
+                if response and "message" in response:
+                    print("✅ Database checkpoint completed successfully")
+                    if args.verbose:
+                        print(f"   Details: {response['message']}")
+                else:
+                    print(f"❌ Checkpoint failed: {response}")
+                    sys.exit(1)
+            except Exception as e:
+                print(f"❌ Failed to run checkpoint: {e}")
+                sys.exit(1)
+
+        elif args.operation == "vacuum":
+            print("🧹 Running database vacuum...")
+            try:
+                response = remote_memory._make_request(
+                    "POST", "/maintenance/run/vacuum"
+                )
+                if response.get("success"):
+                    print("✅ Database vacuum completed successfully")
+                    if args.verbose and "data" in response:
+                        print(f"   Details: {response['data']}")
+                else:
+                    print(
+                        f"❌ Vacuum failed: {response.get('message', 'Unknown error')}"
+                    )
+                    sys.exit(1)
+            except Exception as e:
+                print(f"❌ Failed to run vacuum: {e}")
+                sys.exit(1)
+
         else:
             print(f"❌ Unknown maintenance operation: {args.operation}")
-            print("   Available operations: status")
+            print("   Available operations: status, checkpoint, vacuum")
             sys.exit(1)
 
     except KeyboardInterrupt:
@@ -75,9 +112,11 @@ def cmd_maintenance(args) -> None:
 
 def register(sub: Any) -> None:
     """Register the maintenance command."""
-    p = sub.add_parser("maintenance", help="Show maintenance and queue status")
+    p = sub.add_parser("maintenance", help="Perform maintenance operations")
     p.add_argument(
-        "operation", choices=["status"], help="Maintenance operation to perform"
+        "operation",
+        choices=["status", "checkpoint", "vacuum"],
+        help="Maintenance operation to perform",
     )
     p.add_argument(
         "-v", "--verbose", action="store_true", help="Enable verbose logging"

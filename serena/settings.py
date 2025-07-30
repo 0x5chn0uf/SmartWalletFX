@@ -470,7 +470,9 @@ class SerenaSettings(BaseSettings):
                 file_handler.setFormatter(formatter)
                 root_logger.addHandler(file_handler)
             except Exception as e:
-                root_logger.warning(f"Warning: Could not set up file logging to {self.log_file}: {e}")
+                root_logger.warning(
+                    f"Warning: Could not set up file logging to {self.log_file}: {e}"
+                )
 
         # Suppress noisy third-party loggers in production
         if self.is_production:

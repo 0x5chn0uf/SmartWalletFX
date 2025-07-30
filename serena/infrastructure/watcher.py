@@ -14,7 +14,6 @@ from serena.core.models import (Archive, Embedding, compute_content_hash,
 from serena.database.session import get_session
 
 
-
 class _SerenaEventHandler(FileSystemEventHandler):
     """Handle FS events and dispatch to the parent watcher."""
 
@@ -233,6 +232,4 @@ def create_memory_watcher(
     )
 
 
-__all__ = [
-    "create_memory_watcher"
-]
+__all__ = ["create_memory_watcher"]

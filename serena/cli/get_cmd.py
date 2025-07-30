@@ -1,6 +1,5 @@
 """Get command for retrieving specific archives."""
 
-import logging
 from typing import Any
 
 from serena.cli.common import RemoteMemory

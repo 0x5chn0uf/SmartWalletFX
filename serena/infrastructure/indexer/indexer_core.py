@@ -37,9 +37,7 @@ class MemoryIndexer:
                     "❌ Server not available - indexing requires Serena server to be running. Start it with: serena serve"
                 )
             self.memory = remote_memory
-            print(
-                "✅ Using server-based memory for indexing (async writes enabled)"
-            )
+            print("✅ Using server-based memory for indexing (async writes enabled)")
 
         # Default scan directories
         self.scan_dirs = [
@@ -126,9 +124,7 @@ class MemoryIndexer:
             stats["total_time_seconds"] = time.time() - start_time
             return stats
 
-        print(
-            f"Found {len(files_to_process)} files to process in {scan_time:.2f}s"
-        )
+        print(f"Found {len(files_to_process)} files to process in {scan_time:.2f}s")
 
         # Process files with progress tracking
         indexing_start = time.time()

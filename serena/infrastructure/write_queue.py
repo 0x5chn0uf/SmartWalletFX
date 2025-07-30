@@ -542,9 +542,7 @@ class EnhancedWriteQueue:
         if success:
             print("Write queue shutdown completed successfully")
         else:
-            print(
-                "Write queue shutdown timed out, some operations may be lost"
-            )
+            print("Write queue shutdown timed out, some operations may be lost")
 
         return success
 

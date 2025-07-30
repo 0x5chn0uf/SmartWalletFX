@@ -1,9 +1,9 @@
 """Core search engine functionality."""
 
 import math
+import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-
 
 from serena.core.models import SearchResult, TaskKind, TaskStatus
 from serena.database.session import get_db_session as get_session
@@ -250,11 +250,11 @@ class SearchEngine:
         """Optimized candidate retrieval using single SQL query with batch processing."""
         import numpy as np
         from sqlalchemy import text
-
-        # Build parameterized WHERE clause
+        
+        # Build parameterized WHERE clause for archives only
         where_conditions = []
         params = {}
-
+        
         if kind_filter:
             # Use parameterized query to prevent SQL injection
             kind_values = [
@@ -263,7 +263,7 @@ class SearchEngine:
             ]
             where_conditions.append("a.kind = ANY(:kind_values)")
             params["kind_values"] = kind_values
-
+        
         if status_filter:
             status_values = [
                 status.value if hasattr(status, "value") else str(status)
@@ -271,14 +271,17 @@ class SearchEngine:
             ]
             where_conditions.append("a.status = ANY(:status_values)")
             params["status_values"] = status_values
-
-        if first_chunk_only:
-            where_conditions.append("e.chunk_id = 0")
-
+        
+        # Build WHERE clause for CTE (archives only)
         where_clause = ""
         if where_conditions:
             where_clause = "WHERE " + " AND ".join(where_conditions)
-
+        
+        # Build embedding filter for JOIN (outside CTE)
+        embedding_filter = ""
+        if first_chunk_only:
+            embedding_filter = " AND e.chunk_id = 0"
+        
         # Optimized query: fetch only necessary data, use indexes effectively
         # Use CTE for better query planning and potential index usage
         query = f"""
@@ -295,48 +298,47 @@ class SearchEngine:
                 ra.task_id, ra.title, ra.kind, ra.status, ra.completed_at, ra.filepath,
                 e.vector, e.chunk_id, e.position
             FROM ranked_archives ra
-            INNER JOIN embeddings e ON ra.task_id = e.task_id
-            {' AND e.chunk_id = 0' if first_chunk_only else ''}
+            INNER JOIN embeddings e ON ra.task_id = e.task_id{embedding_filter}
             ORDER BY ra.rn, e.chunk_id ASC, e.position ASC
         """
-
+        
         params["limit"] = limit
-
+        
         candidates = []
         seen_task_ids = set()
-
+        
         try:
             with get_session(self.db_path) as session:
                 result = session.execute(text(query), params)
-
+                
                 # Batch process results for better memory efficiency
                 batch_size = 100
                 current_batch = []
-
+                
                 for row in result:
                     # Skip duplicates if we've seen this task_id (for first_chunk_only)
                     if first_chunk_only and row[0] in seen_task_ids:
                         continue
-
+                    
                     if first_chunk_only:
                         seen_task_ids.add(row[0])
-
+                    
                     current_batch.append(row)
-
+                    
                     # Process batch when full
                     if len(current_batch) >= batch_size:
                         candidates.extend(self._process_candidate_batch(current_batch))
                         current_batch = []
-
+                
                 # Process remaining items
                 if current_batch:
                     candidates.extend(self._process_candidate_batch(current_batch))
-
+                
         except Exception as exc:
             print(f"Optimized candidate query failed: {exc}")
             # Fallback to original method
             return self._get_candidates(kind_filter, status_filter, first_chunk_only)
-
+        
         print(f"Retrieved {len(candidates)} candidates using optimized query")
         return candidates
 

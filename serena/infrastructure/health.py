@@ -51,6 +51,11 @@ class HealthCheckManager:
         try:
             from serena.infrastructure.write_queue import write_queue
 
+            if write_queue is None:
+                checks["ready"] = False
+                checks["checks"]["write_queue"] = "not initialized"
+                return checks
+
             queue_health = write_queue.health_check()
             if queue_health["status"] in ["healthy", "degraded"]:
                 checks["checks"]["write_queue"] = "ok"
@@ -203,6 +208,9 @@ class HealthCheckManager:
         """Check write queue health."""
         try:
             from serena.infrastructure.write_queue import write_queue
+
+            if write_queue is None:
+                return {"status": "unhealthy", "error": "Write queue not initialized"}
 
             return write_queue.health_check()
         except Exception as e:

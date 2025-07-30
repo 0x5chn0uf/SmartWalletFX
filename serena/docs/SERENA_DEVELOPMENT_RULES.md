@@ -5,6 +5,7 @@
 **CRITICAL**: Serena is a simple local plugin that lives alongside the codebase. It is NOT designed for online deployment.
 
 ### Core Design Philosophy
+
 - **Server-side processing only** - All operations happen on the running server
 - **No local queues or background workers** - Keep implementation simple
 - **Local development tool** - Designed to run next to your codebase, not deployed
@@ -19,6 +20,7 @@
 Always use the official Serena CLI commands that communicate with the server:
 
 ### Core Operations
+
 - `serena init` - Initialize database and configuration
 - `serena index [path]` - Index content via server (synchronous)
 - `serena search [query]` - Search indexed content
@@ -27,6 +29,7 @@ Always use the official Serena CLI commands that communicate with the server:
 - `serena maintenance` - Run maintenance operations
 
 ### Status and Information
+
 - `serena get [id]` - Retrieve specific content
 - `serena latest` - Show recent additions
 - `serena pool` - Show connection pool status
@@ -34,6 +37,7 @@ Always use the official Serena CLI commands that communicate with the server:
 ## Prohibited Operations
 
 ❌ **NEVER DO THESE:**
+
 - Direct SQLite database file manipulation
 - Local write queues or background processing
 - Complex deployment patterns (Docker, systemd, etc.)
@@ -45,6 +49,7 @@ Always use the official Serena CLI commands that communicate with the server:
 ## Simplified Architecture Requirements
 
 ✅ **KEEP IT SIMPLE:**
+
 - Single server process handling all requests synchronously
 - Direct database operations through server only
 - No background workers or queues
@@ -52,6 +57,18 @@ Always use the official Serena CLI commands that communicate with the server:
 - Local development focus only
 
 ## Required Workflow
+
+**CRITICAL**: Always run commands from the project root directory and activate the backend virtual environment first:
+```bash
+# Navigate to project root (trading_bot_smc/)
+cd /path/to/trading_bot_smc
+
+# Activate virtual environment
+source backend/.venv/bin/activate
+
+# Then run serena commands
+serena serve
+```
 
 1. Start `serena serve` for a simple local server
 2. All operations go through server endpoints via CLI
@@ -63,16 +80,15 @@ Always use the official Serena CLI commands that communicate with the server:
 **CRITICAL**: Serena is a command shell assistant, NOT an API service.
 
 ✅ **CONSOLE OUTPUT ONLY:**
+
 - All user-facing responses must be printed to console
 - Use logging and print statements for status information
 - Health checks, status reports, and operations should log to terminal
-- No JSON responses for user-facing commands
 
 ❌ **NO API RESPONSES:**
-- Never return JSONResponse for health/status commands
-- No create_success_response() for user operations
+
+- Never return JSONResponse for health/status commands, custom response instead
 - Internal server endpoints can use JSON, but CLI commands log to console
-- REMOVE all JSONResponse and create_success_response from codebase
 - Replace with print() statements for console output only
 
 ## Development Testing

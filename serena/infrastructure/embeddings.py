@@ -467,7 +467,7 @@ class EmbeddingGenerator:
         print(f"Starting batch encoding for {len(texts)} texts")
         vecs = self.model.encode(texts, convert_to_numpy=True, batch_size=32)  # type: ignore[attr-defined]
         print(
-            f"Batch encode successful (shape={getattr(vecs, "shape", "unknown")})", 
+            f"Batch encode successful (shape={getattr(vecs, 'shape', 'unknown')})", 
         )
 
         # Convert to list and explicitly delete numpy array to free memory

@@ -11,14 +11,25 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from serena.core.errors import (ErrorCode, SerenaException,
-                                create_error_response)
-from serena.core.models import (Archive, Embedding, SearchResult,
-                                compute_content_hash, generate_summary)
+from serena.core.errors import (
+    ErrorCode,
+    SerenaException,
+    create_error_response,
+    create_success_response,
+)
+from serena.core.models import (
+    Archive,
+    Embedding,
+    SearchResult,
+    compute_content_hash,
+    generate_summary,
+)
 from serena.database.session import get_db_session
-from serena.infrastructure.embeddings import (chunk_content,
-                                              get_default_generator,
-                                              preprocess_content)
+from serena.infrastructure.embeddings import (
+    chunk_content,
+    get_default_generator,
+    preprocess_content,
+)
 from serena.infrastructure.write_queue import WriteOperationType, write_queue
 from serena.settings import settings
 
@@ -68,6 +79,27 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         model_time = time.time() - model_start
         print(f"❌ Failed to preload embedding model after {model_time:.2f}s: {exc}")
         print("   - Status: Embedding search will be UNAVAILABLE")
+
+    # Initialize write queue for server operations
+    print("🔄 Initializing write queue...")
+    queue_start = time.time()
+    try:
+        from serena.infrastructure.write_queue import write_queue, _create_write_queue
+        import serena.infrastructure.write_queue as wq_module
+        
+        # Initialize global write queue if not already done
+        if wq_module.write_queue is None:
+            wq_module.write_queue = _create_write_queue()
+            
+        queue_time = time.time() - queue_start
+        print(f"✅ Write queue initialized successfully in {queue_time:.2f}s")
+        print(f"   - Queue size limit: {wq_module.write_queue.max_queue_size}")
+        print(f"   - Workers: {wq_module.write_queue.worker_count}")
+        print("   - Status: Ready for async operations")
+    except Exception as exc:
+        queue_time = time.time() - queue_start
+        print(f"❌ Failed to initialize write queue after {queue_time:.2f}s: {exc}")
+        print("   - Status: Async operations will be UNAVAILABLE")
 
     # Start maintenance service
     maintenance_service = MaintenanceService()
@@ -242,9 +274,7 @@ async def _upsert_archive_direct(
                 # FTS index update is not critical
                 import logging
 
-                print(
-                    f"Failed to update FTS index for task {task_id}: {fts_exc}"
-                )
+                print(f"Failed to update FTS index for task {task_id}: {fts_exc}")
 
             # Commit the transaction
             db.commit()
@@ -310,9 +340,9 @@ def create_app() -> FastAPI:
             response.headers["X-Content-Type-Options"] = "nosniff"
             response.headers["X-Frame-Options"] = "DENY"
             response.headers["X-XSS-Protection"] = "1; mode=block"
-            response.headers[
-                "Strict-Transport-Security"
-            ] = "max-age=31536000; includeSubDomains"
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains"
+            )
             return response
 
     # Enhanced error handling middleware with monitoring
@@ -351,9 +381,7 @@ def create_app() -> FastAPI:
                 )
 
             error_response = create_error_response(
-                code=ErrorCode.INTERNAL_ERROR,
-                message=e.detail,
-                operation=f"{request.method} {request.url.path}",
+                code=ErrorCode.INTERNAL_ERROR, message=e.detail
             )
             return JSONResponse(status_code=e.status_code, content=error_response)
         except Exception as e:
@@ -368,7 +396,6 @@ def create_app() -> FastAPI:
                 message=(
                     "An unexpected error occurred" if settings.is_production else str(e)
                 ),
-                operation=f"{request.method} {request.url.path}",
                 details={
                     "error_id": error_id,
                     "traceback": (
@@ -382,7 +409,7 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def add_timing_header(request, call_next):
         import time
-        
+
         start_time = time.time()
         response = await call_next(request)
         process_time = time.time() - start_time
@@ -404,15 +431,7 @@ def create_app() -> FastAPI:
 
             # Use print for immediate visibility
             print(
-                f"{request.method} {url_with_query} - {process_time:.4f}s - {response.status_code}"
-            )
-
-            print(
-                "%s %s - %.4fs - %d",
-                request.method,
-                url_with_query,
-                process_time,
-                response.status_code,
+                f"{request.method} {url_with_query} - {process_time:.5f}s - {response.status_code}"
             )
 
         return response
@@ -426,7 +445,9 @@ def create_app() -> FastAPI:
     async def root():
         """Root endpoint."""
         print("🚀 Serena Memory Bridge API v0.1.0")
-        return {"message": "Serena Memory Bridge API", "version": "0.1.0"}
+        return create_success_response(
+            data={"message": "Serena Memory Bridge API", "version": "0.1.0"}
+        )
 
     @app.get("/health")
     async def health_check():
@@ -438,17 +459,28 @@ def create_app() -> FastAPI:
 
         # Print health status to console instead of returning JSON
         print(f"🏥 Health Check: {health_data['status']}")
-        
+
         if health_data["status"] == "unhealthy":
             print("❌ Server is unhealthy")
             print(f"   Details: {health_data}")
+            return JSONResponse(
+                status_code=503,
+                content=create_error_response(
+                    code=ErrorCode.SERVER_UNAVAILABLE,
+                    message="Server is unhealthy",
+                    details=health_data,
+                ),
+            )
         else:
             print("✅ Server is healthy")
-            print(f"   Database: {health_data.get('database', {}).get('status', 'unknown')}")
-            print(f"   Archive count: {health_data.get('database', {}).get('archive_count', 0)}")
-        
-        # Return simple text response
-        return {"status": health_data["status"]}
+            print(
+                f"   Database: {health_data.get('database', {}).get('status', 'unknown')}"
+            )
+            print(
+                f"   Archive count: {health_data.get('database', {}).get('archive_count', 0)}"
+            )
+
+        return create_success_response(data=health_data)
 
     @app.get("/ready")
     async def readiness_check():
@@ -459,15 +491,24 @@ def create_app() -> FastAPI:
         readiness_data = health_manager.get_readiness_check()
 
         # Print readiness status to console
-        print(f"🔄 Readiness Check: {'Ready' if readiness_data['ready'] else 'Not Ready'}")
-        
+        print(
+            f"🔄 Readiness Check: {'Ready' if readiness_data['ready'] else 'Not Ready'}"
+        )
+
         if readiness_data["ready"]:
             print("✅ Service is ready to serve traffic")
+            return create_success_response(data=readiness_data)
         else:
             print("❌ Service not ready")
             print(f"   Details: {readiness_data}")
-        
-        return {"ready": readiness_data["ready"]}
+            return JSONResponse(
+                status_code=503,
+                content=create_error_response(
+                    code=ErrorCode.SERVER_UNAVAILABLE,
+                    message="Service not ready",
+                    details=readiness_data,
+                ),
+            )
 
     @app.get("/live")
     async def liveness_check():
@@ -478,9 +519,11 @@ def create_app() -> FastAPI:
         liveness_data = health_manager.get_liveness_check()
 
         # Print liveness status to console
-        print(f"💓 Liveness Check: {'Alive' if liveness_data.get('alive', False) else 'Dead'}")
-        
-        return {"alive": liveness_data.get("alive", False)}
+        print(
+            f"💓 Liveness Check: {'Alive' if liveness_data.get('alive', False) else 'Dead'}"
+        )
+
+        return create_success_response(data=liveness_data)
 
     @app.get("/maintenance/status")
     async def get_maintenance_status(request: "Request"):
@@ -490,11 +533,10 @@ def create_app() -> FastAPI:
             return create_error_response(
                 code=ErrorCode.SERVER_UNAVAILABLE,
                 message="Maintenance service not running",
-                operation="maintenance_status",
             )
         status_data = service.get_status()
         print(f"🔧 Maintenance Service Status: {status_data.get('status', 'unknown')}")
-        return status_data
+        return create_success_response(data=status_data)
 
     @app.post("/maintenance/run/{operation}")
     async def run_maintenance_operation(operation: str, request: "Request"):
@@ -504,24 +546,23 @@ def create_app() -> FastAPI:
             return create_error_response(
                 code=ErrorCode.SERVER_UNAVAILABLE,
                 message="Maintenance service not running",
-                operation="maintenance_run",
             )
         try:
             service.run_operation(operation)
             print(f"✅ Maintenance operation '{operation}' triggered successfully")
-            return {"message": f"Operation '{operation}' triggered successfully"}
+            return create_success_response(
+                data={"message": f"Operation '{operation}' triggered successfully"}
+            )
         except ValueError:
             return create_error_response(
                 code=ErrorCode.INVALID_INPUT,
                 message=f"Invalid operation: {operation}",
-                operation="maintenance_run",
                 details={"operation": operation},
             )
         except Exception as e:
             return create_error_response(
                 code=ErrorCode.INTERNAL_ERROR,
                 message=f"Operation failed: {str(e)}",
-                operation="maintenance_run",
                 details={"operation": operation, "error": str(e)},
             )
 
@@ -536,7 +577,6 @@ def create_app() -> FastAPI:
                 return create_error_response(
                     code=ErrorCode.INVALID_INPUT,
                     message="Limit must be between 1 and 100",
-                    operation="list_archives",
                     details={"limit": limit},
                 )
 
@@ -544,7 +584,6 @@ def create_app() -> FastAPI:
                 return create_error_response(
                     code=ErrorCode.INVALID_INPUT,
                     message="Offset must be non-negative",
-                    operation="list_archives",
                     details={"offset": offset},
                 )
 
@@ -585,13 +624,14 @@ def create_app() -> FastAPI:
                 "offset": offset,
             }
 
-            print(f"📁 Retrieved {len(data['archives'])} archives (total: {data['total']})")
-            return data
+            print(
+                f"📁 Retrieved {len(data['archives'])} archives (total: {data['total']})"
+            )
+            return create_success_response(data=data)
         except Exception as e:
             return create_error_response(
                 code=ErrorCode.DATABASE_QUERY_FAILED,
                 message="Failed to retrieve archives",
-                operation="list_archives",
                 details={"error": str(e)},
             )
 
@@ -604,7 +644,6 @@ def create_app() -> FastAPI:
                 return create_error_response(
                     code=ErrorCode.INVALID_TASK_ID,
                     message="Task ID cannot be empty",
-                    operation="get_archive",
                     details={"task_id": task_id},
                 )
 
@@ -614,7 +653,6 @@ def create_app() -> FastAPI:
                 return create_error_response(
                     code=ErrorCode.RESOURCE_NOT_FOUND,
                     message=f"Archive not found: {task_id}",
-                    operation="get_archive",
                     details={"task_id": task_id},
                 )
 
@@ -640,12 +678,11 @@ def create_app() -> FastAPI:
             }
 
             print(f"📄 Retrieved archive: {archive.task_id} - {archive.title}")
-            return data
+            return create_success_response(data=data)
         except Exception as e:
             return create_error_response(
                 code=ErrorCode.DATABASE_QUERY_FAILED,
                 message="Failed to retrieve archive",
-                operation="get_archive",
                 details={"task_id": task_id, "error": str(e)},
             )
 
@@ -658,7 +695,6 @@ def create_app() -> FastAPI:
                 return create_error_response(
                     code=ErrorCode.INVALID_TASK_ID,
                     message="Task ID cannot be empty",
-                    operation="delete_archive",
                     details={"task_id": task_id},
                 )
 
@@ -668,7 +704,6 @@ def create_app() -> FastAPI:
                 return create_error_response(
                     code=ErrorCode.RESOURCE_NOT_FOUND,
                     message=f"Archive not found: {task_id}",
-                    operation="delete_archive",
                     details={"task_id": task_id},
                 )
 
@@ -680,17 +715,18 @@ def create_app() -> FastAPI:
             db.commit()
 
             print(f"🗑️ Archive {task_id} deleted successfully: {title}")
-            return {
-                "message": f"Archive {task_id} deleted successfully",
-                "task_id": task_id,
-                "title": title,
-            }
+            return create_success_response(
+                data={
+                    "message": f"Archive {task_id} deleted successfully",
+                    "task_id": task_id,
+                    "title": title,
+                }
+            )
         except Exception as e:
             db.rollback()
             return create_error_response(
                 code=ErrorCode.DATABASE_TRANSACTION_FAILED,
                 message="Failed to delete archive",
-                operation="delete_archive",
                 details={"task_id": task_id, "error": str(e)},
             )
 
@@ -705,7 +741,6 @@ def create_app() -> FastAPI:
                 return create_error_response(
                     code=ErrorCode.INVALID_INPUT,
                     message="Search query cannot be empty",
-                    operation="search_archives",
                     details={"query": q},
                 )
 
@@ -713,7 +748,6 @@ def create_app() -> FastAPI:
                 return create_error_response(
                     code=ErrorCode.INVALID_INPUT,
                     message="Limit must be between 1 and 100",
-                    operation="search_archives",
                     details={"limit": limit},
                 )
 
@@ -721,7 +755,6 @@ def create_app() -> FastAPI:
                 return create_error_response(
                     code=ErrorCode.INVALID_INPUT,
                     message="Threshold must be between 0 and 1",
-                    operation="search_archives",
                     details={"threshold": threshold},
                 )
 
@@ -755,7 +788,7 @@ def create_app() -> FastAPI:
             }
 
             print(f"🔍 Search completed: {len(results)} results for '{q}'")
-            return data
+            return create_success_response(data=data)
 
         except RuntimeError as exc:
             # Handle embedding-related runtime errors specifically
@@ -763,7 +796,6 @@ def create_app() -> FastAPI:
                 return create_error_response(
                     code=ErrorCode.EMBEDDING_SERVICE_ERROR,
                     message="Semantic search unavailable - embeddings required",
-                    operation="search_archives",
                     details={
                         "error": str(exc),
                         "solution": "Ensure embedding model is loaded and content is indexed with embeddings",
@@ -773,14 +805,12 @@ def create_app() -> FastAPI:
                 return create_error_response(
                     code=ErrorCode.SEARCH_QUERY_FAILED,
                     message="Search operation failed",
-                    operation="search_archives",
                     details={"error": str(exc)},
                 )
         except Exception as exc:
             return create_error_response(
                 code=ErrorCode.SEARCH_QUERY_FAILED,
                 message="Search operation failed",
-                operation="search_archives",
                 details={"query": q, "error": str(exc)},
             )
 
@@ -813,13 +843,14 @@ def create_app() -> FastAPI:
                 "by_status": status_counts,
             }
 
-            print(f"📊 Statistics: {archive_count} archives, {embedding_count} embeddings") 
-            return data
+            print(
+                f"📊 Statistics: {archive_count} archives, {embedding_count} embeddings"
+            )
+            return create_success_response(data=data)
         except Exception as e:
             return create_error_response(
                 code=ErrorCode.DATABASE_QUERY_FAILED,
                 message="Failed to retrieve statistics",
-                operation="get_statistics",
                 details={"error": str(e)},
             )
 
@@ -828,6 +859,13 @@ def create_app() -> FastAPI:
         """Get write queue status and metrics."""
         try:
             from serena.infrastructure.write_queue import write_queue
+
+            if write_queue is None:
+                return create_error_response(
+                    code=ErrorCode.DEPENDENCY_ERROR,
+                    message="Write queue not initialized",
+                    details={"component": "write_queue"},
+                )
 
             metrics = write_queue.get_metrics()
             health = write_queue.health_check()
@@ -844,13 +882,14 @@ def create_app() -> FastAPI:
                 "issues": health["issues"],
             }
 
-            print(f"⚡ Queue status: {data['status']} - {data['current_queue_size']} items queued")
-            return data
+            print(
+                f"⚡ Queue status: {data['status']} - {data['current_queue_size']} items queued"
+            )
+            return create_success_response(data=data)
         except Exception as e:
             return create_error_response(
                 code=ErrorCode.DEPENDENCY_ERROR,
                 message="Failed to retrieve queue status",
-                operation="get_queue_status",
                 details={"error": str(e)},
             )
 
@@ -893,7 +932,6 @@ def create_app() -> FastAPI:
                 return create_error_response(
                     code=ErrorCode.MISSING_REQUIRED_FIELD,
                     message="task_id is required",
-                    operation="upsert_archive",
                     details={"missing_field": "task_id"},
                 )
 
@@ -901,7 +939,6 @@ def create_app() -> FastAPI:
                 return create_error_response(
                     code=ErrorCode.MISSING_REQUIRED_FIELD,
                     message="markdown_text is required",
-                    operation="upsert_archive",
                     details={"missing_field": "markdown_text"},
                 )
 
@@ -910,7 +947,6 @@ def create_app() -> FastAPI:
                 return create_error_response(
                     code=ErrorCode.INVALID_TASK_ID,
                     message="Task ID must be 255 characters or less",
-                    operation="upsert_archive",
                     details={"task_id": task_id, "length": len(task_id)},
                 )
 
@@ -919,7 +955,6 @@ def create_app() -> FastAPI:
                 return create_error_response(
                     code=ErrorCode.CONTENT_TOO_LARGE,
                     message="Content exceeds maximum size limit (10MB)",
-                    operation="upsert_archive",
                     details={"content_size": len(markdown_text)},
                 )
 
@@ -934,7 +969,6 @@ def create_app() -> FastAPI:
                     return create_error_response(
                         code=ErrorCode.INVALID_INPUT,
                         message="Invalid completed_at format. Use ISO format.",
-                        operation="upsert_archive",
                         details={"completed_at": completed_at},
                     )
 
@@ -947,7 +981,6 @@ def create_app() -> FastAPI:
                     return create_error_response(
                         code=ErrorCode.INVALID_INPUT,
                         message=f"Invalid kind value: {kind}",
-                        operation="upsert_archive",
                         details={
                             "kind": kind,
                             "valid_values": [k.value for k in TaskKind],
@@ -962,7 +995,6 @@ def create_app() -> FastAPI:
                     return create_error_response(
                         code=ErrorCode.INVALID_INPUT,
                         message=f"Invalid status value: {status}",
-                        operation="upsert_archive",
                         details={
                             "status": status,
                             "valid_values": [s.value for s in TaskStatus],
@@ -985,18 +1017,21 @@ def create_app() -> FastAPI:
             )
 
             if success:
-                print(f"📝 Archive {task_id} upserted successfully (async: {use_async_write})")
-                return {
-                    "task_id": task_id,
-                    "message": "Archive upserted successfully",
-                    "async_write": use_async_write,
-                    "processing": "queued" if use_async_write else "completed",
-                }
+                print(
+                    f"📝 Archive {task_id} upserted successfully (async: {use_async_write})"
+                )
+                return create_success_response(
+                    data={
+                        "task_id": task_id,
+                        "message": "Archive upserted successfully",
+                        "async_write": use_async_write,
+                        "processing": "queued" if use_async_write else "completed",
+                    }
+                )
             else:
                 return create_error_response(
                     code=ErrorCode.INDEXING_FAILED,
                     message="Failed to upsert archive",
-                    operation="upsert_archive",
                     details={"task_id": task_id},
                 )
 
@@ -1005,7 +1040,6 @@ def create_app() -> FastAPI:
             return create_error_response(
                 code=ErrorCode.INTERNAL_ERROR,
                 message="Internal server error during archive upsert",
-                operation="upsert_archive",
                 details={"task_id": task_id, "error": str(exc)},
             )
 
@@ -1020,7 +1054,6 @@ def create_app() -> FastAPI:
                 return create_error_response(
                     code=ErrorCode.MISSING_REQUIRED_FIELD,
                     message="texts list is required",
-                    operation="generate_embeddings",
                     details={"missing_field": "texts"},
                 )
 
@@ -1028,7 +1061,6 @@ def create_app() -> FastAPI:
                 return create_error_response(
                     code=ErrorCode.INVALID_INPUT,
                     message="Cannot process more than 100 texts at once",
-                    operation="generate_embeddings",
                     details={"count": len(texts), "max_allowed": 100},
                 )
 
@@ -1038,7 +1070,6 @@ def create_app() -> FastAPI:
                     return create_error_response(
                         code=ErrorCode.INVALID_INPUT,
                         message=f"Text at index {i} must be a string",
-                        operation="generate_embeddings",
                         details={"index": i, "type": type(text).__name__},
                     )
 
@@ -1046,7 +1077,6 @@ def create_app() -> FastAPI:
                     return create_error_response(
                         code=ErrorCode.CONTENT_TOO_LARGE,
                         message=f"Text at index {i} exceeds maximum length (8192 characters)",
-                        operation="generate_embeddings",
                         details={"index": i, "length": len(text)},
                     )
 
@@ -1055,23 +1085,25 @@ def create_app() -> FastAPI:
                 return create_error_response(
                     code=ErrorCode.EMBEDDING_SERVICE_UNAVAILABLE,
                     message="Embedding model not available",
-                    operation="generate_embeddings",
                 )
 
             embeddings = generator.generate_embeddings_batch(texts)
 
-            print(f"🔢 Generated {len(embeddings)} embeddings using {generator.model_name}")
-            return {
-                "embeddings": embeddings,
-                "model": generator.model_name,
-                "count": len(embeddings),
-            }
+            print(
+                f"🔢 Generated {len(embeddings)} embeddings using {generator.model_name}"
+            )
+            return create_success_response(
+                data={
+                    "embeddings": embeddings,
+                    "model": generator.model_name,
+                    "count": len(embeddings),
+                }
+            )
         except Exception as exc:
             print(f"Error generating embeddings: {exc}")
             return create_error_response(
                 code=ErrorCode.EMBEDDING_GENERATION_FAILED,
                 message="Failed to generate embeddings",
-                operation="generate_embeddings",
                 details={"error": str(exc)},
             )
 
@@ -1087,12 +1119,11 @@ def create_app() -> FastAPI:
                 settings_dict.pop("log_file", None)
 
             print(f"⚙️ Settings retrieved (production: {settings.is_production})")
-            return settings_dict
+            return create_success_response(data=settings_dict)
         except Exception as e:
             return create_error_response(
                 code=ErrorCode.CONFIGURATION_ERROR,
                 message="Failed to retrieve settings",
-                operation="get_settings",
                 details={"error": str(e)},
             )
 

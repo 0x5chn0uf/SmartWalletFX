@@ -10,7 +10,6 @@ from typing import Optional
 from serena.settings import settings
 
 
-
 def get_database_path() -> str:
     """Return the configured SQLite database path."""
     return settings.memory_db
