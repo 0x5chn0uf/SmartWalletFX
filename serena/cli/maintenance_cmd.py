@@ -84,14 +84,13 @@ def cmd_maintenance(args) -> None:
                 response = remote_memory._make_request(
                     "POST", "/maintenance/run/vacuum"
                 )
-                if response.get("success"):
+                # _make_request returns the data portion for successful responses
+                if response and "message" in response:
                     print("✅ Database vacuum completed successfully")
-                    if args.verbose and "data" in response:
-                        print(f"   Details: {response['data']}")
+                    if args.verbose:
+                        print(f"   Details: {response['message']}")
                 else:
-                    print(
-                        f"❌ Vacuum failed: {response.get('message', 'Unknown error')}"
-                    )
+                    print(f"❌ Vacuum failed: {response}")
                     sys.exit(1)
             except Exception as e:
                 print(f"❌ Failed to run vacuum: {e}")
