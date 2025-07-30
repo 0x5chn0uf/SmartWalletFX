@@ -11,16 +11,23 @@ from serena.infrastructure.indexer import MemoryIndexer
 
 
 def cmd_index(args) -> None:
-    """Index memories from directories."""
+    """Index memories from directories or individual files."""
     try:
-        # Determine directories to scan
+        # Determine what to scan - directories, files, or both
+        directories = []
+        files = []
+        
         if args.directories:
             directories = [d.strip() for d in args.directories.split(",")]
-        else:
+        if args.files:
+            files = [f.strip() for f in args.files.split(",")]
+        
+        # If nothing specified, use auto-detected directories
+        if not directories and not files:
             directories = detect_taskmaster_directories()
             if not directories:
                 print(
-                    "⚠️ No directories found to index. Use --directories to specify manually."
+                    "⚠️ No directories or files found to index. Use --directories or --files to specify manually."
                 )
                 return
 
@@ -28,14 +35,39 @@ def cmd_index(args) -> None:
         indexer = MemoryIndexer(max_workers=args.workers)
 
         # Show mode
-        print(f"🔍 Indexing directories using server memory: {', '.join(directories)}")
+        if directories and files:
+            print(f"🔍 Indexing {len(directories)} directories and {len(files)} files using server memory")
+        elif directories:
+            print(f"🔍 Indexing directories using server memory: {', '.join(directories)}")
+        else:
+            print(f"🔍 Indexing {len(files)} individual files using server memory")
 
         # Start overall timing
         start_time = time.time()
 
-        stats = indexer.scan_directories(
-            directories=directories, force_reindex=args.force, show_progress=True
-        )
+        # Process directories and files
+        if directories:
+            stats = indexer.scan_directories(
+                directories=directories, force_reindex=args.force, show_progress=True
+            )
+        else:
+            stats = {
+                "files_found": 0, "files_indexed": 0, "files_skipped": 0, 
+                "files_failed": 0, "directories_scanned": 0,
+                "scan_time_seconds": 0.0, "indexing_time_seconds": 0.0, "total_time_seconds": 0.0
+            }
+        
+        # Process individual files if specified
+        if files:
+            file_stats = indexer.scan_files(
+                files=files, force_reindex=args.force, show_progress=True
+            )
+            # Merge stats
+            stats["files_found"] += file_stats["files_found"]
+            stats["files_indexed"] += file_stats["files_indexed"] 
+            stats["files_skipped"] += file_stats["files_skipped"]
+            stats["files_failed"] += file_stats["files_failed"]
+            stats["indexing_time_seconds"] += file_stats["indexing_time_seconds"]
 
         total_command_time = time.time() - start_time
 
@@ -109,8 +141,9 @@ def _cleanup_indexing_resources(indexer) -> None:
 
 def register(sub: Any) -> None:
     """Register the index command."""
-    p = sub.add_parser("index", help="Scan directories and index memories")
+    p = sub.add_parser("index", help="Scan directories and/or individual files and index memories")
     p.add_argument("--directories", help="Comma-separated directories to scan")
+    p.add_argument("--files", help="Comma-separated individual files to index")
     p.add_argument("--force", action="store_true", help="Force reindex")
     p.add_argument("--workers", type=int, default=4)
     p.add_argument("-v", "--verbose", action="store_true")

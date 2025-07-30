@@ -199,6 +199,84 @@ class MemoryIndexer:
         )
         return stats
 
+    def scan_files(
+        self,
+        files: List[str],
+        force_reindex: bool = False,
+        show_progress: bool = True,
+    ) -> Dict[str, int]:
+        """Index individual files directly."""
+        start_time = time.time()
+        
+        stats = {
+            "files_found": 0,
+            "files_indexed": 0,
+            "files_skipped": 0,
+            "files_failed": 0,
+            "directories_scanned": 0,
+            "scan_time_seconds": 0.0,
+            "indexing_time_seconds": 0.0,
+            "total_time_seconds": 0.0,
+        }
+
+        # Validate and filter files
+        scan_start = time.time()
+        files_to_process = []
+        
+        for file_path in files:
+            p = Path(file_path)
+            
+            if not p.exists():
+                logger.warning(f"File not found: {file_path}")
+                stats["files_failed"] += 1
+                continue
+                
+            if not p.is_file():
+                logger.warning(f"Path is not a file: {file_path}")
+                stats["files_failed"] += 1
+                continue
+                
+            if p.suffix.lower() not in self.extensions:
+                logger.warning(f"Unsupported file extension: {file_path}")
+                stats["files_skipped"] += 1
+                continue
+                
+            files_to_process.append(str(p.resolve()))  # Use absolute path
+        
+        scan_time = time.time() - scan_start
+        stats["scan_time_seconds"] = scan_time
+        stats["files_found"] = len(files_to_process)
+
+        if not files_to_process:
+            print("No valid files found to index")
+            stats["total_time_seconds"] = time.time() - start_time
+            return stats
+
+        print(f"Found {len(files_to_process)} valid files to process in {scan_time:.2f}s")
+
+        # Process files with progress tracking
+        indexing_start = time.time()
+        
+        if show_progress:
+            self._process_files_with_progress(files_to_process, force_reindex, stats)
+        else:
+            self._process_files_batch(files_to_process, force_reindex, stats)
+
+        indexing_time = time.time() - indexing_start
+        total_time = time.time() - start_time
+        
+        stats["indexing_time_seconds"] = indexing_time
+        stats["total_time_seconds"] = total_time
+
+        # Calculate throughput
+        files_per_second = stats["files_indexed"] / indexing_time if indexing_time > 0 else 0
+
+        print(
+            f"File indexing complete: {stats['files_indexed']} files indexed in {total_time:.2f}s "
+            f"({files_per_second:.1f} files/sec)"
+        )
+        return stats
+
     def _process_files_with_progress(
         self, files: List[str], force_reindex: bool, stats: Dict[str, int]
     ) -> None:
@@ -413,6 +491,12 @@ class MemoryIndexer:
             filename = Path(file_path).stem.lower()
             if filename in ["index", "main", "config", "settings"]:
                 return generate_path_based_id(file_path, filename)
+            
+            # For arbitrary files (e.g., individual files being indexed), 
+            # generate ID from filename and parent directory to avoid collisions
+            path_obj = Path(file_path)
+            parent_name = path_obj.parent.name if path_obj.parent.name != '.' else 'root'
+            return f"{parent_name}-{path_obj.stem}"
 
         return None
 
