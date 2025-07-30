@@ -186,9 +186,7 @@ def cmd_reembed(args) -> None:
             except Exception as e:
                 print(f"Failed to process task {task['task_id']}: {e}")
 
-        print(
-            f"Re-embedding completed: {success_count}/{len(stale_tasks)} successful"
-        )
+        print(f"Re-embedding completed: {success_count}/{len(stale_tasks)} successful")
 
     except Exception as e:
         print(f"Re-embedding failed: {e}")
@@ -201,17 +199,27 @@ def cmd_health(args) -> None:
 
     print("Memory Bridge Health Report")
     print("=" * 50)
-    print(f"Database path: {memory.db_path}")
-    print(f"Database size: {health.database_size / (1024*1024):.1f} MB")
-    print(f"Archive count: {health.archive_count}")
-    print(f"Embedding count: {health.embedding_count}")
+    
+    # Handle both server available and unavailable cases
+    if health.get("status") == "unavailable":
+        print("❌ Server unavailable")
+        print(f"Error: {health.get('error', 'Unknown error')}")
+        return
+    
+    # Extract database info from health data
+    db_info = health.get("database", {})
+    print(f"Status: {health.get('status', 'unknown')}")
+    print(f"Database size: {db_info.get('database_size', 0) / (1024*1024):.1f} MB")
+    print(f"Archive count: {db_info.get('archive_count', 0)}")
+    print(f"Embedding count: {db_info.get('embedding_count', 0)}")
 
-    if health.embedding_versions:
-        print(f"Embedding versions: {health.embedding_versions}")
+    if db_info.get("embedding_versions"):
+        print(f"Embedding versions: {db_info['embedding_versions']}")
 
-    if health.wal_checkpoint_age is not None:
-        print(f"WAL checkpoint age: {health.wal_checkpoint_age} seconds")
-        if health.wal_checkpoint_age > 3600:  # 1 hour
+    wal_age = db_info.get("wal_checkpoint_age")
+    if wal_age is not None:
+        print(f"WAL checkpoint age: {wal_age} seconds")
+        if wal_age > 3600:  # 1 hour
             print("  WARNING: WAL file is getting old, consider checkpoint")
 
     if args.detailed:
@@ -498,13 +506,9 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
         if self._thread:
             self._thread.join(timeout=2)
             if self._thread.is_alive():
-                print(
-                    "⚠️  Background service thread did not stop within timeout"
-                )
+                print("⚠️  Background service thread did not stop within timeout")
             else:
-                print(
-                    "✅ Maintenance background service stopped successfully"
-                )
+                print("✅ Maintenance background service stopped successfully")
 
     # ------------------------------------------------------------------
     # Persistence helpers
@@ -553,9 +557,7 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
 
     def run_operation(self, operation: str):
         if not getattr(settings.maintenance.enabled, operation, False):
-            print(
-                f"⏭️ Skipping disabled maintenance operation: {operation}"
-            )
+            print(f"⏭️ Skipping disabled maintenance operation: {operation}")
             return
 
         start_time = time.time()
@@ -564,7 +566,19 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
         try:
             if operation == "checkpoint":
                 print("   - Performing WAL checkpoint...")
-                checkpoint_database()
+                print("   - DEBUG: Using raw SQLite approach")
+                
+                # Raw SQLite approach to bypass SQLAlchemy issues
+                import sqlite3
+                from serena.infrastructure.database import get_database_path
+                
+                db_path = get_database_path()
+                print(f"   - DEBUG: Database path: {db_path}")
+                with sqlite3.connect(db_path) as conn:
+                    print("   - DEBUG: Executing PRAGMA wal_checkpoint(TRUNCATE)")
+                    conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                    conn.commit()
+                    print("   - DEBUG: WAL checkpoint completed successfully")
                 now = time.time()
                 self._last_checkpoint = now
                 self._store_meta_timestamp("last_checkpoint", now)
@@ -573,12 +587,15 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
 
             elif operation == "vacuum":
                 print("   - Performing database vacuum...")
-
-                # Create a mock args object for cmd_vacuum
-                class MockArgs:
-                    db_path = get_database_path()
-
-                cmd_vacuum(MockArgs())
+                
+                # Raw SQLite approach to bypass SQLAlchemy issues
+                import sqlite3
+                from serena.infrastructure.database import get_database_path
+                
+                db_path = get_database_path()
+                with sqlite3.connect(db_path) as conn:
+                    conn.execute("VACUUM")
+                    conn.commit()
                 now = time.time()
                 self._last_vacuum = now
                 self._store_meta_timestamp("last_vacuum", now)

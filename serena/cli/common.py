@@ -341,6 +341,20 @@ class RemoteMemory:
                 "correlation_id": None,
             }
 
+    def health(self) -> Dict[str, Any]:
+        """Get comprehensive health information from the server."""
+        try:
+            response = self._make_request("GET", "/health")
+            return response.get("data", {})
+        except Exception as e:
+            # Return a basic health structure if server is unavailable
+            return {
+                "status": "unavailable",
+                "error": str(e),
+                "database": {"archive_count": 0, "database_size": 0},
+                "server": {"available": False}
+            }
+
 
 __all__ = [
     "setup_logging",

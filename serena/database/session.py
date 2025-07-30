@@ -14,7 +14,6 @@ from serena.core.models import Base
 from serena.settings import database_config, settings
 
 
-
 class DatabaseManager:
     """Manages SQLAlchemy database sessions and connections."""
 
@@ -382,20 +381,20 @@ class DatabaseManager:
     def vacuum(self) -> None:
         """Run VACUUM operation to reclaim space."""
         try:
-            # VACUUM requires a direct connection, not through session
-            with self.engine.connect() as conn:
-                conn.execute("VACUUM")
-                conn.commit()
+            with self.get_session() as session:
+                session.execute(text("VACUUM"))
+                session.commit()
             print("Database VACUUM completed")
         except Exception as exc:
-            print("Database VACUUM failed: %s", exc)
+            print(f"Database VACUUM failed: {exc}")
             raise
 
     def checkpoint(self) -> None:
         """Checkpoint the WAL file."""
         try:
+            # Use raw connection for PRAGMA commands instead of ORM session
             with self.engine.connect() as conn:
-                conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+                conn.execute(text("PRAGMA wal_checkpoint(TRUNCATE)"))
                 conn.commit()
             print("WAL checkpoint completed")
         except Exception as exc:

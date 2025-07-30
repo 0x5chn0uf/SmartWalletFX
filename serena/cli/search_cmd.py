@@ -9,6 +9,7 @@ from typing import Any
 from serena.core.errors import (ErrorCode, SerenaException,
                                 get_user_friendly_message)
 from serena.settings import settings
+import json
 
 
 def _try_server_search(query: str, limit: int):
@@ -27,9 +28,7 @@ def _try_server_search(query: str, limit: int):
                     error_info["message"],
                 )
                 if error_info.get("details"):
-                    print(
-                        "Error details: %s", error_info["details"]
-                    )
+                    print("Error details: %s", error_info["details"])
             return [], False, error_info
 
         # Perform search using RemoteMemory (which handles structured errors)
@@ -59,9 +58,7 @@ def _try_server_search(query: str, limit: int):
         return results, True, None  # Success
 
     except Exception as exc:
-        print(
-            "Server search failed: %s", exc, exc_info=True
-        )
+        print("Server search failed: %s", exc, exc_info=True)
 
         # Extract error info if it's a structured error
         error_info = None
@@ -83,6 +80,81 @@ def _try_server_search(query: str, limit: int):
                 remote_memory.close()
             except Exception as cleanup_e:
                 print(f"Cleanup warning: {cleanup_e}")
+
+
+def _format_claude_optimized(results, query):
+    """Format search results for Claude Code consumption."""
+    output = []
+    
+    # Header with key metrics
+    output.append(f"SEARCH: {query}")
+    output.append(f"RESULTS: {len(results)} found | SCORES: {results[0].score:.3f}-{results[-1].score:.3f}" if results else "RESULTS: 0 found")
+    output.append("")
+    
+    # Compact result listing
+    for i, result in enumerate(results, 1):
+        # Main result line with key info
+        status_indicator = "✅" if result.status and "done" in str(result.status) else "📋"
+        score_indicator = "🔥" if result.score and result.score > 0.7 else "📊" if result.score and result.score > 0.5 else "📈"
+        
+        output.append(f"{i}. [{result.task_id}] {result.title} {status_indicator}")
+        
+        # Compact metadata line
+        metadata_parts = []
+        if result.score:
+            metadata_parts.append(f"{score_indicator} {result.score:.3f}")
+        if result.kind:
+            metadata_parts.append(f"🏷️ {result.kind.value}")
+        if result.filepath:
+            # Show just filename, not full path
+            filename = result.filepath.split('/')[-1] if '/' in result.filepath else result.filepath
+            metadata_parts.append(f"📁 {filename}")
+            
+        if metadata_parts:
+            output.append(f"   {' | '.join(metadata_parts)}")
+        
+        # Truncated excerpt
+        if result.excerpt:
+            excerpt = result.excerpt.strip()[:120] + "..." if len(result.excerpt.strip()) > 120 else result.excerpt.strip()
+            output.append(f"   💬 {excerpt}")
+        
+        output.append("")  # Empty line between results
+    
+    return "\n".join(output)
+
+
+def _format_compact(results, query):
+    """Format search results in compact single-line format."""
+    output = []
+    output.append(f"SEARCH: {query} | {len(results)} results")
+    
+    for result in results:
+        score_str = f"{result.score:.3f}" if result.score else "0.000"
+        title_truncated = result.title[:50] + "..." if len(result.title) > 50 else result.title
+        output.append(f"[{result.task_id}] {score_str} | {title_truncated}")
+    
+    return "\n".join(output)
+
+
+def _format_json(results, query):
+    """Format search results as JSON."""
+    results_data = []
+    for result in results:
+        results_data.append({
+            'task_id': result.task_id,
+            'title': result.title,
+            'score': result.score,
+            'excerpt': result.excerpt,
+            'kind': result.kind.value if result.kind else None,
+            'status': str(result.status) if result.status else None,
+            'filepath': result.filepath,
+        })
+    
+    return json.dumps({
+        'query': query,
+        'result_count': len(results),
+        'results': results_data
+    }, indent=2)
 
 
 def cmd_search(args) -> None:
@@ -123,24 +195,44 @@ def cmd_search(args) -> None:
             sys.exit(1)
 
         if not results:
-            print("❌ No results found")
-            print(f"   Try different keywords or check if content is indexed")
+            if getattr(args, 'format', 'default') in ['claude-optimized', 'compact', 'json']:
+                # Structured no-results response
+                if args.format == 'json':
+                    print(_format_json([], args.query))
+                elif args.format == 'compact':
+                    print(f"SEARCH: {args.query} | 0 results")
+                else:  # claude-optimized
+                    print(f"SEARCH: {args.query}")
+                    print("RESULTS: 0 found")
+                    print("\nNo relevant memories found. Try different keywords or check if content is indexed.")
+            else:
+                print("❌ No results found")
+                print(f"   Try different keywords or check if content is indexed")
             return
 
-        print(f"\n✅ Found {len(results)} results:")
-        print("-" * 50)
+        # Format output based on requested format
+        if getattr(args, 'format', 'default') == 'claude-optimized':
+            print("\n" + _format_claude_optimized(results, args.query))
+        elif getattr(args, 'format', 'default') == 'compact':
+            print(_format_compact(results, args.query))
+        elif getattr(args, 'format', 'default') == 'json':
+            print(_format_json(results, args.query))
+        else:
+            # Default verbose format (existing)
+            print(f"\n✅ Found {len(results)} results:")
+            print("-" * 50)
 
-        for i, result in enumerate(results, 1):
-            print(f"{i}. [{result.task_id}] {result.title}")
-            if result.filepath:
-                print(f"   📁 {result.filepath}")
-            if result.kind:
-                print(f"   🏷️ {result.kind.value}")
-            if result.score:
-                print(f"   📊 Score: {result.score:.3f}")
-            if result.excerpt:
-                print(f"   📝 {result.excerpt[:100]}...")
-            print()
+            for i, result in enumerate(results, 1):
+                print(f"{i}. [{result.task_id}] {result.title}")
+                if result.filepath:
+                    print(f"   📁 {result.filepath}")
+                if result.kind:
+                    print(f"   🏷️ {result.kind.value}")
+                if result.score:
+                    print(f"   📊 Score: {result.score:.3f}")
+                if result.excerpt:
+                    print(f"   📝 {result.excerpt[:100]}...")
+                print()
 
     except KeyboardInterrupt:
         print("\n🛑 Search cancelled by user")
@@ -160,6 +252,8 @@ def register(sub: Any) -> None:
     p = sub.add_parser("search", help="Semantic search across memories")
     p.add_argument("query", help="Query string")
     p.add_argument("--limit", type=int, default=10, help="Number of results to return")
+    p.add_argument("--format", choices=['default', 'claude-optimized', 'compact', 'json'], 
+                   default='default', help="Output format (claude-optimized for LLM consumption)")
     p.add_argument("--advanced", action="store_true", help="Use advanced mode")
     p.add_argument(
         "-v", "--verbose", action="store_true", help="Enable verbose logging"

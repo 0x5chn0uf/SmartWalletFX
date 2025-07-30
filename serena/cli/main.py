@@ -34,6 +34,7 @@ _COMMAND_MODULES = [
     "delete_cmd",
     "pool_cmd",
     "maintenance_cmd",
+    "context_cmd",
 ]
 
 
