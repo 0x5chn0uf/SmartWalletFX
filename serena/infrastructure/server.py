@@ -188,6 +188,9 @@ async def _upsert_archive_direct(
     """Direct archive upsert without using Memory class."""
 
     def _upsert_internal():
+        # Create a new database session for thread safety
+        from serena.infrastructure.database import get_session
+        
         # Pre-process & chunk content for embeddings
         clean_content = preprocess_content(markdown_text)
         chunks = chunk_content(clean_content)
@@ -201,37 +204,39 @@ async def _upsert_archive_direct(
                     break
 
         try:
-            # Upsert main archive row with row-level locking
-            archive = (
-                db.query(Archive).filter_by(task_id=task_id).with_for_update().first()
-            )
-
-            if archive:
-                # Update existing archive
-                archive.title = extracted_title or f"Archive {task_id}"
-                archive.filepath = filepath or f"archive-{task_id}.md"
-                archive.sha256 = compute_content_hash(markdown_text)
-                archive.kind = kind.value if kind else "archive"
-                archive.status = status.value if status else None
-                archive.completed_at = completed_at
-                archive.summary = generate_summary(markdown_text)
-                archive.updated_at = datetime.now()
-            else:
-                # Create new archive
-                archive = Archive(
-                    task_id=task_id,
-                    title=extracted_title or f"Archive {task_id}",
-                    filepath=filepath or f"archive-{task_id}.md",
-                    sha256=compute_content_hash(markdown_text),
-                    kind=kind.value if kind else "archive",
-                    status=status.value if status else None,
-                    completed_at=completed_at,
-                    summary=generate_summary(markdown_text),
+            # Use a fresh session for thread safety
+            with get_session() as session:
+                # Upsert main archive row with row-level locking
+                archive = (
+                    session.query(Archive).filter_by(task_id=task_id).with_for_update().first()
                 )
-                db.add(archive)
 
-            # Delete existing embeddings for this task
-            db.query(Embedding).filter_by(task_id=task_id).delete()
+                if archive:
+                    # Update existing archive
+                    archive.title = extracted_title or f"Archive {task_id}"
+                    archive.filepath = filepath or f"archive-{task_id}.md"
+                    archive.sha256 = compute_content_hash(markdown_text)
+                    archive.kind = kind.value if kind else "archive"
+                    archive.status = status.value if status else None
+                    archive.completed_at = completed_at
+                    archive.summary = generate_summary(markdown_text)
+                    archive.updated_at = datetime.now()
+                else:
+                    # Create new archive
+                    archive = Archive(
+                        task_id=task_id,
+                        title=extracted_title or f"Archive {task_id}",
+                        filepath=filepath or f"archive-{task_id}.md",
+                        sha256=compute_content_hash(markdown_text),
+                        kind=kind.value if kind else "archive",
+                        status=status.value if status else None,
+                        completed_at=completed_at,
+                        summary=generate_summary(markdown_text),
+                    )
+                    session.add(archive)
+
+                # Delete existing embeddings for this task
+                session.query(Embedding).filter_by(task_id=task_id).delete()
 
             # Queue embeddings for async generation (non-blocking)
             from serena.infrastructure.embeddings import get_embedding_queue
@@ -251,38 +256,37 @@ async def _upsert_archive_direct(
                         f"Failed to queue embeddings for task {task_id}, search will be unavailable until embeddings are generated"
                     )
 
-            # Update FTS search index
-            try:
-                from sqlalchemy import text
+                # Update FTS search index
+                try:
+                    from sqlalchemy import text
 
-                # Delete existing FTS entry
-                db.execute(
-                    text("DELETE FROM archives_fts WHERE task_id = :task_id"),
-                    {"task_id": task_id},
-                )
-                # Insert updated FTS entry
-                db.execute(
-                    text(
-                        "INSERT INTO archives_fts (task_id, title, summary) VALUES (:task_id, :title, :summary)"
-                    ),
-                    {
-                        "task_id": archive.task_id,
-                        "title": archive.title,
-                        "summary": archive.summary or "",
-                    },
-                )
-            except Exception as fts_exc:
-                # FTS index update is not critical
-                import logging
+                    # Delete existing FTS entry
+                    session.execute(
+                        text("DELETE FROM archives_fts WHERE task_id = :task_id"),
+                        {"task_id": task_id},
+                    )
+                    # Insert updated FTS entry
+                    session.execute(
+                        text(
+                            "INSERT INTO archives_fts (task_id, title, summary) VALUES (:task_id, :title, :summary)"
+                        ),
+                        {
+                            "task_id": archive.task_id,
+                            "title": archive.title,
+                            "summary": archive.summary or "",
+                        },
+                    )
+                except Exception as fts_exc:
+                    # FTS index update is not critical
+                    import logging
 
-                print(f"Failed to update FTS index for task {task_id}: {fts_exc}")
+                    print(f"Failed to update FTS index for task {task_id}: {fts_exc}")
 
-            # Commit the transaction
-            db.commit()
-            return True
+                # Commit the transaction
+                session.commit()
+                return True
 
         except Exception as exc:
-            db.rollback()
             print(f"Database error during upsert for {task_id}: {exc}")
             return False
 
