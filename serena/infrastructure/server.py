@@ -86,11 +86,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         from serena.infrastructure.write_queue import write_queue, _create_write_queue
         import serena.infrastructure.write_queue as wq_module
-        
+
         # Initialize global write queue if not already done
         if wq_module.write_queue is None:
             wq_module.write_queue = _create_write_queue()
-            
+
         queue_time = time.time() - queue_start
         print(f"✅ Write queue initialized successfully in {queue_time:.2f}s")
         print(f"   - Queue size limit: {wq_module.write_queue.max_queue_size}")
@@ -190,7 +190,7 @@ async def _upsert_archive_direct(
     def _upsert_internal():
         # Create a new database session for thread safety
         from serena.infrastructure.database import get_session
-        
+
         # Pre-process & chunk content for embeddings
         clean_content = preprocess_content(markdown_text)
         chunks = chunk_content(clean_content)
@@ -208,7 +208,10 @@ async def _upsert_archive_direct(
             with get_session() as session:
                 # Upsert main archive row with row-level locking
                 archive = (
-                    session.query(Archive).filter_by(task_id=task_id).with_for_update().first()
+                    session.query(Archive)
+                    .filter_by(task_id=task_id)
+                    .with_for_update()
+                    .first()
                 )
 
                 if archive:
@@ -256,6 +259,11 @@ async def _upsert_archive_direct(
                         f"Failed to queue embeddings for task {task_id}, search will be unavailable until embeddings are generated"
                     )
 
+                # Capture archive values before session closes to avoid detached instance errors
+                archive_task_id = archive.task_id
+                archive_title = archive.title
+                archive_summary = archive.summary or ""
+
                 # Update FTS search index
                 try:
                     from sqlalchemy import text
@@ -271,16 +279,16 @@ async def _upsert_archive_direct(
                             "INSERT INTO archives_fts (task_id, title, summary) VALUES (:task_id, :title, :summary)"
                         ),
                         {
-                            "task_id": archive.task_id,
-                            "title": archive.title,
-                            "summary": archive.summary or "",
+                            "task_id": archive_task_id,
+                            "title": archive_title,
+                            "summary": archive_summary,
                         },
                     )
                 except Exception as fts_exc:
                     # FTS index update is not critical
-                    import logging
-
-                    print(f"Failed to update FTS index for task {task_id}: {fts_exc}")
+                    print(
+                        f"❌ Failed to update FTS index for task {task_id}: {fts_exc}"
+                    )
 
                 # Commit the transaction
                 session.commit()
@@ -293,10 +301,13 @@ async def _upsert_archive_direct(
     if async_write:
         try:
             from serena.infrastructure.write_queue import write_queue as wq
+
             if wq is None:
-                print(f"Write queue not available for task {task_id}, falling back to sync")
+                print(
+                    f"Write queue not available for task {task_id}, falling back to sync"
+                )
                 return _upsert_internal()
-            
+
             operation_id = wq.submit(
                 _upsert_internal,
                 priority=1,
