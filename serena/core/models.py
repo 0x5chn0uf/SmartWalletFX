@@ -76,6 +76,34 @@ class Embedding(Base):
     archive: Mapped["Archive"] = relationship("Archive", back_populates="embeddings")
 
 
+class IndexedFiles(Base):
+    """Track which files have been indexed to prevent duplicate processing."""
+
+    __tablename__ = "indexed_files"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    filepath: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    task_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    file_size: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_modified: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    indexed_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=func.now(), onupdate=func.now()
+    )
+
+    # Constraints
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('archive', 'reflection', 'doc', 'rule', 'code')",
+            name="ck_indexed_files_kind",
+        ),
+    )
+
+
 class MaintenanceLog(Base):
     """Maintenance log model for tracking database operations."""
 
@@ -320,8 +348,21 @@ def determine_task_kind(filepath: str) -> TaskKind:
     Returns:
         TaskKind: Determined kind
     """
+    from pathlib import Path
+    
     filepath_lower = filepath.lower()
+    file_ext = Path(filepath).suffix.lower()
+    
+    # Check for code files first by extension
+    code_extensions = {'.py', '.ts', '.tsx', '.js', '.jsx', '.go', '.rs', '.java', '.cpp', '.c', '.h', '.hpp'}
+    if file_ext in code_extensions:
+        return TaskKind.CODE
+    
+    # Check for code directories (backend, frontend, src)
+    if any(code_dir in filepath_lower for code_dir in ['backend/', 'frontend/', 'src/', '/app/', '/components/', '/services/', '/utils/']):
+        return TaskKind.CODE
 
+    # Check for specific content types in filepath
     if "archive" in filepath_lower:
         return TaskKind.ARCHIVE
     elif "reflection" in filepath_lower:
@@ -388,6 +429,7 @@ __all__ = [
     "Base",
     "Archive",
     "Embedding",
+    "IndexedFiles",
     "MaintenanceLog",
     # Enums
     "TaskKind",

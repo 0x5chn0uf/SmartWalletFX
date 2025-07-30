@@ -76,14 +76,16 @@ def detect_taskmaster_directories() -> List[str]:
     """Detect TaskMaster directories in the current project."""
     directories = []
 
-    # Common TaskMaster directory patterns
+    # Common TaskMaster directory patterns (synced with MemoryIndexer.scan_dirs)
     taskmaster_patterns = [
-        ".taskmaster/memory-bank/",
+        ".taskmaster/memory-bank",
         ".taskmaster/memory-bank/reflections",
         ".taskmaster/memory-bank/archives",
         ".taskmaster/logs",
         ".serena/memories",
         "docs",
+        "backend/app",
+        "frontend/src",
     ]
 
     for pattern in taskmaster_patterns:
@@ -102,6 +104,11 @@ class RemoteMemory:
         if not self.server_url.startswith("http"):
             self.server_url = f"http://{self.server_url}"
         self._session = None
+        
+        # Add db_path property for IndexedFiles table access
+        # This allows local tracking even when using remote API
+        from serena.settings import database_config
+        self.db_path = database_config.db_path
 
     @property
     def session(self):

@@ -35,6 +35,7 @@ _COMMAND_MODULES = [
     "pool_cmd",
     "maintenance_cmd",
     "context_cmd",
+    "watch_cmd",
 ]
 
 
