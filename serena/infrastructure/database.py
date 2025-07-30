@@ -39,7 +39,7 @@ def init_database(db_path: Optional[str] = None) -> str:
         raise RuntimeError("Database health check failed")
 
     if migrated:
-        print(f"Database initialized with migrations at {db_path}")
+        print(f"✅ Database initialized with migrations at {db_path}")
     else:
         print(f"Database already up to date at {db_path}")
 

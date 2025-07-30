@@ -151,8 +151,7 @@ class EmbeddingGenerator:
         try:
             from pathlib import Path
 
-            from sentence_transformers import \
-                SentenceTransformer  # noqa: WPS433
+            from sentence_transformers import SentenceTransformer  # noqa: WPS433
 
             # Use local cache directory for faster loading
             cache_dir = Path.home() / ".cache" / "serena" / "models"
@@ -467,7 +466,7 @@ class EmbeddingGenerator:
         print(f"Starting batch encoding for {len(texts)} texts")
         vecs = self.model.encode(texts, convert_to_numpy=True, batch_size=32)  # type: ignore[attr-defined]
         print(
-            f"Batch encode successful (shape={getattr(vecs, 'shape', 'unknown')})", 
+            f"Batch encode successful (shape={getattr(vecs, 'shape', 'unknown')})",
         )
 
         # Convert to list and explicitly delete numpy array to free memory
@@ -780,9 +779,7 @@ class AsyncEmbeddingQueue:
             with self._stats_lock:
                 self._stats["queue_full_errors"] += 1
 
-            print(
-                f"Embedding queue is full, skipping embeddings for task {task_id}"
-            )
+            print(f"Embedding queue is full, skipping embeddings for task {task_id}")
             return False
 
     def _worker_loop(self) -> None:
@@ -807,9 +804,7 @@ class AsyncEmbeddingQueue:
                 self._embedding_queue.task_done()
 
             except Exception as exc:
-                print(
-                    f"Embedding worker {worker_name} error: {exc}", exc_info=True
-                )
+                print(f"Embedding worker {worker_name} error: {exc}", exc_info=True)
 
         print(f"Embedding worker {worker_name} stopped")
 
@@ -862,9 +857,7 @@ class AsyncEmbeddingQueue:
             with self._stats_lock:
                 self._stats["failed_embeddings"] += 1
 
-            print(
-                f"Failed to generate embeddings for task {request.task_id}: {exc}"
-            )
+            print(f"❌ Failed to generate embeddings for task {request.task_id}: {exc}")
 
     def _store_embeddings(
         self,
@@ -902,7 +895,7 @@ class AsyncEmbeddingQueue:
                 print(f"Stored {len(embeddings)} embeddings for task {task_id}")
 
         except Exception as exc:
-            print(f"Failed to store embeddings for task {task_id}: {exc}")
+            print(f"❌ Failed to store embeddings for task {task_id}: {exc}")
             raise
 
     def get_stats(self) -> Dict[str, Any]:

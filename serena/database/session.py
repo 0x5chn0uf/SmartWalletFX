@@ -179,10 +179,10 @@ class DatabaseManager:
 
                 session.commit()
 
-            print("Database tables and indexes initialized at %s", self.db_path)
+            print(f"Database tables and indexes initialized at {self.db_path}")
 
         except Exception as exc:
-            print("Failed to initialize database tables: %s", exc)
+            print(f"❌ Failed to initialize database tables: {exc}")
             raise
 
     def initialize_for_deployment(self) -> dict:

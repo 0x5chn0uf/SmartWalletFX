@@ -241,25 +241,7 @@ async def _upsert_archive_direct(
                 # Delete existing embeddings for this task
                 session.query(Embedding).filter_by(task_id=task_id).delete()
 
-            # Queue embeddings for async generation (non-blocking)
-            from serena.infrastructure.embeddings import get_embedding_queue
-
-            if chunks:
-                embedding_queue = get_embedding_queue()
-                embedding_queued = embedding_queue.submit_embedding_request(
-                    task_id=task_id,
-                    content_chunks=chunks,
-                    priority=1,  # Standard priority for archive operations
-                )
-
-                if embedding_queued:
-                    print(f"Queued embeddings for task {task_id}")
-                else:
-                    print(
-                        f"Failed to queue embeddings for task {task_id}, search will be unavailable until embeddings are generated"
-                    )
-
-                # Capture archive values before session closes to avoid detached instance errors
+                # Capture archive values while session is still active to avoid detached instance errors
                 archive_task_id = archive.task_id
                 archive_title = archive.title
                 archive_summary = archive.summary or ""
@@ -292,10 +274,29 @@ async def _upsert_archive_direct(
 
                 # Commit the transaction
                 session.commit()
-                return True
+
+            # Queue embeddings for async generation (non-blocking) - moved after session commit
+            from serena.infrastructure.embeddings import get_embedding_queue
+
+            if chunks:
+                embedding_queue = get_embedding_queue()
+                embedding_queued = embedding_queue.submit_embedding_request(
+                    task_id=task_id,
+                    content_chunks=chunks,
+                    priority=1,  # Standard priority for archive operations
+                )
+
+                if embedding_queued:
+                    print(f"Queued embeddings for task {task_id}")
+                else:
+                    print(
+                        f"Failed to queue embeddings for task {task_id}, search will be unavailable until embeddings are generated"
+                    )
+
+            return True
 
         except Exception as exc:
-            print(f"Database error during upsert for {task_id}: {exc}")
+            print(f"❌ Database error during upsert for {task_id}: {exc}")
             return False
 
     if async_write:

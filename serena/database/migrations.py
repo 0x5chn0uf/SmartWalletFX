@@ -117,7 +117,7 @@ class MigrationManager:
             print("Created migration: %s", message)
             return result.revision
         except Exception as exc:
-            print("Failed to create migration: %s", exc)
+            print("❌ Failed to create migration: %s", exc)
             raise
 
     def upgrade(self, revision: str = "head") -> None:
@@ -133,7 +133,7 @@ class MigrationManager:
             command.upgrade(self.alembic_cfg, revision)
             print("Upgraded database to %s", revision)
         except Exception as exc:
-            print("Failed to upgrade database: %s", exc)
+            print("❌ Failed to upgrade database: %s", exc)
             raise
 
     def downgrade(self, revision: str) -> None:
@@ -146,7 +146,7 @@ class MigrationManager:
             command.downgrade(self.alembic_cfg, revision)
             print("Downgraded database to %s", revision)
         except Exception as exc:
-            print("Failed to downgrade database: %s", exc)
+            print("❌ Failed to downgrade database: %s", exc)
             raise
 
     def stamp(self, revision: str = "head") -> None:
@@ -162,7 +162,7 @@ class MigrationManager:
             command.stamp(self.alembic_cfg, revision)
             print("Stamped database with %s", revision)
         except Exception as exc:
-            print("Failed to stamp database: %s", exc)
+            print("❌ Failed to stamp database: %s", exc)
             raise
 
     def show_history(self) -> None:
@@ -170,7 +170,7 @@ class MigrationManager:
         try:
             command.history(self.alembic_cfg)
         except Exception as exc:
-            print("Failed to show history: %s", exc)
+            print("❌ Failed to show history: %s", exc)
             raise
 
     def show_current(self) -> None:
@@ -178,7 +178,7 @@ class MigrationManager:
         try:
             command.current(self.alembic_cfg)
         except Exception as exc:
-            print("Failed to show current revision: %s", exc)
+            print("❌ Failed to show current revision: %s", exc)
             raise
 
     def init_database(self) -> None:
@@ -195,7 +195,7 @@ class MigrationManager:
 
             print("Initialized database at %s", self.db_path)
         except Exception as exc:
-            print("Failed to initialize database: %s", exc)
+            print("❌ Failed to initialize database: %s", exc)
             raise
 
 

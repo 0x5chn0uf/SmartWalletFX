@@ -13,8 +13,6 @@ def cmd_init(args) -> None:
     try:
         # Initialize the database
         init_database()
-        print("Serena database initialized successfully")
-
         # TODO: Add configuration file creation if needed
         # TODO: Add auto-detection of project structure
 
