@@ -29,8 +29,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from sqlalchemy import text
 
 from serena.cli.common import RemoteMemory
-from serena.infrastructure.database import (checkpoint_database,
-                                            get_database_path, vacuum_database)
+from serena.infrastructure.database import (
+    checkpoint_database,
+    get_database_path,
+    vacuum_database,
+)
 from serena.settings import settings
 
 
@@ -199,13 +202,13 @@ def cmd_health(args) -> None:
 
     print("Memory Bridge Health Report")
     print("=" * 50)
-    
+
     # Handle both server available and unavailable cases
     if health.get("status") == "unavailable":
         print("❌ Server unavailable")
         print(f"Error: {health.get('error', 'Unknown error')}")
         return
-    
+
     # Extract database info from health data
     db_info = health.get("database", {})
     print(f"Status: {health.get('status', 'unknown')}")
@@ -476,7 +479,6 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
 
         for msg in config_msgs:
             print(msg)
-            print(msg)
 
     def _format_timestamp(self, timestamp: float) -> str:
         """Format a Unix timestamp for logging."""
@@ -567,11 +569,11 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
             if operation == "checkpoint":
                 print("   - Performing WAL checkpoint...")
                 print("   - DEBUG: Using raw SQLite approach")
-                
+
                 # Raw SQLite approach to bypass SQLAlchemy issues
                 import sqlite3
                 from serena.infrastructure.database import get_database_path
-                
+
                 db_path = get_database_path()
                 print(f"   - DEBUG: Database path: {db_path}")
                 with sqlite3.connect(db_path) as conn:
@@ -587,11 +589,11 @@ class MaintenanceService:  # noqa: D101 – simple wrapper
 
             elif operation == "vacuum":
                 print("   - Performing database vacuum...")
-                
+
                 # Raw SQLite approach to bypass SQLAlchemy issues
                 import sqlite3
                 from serena.infrastructure.database import get_database_path
-                
+
                 db_path = get_database_path()
                 with sqlite3.connect(db_path) as conn:
                     conn.execute("VACUUM")

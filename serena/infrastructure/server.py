@@ -192,11 +192,12 @@ async def _upsert_archive_direct(
         clean_content = preprocess_content(markdown_text)
         chunks = chunk_content(clean_content)
 
-        # Extract title if not provided
-        if not title:
+        # Extract title if not provided - use local variable
+        extracted_title = title
+        if not extracted_title:
             for line in markdown_text.splitlines():
                 if line.startswith("#"):
-                    title = line.lstrip("# ").strip()
+                    extracted_title = line.lstrip("# ").strip()
                     break
 
         try:
@@ -207,7 +208,7 @@ async def _upsert_archive_direct(
 
             if archive:
                 # Update existing archive
-                archive.title = title or f"Archive {task_id}"
+                archive.title = extracted_title or f"Archive {task_id}"
                 archive.filepath = filepath or f"archive-{task_id}.md"
                 archive.sha256 = compute_content_hash(markdown_text)
                 archive.kind = kind.value if kind else "archive"
@@ -219,7 +220,7 @@ async def _upsert_archive_direct(
                 # Create new archive
                 archive = Archive(
                     task_id=task_id,
-                    title=title or f"Archive {task_id}",
+                    title=extracted_title or f"Archive {task_id}",
                     filepath=filepath or f"archive-{task_id}.md",
                     sha256=compute_content_hash(markdown_text),
                     kind=kind.value if kind else "archive",
@@ -287,7 +288,12 @@ async def _upsert_archive_direct(
 
     if async_write:
         try:
-            operation_id = write_queue.submit(
+            from serena.infrastructure.write_queue import write_queue as wq
+            if wq is None:
+                print(f"Write queue not available for task {task_id}, falling back to sync")
+                return _upsert_internal()
+            
+            operation_id = wq.submit(
                 _upsert_internal,
                 priority=1,
                 operation_type=WriteOperationType.UPSERT,
