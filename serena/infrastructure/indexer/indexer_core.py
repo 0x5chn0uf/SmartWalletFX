@@ -257,7 +257,10 @@ class MemoryIndexer:
         # Process files with progress tracking
         indexing_start = time.time()
         
-        if show_progress:
+        # Disable progress bar for single file to avoid clutter
+        show_progress_bar = show_progress and len(files_to_process) > 1
+        
+        if show_progress_bar:
             self._process_files_with_progress(files_to_process, force_reindex, stats)
         else:
             self._process_files_batch(files_to_process, force_reindex, stats)

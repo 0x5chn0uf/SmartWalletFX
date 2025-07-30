@@ -873,8 +873,7 @@ class AsyncEmbeddingQueue:
         embeddings: List[List[float]],
     ) -> None:
         """Store generated embeddings in the database."""
-        from serena.core.models import EmbeddingRecord
-        from serena.database.models import Embedding
+        from serena.core.models import EmbeddingRecord, Embedding
         from serena.infrastructure.database import get_session
 
         try:
