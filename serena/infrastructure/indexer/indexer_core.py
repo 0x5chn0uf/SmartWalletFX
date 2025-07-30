@@ -496,7 +496,14 @@ class MemoryIndexer:
             # generate ID from filename and parent directory to avoid collisions
             path_obj = Path(file_path)
             parent_name = path_obj.parent.name if path_obj.parent.name != '.' else 'root'
-            return f"{parent_name}-{path_obj.stem}"
+            
+            # Clean up dots from parent name to avoid consecutive dots in ID
+            # .taskmaster.memory-bank -> taskmaster-memory-bank
+            clean_parent = parent_name.lstrip(".").replace(".", "-")
+            if not clean_parent:
+                clean_parent = "root"
+                
+            return f"{clean_parent}-{path_obj.stem}"
 
         return None
 

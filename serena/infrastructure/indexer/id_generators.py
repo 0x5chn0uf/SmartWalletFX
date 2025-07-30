@@ -62,6 +62,13 @@ def generate_path_based_id(file_path: str, base_name: str) -> str:
     # Remove common prefixes to keep IDs clean (only if it's exactly "./" prefix)
     if parent_path.startswith("./") and len(parent_path) > 2 and parent_path[2] != ".":
         parent_path = parent_path[2:]
+    
+    # Clean up leading dots from parent_path to avoid consecutive dots
+    parent_path = parent_path.lstrip(".")
+    
+    # Ensure we don't create empty parent_path
+    if not parent_path:
+        return f"doc-{base_name}"
 
     return f"doc-{base_name}.{parent_path}"
 
