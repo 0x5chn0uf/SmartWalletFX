@@ -123,6 +123,7 @@ def _cmd_embed_stats(system: CodeEmbeddingSystem, args: argparse.Namespace) -> i
         print("📊 Code Embedding Statistics:")
         print(f"   📁 Files indexed: {stats['files_indexed']}")
         print(f"   🎯 Embeddings generated: {stats['embeddings_generated']}")
+        print(f"   📝 Files tracked in indexed_files: {stats['indexed_files_tracked']}")
         print(f"   📈 Average chunks per file: {stats['average_chunks_per_file']:.1f}")
 
         return 0

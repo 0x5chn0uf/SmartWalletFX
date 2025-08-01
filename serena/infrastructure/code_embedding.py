@@ -452,10 +452,13 @@ class CodeEmbeddingSystem:
             file_info = self.crawler.get_file_info(filepath)
 
             # Check if file already exists and is up to date
+            from serena.core.models import IndexedFiles
+            
             existing_file = session.query(Files).filter_by(filepath=filepath).first()
+            existing_indexed = session.query(IndexedFiles).filter_by(filepath=filepath).first()
 
-            if not force_reindex and existing_file:
-                if existing_file.sha256 == file_info["sha256"]:
+            if not force_reindex and existing_indexed:
+                if existing_indexed.sha256 == file_info["sha256"]:
                     print(f"⏭️  Skipping {filepath} (unchanged)")
                     return False
 
@@ -491,6 +494,29 @@ class CodeEmbeddingSystem:
                 )
                 session.add(file_record)
                 session.flush()  # Get the ID
+
+            # Create or update indexed_files tracking record
+            from serena.core.models import IndexedFiles
+            
+            existing_indexed = session.query(IndexedFiles).filter_by(filepath=filepath).first()
+            if existing_indexed:
+                # Update existing record
+                existing_indexed.sha256 = file_info["sha256"]
+                existing_indexed.file_size = file_info["size"]
+                existing_indexed.last_modified = file_info["last_modified"]
+                existing_indexed.updated_at = datetime.now()
+            else:
+                # Create new tracking record
+                indexed_record = IndexedFiles(
+                    filepath=filepath,
+                    sha256=file_info["sha256"],
+                    kind="code",
+                    file_size=file_info["size"],
+                    last_modified=file_info["last_modified"],
+                    indexed_at=datetime.now(),
+                    updated_at=datetime.now(),
+                )
+                session.add(indexed_record)
 
             # Generate embeddings for chunks
             embeddings_created = 0
@@ -595,12 +621,16 @@ class CodeEmbeddingSystem:
     def get_stats(self) -> Dict:
         """Get embedding statistics."""
         with get_db_session(self.db_path) as session:
+            from serena.core.models import IndexedFiles
+            
             file_count = session.query(Files).count()
             embedding_count = session.query(CodeEmbedding).count()
+            indexed_files_count = session.query(IndexedFiles).filter_by(kind="code").count()
 
             return {
                 "files_indexed": file_count,
                 "embeddings_generated": embedding_count,
+                "indexed_files_tracked": indexed_files_count,
                 "average_chunks_per_file": (
                     embedding_count / file_count if file_count > 0 else 0
                 ),
