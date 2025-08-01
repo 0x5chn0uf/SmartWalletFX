@@ -49,20 +49,25 @@ class MemoryIndexer:
             self.memory = remote_memory
             print("✅ Using server-based memory for indexing (async writes enabled)")
 
-        # Default scan directories (synced with detect_taskmaster_directories)
-        self.scan_dirs = [
-            ".taskmaster/memory-bank",
+        # Use centralized directory and file patterns from settings
+        from serena.settings import settings
+        
+        # Default scan directories from settings
+        self.scan_dirs = settings.index_directories_list + [
             ".taskmaster/memory-bank/reflections", 
             ".taskmaster/memory-bank/archives",
-            ".taskmaster/logs",
-            ".serena/memories",
-            "docs",
-            "backend/app",
-            "frontend/src",
         ]
 
-        # File extensions to index
-        self.extensions = {".md", ".txt", ".json", ".py", ".ts", ".tsx"}
+        # File extensions derived from include patterns
+        # Extract extensions from glob patterns like *.md, *.txt, etc.
+        self.extensions = set()
+        for pattern in settings.index_include_globs_list:
+            if pattern.startswith('*.'):
+                self.extensions.add(pattern[1:])  # Remove '*' to get '.md', '.txt', etc.
+        
+        # Fallback to common extensions if no patterns found
+        if not self.extensions:
+            self.extensions = {".md", ".txt", ".json", ".yaml", ".yml"}
 
         self.strategic_code_paths = {
             "backend/app/models/",

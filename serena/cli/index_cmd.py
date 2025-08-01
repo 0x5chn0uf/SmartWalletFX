@@ -141,10 +141,15 @@ def _cleanup_indexing_resources(indexer) -> None:
 
 def register(sub: Any) -> None:
     """Register the index command."""
-    p = sub.add_parser("index", help="Scan directories and/or individual files and index memories")
-    p.add_argument("--directories", help="Comma-separated directories to scan")
+    p = sub.add_parser(
+        "index", 
+        help="Index documentation and content files (*.md, *.txt, *.json)",
+        description="Index documentation, TaskMaster archives, and content files for semantic search. "
+                   "For code embedding, use 'serena embed index' instead."
+    )
+    p.add_argument("--directories", help="Comma-separated directories to scan (default: auto-detect TaskMaster dirs)")
     p.add_argument("--files", help="Comma-separated individual files to index")
-    p.add_argument("--force", action="store_true", help="Force reindex")
-    p.add_argument("--workers", type=int, default=4)
-    p.add_argument("-v", "--verbose", action="store_true")
+    p.add_argument("--force", action="store_true", help="Force reindex of all files")
+    p.add_argument("--workers", type=int, default=4, help="Number of parallel workers")
+    p.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
     p.set_defaults(func=cmd_index)

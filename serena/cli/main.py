@@ -27,6 +27,7 @@ from serena.cli import common  # noqa: E402  import after path fix
 _COMMAND_MODULES = [
     "init_cmd",
     "index_cmd",
+    "embed_cmd",
     "search_cmd",
     "serve_cmd",
     "get_cmd",

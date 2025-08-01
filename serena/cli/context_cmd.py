@@ -31,7 +31,7 @@ def _search_taskmaster_context(query: str, limit: int = 5) -> Tuple[List[Dict[st
     try:
         # Look for TaskMaster integration files
         taskmaster_dirs = [
-            ".taskmaster/tasks",
+            ".taskmaster/logs",
             ".taskmaster/memory-bank/archive", 
             ".taskmaster/memory-bank/reflection"
         ]

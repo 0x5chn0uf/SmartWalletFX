@@ -73,22 +73,22 @@ def remote_upsert(task_id: str, markdown_text: str, **meta) -> bool:
 
 
 def detect_taskmaster_directories() -> List[str]:
-    """Detect TaskMaster directories in the current project."""
+    """Detect TaskMaster directories in the current project using centralized configuration."""
     directories = []
 
-    # Common TaskMaster directory patterns (synced with MemoryIndexer.scan_dirs)
-    taskmaster_patterns = [
-        ".taskmaster/memory-bank",
+    # Use centralized directory patterns from settings
+    directory_patterns = settings.index_directories_list
+    
+    # Add some additional patterns that are commonly used but may not be in base config
+    additional_patterns = [
         ".taskmaster/memory-bank/reflections",
-        ".taskmaster/memory-bank/archives",
-        ".taskmaster/logs",
-        ".serena/memories",
-        "docs",
-        "backend/app",
-        "frontend/src",
+        ".taskmaster/memory-bank/archives", 
     ]
+    
+    # Combine patterns
+    all_patterns = directory_patterns + additional_patterns
 
-    for pattern in taskmaster_patterns:
+    for pattern in all_patterns:
         path = Path(pattern)
         if path.exists() and path.is_dir():
             directories.append(str(path))
