@@ -497,52 +497,120 @@ class EnhancedWriteQueue:
         """
         print("Initiating write queue shutdown...")
 
-        # Signal shutdown to workers
+        # Signal shutdown to workers first
         self._shutdown_event.set()
+        
+        # Give workers a moment to see the shutdown signal
+        time.sleep(0.1)
 
-        # Wait for current operations to complete
+        # Wait for current operations to complete with reduced timeout
         shutdown_start = time.time()
+        drain_timeout = min(timeout * 0.3, 10.0)  # Use max 1/3 of timeout for draining
+        
         try:
-            # Wait for priority queue to empty
+            # Wait for priority queue to empty with timeout
+            queue_empty_start = time.time()
             while (
                 not self._priority_queue.empty()
-                and (time.time() - shutdown_start) < timeout
+                and (time.time() - queue_empty_start) < drain_timeout
             ):
-                time.sleep(0.1)
+                time.sleep(0.05)  # Shorter sleep for responsiveness
 
-            # Wait for retry queue to empty
+            # Wait for retry queue to empty with timeout  
+            retry_empty_start = time.time()
             while (
                 not self._retry_queue.empty()
-                and (time.time() - shutdown_start) < timeout
+                and (time.time() - retry_empty_start) < drain_timeout
             ):
-                time.sleep(0.1)
+                time.sleep(0.05)
 
         except Exception as exc:
             print(f"Error during queue drain: {exc}")
 
-        # Wait for worker threads to finish
-        remaining_timeout = max(0, timeout - (time.time() - shutdown_start))
-        for worker in self._workers:
-            worker.join(timeout=remaining_timeout / len(self._workers))
+        # Force worker threads to finish with aggressive timeout
+        print(f"Waiting for {len(self._workers)} worker threads to finish...")
+        remaining_timeout = max(1.0, timeout - (time.time() - shutdown_start))
+        per_worker_timeout = remaining_timeout / max(len(self._workers), 1)
+        
+        alive_workers = []
+        for i, worker in enumerate(self._workers):
+            try:
+                worker.join(timeout=per_worker_timeout)
+                if worker.is_alive():
+                    print(f"Worker {worker.name} still alive after timeout")
+                    alive_workers.append(worker)
+                else:
+                    print(f"Worker {worker.name} shut down cleanly")
+            except Exception as exc:
+                print(f"Error joining worker {worker.name}: {exc}")
+                alive_workers.append(worker)
 
-        # Shutdown embedding queue as well
+        # Clear worker list to prevent resource leaks
+        self._workers.clear()
+
+        # Shutdown embedding queue as well with timeout protection
         try:
-            from serena.infrastructure.embeddings import \
-                shutdown_embedding_queue
+            from serena.infrastructure.embeddings import shutdown_embedding_queue
 
-            embedding_shutdown_success = shutdown_embedding_queue()
-            if not embedding_shutdown_success:
+            embedding_timeout = max(2.0, remaining_timeout * 0.3)
+            print(f"Shutting down embedding queue (timeout: {embedding_timeout:.1f}s)...")
+            
+            # Use threading to timeout embedding shutdown
+            embedding_success = False
+            def shutdown_embeddings():
+                nonlocal embedding_success
+                try:
+                    embedding_success = shutdown_embedding_queue()
+                except Exception as e:
+                    print(f"Embedding shutdown error: {e}")
+                    embedding_success = False
+
+            embed_thread = threading.Thread(target=shutdown_embeddings, daemon=True)
+            embed_thread.start()
+            embed_thread.join(timeout=embedding_timeout)
+            
+            if embed_thread.is_alive():
                 print("Embedding queue shutdown timed out")
+            elif not embedding_success:
+                print("Embedding queue shutdown failed")
+            else:
+                print("Embedding queue shut down successfully")
+                
         except Exception as exc:
             print(f"Failed to shutdown embedding queue: {exc}")
 
+        # Clear any remaining queue items to prevent resource leaks
+        try:
+            while not self._priority_queue.empty():
+                try:
+                    self._priority_queue.get_nowait()
+                except queue.Empty:
+                    break
+            
+            while not self._retry_queue.empty():
+                try:
+                    self._retry_queue.get_nowait()
+                except queue.Empty:
+                    break
+        except Exception as exc:
+            print(f"Error clearing queues: {exc}")
+
         # Check if shutdown completed successfully
-        success = all(not worker.is_alive() for worker in self._workers)
+        success = len(alive_workers) == 0
 
         if success:
             print("Write queue shutdown completed successfully")
         else:
-            print("Write queue shutdown timed out, some operations may be lost")
+            print(f"Write queue shutdown timed out, {len(alive_workers)} workers still alive")
+            # Force cleanup of remaining resources
+            try:
+                import gc
+                gc.collect()
+            except:
+                pass
+
+        # Set shutdown complete event
+        self._shutdown_complete.set()
 
         return success
 

@@ -160,7 +160,7 @@ class MigrationManager:
             self.db_config.ensure_database_directory()
 
             command.stamp(self.alembic_cfg, revision)
-            print("Stamped database with %s", revision)
+            print(f"Stamped database with {revision}")
         except Exception as exc:
             print("❌ Failed to stamp database: %s", exc)
             raise

@@ -402,8 +402,18 @@ class EmbeddingGenerator:
                 try:
                     # Cancel any pending cleanup timer
                     if self._cleanup_timer:
-                        self._cleanup_timer.cancel()
-                        self._cleanup_timer = None
+                        try:
+                            self._cleanup_timer.cancel()
+                            self._cleanup_timer = None
+                        except Exception as e:
+                            print(f"Timer cleanup error: {e}")
+
+                    # Wait for any loading thread to complete
+                    if self._loading_thread and self._loading_thread.is_alive():
+                        try:
+                            self._loading_thread.join(timeout=2.0)
+                        except Exception as e:
+                            print(f"Loading thread cleanup error: {e}")
 
                     # Free GPU memory if applicable
                     try:
@@ -411,19 +421,29 @@ class EmbeddingGenerator:
                             self._model.device
                         ):
                             import torch
-
                             torch.cuda.empty_cache()
-                    except Exception:
-                        pass
+                            torch.cuda.synchronize()
+                    except Exception as e:
+                        print(f"CUDA cleanup error: {e}")
 
+                    # Clear the model reference
                     self._model = None
                     self._usage_stats["last_cleanup"] = time.time()
+
+                    # Force garbage collection to free memory
+                    import gc
+                    gc.collect()
 
                     print("Forced embedding model cleanup completed")
                     return True
 
                 except Exception as exc:
                     print(f"Forced cleanup failed: {exc}")
+                    # Still try to clear the model reference
+                    try:
+                        self._model = None
+                    except:
+                        pass
 
         return False
 

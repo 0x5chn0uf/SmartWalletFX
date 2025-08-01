@@ -37,11 +37,20 @@ from serena.settings import settings
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application lifespan events."""
-    import logging
     import time
+    import threading
+    import signal
 
     from serena.infrastructure.embeddings import get_default_generator
     from serena.scripts.maintenance import MaintenanceService
+
+    # Disable multiprocessing start method issues on macOS
+    if hasattr(os, 'fork'):
+        try:
+            import multiprocessing
+            multiprocessing.set_start_method('spawn', force=True)
+        except RuntimeError:
+            pass  # Already set
 
     # use consolidated settings object
     # from serena import config (removed)
@@ -51,36 +60,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     print("📋 Configuration check:")
     print(f"   - Database path: {settings.memory_db}")
 
-    # Embeddings are always required; load model synchronously
-    print("🤖 Initializing embedding model...")
-    model_start = time.time()
-    try:
-        generator = get_default_generator()
-        print(f"   - Model name: {generator.model_name}")
-        print(f"   - Expected dimension: {generator.embedding_dim}")
-
-        # Force synchronous model loading
-        print("   - Loading model weights...")
-        success = generator.load_model_now()
-        model_time = time.time() - model_start
-
-        if not success:
-            # Embeddings were expected but model could not be loaded → abort.
-            print(
-                f"❌ Failed to load embedding model after {model_time:.2f}s – aborting startup"
-            )
-            raise RuntimeError("Embedding model failed to load; startup aborted")
-
-        print(f"✅ Embedding model loaded successfully in {model_time:.2f}s")
-        print(f"   - Model: {generator.model_name}")
-        print(f"   - Dimension: {generator.embedding_dim}")
-        print("   - Status: Ready for semantic search")
-    except Exception as exc:
-        model_time = time.time() - model_start
-        print(f"❌ Failed to preload embedding model after {model_time:.2f}s: {exc}")
-        print("   - Status: Embedding search will be UNAVAILABLE")
-
-    # Initialize write queue for server operations
+    # Initialize write queue BEFORE embeddings to prevent conflicts
     print("🔄 Initializing write queue...")
     queue_start = time.time()
     try:
@@ -101,24 +81,82 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         print(f"❌ Failed to initialize write queue after {queue_time:.2f}s: {exc}")
         print("   - Status: Async operations will be UNAVAILABLE")
 
-    # Start maintenance service
-    maintenance_service = MaintenanceService()
-    maintenance_service.start_background_service()
-    app.state.maintenance_service = maintenance_service
+    # Embeddings are always required; load model synchronously with protection
+    print("🤖 Initializing embedding model...")
+    model_start = time.time()
+    try:
+        # Set thread-safe environment for model loading
+        os.environ["TOKENIZERS_PARALLELISM"] = "false"
+        os.environ["OMP_NUM_THREADS"] = "1"
+        
+        generator = get_default_generator()
+        print(f"   - Model name: {generator.model_name}")
+        print(f"   - Expected dimension: {generator.embedding_dim}")
+
+        # Force synchronous model loading with timeout protection
+        print("   - Loading model weights...")
+        
+        # Use a lock to prevent concurrent model loading
+        model_load_success = False
+        def load_model_with_timeout():
+            nonlocal model_load_success
+            try:
+                model_load_success = generator.load_model_now()
+            except Exception as e:
+                print(f"   - Model loading failed: {e}")
+                model_load_success = False
+
+        # Run model loading in separate thread with timeout
+        load_thread = threading.Thread(target=load_model_with_timeout, daemon=True)
+        load_thread.start()
+        load_thread.join(timeout=60)  # 60 second timeout
+        
+        model_time = time.time() - model_start
+
+        if not model_load_success or load_thread.is_alive():
+            # Model loading failed or timed out
+            print(f"❌ Failed to load embedding model after {model_time:.2f}s – continuing without embeddings")
+            print("   - Status: Embedding search will be UNAVAILABLE")
+        else:
+            print(f"✅ Embedding model loaded successfully in {model_time:.2f}s")
+            print(f"   - Model: {generator.model_name}")
+            print(f"   - Dimension: {generator.embedding_dim}")
+            print("   - Status: Ready for semantic search")
+    except Exception as exc:
+        model_time = time.time() - model_start
+        print(f"❌ Failed to preload embedding model after {model_time:.2f}s: {exc}")
+        print("   - Status: Embedding search will be UNAVAILABLE")
+
+    # Start maintenance service with error protection
+    print("🔧 Starting maintenance service...")
+    maintenance_service = None
+    try:
+        maintenance_service = MaintenanceService()
+        maintenance_service.start_background_service()
+        app.state.maintenance_service = maintenance_service
+        print("✅ Maintenance service started")
+    except Exception as exc:
+        print(f"⚠️ Failed to start maintenance service: {exc}")
+        app.state.maintenance_service = None
 
     startup_time = time.time() - startup_start
     print(f"🎉 Serena server startup completed in {startup_time:.2f}s")
 
     yield
 
-    # Graceful shutdown with proper timeout handling
-    import signal
-    import asyncio
-
+    # Graceful shutdown with proper timeout handling and resource cleanup
     shutdown_start = time.time()
     print("🛑 Serena server shutting down gracefully...")
 
-    # Shutdown maintenance service
+    # Set signal handlers for immediate cleanup
+    def force_exit_handler(signum, frame):
+        print(f"⚠️ Force exit signal {signum} received during shutdown")
+        os._exit(1)
+
+    signal.signal(signal.SIGTERM, force_exit_handler)
+    signal.signal(signal.SIGINT, force_exit_handler)
+
+    # Shutdown maintenance service first
     if hasattr(app.state, "maintenance_service") and app.state.maintenance_service:
         print("   - Stopping maintenance service...")
         try:
@@ -132,42 +170,92 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         from serena.infrastructure.write_queue import write_queue
 
-        # Get current queue status before shutdown
-        metrics = write_queue.get_metrics()
-        pending_ops = metrics.current_queue_size
+        if write_queue is not None:
+            # Get current queue status before shutdown
+            try:
+                metrics = write_queue.get_metrics()
+                pending_ops = metrics.current_queue_size
 
-        if pending_ops > 0:
-            print(f"   - Waiting for {pending_ops} pending operations...")
+                if pending_ops > 0:
+                    print(f"   - Waiting for {pending_ops} pending operations...")
 
-        # Attempt graceful shutdown with timeout
-        shutdown_timeout = min(30.0, max(10.0, pending_ops * 0.5))  # Dynamic timeout
-        shutdown_success = write_queue.shutdown(timeout=shutdown_timeout)
+                # Attempt graceful shutdown with timeout
+                shutdown_timeout = min(15.0, max(5.0, pending_ops * 0.3))  # Reduced timeout
+                shutdown_success = write_queue.shutdown(timeout=shutdown_timeout)
 
-        if shutdown_success:
-            print("   ✅ Write queue shutdown completed")
-        else:
-            print(f"   ⚠️ Write queue shutdown timeout after {shutdown_timeout}s")
+                if shutdown_success:
+                    print("   ✅ Write queue shutdown completed")
+                else:
+                    print(f"   ⚠️ Write queue shutdown timeout after {shutdown_timeout}s")
 
-            # Get final metrics to see what was lost
-            final_metrics = write_queue.get_metrics()
-            if final_metrics.current_queue_size > 0:
-                print(
-                    f"   ⚠️ {final_metrics.current_queue_size} operations may have been lost"
-                )
+                    # Get final metrics to see what was lost
+                    try:
+                        final_metrics = write_queue.get_metrics()
+                        if final_metrics.current_queue_size > 0:
+                            print(f"   ⚠️ {final_metrics.current_queue_size} operations may have been lost")
+                    except:
+                        pass
+            except Exception as e:
+                print(f"   ⚠️ Error during write queue metrics check: {e}")
+                # Force shutdown without metrics
+                try:
+                    write_queue.shutdown(timeout=5.0)
+                except:
+                    pass
 
     except Exception as exc:
         print(f"   ❌ Write queue shutdown error: {exc}")
 
-    # Close database connections
+    # Force cleanup of embedding resources
+    print("   - Cleaning up embedding resources...")
+    try:
+        generator = get_default_generator()
+        if hasattr(generator, 'force_cleanup'):
+            generator.force_cleanup()
+        print("   ✅ Embedding resources cleaned up")
+    except Exception as exc:
+        print(f"   ⚠️ Embedding cleanup error: {exc}")
+
+    # Close database connections with timeout
     print("   - Closing database connections...")
     try:
         from serena.database.session import get_db_manager
 
         db_manager = get_db_manager()
-        db_manager.close()
-        print("   ✅ Database connections closed")
+        
+        # Use threading to timeout database closure
+        def close_db():
+            try:
+                db_manager.close()
+            except Exception as e:
+                print(f"   ⚠️ Database close error: {e}")
+
+        close_thread = threading.Thread(target=close_db, daemon=True)
+        close_thread.start()
+        close_thread.join(timeout=5.0)
+        
+        if close_thread.is_alive():
+            print("   ⚠️ Database close timed out")
+        else:
+            print("   ✅ Database connections closed")
     except Exception as exc:
         print(f"   ⚠️ Database cleanup error: {exc}")
+
+    # Final cleanup with forced thread termination
+    print("   - Final resource cleanup...")
+    try:
+        # Clear environment variables that might cause issues
+        for env_var in ["TOKENIZERS_PARALLELISM", "OMP_NUM_THREADS"]:
+            if env_var in os.environ:
+                del os.environ[env_var]
+        
+        # Force garbage collection
+        import gc
+        gc.collect()
+        
+        print("   ✅ Final cleanup completed")
+    except Exception as exc:
+        print(f"   ⚠️ Final cleanup error: {exc}")
 
     # Final cleanup
     shutdown_time = time.time() - shutdown_start

@@ -104,6 +104,62 @@ class IndexedFiles(Base):
     )
 
 
+class Files(Base):
+    """Files model for storing code file metadata and chunks."""
+
+    __tablename__ = "files"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    filepath: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False, default="code")
+    file_size: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_modified: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    start_line: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    end_line: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=func.now(), onupdate=func.now()
+    )
+
+    # Relationships
+    embeddings: Mapped[list["CodeEmbedding"]] = relationship(
+        "CodeEmbedding", back_populates="file", cascade="all, delete-orphan"
+    )
+
+    # Constraints
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('code', 'doc', 'config')",
+            name="ck_files_kind",
+        ),
+    )
+
+
+class CodeEmbedding(Base):
+    """Code embedding model for storing vector embeddings of code chunks."""
+
+    __tablename__ = "code_embeddings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    file_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("files.id"), nullable=False
+    )
+    chunk_id: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    start_line: Mapped[int] = mapped_column(Integer, nullable=False)
+    end_line: Mapped[int] = mapped_column(Integer, nullable=False)
+    vector: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    content_preview: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=func.now()
+    )
+
+    # Relationships
+    file: Mapped["Files"] = relationship("Files", back_populates="embeddings")
+
+
 class MaintenanceLog(Base):
     """Maintenance log model for tracking database operations."""
 
@@ -430,6 +486,8 @@ __all__ = [
     "Archive",
     "Embedding",
     "IndexedFiles",
+    "Files",
+    "CodeEmbedding",
     "MaintenanceLog",
     # Enums
     "TaskKind",
