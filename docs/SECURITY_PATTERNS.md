@@ -714,6 +714,8 @@ const useSecurityMonitoring = () => {
 - Use grace periods to prevent service disruption
 - Include comprehensive audit logging
 - Validate all JWT claims including required fields
+- JWT payloads are parsed with a Pydantic ``JWTPayload`` model to enforce
+  correct claim types like a UUID ``sub``
 
 ### For RBAC Systems
 

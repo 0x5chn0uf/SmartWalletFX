@@ -19,7 +19,7 @@ class JWTPayload(BaseModel):
     roles: List[str] = []
     attributes: Dict[str, Any] = {}
 
-    model_config = {"extra": "allow"}
+    model_config = {"extra": "allow", "validate_assignment": True}
 
     @field_validator("exp")
     @classmethod
