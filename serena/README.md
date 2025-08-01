@@ -3,11 +3,12 @@
 Serena is a lightweight knowledge base that plugs into any project, providing:
 
 * 💡 **Semantic search** over markdown archives, reflections, and documentation
+* 🔍 **Selective codebase embedding** with smart chunking and incremental updates
 * 📨 **REST API** for runtime content ingestion and retrieval
 * 🏷 **Task-aware schema** with support for archives, reflections, docs, rules, and code
 * 🛠 **Zero-config CLI** (`serena` / `selena`) for indexing, search, and HTTP server
 * ⚡️ **SQLite + vector embeddings** backend – no external services required
-* 🔍 **Content deduplication** and automatic metadata extraction
+* 🔄 **Content deduplication** and automatic metadata extraction
 * 📊 **Health monitoring** and database diagnostics
 
 ## Installation
@@ -24,14 +25,20 @@ pip install serena
 # One-time setup
 serena init                     # creates local SQLite database
 
-# Index content (auto-detects .taskmaster directories)
-serena index                    # scan and index memories
+# Index documentation and content files
+serena index                    # scan and index TaskMaster/content files (*.md, *.txt, *.json)
 serena index --force            # force reindex all content
 serena index --directories ./docs,./archives --workers 8
 
 # Search indexed content
 serena search "jwt rotation"    # semantic search
 serena search "embeddings schema" --limit 20
+
+# Code embedding and search (separate from content indexing)
+serena embed index              # index code files (*.py, *.ts, *.tsx, *.js, *.jsx)
+serena embed index --files backend/app/models.py --force
+serena embed search "authentication JWT validation" --limit 5
+serena embed stats              # embedding statistics
 
 # Run API server
 serena serve                    # start server on localhost:8765
@@ -42,6 +49,19 @@ selena search "authentication patterns"
 ```
 
 ## CLI Reference
+
+### Two Types of Indexing
+
+Serena provides two distinct indexing commands for different types of content:
+
+| Command | Purpose | File Types | Use Case |
+|---------|---------|------------|----------|
+| `serena index` | Documentation & content indexing | `*.md`, `*.txt`, `*.json`, `*.yaml`, `*.yml` | TaskMaster archives, documentation, configuration files |
+| `serena embed index` | Code semantic search | `*.py`, `*.ts`, `*.tsx`, `*.js`, `*.jsx` | Semantic code search without exposing full source |
+
+**When to use which:**
+- Use `serena index` for searching documentation, TaskMaster archives, and content files
+- Use `serena embed index` for semantic code search and finding relevant code patterns
 
 ### Core Commands
 
@@ -85,6 +105,33 @@ Show latest archived entries.
 - `--limit <int>`: Number of entries to show (default: 10)
 - `-v, --verbose`: Enable verbose logging
 
+#### `serena embed <action> [options]`
+Selective codebase embedding for semantic code search.
+
+**Actions:**
+- `index [options]`: Index codebase or specific files
+  - `--force`: Force reindexing (ignore SHA-256 checksums)
+  - `--files <files>`: Specific files to index
+  - `--project-root <path>`: Project root directory
+- `search <query> [options]`: Search embedded code
+  - `--limit <int>`: Maximum results (default: 10)
+- `stats`: Show embedding statistics
+
+**Examples:**
+```bash
+# Index entire codebase
+serena embed index
+
+# Index specific files with force reindexing
+serena embed index --files backend/app/models.py frontend/src/components/Auth.tsx --force
+
+# Search for authentication-related code
+serena embed search "JWT token validation middleware"
+
+# Check embedding statistics
+serena embed stats
+```
+
 ### Content Types
 
 Serena automatically categorizes content by type:
@@ -93,6 +140,7 @@ Serena automatically categorizes content by type:
 - **DOC**: General documentation and guides
 - **RULE**: Configuration rules and patterns
 - **CODE**: Code snippets and technical references
+- **CODEBASE**: Selective code embeddings for semantic search
 
 ### Advanced Features
 
@@ -101,9 +149,46 @@ Serena automatically categorizes content by type:
 - **Chunked embeddings** for large documents
 - **Versioned embeddings** for model upgrades
 - **Health monitoring** with database metrics
+- **Selective code embedding** with configurable file patterns
+- **Incremental updates** using SHA-256 change detection
+- **Smart code chunking** with structure-aware splitting
+- **Language-aware processing** (Python, TypeScript, JavaScript)
+- **Comment stripping** for cleaner embeddings
 
-## Embedding model
-Sentence-Transformers is pulled in as an optional dependency.  The first call will download the default MiniLM-L6 model (~80 MB).  Override via `SERENA_MODEL` environment variable if you need a different encoder.
+## Configuration
+
+### Embedding Models
+Sentence-Transformers is pulled in as an optional dependency. The first call will download the default MiniLM-L6 model (~80 MB). Override via `SERENA_MODEL` environment variable if you need a different encoder.
+
+### Code Embedding Configuration
+Customize code embedding behavior via environment variables:
+
+```bash
+# Core embedding settings
+SERENA_EMBEDDING_CHUNK_SIZE=4096          # Chunk size in bytes (default: 4096)
+SERENA_EMBEDDING_OVERLAP_LINES=20         # Lines to overlap between chunks (default: 20)
+SERENA_EMBEDDING_STRIP_COMMENTS=true      # Remove comments before embedding (default: true)
+
+# File selection patterns (comma-separated globs)
+SERENA_EMBEDDING_INCLUDE_GLOBS="*.py,*.ts,*.tsx,*.js,*.jsx,backend/app/**/*.py,frontend/src/**/*.ts"
+SERENA_EMBEDDING_EXCLUDE_GLOBS="**/test*/**,**/tests/**,**/node_modules/**,**/.git/**,**/build/**,**/__pycache__/**"
+```
+
+### Default File Patterns
+
+**Included by default:**
+- Python files: `*.py`
+- TypeScript/JavaScript: `*.ts`, `*.tsx`, `*.js`, `*.jsx`
+- Backend code: `backend/app/**/*.py`
+- Frontend code: `frontend/src/**/*.ts`, `frontend/src/**/*.tsx`
+
+**Excluded by default:**
+- Test files: `**/test*/**`, `**/tests/**`, `**/*test*`
+- Build artifacts: `**/build/**`, `**/dist/**`, `**/*.min.js`, `**/*.map`
+- Dependencies: `**/node_modules/**`, `**/__pycache__/**`, `**/*.pyc`
+- Version control: `**/.git/**`
+- Database migrations: `**/migrations/**`
+- Coverage reports: `**/coverage/**`, `**/.pytest_cache/**`
 
 ## License
 MIT © SmartWalletFX Team

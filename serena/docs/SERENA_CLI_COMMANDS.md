@@ -10,13 +10,23 @@ Serena provides a command-line interface for managing semantic search and memory
 
 ## Command Categories
 
+### 📋 **Two Types of Indexing**
+
+Serena provides two distinct indexing systems:
+
+| Command | Purpose | File Types | Default Directories |
+|---------|---------|------------|--------------------|
+| `index` | Documentation & content | `*.md`, `*.txt`, `*.json`, `*.yaml`, `*.yml` | `.taskmaster/`, `docs/`, `.serena/memories` |
+| `embed index` | Code semantic search | `*.py`, `*.ts`, `*.tsx`, `*.js`, `*.jsx` | Project-wide code files |
+
 ### 🚀 **Core Operations**
 
 - [`init`](#init) - Initialize database and configuration
 - [`serve`](#serve) - Start the local server
-- [`index`](#index) - Index content for search
-- [`search`](#search) - Semantic search across memories
+- [`index`](#index) - Index documentation and content files
+- [`search`](#search) - Semantic search across indexed content
 - [`context`](#context) - Multi-source context retrieval
+- [`embed`](#embed) - Selective codebase embedding and semantic code search
 
 ### 📋 **Memory Management**
 
@@ -78,20 +88,23 @@ serena serve --port 9000 --watch
 
 ### `index`
 
-**Purpose**: Index content files for semantic search.
+**Purpose**: Index documentation and content files for semantic search.
 
 ```bash
-serena index [path] [options]
+serena index [options]
 ```
 
 **Arguments**:
 
-- `path` - Directory or file path to index (optional, defaults to current directory)
-- `--limit LIMIT` - Maximum number of files to process
+- `--directories DIRS` - Comma-separated directories to scan (default: auto-detect TaskMaster dirs)
+- `--files FILES` - Comma-separated individual files to index
 - `--force` - Force re-indexing of existing content
+- `--workers WORKERS` - Number of parallel workers (default: 4)
 - `-v, --verbose` - Enable verbose logging
 
-**Usage**: Processes text files and creates vector embeddings for semantic search. Automatically detects TaskMaster directories.
+**File Types**: Indexes documentation files (`*.md`, `*.txt`, `*.json`, `*.yaml`, `*.yml`) from TaskMaster archives, documentation directories, and configuration files.
+
+**Usage**: Processes documentation and content files for semantic search. Automatically detects TaskMaster directories if no specific directories are provided.
 
 **Example**:
 
@@ -366,6 +379,123 @@ serena pool health
 
 ---
 
+### `embed`
+
+**Purpose**: Selective codebase embedding for semantic code search without exposing full source code.
+
+```bash
+serena embed <action> [options]
+```
+
+**Actions**:
+
+#### `embed index`
+
+Index codebase or specific files for embedding.
+
+```bash
+serena embed index [options]
+```
+
+**Arguments**:
+
+- `--force` - Force reindexing of all files (ignore SHA-256 checksums)
+- `--files FILES` - Specific files to index (space-separated)
+- `--project-root PATH` - Project root directory (default: current directory)
+- `-v, --verbose` - Enable verbose logging
+
+**Usage**: Creates semantic embeddings of code files with smart chunking and incremental updates.
+
+**Examples**:
+
+```bash
+# Index entire codebase
+serena embed index
+
+# Index specific files
+serena embed index --files backend/app/models.py frontend/src/components/Auth.tsx
+
+# Force reindex with verbose output
+serena embed index --force --verbose
+
+# Index from specific project root
+serena embed index --project-root /path/to/project
+```
+
+#### `embed search`
+
+Search embedded code using semantic similarity.
+
+```bash
+serena embed search "query" [options]
+```
+
+**Arguments**:
+
+- `query` - Search query string (required)
+- `--limit LIMIT` - Maximum number of results (default: 10)
+- `-v, --verbose` - Enable verbose logging
+
+**Usage**: Find relevant code chunks using natural language queries.
+
+**Examples**:
+
+```bash
+# Search for authentication code
+serena embed search "JWT token validation middleware"
+
+# Search with custom result limit
+serena embed search "database connection pool" --limit 5
+
+# Verbose search for debugging
+serena embed search "error handling patterns" --verbose
+```
+
+#### `embed stats`
+
+Show code embedding statistics.
+
+```bash
+serena embed stats
+```
+
+**Usage**: Display metrics about indexed code files and embeddings.
+
+**Example Output**:
+
+```
+📊 Code Embedding Statistics:
+   📁 Files indexed: 127
+   🎯 Embeddings generated: 1,834
+   📈 Average chunks per file: 14.4
+```
+
+**Key Features**:
+
+- **Smart Chunking**: 4KB chunks with 20-line overlap and structure-aware splitting
+- **Incremental Updates**: SHA-256 hash-based change detection
+- **Language-Aware Processing**: Comment stripping for Python, TypeScript, JavaScript
+- **Configurable File Selection**: Include/exclude patterns via environment variables
+- **Token Efficiency**: Semantic search without exposing full source code
+- **Binary Vector Storage**: Efficient embedding storage in SQLite
+
+**Configuration**:
+
+Customize behavior via environment variables:
+
+```bash
+# Core settings
+SERENA_EMBEDDING_CHUNK_SIZE=4096
+SERENA_EMBEDDING_OVERLAP_LINES=20
+SERENA_EMBEDDING_STRIP_COMMENTS=true
+
+# File patterns
+SERENA_EMBEDDING_INCLUDE_GLOBS="*.py,*.ts,*.tsx,*.js,*.jsx"
+SERENA_EMBEDDING_EXCLUDE_GLOBS="**/test*/**,**/node_modules/**"
+```
+
+---
+
 ## Usage Patterns
 
 ### For Claude Code Integration
@@ -378,6 +508,9 @@ serena context "feature to implement" --format=claude-optimized
 
 # Detailed semantic search when needed
 serena search "specific pattern" --format=claude-optimized --limit=5
+
+# Search code semantically
+serena embed search "authentication middleware patterns" --limit=5
 
 # Get specific task details
 serena get T125
@@ -396,7 +529,9 @@ serena serve --watch  # In background
 
 ```bash
 serena index .                    # Index current project
+serena embed index                # Index codebase for semantic search
 serena search "what I'm looking for"
+serena embed search "code patterns I need"
 serena latest                     # See recent additions
 ```
 
