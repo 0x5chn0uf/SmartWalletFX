@@ -51,6 +51,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             multiprocessing.set_start_method('spawn', force=True)
         except RuntimeError:
             pass  # Already set
+    
+    # Set thread-safe environment variables to prevent segmentation faults
+    os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+    os.environ.setdefault("OMP_NUM_THREADS", "1")
 
     # use consolidated settings object
     # from serena import config (removed)
@@ -85,10 +89,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     print("🤖 Initializing embedding model...")
     model_start = time.time()
     try:
-        # Set thread-safe environment for model loading
-        os.environ["TOKENIZERS_PARALLELISM"] = "false"
-        os.environ["OMP_NUM_THREADS"] = "1"
-        
+        # Environment variables already set in lifespan startup
         generator = get_default_generator()
         print(f"   - Model name: {generator.model_name}")
         print(f"   - Expected dimension: {generator.embedding_dim}")
