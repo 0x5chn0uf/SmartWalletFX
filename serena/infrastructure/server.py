@@ -45,13 +45,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     from serena.scripts.maintenance import MaintenanceService
 
     # Disable multiprocessing start method issues on macOS
-    if hasattr(os, 'fork'):
+    if hasattr(os, "fork"):
         try:
             import multiprocessing
-            multiprocessing.set_start_method('spawn', force=True)
+
+            multiprocessing.set_start_method("spawn", force=True)
         except RuntimeError:
             pass  # Already set
-    
+
     # Set thread-safe environment variables to prevent segmentation faults
     os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
     os.environ.setdefault("OMP_NUM_THREADS", "1")
@@ -99,9 +100,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         # Force synchronous model loading with timeout protection
         print("   - Loading model weights...")
-        
+
         # Use a lock to prevent concurrent model loading
         model_load_success = False
+
         def load_model_with_timeout():
             nonlocal model_load_success
             try:
@@ -114,12 +116,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         load_thread = threading.Thread(target=load_model_with_timeout, daemon=True)
         load_thread.start()
         load_thread.join(timeout=60)  # 60 second timeout
-        
+
         model_time = time.time() - model_start
 
         if not model_load_success or load_thread.is_alive():
             # Model loading failed or timed out
-            print(f"❌ Failed to load embedding model after {model_time:.2f}s – continuing without embeddings")
+            print(
+                f"❌ Failed to load embedding model after {model_time:.2f}s – continuing without embeddings"
+            )
             print("   - Status: Embedding search will be UNAVAILABLE")
         else:
             print(f"✅ Embedding model loaded successfully in {model_time:.2f}s")
@@ -149,21 +153,27 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         print("👀 Starting file watcher for automatic re-indexing...")
         try:
             from serena.infrastructure.watcher import create_memory_watcher
-            
+
             # Create a simple memory adapter that works directly with the server's database
             class ServerMemoryAdapter:
                 """Simple memory adapter for server-integrated file watcher."""
-                
+
                 def __init__(self):
                     self.db_path = settings.memory_db
-                
-                def upsert(self, task_id: str, content: str, filepath: str = None, kind: str = "archive"):
+
+                def upsert(
+                    self,
+                    task_id: str,
+                    content: str,
+                    filepath: str = None,
+                    kind: str = "archive",
+                ):
                     """Upsert content using the server's direct database access."""
                     # Use the server's own upsert function
                     import asyncio
                     from serena.core.models import TaskKind, TaskStatus
                     from datetime import datetime
-                    
+
                     try:
                         # Convert string kind back to enum if needed
                         task_kind = None
@@ -172,43 +182,52 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                                 task_kind = TaskKind(kind)
                             except ValueError:
                                 task_kind = TaskKind.ARCHIVE
-                        
+
                         # Use the server's internal upsert method
                         loop = None
                         try:
                             loop = asyncio.get_running_loop()
                         except RuntimeError:
                             pass
-                        
+
                         if loop:
                             # We're in an async context, but _upsert_archive_direct is async
                             # For now, we'll skip the async processing during file watch events
-                            print(f"🔄 File change detected: {task_id} from {filepath} (queued for processing)")
+                            print(
+                                f"🔄 File change detected: {task_id} from {filepath} (queued for processing)"
+                            )
                         else:
                             # We're in a sync context, can run the async upsert
                             from serena.database.session import get_db_session
+
                             with get_db_session() as session:
-                                result = asyncio.run(_upsert_archive_direct(
-                                    db=session,
-                                    task_id=task_id,
-                                    markdown_text=content,
-                                    filepath=filepath,
-                                    kind=task_kind,
-                                    async_write=True  # Use async for better performance
-                                ))
+                                result = asyncio.run(
+                                    _upsert_archive_direct(
+                                        db=session,
+                                        task_id=task_id,
+                                        markdown_text=content,
+                                        filepath=filepath,
+                                        kind=task_kind,
+                                        async_write=True,  # Use async for better performance
+                                    )
+                                )
                                 return result
                     except Exception as e:
                         print(f"❌ Failed to upsert {task_id} from file watcher: {e}")
                         return False
-                    
+
                 def delete(self, task_id: str):
                     """Delete task from database."""
                     try:
                         from serena.database.session import get_db_session
                         from serena.core.models import Archive
-                        
+
                         with get_db_session() as session:
-                            archive = session.query(Archive).filter_by(task_id=task_id).first()
+                            archive = (
+                                session.query(Archive)
+                                .filter_by(task_id=task_id)
+                                .first()
+                            )
                             if archive:
                                 session.delete(archive)
                                 session.commit()
@@ -216,26 +235,26 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                     except Exception as e:
                         print(f"❌ Failed to delete {task_id} from file watcher: {e}")
                     return False
-            
+
             # Create memory adapter and watcher
             memory = ServerMemoryAdapter()
-            
+
             # Create watcher with callback for logging
             def watcher_callback(action: str, task_id: str, filepath: str) -> None:
                 print(f"🔄 File watcher: {action} {task_id} from {filepath}")
-            
+
             file_watcher = create_memory_watcher(
-                memory=memory,
-                auto_add_taskmaster=True,
-                callback=watcher_callback
+                memory=memory, auto_add_taskmaster=True, callback=watcher_callback
             )
-            
+
             # Start the watcher
             file_watcher.start(catch_up=True)
-            
+
             app.state.file_watcher = file_watcher
             app.state.file_watcher_active = True
-            print("✅ File watcher started - files will be automatically re-indexed on changes")
+            print(
+                "✅ File watcher started - files will be automatically re-indexed on changes"
+            )
             print(f"   - Watching {len(file_watcher.watched_paths)} directories")
             print(f"   - Tracking {len(file_watcher._tracked)} files")
         except Exception as exc:
@@ -249,7 +268,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     startup_time = time.time() - startup_start
     print(f"🎉 Serena server startup completed in {startup_time:.2f}s")
     if watch_mode:
-        print("👀 Watch mode enabled - files will be automatically re-indexed on changes")
+        print(
+            "👀 Watch mode enabled - files will be automatically re-indexed on changes"
+        )
 
     yield
 
@@ -298,19 +319,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                     print(f"   - Waiting for {pending_ops} pending operations...")
 
                 # Attempt graceful shutdown with timeout
-                shutdown_timeout = min(15.0, max(5.0, pending_ops * 0.3))  # Reduced timeout
+                shutdown_timeout = min(
+                    15.0, max(5.0, pending_ops * 0.3)
+                )  # Reduced timeout
                 shutdown_success = write_queue.shutdown(timeout=shutdown_timeout)
 
                 if shutdown_success:
                     print("   ✅ Write queue shutdown completed")
                 else:
-                    print(f"   ⚠️ Write queue shutdown timeout after {shutdown_timeout}s")
+                    print(
+                        f"   ⚠️ Write queue shutdown timeout after {shutdown_timeout}s"
+                    )
 
                     # Get final metrics to see what was lost
                     try:
                         final_metrics = write_queue.get_metrics()
                         if final_metrics.current_queue_size > 0:
-                            print(f"   ⚠️ {final_metrics.current_queue_size} operations may have been lost")
+                            print(
+                                f"   ⚠️ {final_metrics.current_queue_size} operations may have been lost"
+                            )
                     except:
                         pass
             except Exception as e:
@@ -328,7 +355,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     print("   - Cleaning up embedding resources...")
     try:
         generator = get_default_generator()
-        if hasattr(generator, 'force_cleanup'):
+        if hasattr(generator, "force_cleanup"):
             generator.force_cleanup()
         print("   ✅ Embedding resources cleaned up")
     except Exception as exc:
@@ -340,7 +367,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from serena.database.session import get_db_manager
 
         db_manager = get_db_manager()
-        
+
         # Use threading to timeout database closure
         def close_db():
             try:
@@ -351,7 +378,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         close_thread = threading.Thread(target=close_db, daemon=True)
         close_thread.start()
         close_thread.join(timeout=5.0)
-        
+
         if close_thread.is_alive():
             print("   ⚠️ Database close timed out")
         else:
@@ -366,11 +393,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         for env_var in ["TOKENIZERS_PARALLELISM", "OMP_NUM_THREADS"]:
             if env_var in os.environ:
                 del os.environ[env_var]
-        
+
         # Force garbage collection
         import gc
+
         gc.collect()
-        
+
         print("   ✅ Final cleanup completed")
     except Exception as exc:
         print(f"   ⚠️ Final cleanup error: {exc}")
@@ -1332,6 +1360,134 @@ def create_app() -> FastAPI:
             return create_error_response(
                 code=ErrorCode.EMBEDDING_GENERATION_FAILED,
                 message="Failed to generate embeddings",
+                details={"error": str(exc)},
+            )
+
+    @app.post("/embed/index", tags=["embedding"])
+    async def embed_index(request: dict):
+        """Index codebase or specific files for embedding."""
+        try:
+            from serena.infrastructure.code_embedding import CodeEmbeddingSystem
+            from pathlib import Path
+
+            # Initialize code embedding system
+            project_root = str(Path.cwd())
+            embedding_system = CodeEmbeddingSystem(
+                project_root=project_root,
+                db_path=settings.memory_db,
+            )
+
+            force_reindex = request.get("force_reindex", False)
+            files = request.get("files")
+
+            if files:
+                # Index specific files
+                processed = 0
+                errors = 0
+
+                for filepath in files:
+                    try:
+                        if embedding_system.embed_file(
+                            filepath, force_reindex=force_reindex
+                        ):
+                            processed += 1
+                        # Skip count is handled in the success response
+                    except Exception as e:
+                        print(f"❌ Failed to embed {filepath}: {e}")
+                        errors += 1
+
+                stats = {
+                    "files_found": len(files),
+                    "files_processed": processed,
+                    "files_skipped": len(files) - processed - errors,
+                    "errors": errors,
+                    "chunks_created": 0,  # Would need tracking in embed_file
+                    "embeddings_generated": 0,  # Would need tracking in embed_file
+                }
+            else:
+                # Index entire codebase
+                stats = embedding_system.embed_codebase(force_reindex=force_reindex)
+
+            return {
+                "success": True,
+                "message": "Embedding completed",
+                "stats": stats,
+            }
+
+        except Exception as exc:
+            print(f"Error during embedding: {exc}")
+            return create_error_response(
+                code=ErrorCode.EMBEDDING_GENERATION_FAILED,
+                message="Failed to embed codebase",
+                details={"error": str(exc)},
+            )
+
+    @app.post("/embed/search", tags=["embedding"])
+    async def embed_search(request: dict):
+        """Search embedded code using semantic similarity."""
+        try:
+            from serena.infrastructure.code_embedding import CodeEmbeddingSystem
+            from pathlib import Path
+
+            # Initialize code embedding system
+            project_root = str(Path.cwd())
+            embedding_system = CodeEmbeddingSystem(
+                project_root=project_root,
+                db_path=settings.memory_db,
+            )
+
+            query = request.get("query")
+            limit = request.get("limit", 10)
+
+            if not query:
+                return create_error_response(
+                    code=ErrorCode.VALIDATION_ERROR,
+                    message="Query parameter is required",
+                )
+
+            results = embedding_system.search_code(query, limit=limit)
+
+            return {
+                "success": True,
+                "message": f"Found {len(results)} results",
+                "results": results,
+            }
+
+        except Exception as exc:
+            print(f"Error during embed search: {exc}")
+            return create_error_response(
+                code=ErrorCode.SEARCH_FAILED,
+                message="Failed to search embedded code",
+                details={"error": str(exc)},
+            )
+
+    @app.get("/embed/stats", tags=["embedding"])
+    async def embed_stats():
+        """Get code embedding statistics."""
+        try:
+            from serena.infrastructure.code_embedding import CodeEmbeddingSystem
+            from pathlib import Path
+
+            # Initialize code embedding system
+            project_root = str(Path.cwd())
+            embedding_system = CodeEmbeddingSystem(
+                project_root=project_root,
+                db_path=settings.memory_db,
+            )
+
+            stats = embedding_system.get_stats()
+
+            return {
+                "success": True,
+                "message": "Statistics retrieved",
+                "stats": stats,
+            }
+
+        except Exception as exc:
+            print(f"Error getting embed stats: {exc}")
+            return create_error_response(
+                code=ErrorCode.STATS_RETRIEVAL_FAILED,
+                message="Failed to get embedding statistics",
                 details={"error": str(exc)},
             )
 
