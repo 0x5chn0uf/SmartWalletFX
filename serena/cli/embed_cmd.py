@@ -3,8 +3,7 @@
 import argparse
 from pathlib import Path
 
-from serena.cli.common import setup_logging, validate_configuration
-from serena.infrastructure.code_embedding import CodeEmbeddingSystem
+from serena.cli.common import setup_logging, validate_configuration, RemoteMemory
 from serena.settings import settings
 
 
@@ -18,118 +17,139 @@ def cmd_embed(args: argparse.Namespace) -> int:
         print(f"❌ Configuration validation failed: {e}")
         return 1
 
-    # Initialize the code embedding system
-    try:
-        project_root = args.project_root or str(Path.cwd())
-        embedding_system = CodeEmbeddingSystem(
-            project_root=project_root,
-            db_path=settings.memory_db,
-        )
+    # Use server-only mode - check if server is available
+    remote_memory = RemoteMemory()
+    if not remote_memory.is_server_available():
+        print("❌ Serena server is not running")
+        print("   💡 Start the server with: serena serve")
+        print("   Embed operations require the server to use pre-loaded embedding models")
+        return 1
 
-        if args.action == "index":
-            return _cmd_embed_index(embedding_system, args)
-        elif args.action == "search":
-            return _cmd_embed_search(embedding_system, args)
-        elif args.action == "stats":
-            return _cmd_embed_stats(embedding_system, args)
+    if args.action == "index":
+        return _cmd_embed_index_server(remote_memory, args)
+    elif args.action == "search":
+        return _cmd_embed_search_server(remote_memory, args)
+    elif args.action == "stats":
+        return _cmd_embed_stats_server(remote_memory, args)
+    else:
+        print(f"❌ Unknown embed action: {args.action}")
+        return 1
+
+
+def _cmd_embed_index_server(remote_memory: RemoteMemory, args: argparse.Namespace) -> int:
+    """Handle code indexing command via server API."""
+    try:
+        print("🚀 Starting codebase embedding via server...")
+        print("   ⚡ Using server API (preloaded embedding model)")
+
+        # Prepare the API request
+        payload = {
+            "force_reindex": args.force,
+        }
+        
+        if args.files:
+            payload["files"] = args.files
+            print(f"📁 Indexing {len(args.files)} specific files...")
         else:
-            print(f"❌ Unknown embed action: {args.action}")
+            print("📁 Indexing entire codebase...")
+
+        # Make the server API call
+        response = remote_memory._make_request("POST", "/embed/index", json=payload)
+        
+        if response and response.get("success"):
+            stats = response.get("stats", {})
+            print(f"\n📊 Embedding Complete:")
+            print(f"   📁 Files found: {stats.get('files_found', 0)}")
+            print(f"   ✅ Files processed: {stats.get('files_processed', 0)}")
+            print(f"   ⏭️  Files skipped: {stats.get('files_skipped', 0)}")
+            print(f"   🧩 Chunks created: {stats.get('chunks_created', 0)}")
+            print(f"   🎯 Embeddings generated: {stats.get('embeddings_generated', 0)}")
+            print(f"   ❌ Errors: {stats.get('errors', 0)}")
+            
+            # Wait for server completion
+            print("⏳ Waiting for server to complete processing...")
+            remote_memory.wait_for_server_completion(timeout=30.0)
+            
+            return 0 if stats.get("errors", 0) == 0 else 1
+        else:
+            error_msg = response.get("error", "Unknown server error") if response else "No response from server"
+            print(f"❌ Server embedding failed: {error_msg}")
             return 1
 
     except Exception as e:
-        print(f"❌ Error initializing code embedding system: {e}")
+        print(f"❌ Error during server embedding: {e}")
         return 1
 
 
-def _cmd_embed_index(system: CodeEmbeddingSystem, args: argparse.Namespace) -> int:
-    """Handle code indexing command."""
-    try:
-        print("🚀 Starting codebase embedding...")
-
-        if args.files:
-            # Index specific files
-            print(f"📁 Indexing {len(args.files)} specific files...")
-            processed = 0
-            errors = 0
-
-            for filepath in args.files:
-                try:
-                    if system.embed_file(filepath, force_reindex=args.force):
-                        processed += 1
-                        print(f"✅ Embedded: {filepath}")
-                    else:
-                        print(f"⏭️  Skipped: {filepath} (unchanged)")
-                except Exception as e:
-                    print(f"❌ Failed to embed {filepath}: {e}")
-                    errors += 1
-
-            print(f"\n📊 Summary: {processed} files processed, {errors} errors")
-            return 0 if errors == 0 else 1
-
-        else:
-            # Index entire codebase
-            stats = system.embed_codebase(force_reindex=args.force)
-
-            print(f"\n📊 Embedding Complete:")
-            print(f"   📁 Files found: {stats['files_found']}")
-            print(f"   ✅ Files processed: {stats['files_processed']}")
-            print(f"   ⏭️  Files skipped: {stats['files_skipped']}")
-            print(f"   🧩 Chunks created: {stats.get('chunks_created', 0)}")
-            print(f"   🎯 Embeddings generated: {stats.get('embeddings_generated', 0)}")
-            print(f"   ❌ Errors: {stats['errors']}")
-
-            return 0 if stats["errors"] == 0 else 1
-
-    except Exception as e:
-        print(f"❌ Error during embedding: {e}")
-        return 1
-
-
-def _cmd_embed_search(system: CodeEmbeddingSystem, args: argparse.Namespace) -> int:
-    """Handle code search command."""
+def _cmd_embed_search_server(remote_memory: RemoteMemory, args: argparse.Namespace) -> int:
+    """Handle code search command via server API."""
     try:
         query = args.query
         limit = args.limit or 10
 
         print(f"🔍 Searching codebase for: '{query}'")
-        results = system.search_code(query, limit=limit)
+        print("   ⚡ Using server API (preloaded embedding model)")
 
-        if not results:
-            print("No results found.")
+        # Make the server API call
+        response = remote_memory._make_request("POST", "/embed/search", json={
+            "query": query,
+            "limit": limit
+        })
+
+        if response and response.get("success"):
+            results = response.get("results", [])
+            
+            if not results:
+                print("No results found.")
+                return 0
+
+            print(f"\n📊 Found {len(results)} results:")
+            print("-" * 80)
+
+            for i, result in enumerate(results, 1):
+                print(
+                    f"\n{i}. {result['filepath']}:{result['start_line']}-{result['end_line']}"
+                )
+                print(f"   📊 Similarity: {result['similarity']:.3f}")
+                print(f"   💻 Preview: {result['preview']}")
+
             return 0
-
-        print(f"\n📊 Found {len(results)} results:")
-        print("-" * 80)
-
-        for i, result in enumerate(results, 1):
-            print(
-                f"\n{i}. {result['filepath']}:{result['start_line']}-{result['end_line']}"
-            )
-            print(f"   📊 Similarity: {result['similarity']:.3f}")
-            print(f"   💻 Preview: {result['preview']}")
-
-        return 0
+        else:
+            error_msg = response.get("error", "Unknown server error") if response else "No response from server"
+            print(f"❌ Server search failed: {error_msg}")
+            return 1
 
     except Exception as e:
-        print(f"❌ Error during search: {e}")
+        print(f"❌ Error during server search: {e}")
         return 1
 
 
-def _cmd_embed_stats(system: CodeEmbeddingSystem, args: argparse.Namespace) -> int:
-    """Handle stats command."""
+def _cmd_embed_stats_server(remote_memory: RemoteMemory, args: argparse.Namespace) -> int:
+    """Handle stats command via server API."""
     try:
-        stats = system.get_stats()
+        print("📊 Getting code embedding statistics from server...")
+        print("   ⚡ Using server API")
 
-        print("📊 Code Embedding Statistics:")
-        print(f"   📁 Files indexed: {stats['files_indexed']}")
-        print(f"   🎯 Embeddings generated: {stats['embeddings_generated']}")
-        print(f"   📝 Files tracked in indexed_files: {stats['indexed_files_tracked']}")
-        print(f"   📈 Average chunks per file: {stats['average_chunks_per_file']:.1f}")
+        # Make the server API call
+        response = remote_memory._make_request("GET", "/embed/stats")
 
-        return 0
+        if response and response.get("success"):
+            stats = response.get("stats", {})
+            
+            print("📊 Code Embedding Statistics:")
+            print(f"   📁 Files indexed: {stats.get('files_indexed', 0)}")
+            print(f"   🎯 Embeddings generated: {stats.get('embeddings_generated', 0)}")
+            print(f"   📝 Files tracked in indexed_files: {stats.get('indexed_files_tracked', 0)}")
+            print(f"   📈 Average chunks per file: {stats.get('average_chunks_per_file', 0):.1f}")
+
+            return 0
+        else:
+            error_msg = response.get("error", "Unknown server error") if response else "No response from server"
+            print(f"❌ Server stats failed: {error_msg}")
+            return 1
 
     except Exception as e:
-        print(f"❌ Error getting stats: {e}")
+        print(f"❌ Error getting server stats: {e}")
         return 1
 
 

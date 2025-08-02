@@ -372,7 +372,7 @@ class SerenaSettings(BaseSettings):
 
     # Content indexing configuration (for serena index command)
     index_directories: str = Field(
-        default=".taskmaster/memory-bank,.taskmaster/reflection,.taskmaster/archive,.taskmaster/logs,.serena/memories,docs",
+        default=".taskmaster/memory-bank,.taskmaster/reflection,.taskmaster/archive,.taskmaster/logs,.serena/memories,docs,.",
         env="SERENA_INDEX_DIRECTORIES",
         description="Comma-separated directory patterns for content indexing (serena index)",
     )
@@ -382,7 +382,7 @@ class SerenaSettings(BaseSettings):
         description="Comma-separated glob patterns for files to include in content indexing",
     )
     index_exclude_globs: str = Field(
-        default="**/node_modules/**,**/.git/**,**/build/**,**/dist/**,**/__pycache__/**,**/*.pyc,**/coverage/**,**/.pytest_cache/**",
+        default="**/node_modules/**,**/.git/**,**/build/**,**/dist/**,**/__pycache__/**,**/*.pyc,**/coverage/**,**/.pytest_cache/**,CLAUDE.local.md",
         env="SERENA_INDEX_EXCLUDE_GLOBS",
         description="Comma-separated glob patterns for files to exclude from content indexing",
     )
@@ -522,14 +522,43 @@ class SerenaSettings(BaseSettings):
         for handler in root_logger.handlers[:]:
             root_logger.removeHandler(handler)
 
-        # Create formatter
-        formatter = logging.Formatter(self.log_format)
+        # Create custom formatter without date and replace logger names
+        class CustomFormatter(logging.Formatter):
+            def format(self, record):
+                # Replace specific logger names
+                if record.name == "watchfiles.main":
+                    record.name = "WATCHER"
+                elif record.name.startswith("serena.infrastructure.watcher"):
+                    record.name = "WATCHER"
+                
+                # Format the message properly
+                if record.args:
+                    message = record.msg % record.args
+                else:
+                    message = record.msg
+                
+                # Special format for WATCHER - no level indicator
+                if record.name == "WATCHER":
+                    return f"WATCHER - {message}"
+                else:
+                    # Use format without timestamp for other loggers
+                    return f"{record.name} - {record.levelname} - {message}"
+
+        formatter = CustomFormatter()
 
         # Console handler
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(level)
         console_handler.setFormatter(formatter)
         root_logger.addHandler(console_handler)
+
+        # Configure ALL watchfiles loggers to prevent timestamps
+        for logger_name in ["watchfiles", "watchfiles.main", "watchfiles.watcher"]:
+            logger = logging.getLogger(logger_name)
+            logger.handlers.clear()
+            logger.addHandler(console_handler)
+            logger.setLevel(level)
+            logger.propagate = False  # Prevent propagation to root logger
 
         # File handler (if specified)
         if self.log_file:
@@ -538,6 +567,9 @@ class SerenaSettings(BaseSettings):
                 file_handler.setLevel(level)
                 file_handler.setFormatter(formatter)
                 root_logger.addHandler(file_handler)
+                # Also add to watchfiles loggers
+                for logger_name in ["watchfiles", "watchfiles.main", "watchfiles.watcher"]:
+                    logging.getLogger(logger_name).addHandler(file_handler)
             except Exception as e:
                 root_logger.warning(
                     f"Warning: Could not set up file logging to {self.log_file}: {e}"

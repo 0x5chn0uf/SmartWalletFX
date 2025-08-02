@@ -493,7 +493,7 @@ async def _upsert_archive_direct(
                 )
 
                 if embedding_queued:
-                    print(f"Queued embeddings for task {task_id}")
+                    pass  # Embedding queued successfully
                 else:
                     print(
                         f"Failed to queue embeddings for task {task_id}, search will be unavailable until embeddings are generated"
