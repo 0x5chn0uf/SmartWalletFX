@@ -65,8 +65,9 @@ async def integration_async_client(test_app_with_di_container):
             self._async_client = None
 
         async def __aenter__(self):
-            # Use standard httpx AsyncClient - ASGI transport issue will be handled in _safe_request
-            self._async_client = httpx.AsyncClient(app=self.app, base_url=self.base_url)
+            # Use ASGITransport with the app - this is the correct way in newer httpx versions
+            transport = httpx.ASGITransport(app=self.app)
+            self._async_client = httpx.AsyncClient(transport=transport, base_url=self.base_url)
             await self._async_client.__aenter__()
             return self
 

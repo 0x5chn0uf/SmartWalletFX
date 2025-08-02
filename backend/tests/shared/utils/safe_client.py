@@ -17,7 +17,8 @@ async def safe_request(app: FastAPI, method: str, url: str, **kwargs):
 
     # First try with httpx.AsyncClient for normal requests
     try:
-        async with httpx.AsyncClient(app=app, base_url="http://test") as client:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.request(method, url, **kwargs)
             return response
     except AssertionError:

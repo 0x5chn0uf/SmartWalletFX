@@ -64,8 +64,9 @@ async def test_register_endpoint_success(test_app_with_di_container: FastAPI) ->
         "email": f"dave_{uuid.uuid4().hex[:8]}@example.com",
         "password": "Str0ng!pwd",
     }
+    transport = httpx.ASGITransport(app=test_app_with_di_container)
     async with httpx.AsyncClient(
-        app=test_app_with_di_container, base_url="http://test"
+        transport=transport, base_url="http://test"
     ) as client:
         resp = await client.post("/auth/register", json=payload)
         assert resp.status_code == 201
@@ -157,8 +158,9 @@ async def test_obtain_token_success(
     user.email_verified = True
     await user_repo.save(user)
 
+    transport = httpx.ASGITransport(app=test_app_with_di_container)
     async with httpx.AsyncClient(
-        app=test_app_with_di_container, base_url="http://test"
+        transport=transport, base_url="http://test"
     ) as client:
         data = {"username": username, "password": password}
         resp = await client.post("/auth/token", data=data)
@@ -254,8 +256,9 @@ async def test_users_me_endpoint(
     user.email_verified = True
     await user_repo.save(user)
 
+    transport = httpx.ASGITransport(app=test_app_with_di_container)
     async with httpx.AsyncClient(
-        app=test_app_with_di_container, base_url="http://test"
+        transport=transport, base_url="http://test"
     ) as client:
         token_resp = await client.post(
             "/auth/token", data={"username": username, "password": "Str0ng!pwd"}
