@@ -11,10 +11,15 @@ from typing import Any
 def cmd_serve(args) -> None:
     """Run local HTTP server exposing memory API."""
     try:
+        import os
         import uvicorn
 
         from serena.infrastructure.server import create_app
 
+        # Set environment variable to enable file watching if requested
+        if args.watch:
+            os.environ["SERENA_WATCH_MODE"] = "true"
+        
         app = create_app()
 
         # Setup signal handlers for graceful shutdown

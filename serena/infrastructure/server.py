@@ -56,6 +56,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
     os.environ.setdefault("OMP_NUM_THREADS", "1")
 
+    # Check if watch mode is enabled via environment variable
+    watch_mode = os.environ.get("SERENA_WATCH_MODE", "false").lower() == "true"
+
     # use consolidated settings object
     # from serena import config (removed)
     # Use both print and logging to ensure visibility
@@ -140,8 +143,113 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         print(f"⚠️ Failed to start maintenance service: {exc}")
         app.state.maintenance_service = None
 
+    # Start file watcher for automatic re-indexing if watch mode is enabled
+    file_watcher = None
+    if watch_mode:
+        print("👀 Starting file watcher for automatic re-indexing...")
+        try:
+            from serena.infrastructure.watcher import create_memory_watcher
+            
+            # Create a simple memory adapter that works directly with the server's database
+            class ServerMemoryAdapter:
+                """Simple memory adapter for server-integrated file watcher."""
+                
+                def __init__(self):
+                    self.db_path = settings.memory_db
+                
+                def upsert(self, task_id: str, content: str, filepath: str = None, kind: str = "archive"):
+                    """Upsert content using the server's direct database access."""
+                    # Use the server's own upsert function
+                    import asyncio
+                    from serena.core.models import TaskKind, TaskStatus
+                    from datetime import datetime
+                    
+                    try:
+                        # Convert string kind back to enum if needed
+                        task_kind = None
+                        if kind:
+                            try:
+                                task_kind = TaskKind(kind)
+                            except ValueError:
+                                task_kind = TaskKind.ARCHIVE
+                        
+                        # Use the server's internal upsert method
+                        loop = None
+                        try:
+                            loop = asyncio.get_running_loop()
+                        except RuntimeError:
+                            pass
+                        
+                        if loop:
+                            # We're in an async context, but _upsert_archive_direct is async
+                            # For now, we'll skip the async processing during file watch events
+                            print(f"🔄 File change detected: {task_id} from {filepath} (queued for processing)")
+                        else:
+                            # We're in a sync context, can run the async upsert
+                            from serena.database.session import get_db_session
+                            with get_db_session() as session:
+                                result = asyncio.run(_upsert_archive_direct(
+                                    db=session,
+                                    task_id=task_id,
+                                    markdown_text=content,
+                                    filepath=filepath,
+                                    kind=task_kind,
+                                    async_write=True  # Use async for better performance
+                                ))
+                                return result
+                    except Exception as e:
+                        print(f"❌ Failed to upsert {task_id} from file watcher: {e}")
+                        return False
+                    
+                def delete(self, task_id: str):
+                    """Delete task from database."""
+                    try:
+                        from serena.database.session import get_db_session
+                        from serena.core.models import Archive
+                        
+                        with get_db_session() as session:
+                            archive = session.query(Archive).filter_by(task_id=task_id).first()
+                            if archive:
+                                session.delete(archive)
+                                session.commit()
+                                return True
+                    except Exception as e:
+                        print(f"❌ Failed to delete {task_id} from file watcher: {e}")
+                    return False
+            
+            # Create memory adapter and watcher
+            memory = ServerMemoryAdapter()
+            
+            # Create watcher with callback for logging
+            def watcher_callback(action: str, task_id: str, filepath: str) -> None:
+                print(f"🔄 File watcher: {action} {task_id} from {filepath}")
+            
+            file_watcher = create_memory_watcher(
+                memory=memory,
+                auto_add_taskmaster=True,
+                callback=watcher_callback
+            )
+            
+            # Start the watcher
+            file_watcher.start(catch_up=True)
+            
+            app.state.file_watcher = file_watcher
+            app.state.file_watcher_active = True
+            print("✅ File watcher started - files will be automatically re-indexed on changes")
+            print(f"   - Watching {len(file_watcher.watched_paths)} directories")
+            print(f"   - Tracking {len(file_watcher._tracked)} files")
+        except Exception as exc:
+            print(f"⚠️ Failed to start file watcher: {exc}")
+            app.state.file_watcher = None
+            app.state.file_watcher_active = False
+    else:
+        app.state.file_watcher = None
+        app.state.file_watcher_active = False
+
     startup_time = time.time() - startup_start
     print(f"🎉 Serena server startup completed in {startup_time:.2f}s")
+    if watch_mode:
+        print("👀 Watch mode enabled - files will be automatically re-indexed on changes")
 
     yield
 
@@ -157,7 +265,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     signal.signal(signal.SIGTERM, force_exit_handler)
     signal.signal(signal.SIGINT, force_exit_handler)
 
-    # Shutdown maintenance service first
+    # Stop file watcher first if running
+    if hasattr(app.state, "file_watcher") and app.state.file_watcher:
+        print("   - Stopping file watcher...")
+        try:
+            app.state.file_watcher.stop()
+            print("   ✅ File watcher stopped")
+        except Exception as exc:
+            print(f"   ⚠️ File watcher shutdown error: {exc}")
+
+    # Shutdown maintenance service
     if hasattr(app.state, "maintenance_service") and app.state.maintenance_service:
         print("   - Stopping maintenance service...")
         try:

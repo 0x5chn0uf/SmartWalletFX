@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Optional
 
 from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 
 # ---------------------------------------------------------------------------
 # Pydantic Settings implementation
@@ -351,7 +351,7 @@ class SerenaSettings(BaseSettings):
     )
     embedding_overlap_lines: int = Field(
         default=20,
-        env="SERENA_EMBEDDING_OVERLAP_LINES", 
+        env="SERENA_EMBEDDING_OVERLAP_LINES",
         description="Number of lines to overlap between code chunks",
     )
     embedding_strip_comments: bool = Field(
@@ -366,13 +366,13 @@ class SerenaSettings(BaseSettings):
     )
     embedding_exclude_globs: str = Field(
         default="**/test*/**,**/tests/**,**/*test*,**/migrations/**,**/node_modules/**,**/.git/**,**/build/**,**/dist/**,**/__pycache__/**,**/*.pyc,**/*.min.js,**/*.map,**/coverage/**,**/.pytest_cache/**",
-        env="SERENA_EMBEDDING_EXCLUDE_GLOBS", 
+        env="SERENA_EMBEDDING_EXCLUDE_GLOBS",
         description="Comma-separated glob patterns for files to exclude from code embedding",
     )
 
     # Content indexing configuration (for serena index command)
     index_directories: str = Field(
-        default=".taskmaster/memory-bank,.taskmaster/logs,.serena/memories,docs",
+        default=".taskmaster/memory-bank,.taskmaster/reflection,.taskmaster/archive,.taskmaster/logs,.serena/memories,docs",
         env="SERENA_INDEX_DIRECTORIES",
         description="Comma-separated directory patterns for content indexing (serena index)",
     )
