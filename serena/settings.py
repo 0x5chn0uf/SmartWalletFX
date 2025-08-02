@@ -311,7 +311,7 @@ class SerenaSettings(BaseSettings):
 
     # Performance configuration
     async_write: bool = Field(
-        default=True,
+        default=False,
         env="SERENA_ASYNC_WRITE",
         description="Write to DB via background queue instead of sync call.",
     )
@@ -372,7 +372,7 @@ class SerenaSettings(BaseSettings):
 
     # Content indexing configuration (for serena index command)
     index_directories: str = Field(
-        default=".taskmaster/memory-bank,.taskmaster/reflection,.taskmaster/archive,.taskmaster/logs,.serena/memories,docs,.",
+        default=".taskmaster/memory-bank,.taskmaster/logs,.serena/memories,docs",
         env="SERENA_INDEX_DIRECTORIES",
         description="Comma-separated directory patterns for content indexing (serena index)",
     )
@@ -530,13 +530,13 @@ class SerenaSettings(BaseSettings):
                     record.name = "WATCHER"
                 elif record.name.startswith("serena.infrastructure.watcher"):
                     record.name = "WATCHER"
-                
+
                 # Format the message properly
                 if record.args:
                     message = record.msg % record.args
                 else:
                     message = record.msg
-                
+
                 # Special format for WATCHER - no level indicator
                 if record.name == "WATCHER":
                     return f"WATCHER - {message}"
@@ -568,7 +568,11 @@ class SerenaSettings(BaseSettings):
                 file_handler.setFormatter(formatter)
                 root_logger.addHandler(file_handler)
                 # Also add to watchfiles loggers
-                for logger_name in ["watchfiles", "watchfiles.main", "watchfiles.watcher"]:
+                for logger_name in [
+                    "watchfiles",
+                    "watchfiles.main",
+                    "watchfiles.watcher",
+                ]:
                     logging.getLogger(logger_name).addHandler(file_handler)
             except Exception as e:
                 root_logger.warning(
@@ -638,7 +642,7 @@ def get_production_config() -> SerenaSettings:
     return SerenaSettings(
         environment="production",
         log_level="INFO",
-        async_write=True,
+        async_write=False,
         write_batch_size=20,  # Larger batches in production
         write_queue_size=2000,  # Larger queue in production
         max_embedding_batch_size=50,  # More efficient batching
@@ -650,7 +654,7 @@ def get_development_config() -> SerenaSettings:
     return SerenaSettings(
         environment="development",
         log_level="DEBUG",
-        async_write=True,
+        async_write=False,
         write_batch_size=5,  # Smaller batches for faster feedback
         write_queue_size=100,  # Smaller queue for development
     )

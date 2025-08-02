@@ -208,7 +208,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                                         markdown_text=content,
                                         filepath=filepath,
                                         kind=task_kind,
-                                        async_write=True,  # Use async for better performance
+                                        async_write=settings.async_write,
                                     )
                                 )
                                 return result
@@ -417,7 +417,7 @@ async def _upsert_archive_direct(
     kind: Optional["TaskKind"] = None,
     status: Optional["TaskStatus"] = None,
     completed_at: Optional[datetime] = None,
-    async_write: bool = True,
+    async_write: bool = settings.async_write,
 ) -> bool:
     """Direct archive upsert without using Memory class."""
 
