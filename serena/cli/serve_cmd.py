@@ -38,15 +38,29 @@ def cmd_serve(args) -> None:
         # Set log level based on args
         log_level = "debug" if args.verbose else "info"
 
-        uvicorn.run(
-            app,
-            host=args.host,
-            port=args.port,
-            log_level=log_level,
-            log_config=log_config,
-            reload=args.watch,
-            access_log=False,  # Disable default access log, use our custom middleware
-        )
+        if args.watch:
+            # For reload mode, uvicorn needs an import string, not an app instance
+            uvicorn.run(
+                "serena.infrastructure.server:create_app",
+                host=args.host,
+                port=args.port,
+                log_level=log_level,
+                log_config=log_config,
+                reload=True,
+                factory=True,  # Indicates create_app is a factory function
+                access_log=False,
+            )
+        else:
+            # For normal mode, use the app instance directly
+            uvicorn.run(
+                app,
+                host=args.host,
+                port=args.port,
+                log_level=log_level,
+                log_config=log_config,
+                reload=False,
+                access_log=False,
+            )
 
     except ImportError as e:
         print(
