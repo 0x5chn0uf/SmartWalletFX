@@ -27,7 +27,8 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
         structlog.contextvars.bind_contextvars(trace_id=trace_id)
         request.state.trace_id = trace_id
 
-        # Process downstream handlers with proper exception handling for BaseHTTPMiddleware
+        # Process downstream handlers with proper exception handling for
+        # BaseHTTPMiddleware
         try:
             response: Response = await call_next(request)
             # Include correlation ID in response header
@@ -39,7 +40,8 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
             from fastapi.responses import JSONResponse
 
             if isinstance(exc, HTTPException):
-                # Create a proper response for HTTPException to prevent "No response returned"
+                # Create a proper response for HTTPException to prevent
+                # "No response returned"
                 from app.domain.schemas.error import ErrorResponse
 
                 code_map = {
@@ -64,7 +66,8 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
                 response.headers["X-Trace-ID"] = trace_id
                 return response
             else:
-                # For other exceptions, re-raise to let FastAPI's exception handlers deal with it
+                # For other exceptions, re-raise to let FastAPI's exception
+                # handlers deal with it
                 raise
 
 
