@@ -278,10 +278,12 @@ async def test_users_me_endpoint(
 
 @pytest.mark.asyncio
 async def test_token_invalid_credentials(test_app_with_di_container: FastAPI) -> None:
-    transport = httpx.ASGITransport(app=test_app_with_di_container)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+    from fastapi.testclient import TestClient
+
+    # Use TestClient for error responses - httpx AsyncClient has issues with ASGI error handling
+    with TestClient(test_app_with_di_container) as client:
         data = {"username": f"fake_{uuid.uuid4().hex[:8]}", "password": "wrong"}
-        resp = await client.post("/auth/token", data=data)
+        resp = client.post("/auth/token", data=data)
         assert resp.status_code == 401
 
 
