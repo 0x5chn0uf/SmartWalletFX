@@ -165,7 +165,10 @@ describe('AccountDeletion', () => {
       expect(screen.getByText(/confirm account deletion/i)).toBeInTheDocument();
       expect(
         screen.getByText((content, node) => {
-          const hasText = (node: Element) => node.textContent?.includes('You are about to permanently delete the account for test@example.com');
+          const hasText = (node: Element) =>
+            node.textContent?.includes(
+              'You are about to permanently delete the account for test@example.com'
+            );
           const nodeHasText = hasText(node as Element);
           const childrenDontHaveText = Array.from(node?.children || []).every(
             child => !hasText(child as Element)
@@ -559,7 +562,10 @@ describe('AccountDeletion', () => {
 
       expect(
         screen.getByText((content, node) => {
-          const hasText = (node: Element) => node.textContent?.includes('You are about to permanently delete the account for test@example.com');
+          const hasText = (node: Element) =>
+            node.textContent?.includes(
+              'You are about to permanently delete the account for test@example.com'
+            );
           const nodeHasText = hasText(node as Element);
           const childrenDontHaveText = Array.from(node?.children || []).every(
             child => !hasText(child as Element)
@@ -577,7 +583,8 @@ describe('AccountDeletion', () => {
 
       expect(
         screen.getByText((content, node) => {
-          const hasText = (node: Element) => node.textContent?.includes('Type DELETE MY ACCOUNT below to confirm');
+          const hasText = (node: Element) =>
+            node.textContent?.includes('Type DELETE MY ACCOUNT below to confirm');
           const nodeHasText = hasText(node as Element);
           const childrenDontHaveText = Array.from(node?.children || []).every(
             child => !hasText(child as Element)

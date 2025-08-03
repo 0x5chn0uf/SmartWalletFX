@@ -10,6 +10,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+// @ts-ignore - d3 types are incompatible with TypeScript 4.9
 import * as d3 from 'd3';
 import { init as echartsInit } from 'echarts';
 

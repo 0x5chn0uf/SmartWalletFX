@@ -215,14 +215,17 @@ describe('PasswordChangeForm', () => {
       const forms = document.querySelectorAll('form');
       const form = forms[0];
       expect(form).toBeTruthy();
-      
+
       fireEvent.submit(form);
 
-      await waitFor(() => {
-        // Check if there's any helper text showing validation error
-        const helperText = screen.queryByText(/Current password is required/i);
-        expect(helperText).toBeInTheDocument();
-      }, { timeout: 3000 });
+      await waitFor(
+        () => {
+          // Check if there's any helper text showing validation error
+          const helperText = screen.queryByText(/Current password is required/i);
+          expect(helperText).toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
     });
 
     it('shows validation error for short new password', async () => {
@@ -241,12 +244,15 @@ describe('PasswordChangeForm', () => {
       const forms = document.querySelectorAll('form');
       const form = forms[0];
       expect(form).toBeTruthy();
-      
+
       fireEvent.submit(form);
 
-      await waitFor(() => {
-        expect(screen.getByText(/Password must be at least 8 characters/i)).toBeInTheDocument();
-      }, { timeout: 3000 });
+      await waitFor(
+        () => {
+          expect(screen.getByText(/Password must be at least 8 characters/i)).toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
     });
 
     it('shows validation error for mismatched passwords', async () => {
@@ -265,12 +271,15 @@ describe('PasswordChangeForm', () => {
       const forms = document.querySelectorAll('form');
       const form = forms[0];
       expect(form).toBeTruthy();
-      
+
       fireEvent.submit(form);
 
-      await waitFor(() => {
-        expect(screen.getByText(/Passwords don't match/i)).toBeInTheDocument();
-      }, { timeout: 3000 });
+      await waitFor(
+        () => {
+          expect(screen.getByText(/Passwords don't match/i)).toBeInTheDocument();
+        },
+        { timeout: 3000 }
+      );
     });
 
     it('clears validation errors when user starts typing', async () => {
@@ -283,7 +292,7 @@ describe('PasswordChangeForm', () => {
       const forms = document.querySelectorAll('form');
       const form = forms[0];
       expect(form).toBeTruthy();
-      
+
       // Trigger validation error
       fireEvent.submit(form);
 
@@ -303,7 +312,9 @@ describe('PasswordChangeForm', () => {
 
   describe('Form Submission', () => {
     it('submits form with valid data', async () => {
-      const mockDispatch = vi.fn().mockImplementation(() => Promise.resolve({ unwrap: () => Promise.resolve() }));
+      const mockDispatch = vi
+        .fn()
+        .mockImplementation(() => Promise.resolve({ unwrap: () => Promise.resolve() }));
       mockStore.dispatch = mockDispatch;
 
       renderComponent();
@@ -353,7 +364,9 @@ describe('PasswordChangeForm', () => {
     });
 
     it('prevents form submission when validation fails', async () => {
-      const mockDispatch = vi.fn().mockImplementation(() => Promise.resolve({ unwrap: () => Promise.resolve() }));
+      const mockDispatch = vi
+        .fn()
+        .mockImplementation(() => Promise.resolve({ unwrap: () => Promise.resolve() }));
       mockStore.dispatch = mockDispatch;
 
       renderComponent();

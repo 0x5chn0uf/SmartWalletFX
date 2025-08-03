@@ -25,7 +25,7 @@
     "react-router-dom": "^7.6.3",
     "recharts": "^3.0.2",
     "web-vitals": "^5.0.3",
-    "zod": "^4.0.5"
+    "zod": "^3.25.76"
   },
   "scripts": {
     "dev": "vite",
@@ -65,8 +65,8 @@
     "@axe-core/react": "^4.10.2",
     "@babel/preset-typescript": "^7.27.1",
     "@eslint/js": "^9.3.0",
-    "@testing-library/react": "^16.3.0",
     "@testing-library/jest-dom": "^6.4.2",
+    "@testing-library/react": "^16.3.0",
     "@types/node": "^24.0.7",
     "@typescript-eslint/eslint-plugin": "^8.25.0",
     "@typescript-eslint/parser": "^8.25.0",
