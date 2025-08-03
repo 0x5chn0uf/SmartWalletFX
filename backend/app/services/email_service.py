@@ -43,9 +43,16 @@ async def _send_via_smtp(message: EmailMessage, config: Configuration) -> None:
                 server = smtplib.SMTP(host, port)
         except (ConnectionRefusedError, OSError) as e:
             # For testing environments, log and return instead of failing
-            if "test" in host or host in ["localhost", "127.0.0.1"] or host == "mock-smtp-server":
+            if (
+                "test" in host
+                or host in ["localhost", "127.0.0.1"]
+                or host == "mock-smtp-server"
+            ):
                 import logging
-                logging.getLogger(__name__).warning(f"Email service unavailable in test environment: {e}")
+
+                logging.getLogger(__name__).warning(
+                    f"Email service unavailable in test environment: {e}"
+                )
                 return
             raise
 

@@ -1,5 +1,6 @@
 """FastAPI TestClient fixtures for the test suite."""
 
+import httpx
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
@@ -35,7 +36,8 @@ async def async_client(test_app):
     Async test client without authentication.
     Provides an AsyncClient for async endpoint testing.
     """
-    async with AsyncClient(app=test_app, base_url="http://test") as ac:
+    transport = httpx.ASGITransport(app=test_app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
 
@@ -69,7 +71,8 @@ async def async_client_with_db(test_app, db_session):
 
     test_app.dependency_overrides[get_db_for_testing] = _override_get_db
 
-    async with AsyncClient(app=test_app, base_url="http://test") as ac:
+    transport = httpx.ASGITransport(app=test_app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
     # Clean up dependency override
@@ -90,7 +93,8 @@ async def integration_async_client(test_app, db_session):
     test_app.dependency_overrides[get_db_for_testing] = _override_get_db
 
     # Create AsyncClient with explicit app reference to ensure TestClient fallback works
-    async with AsyncClient(app=test_app, base_url="http://test") as ac:
+    transport = httpx.ASGITransport(app=test_app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         # Store the app reference so the patched AsyncClient knows this is an integration test
         ac._app = test_app
         yield ac

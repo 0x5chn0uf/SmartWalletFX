@@ -33,9 +33,8 @@ async def test_register_login_and_me(
     user_repo = test_di_container_with_db.get_repository("user")
     test_di_container_with_db.get_usecase("auth")
 
-    async with httpx.AsyncClient(
-        app=test_app_with_di_container, base_url="http://test"
-    ) as client:
+    transport = httpx.ASGITransport(app=test_app_with_di_container)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         # Register
         resp = await client.post("/auth/register", json=user_payload)
         assert resp.status_code == 201, resp.text
@@ -84,9 +83,8 @@ async def test_login_with_wrong_password(
     # Get repositories from DI container
     user_repo = test_di_container_with_db.get_repository("user")
 
-    async with httpx.AsyncClient(
-        app=test_app_with_di_container, base_url="http://test"
-    ) as client:
+    transport = httpx.ASGITransport(app=test_app_with_di_container)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         # Ensure user exists
         resp = await client.post("/auth/register", json=user_payload)
         assert resp.status_code == 201
@@ -152,9 +150,8 @@ async def test_access_token_contains_expected_claims(
     # Get repositories from DI container
     user_repo = test_di_container_with_db.get_repository("user")
 
-    async with httpx.AsyncClient(
-        app=test_app_with_di_container, base_url="http://test"
-    ) as client:
+    transport = httpx.ASGITransport(app=test_app_with_di_container)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         # First register the user
         await client.post("/auth/register", json=user_payload)
 
