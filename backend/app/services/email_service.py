@@ -41,7 +41,7 @@ async def _send_via_smtp(message: EmailMessage, config: Configuration) -> None:
                 server = smtplib.SMTP_SSL(host, port, context=context)
             else:
                 server = smtplib.SMTP(host, port)
-        except (ConnectionRefusedError, OSError) as e:
+        except OSError as e:
             # For testing environments, log and return instead of failing
             if (
                 "test" in host

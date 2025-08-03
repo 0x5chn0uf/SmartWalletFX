@@ -21,7 +21,11 @@ class CoreErrorHandling:
 
     def _get_trace_id(self, request: Request) -> str:
         """Get trace ID from request state."""
-        return getattr(request.state, "trace_id", "unknown")
+        try:
+            return getattr(request.state, "trace_id", "unknown")
+        except Exception:
+            # Fallback if request.state is not available
+            return "unknown"
 
     # Map status codes to error codes
     _CODE_MAP = {

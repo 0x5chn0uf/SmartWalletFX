@@ -2,7 +2,6 @@ from __future__ import annotations
 
 """`serena index` command."""
 
-import logging
 import time
 from typing import Any
 
@@ -16,12 +15,12 @@ def cmd_index(args) -> None:
         # Determine what to scan - directories, files, or both
         directories = []
         files = []
-        
+
         if args.directories:
             directories = [d.strip() for d in args.directories.split(",")]
         if args.files:
             files = [f.strip() for f in args.files.split(",")]
-        
+
         # If nothing specified, use auto-detected directories
         if not directories and not files:
             directories = detect_taskmaster_directories()
@@ -36,9 +35,13 @@ def cmd_index(args) -> None:
 
         # Show mode
         if directories and files:
-            print(f"🔍 Indexing {len(directories)} directories and {len(files)} files using server memory")
+            print(
+                f"🔍 Indexing {len(directories)} directories and {len(files)} files using server memory"
+            )
         elif directories:
-            print(f"🔍 Indexing directories using server memory: {', '.join(directories)}")
+            print(
+                f"🔍 Indexing directories using server memory: {', '.join(directories)}"
+            )
         else:
             print(f"🔍 Indexing {len(files)} individual files using server memory")
 
@@ -52,11 +55,16 @@ def cmd_index(args) -> None:
             )
         else:
             stats = {
-                "files_found": 0, "files_indexed": 0, "files_skipped": 0, 
-                "files_failed": 0, "directories_scanned": 0,
-                "scan_time_seconds": 0.0, "indexing_time_seconds": 0.0, "total_time_seconds": 0.0
+                "files_found": 0,
+                "files_indexed": 0,
+                "files_skipped": 0,
+                "files_failed": 0,
+                "directories_scanned": 0,
+                "scan_time_seconds": 0.0,
+                "indexing_time_seconds": 0.0,
+                "total_time_seconds": 0.0,
             }
-        
+
         # Process individual files if specified
         if files:
             file_stats = indexer.scan_files(
@@ -64,7 +72,7 @@ def cmd_index(args) -> None:
             )
             # Merge stats
             stats["files_found"] += file_stats["files_found"]
-            stats["files_indexed"] += file_stats["files_indexed"] 
+            stats["files_indexed"] += file_stats["files_indexed"]
             stats["files_skipped"] += file_stats["files_skipped"]
             stats["files_failed"] += file_stats["files_failed"]
             stats["indexing_time_seconds"] += file_stats["indexing_time_seconds"]
@@ -72,7 +80,7 @@ def cmd_index(args) -> None:
         total_command_time = time.time() - start_time
 
         # Display comprehensive results with performance metrics
-        print(f"\n✅ Indexing complete!")
+        print("\n✅ Indexing complete!")
         print(f"📁 Directories scanned: {stats['directories_scanned']}")
         print(f"📄 Files found: {stats.get('files_found', 0)}")
         print(f"📄 Files indexed: {stats['files_indexed']}")
@@ -142,14 +150,19 @@ def _cleanup_indexing_resources(indexer) -> None:
 def register(sub: Any) -> None:
     """Register the index command."""
     p = sub.add_parser(
-        "index", 
+        "index",
         help="Index documentation and content files (*.md, *.txt, *.json)",
         description="Index documentation, TaskMaster archives, and content files for semantic search. "
-                   "For code embedding, use 'serena embed index' instead."
+        "For code embedding, use 'serena embed index' instead.",
     )
-    p.add_argument("--directories", help="Comma-separated directories to scan (default: auto-detect TaskMaster dirs)")
+    p.add_argument(
+        "--directories",
+        help="Comma-separated directories to scan (default: auto-detect TaskMaster dirs)",
+    )
     p.add_argument("--files", help="Comma-separated individual files to index")
     p.add_argument("--force", action="store_true", help="Force reindex of all files")
     p.add_argument("--workers", type=int, default=4, help="Number of parallel workers")
-    p.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging")
+    p.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable verbose logging"
+    )
     p.set_defaults(func=cmd_index)

@@ -65,7 +65,7 @@ def _list_entries_remote(limit: int = 20) -> None:
             print()
 
     except Exception as exc:
-        print("❌ Failed to list entries")
+        print(f"❌ Failed to list entries: {exc}")
 
     finally:
         # Cleanup connections to prevent hanging

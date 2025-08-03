@@ -27,12 +27,45 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
         structlog.contextvars.bind_contextvars(trace_id=trace_id)
         request.state.trace_id = trace_id
 
-        # Process downstream handlers
-        response: Response = await call_next(request)
+        # Process downstream handlers with proper exception handling for BaseHTTPMiddleware
+        try:
+            response: Response = await call_next(request)
+            # Include correlation ID in response header
+            response.headers["X-Trace-ID"] = trace_id
+            return response
+        except Exception as exc:
+            # For HTTPExceptions, we need to create a proper response
+            from fastapi import HTTPException
+            from fastapi.responses import JSONResponse
 
-        # Include correlation ID in response header
-        response.headers["X-Trace-ID"] = trace_id
-        return response
+            if isinstance(exc, HTTPException):
+                # Create a proper response for HTTPException to prevent "No response returned"
+                from app.domain.schemas.error import ErrorResponse
+
+                code_map = {
+                    400: "BAD_REQUEST",
+                    401: "AUTH_FAILURE",
+                    403: "AUTH_FAILURE",
+                    404: "NOT_FOUND",
+                    409: "CONFLICT",
+                    422: "VALIDATION_ERROR",
+                    429: "RATE_LIMIT",
+                }
+                code = code_map.get(exc.status_code, "ERROR")
+
+                payload = ErrorResponse(
+                    detail=exc.detail,
+                    code=code,
+                    status_code=exc.status_code,
+                    trace_id=trace_id,
+                ).model_dump()
+
+                response = JSONResponse(status_code=exc.status_code, content=payload)
+                response.headers["X-Trace-ID"] = trace_id
+                return response
+            else:
+                # For other exceptions, re-raise to let FastAPI's exception handlers deal with it
+                raise
 
 
 class JWTAuthMiddleware(BaseHTTPMiddleware):

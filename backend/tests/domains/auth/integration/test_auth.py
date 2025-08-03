@@ -198,12 +198,10 @@ async def test_login_rate_limit(
     user_repo = test_di_container_with_db.get_repository("user")
     await user_repo.save(user)
 
-    # Import safe_post for error responses
-    from tests.shared.utils.safe_client import safe_post
-
-    # Test successful logins don't trigger rate limit
+    # Test both successful and failed logins with direct ASGI transport
     transport = httpx.ASGITransport(app=test_app_with_di_container)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Test successful logins don't trigger rate limit
         form_data = {"username": user.username, "password": "StrongPassword123!"}
         resp = await client.post(
             "/auth/token",
@@ -212,30 +210,28 @@ async def test_login_rate_limit(
         )
         assert resp.status_code == 200
 
-    # Clear rate limiter again to start fresh
-    rate_limiter_utils.login_rate_limiter.clear()
+        # Clear rate limiter again to start fresh
+        rate_limiter_utils.login_rate_limiter.clear()
 
-    # Test failed logins trigger rate limit (use safe_post for error responses)
-    bad_form_data = {"username": user.username, "password": "WrongPassword"}
+        # Test failed logins trigger rate limit
+        bad_form_data = {"username": user.username, "password": "WrongPassword"}
 
-    # Should allow initial failed attempts (up to max_attempts)
-    for i in range(5):  # AUTH_RATE_LIMIT_ATTEMPTS default is 5
-        resp = await safe_post(
-            test_app_with_di_container,
+        # Should allow initial failed attempts (up to max_attempts)
+        for i in range(5):  # AUTH_RATE_LIMIT_ATTEMPTS default is 5
+            resp = await client.post(
+                "/auth/token",
+                data=bad_form_data,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+            assert resp.status_code == 401  # Wrong credentials
+
+        # Next attempt should be rate limited
+        resp = await client.post(
             "/auth/token",
             data=bad_form_data,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
-        assert resp.status_code == 401  # Wrong credentials
-
-    # Next attempt should be rate limited
-    resp = await safe_post(
-        test_app_with_di_container,
-        "/auth/token",
-        data=bad_form_data,
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-    )
-    assert resp.status_code == 429  # Rate limited
+        assert resp.status_code == 429  # Rate limited
 
 
 @pytest.mark.asyncio
@@ -266,11 +262,8 @@ async def test_users_me_endpoint(
         assert token_resp.status_code == 200
         access_token = token_resp.json()["access_token"]
 
-        # 1. Missing token → 401 (using safe client to avoid ASGI issue)
-        from tests.shared.utils.safe_client import safe_get
-
-        unauth = await safe_get(test_app_with_di_container, "/users/me")
-        # If this was skipped due to ASGI issue, the safe_get will have raised pytest.skip
+        # 1. Missing token → 401 (using direct ASGI transport)
+        unauth = await client.get("/users/me")
         assert unauth.status_code == 401
 
         # 2. Valid token → 200 with expected fields
@@ -285,11 +278,11 @@ async def test_users_me_endpoint(
 
 @pytest.mark.asyncio
 async def test_token_invalid_credentials(test_app_with_di_container: FastAPI) -> None:
-    from tests.shared.utils.safe_client import safe_post
-
-    data = {"username": f"fake_{uuid.uuid4().hex[:8]}", "password": "wrong"}
-    resp = await safe_post(test_app_with_di_container, "/auth/token", data=data)
-    assert resp.status_code == 401
+    transport = httpx.ASGITransport(app=test_app_with_di_container)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        data = {"username": f"fake_{uuid.uuid4().hex[:8]}", "password": "wrong"}
+        resp = await client.post("/auth/token", data=data)
+        assert resp.status_code == 401
 
 
 @pytest.mark.asyncio
@@ -313,11 +306,11 @@ async def test_token_inactive_user(
     await user_repo.save(user)
 
     # Test login with inactive user
-    from tests.shared.utils.safe_client import safe_post
-
-    data = {"username": username, "password": password}
-    resp = await safe_post(test_app_with_di_container, "/auth/token", data=data)
-    assert resp.status_code == 403  # Inactive users get 403, not 401
+    transport = httpx.ASGITransport(app=test_app_with_di_container)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        data = {"username": username, "password": password}
+        resp = await client.post("/auth/token", data=data)
+        assert resp.status_code == 403  # Inactive users get 403, not 401
 
 
 @pytest.mark.asyncio
@@ -341,15 +334,15 @@ async def test_token_unverified_email(
     await user_repo.save(user)
 
     # Test login with unverified email
-    from tests.shared.utils.safe_client import safe_post
-
-    data = {"username": username, "password": password}
-    resp = await safe_post(test_app_with_di_container, "/auth/token", data=data)
-    assert resp.status_code == 403  # Unverified email should return 403, not 401
-    detail = resp.json()["detail"].lower()
-    assert (
-        "email" in detail and "verified" in detail
-    )  # Check for email verification message
+    transport = httpx.ASGITransport(app=test_app_with_di_container)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        data = {"username": username, "password": password}
+        resp = await client.post("/auth/token", data=data)
+        assert resp.status_code == 403  # Unverified email should return 403, not 401
+        detail = resp.json()["detail"].lower()
+        assert (
+            "email" in detail and "verified" in detail
+        )  # Check for email verification message
 
 
 @pytest.mark.asyncio
@@ -369,8 +362,8 @@ async def test_register_weak_password_error(
         "email": f"email_{uuid.uuid4().hex[:8]}@example.com",
         "password": "@ny-Password123!",
     }
-    from tests.shared.utils.safe_client import safe_post
-
-    resp = await safe_post(test_app_with_di_container, "/auth/register", json=payload)
-    assert resp.status_code == 400
-    assert "strength requirements" in resp.json()["detail"]
+    transport = httpx.ASGITransport(app=test_app_with_di_container)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.post("/auth/register", json=payload)
+        assert resp.status_code == 400
+        assert "strength requirements" in resp.json()["detail"]

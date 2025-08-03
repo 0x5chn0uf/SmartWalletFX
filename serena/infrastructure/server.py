@@ -4,7 +4,7 @@ import os
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, AsyncGenerator, Dict, Optional
+from typing import AsyncGenerator, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,7 +20,7 @@ from serena.core.errors import (
 from serena.core.models import (
     Archive,
     Embedding,
-    SearchResult,
+    IndexedFiles,
     compute_content_hash,
     generate_summary,
 )
@@ -229,7 +229,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                                 .first()
                             )
                             if archive:
+                                indexedFile = (
+                                    session.query(IndexedFiles)
+                                    .filter_by(task_id=task_id)
+                                    .first()
+                                )
                                 session.delete(archive)
+                                session.delete(indexedFile)
+
                                 session.commit()
                                 return True
                     except Exception as e:
@@ -967,7 +974,13 @@ def create_app() -> FastAPI:
             title = archive.title
 
             # Delete the archive (embeddings will be cascade deleted)
+            indexedFile = (
+                db.query(IndexedFiles)
+                .filter_by(task_id=task_id)
+                .first()
+            )
             db.delete(archive)
+            db.delete(indexedFile)
             db.commit()
 
             print(f"🗑️ Archive {task_id} deleted successfully: {title}")

@@ -55,9 +55,8 @@ async def test_refresh_success(
     password = "Str0ngP@ssw0rd!"
     email = f"{username}@example.com"
 
-    async with httpx.AsyncClient(
-        app=test_app_with_di_container, base_url="http://test"
-    ) as client:
+    transport = httpx.ASGITransport(app=test_app_with_di_container)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         _, refresh_token = await _register_and_login_with_di(
             client, test_di_container_with_db, email, username, password
         )
