@@ -127,6 +127,10 @@ class _WatchdogMemoryWatcher:
 
         # path -> TrackedFile instance
         self._tracked: Dict[str, TrackedFile] = {}
+        
+        # Debouncing mechanism to prevent duplicate events
+        self._pending_changes: Dict[str, float] = {}  # path -> timestamp
+        self._debounce_delay = 0.5  # 500ms debounce delay
 
         self._setup_tracking()
 
@@ -256,14 +260,64 @@ class _WatchdogMemoryWatcher:
             print(f"   - {key.replace('_', ' ').title()}: {value}")
 
     def process_change(self, path: str) -> None:  # noqa: D401
-        """Process file change event with extension filtering."""
+        """Process file change event with extension and path filtering."""
+        import time
+        
+        # Skip files in excluded directories
+        path_obj = Path(path)
+        path_parts = path_obj.parts
+        
+        # Exclude git, build, cache, and other irrelevant directories
+        excluded_dirs = {
+            '.git', '.gitignore', 'node_modules', '__pycache__', '.pytest_cache',
+            'build', 'dist', '.venv', 'venv', '.env', '.DS_Store',
+            'coverage', '.coverage', '.nyc_output', 'temp', 'tmp',
+            '.cache', '.tox', '.mypy_cache', '.ruff_cache'
+        }
+        
+        # Check if any part of the path contains excluded directories
+        if any(part in excluded_dirs or part.startswith('.') and part not in {'.taskmaster', '.serena'} 
+               for part in path_parts):
+            logger.debug(f"Skipping excluded path: {path}")
+            return
+        
+        # Skip temporary files and editor backup files
+        filename = path_obj.name
+        if (filename.startswith('.') or 
+            filename.endswith(('.tmp', '.temp', '.swp', '.swo', '.bak', '.orig', '~')) or
+            filename.startswith('#') and filename.endswith('#')):  # Emacs temp files
+            logger.debug(f"Skipping temporary file: {path}")
+            return
+        
         # Only process supported file extensions
-        file_ext = Path(path).suffix.lower()
-        supported_extensions = {".md", ".txt", ".json", ".py", ".ts", ".tsx", ".js", ".jsx"}
+        file_ext = path_obj.suffix.lower()
+        supported_extensions = {".md", ".txt", ".json", ".py", ".ts", ".tsx", ".js", ".jsx", ".yaml", ".yml"}
         
         if file_ext not in supported_extensions:
             logger.debug(f"Skipping unsupported file extension: {path}")
             return
+        
+        # Debouncing logic - check if we recently processed this file
+        current_time = time.time()
+        last_processed = self._pending_changes.get(path, 0)
+        
+        if current_time - last_processed < self._debounce_delay:
+            logger.debug(f"Debouncing file change: {path} (too recent)")
+            return
+        
+        # Update the timestamp for this file
+        self._pending_changes[path] = current_time
+        
+        # Clean up old entries from pending changes (older than 5 seconds)
+        cutoff_time = current_time - 5.0
+        self._pending_changes = {
+            p: t for p, t in self._pending_changes.items() 
+            if t > cutoff_time
+        }
+        
+        # Log the file being processed with INFO level to make it visible
+        relative_path = str(path_obj.relative_to(Path.cwd())) if path_obj.is_absolute() else path
+        logger.info(f"📝 Processing file change: {relative_path}")
             
         self._maybe_upsert(path, initial_scan=False)
 

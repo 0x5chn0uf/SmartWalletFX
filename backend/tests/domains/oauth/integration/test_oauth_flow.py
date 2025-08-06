@@ -36,7 +36,8 @@ async def test_google_oauth_callback(test_app_with_di_container: FastAPI, monkey
     monkeypatch.setattr(jwt, "get_unverified_claims", fake)
 
     async with httpx.AsyncClient(
-        app=test_app_with_di_container, base_url="http://test"
+        transport=httpx.ASGITransport(app=test_app_with_di_container),
+        base_url="http://test",
     ) as client:
         resp = await client.get(
             "/auth/oauth/google/callback",
@@ -69,7 +70,8 @@ async def test_google_oauth_login(test_app_with_di_container: FastAPI, monkeypat
     monkeypatch.setattr("app.usecase.oauth_usecase.store_state", _store_state)
 
     async with httpx.AsyncClient(
-        app=test_app_with_di_container, base_url="http://test"
+        transport=httpx.ASGITransport(app=test_app_with_di_container),
+        base_url="http://test",
     ) as client:
         resp = await client.get(
             "/auth/oauth/google/login",

@@ -123,6 +123,7 @@ Open http://localhost:3000 and start hacking – any change in `backend/` or `fr
 - PostgreSQL with automated backup and restore capabilities
 - Redis for intelligent caching and background job processing
 - Comprehensive test suite with >95% code coverage
+- Serena semantic memory system with selective codebase embedding
 
 **Frontend Experience**
 
@@ -137,6 +138,7 @@ Open http://localhost:3000 and start hacking – any change in `backend/` or `fr
 - Role-based access control (RBAC) for enterprise users
 - Prometheus metrics and monitoring
 - CI/CD pipeline with automated security scanning
+- Intelligent code search and documentation system
 
 ---
 
@@ -280,6 +282,34 @@ Please see our [Contributing Guide](CONTRIBUTING.md) for detailed instructions.
 ## 📜 License
 
 This project is currently private and not available for public use or distribution.
+
+---
+
+## 🔍 Developer Tools
+
+### Serena Semantic Memory System
+
+SmartWalletFX includes **Serena**, an advanced semantic memory and code search system:
+
+- **Semantic Code Search**: Find relevant code using natural language queries
+- **Selective Embedding**: Index codebase without exposing full source code
+- **Smart Chunking**: Structure-aware code splitting with intelligent overlap
+- **Incremental Updates**: SHA-256 hash-based change detection for efficiency
+- **Multi-Language Support**: Optimized processing for Python, TypeScript, JavaScript
+
+**Quick Start:**
+```bash
+# Index your codebase for semantic search
+serena embed index
+
+# Search for authentication-related code
+serena embed search "JWT token validation middleware"
+
+# Check embedding statistics
+serena embed stats
+```
+
+See [`serena/docs/CODE_EMBEDDING.md`](serena/docs/CODE_EMBEDDING.md) for comprehensive documentation.
 
 ---
 

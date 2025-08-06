@@ -261,8 +261,6 @@ class EmbeddingGenerator:
         self._cleanup_timer.daemon = True
         self._cleanup_timer.start()
 
-        print(f"Set adaptive cleanup timer to {adaptive_timeout}s")
-
     def _calculate_adaptive_timeout(self) -> float:
         """Calculate adaptive cleanup timeout based on usage patterns."""
         # Base timeout
@@ -402,8 +400,18 @@ class EmbeddingGenerator:
                 try:
                     # Cancel any pending cleanup timer
                     if self._cleanup_timer:
-                        self._cleanup_timer.cancel()
-                        self._cleanup_timer = None
+                        try:
+                            self._cleanup_timer.cancel()
+                            self._cleanup_timer = None
+                        except Exception as e:
+                            print(f"Timer cleanup error: {e}")
+
+                    # Wait for any loading thread to complete
+                    if self._loading_thread and self._loading_thread.is_alive():
+                        try:
+                            self._loading_thread.join(timeout=2.0)
+                        except Exception as e:
+                            print(f"Loading thread cleanup error: {e}")
 
                     # Free GPU memory if applicable
                     try:
@@ -411,19 +419,29 @@ class EmbeddingGenerator:
                             self._model.device
                         ):
                             import torch
-
                             torch.cuda.empty_cache()
-                    except Exception:
-                        pass
+                            torch.cuda.synchronize()
+                    except Exception as e:
+                        print(f"CUDA cleanup error: {e}")
 
+                    # Clear the model reference
                     self._model = None
                     self._usage_stats["last_cleanup"] = time.time()
+
+                    # Force garbage collection to free memory
+                    import gc
+                    gc.collect()
 
                     print("Forced embedding model cleanup completed")
                     return True
 
                 except Exception as exc:
                     print(f"Forced cleanup failed: {exc}")
+                    # Still try to clear the model reference
+                    try:
+                        self._model = None
+                    except:
+                        pass
 
         return False
 
@@ -442,7 +460,7 @@ class EmbeddingGenerator:
         start_time = time.time()
 
         # Happy-path: model present
-        vec = self.model.encode(text, convert_to_numpy=True)  # type: ignore[attr-defined]
+        vec = self.model.encode(text, convert_to_numpy=True, show_progress_bar=False)  # type: ignore[attr-defined]
         result = vec.tolist()
         del vec  # Explicit cleanup of numpy array
 
@@ -463,11 +481,9 @@ class EmbeddingGenerator:
         start_time = time.time()
 
         # Happy-path batch encode – any exception bubbles up to caller
-        print(f"Starting batch encoding for {len(texts)} texts")
-        vecs = self.model.encode(texts, convert_to_numpy=True, batch_size=32)  # type: ignore[attr-defined]
-        print(
-            f"Batch encode successful (shape={getattr(vecs, 'shape', 'unknown')})",
-        )
+        # Removed verbose logging: Starting batch encoding for {len(texts)} texts
+        vecs = self.model.encode(texts, convert_to_numpy=True, batch_size=32, show_progress_bar=False)  # type: ignore[attr-defined]
+        # Removed verbose logging: Batch encode successful (shape={getattr(vecs, 'shape', 'unknown')})
 
         # Convert to list and explicitly delete numpy array to free memory
         result = vecs.tolist()
@@ -772,7 +788,7 @@ class AsyncEmbeddingQueue:
             with self._stats_lock:
                 self._stats["total_requests"] += 1
 
-            print(f"Queued embedding request for task {task_id}")
+            # Removed verbose logging: Queued embedding request for task {task_id}
             return True
 
         except queue.Full:
@@ -850,7 +866,7 @@ class AsyncEmbeddingQueue:
                 ) / successful_count
 
             print(
-                f"Generated embeddings for task {request.task_id} in {processing_time_ms:.2f}ms"
+                f"✅ Embeddings generated for {request.task_id} ({processing_time_ms:.0f}ms)"
             )
 
         except Exception as exc:
@@ -892,7 +908,7 @@ class AsyncEmbeddingQueue:
                     session.add(embedding)
 
                 session.commit()
-                print(f"Stored {len(embeddings)} embeddings for task {task_id}")
+                # Embeddings stored successfully
 
         except Exception as exc:
             print(f"❌ Failed to store embeddings for task {task_id}: {exc}")

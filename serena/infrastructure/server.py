@@ -4,7 +4,7 @@ import os
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Any, AsyncGenerator, Dict, Optional
+from typing import AsyncGenerator, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,7 +20,7 @@ from serena.core.errors import (
 from serena.core.models import (
     Archive,
     Embedding,
-    SearchResult,
+    IndexedFiles,
     compute_content_hash,
     generate_summary,
 )
@@ -37,11 +37,28 @@ from serena.settings import settings
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage application lifespan events."""
-    import logging
     import time
+    import threading
+    import signal
 
     from serena.infrastructure.embeddings import get_default_generator
     from serena.scripts.maintenance import MaintenanceService
+
+    # Disable multiprocessing start method issues on macOS
+    if hasattr(os, "fork"):
+        try:
+            import multiprocessing
+
+            multiprocessing.set_start_method("spawn", force=True)
+        except RuntimeError:
+            pass  # Already set
+
+    # Set thread-safe environment variables to prevent segmentation faults
+    os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+    os.environ.setdefault("OMP_NUM_THREADS", "1")
+
+    # Check if watch mode is enabled via environment variable
+    watch_mode = os.environ.get("SERENA_WATCH_MODE", "false").lower() == "true"
 
     # use consolidated settings object
     # from serena import config (removed)
@@ -51,36 +68,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     print("📋 Configuration check:")
     print(f"   - Database path: {settings.memory_db}")
 
-    # Embeddings are always required; load model synchronously
-    print("🤖 Initializing embedding model...")
-    model_start = time.time()
-    try:
-        generator = get_default_generator()
-        print(f"   - Model name: {generator.model_name}")
-        print(f"   - Expected dimension: {generator.embedding_dim}")
-
-        # Force synchronous model loading
-        print("   - Loading model weights...")
-        success = generator.load_model_now()
-        model_time = time.time() - model_start
-
-        if not success:
-            # Embeddings were expected but model could not be loaded → abort.
-            print(
-                f"❌ Failed to load embedding model after {model_time:.2f}s – aborting startup"
-            )
-            raise RuntimeError("Embedding model failed to load; startup aborted")
-
-        print(f"✅ Embedding model loaded successfully in {model_time:.2f}s")
-        print(f"   - Model: {generator.model_name}")
-        print(f"   - Dimension: {generator.embedding_dim}")
-        print("   - Status: Ready for semantic search")
-    except Exception as exc:
-        model_time = time.time() - model_start
-        print(f"❌ Failed to preload embedding model after {model_time:.2f}s: {exc}")
-        print("   - Status: Embedding search will be UNAVAILABLE")
-
-    # Initialize write queue for server operations
+    # Initialize write queue BEFORE embeddings to prevent conflicts
     print("🔄 Initializing write queue...")
     queue_start = time.time()
     try:
@@ -101,22 +89,218 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         print(f"❌ Failed to initialize write queue after {queue_time:.2f}s: {exc}")
         print("   - Status: Async operations will be UNAVAILABLE")
 
-    # Start maintenance service
-    maintenance_service = MaintenanceService()
-    maintenance_service.start_background_service()
-    app.state.maintenance_service = maintenance_service
+    # Embeddings are always required; load model synchronously with protection
+    print("🤖 Initializing embedding model...")
+    model_start = time.time()
+    try:
+        # Environment variables already set in lifespan startup
+        generator = get_default_generator()
+        print(f"   - Model name: {generator.model_name}")
+        print(f"   - Expected dimension: {generator.embedding_dim}")
+
+        # Force synchronous model loading with timeout protection
+        print("   - Loading model weights...")
+
+        # Use a lock to prevent concurrent model loading
+        model_load_success = False
+
+        def load_model_with_timeout():
+            nonlocal model_load_success
+            try:
+                model_load_success = generator.load_model_now()
+            except Exception as e:
+                print(f"   - Model loading failed: {e}")
+                model_load_success = False
+
+        # Run model loading in separate thread with timeout
+        load_thread = threading.Thread(target=load_model_with_timeout, daemon=True)
+        load_thread.start()
+        load_thread.join(timeout=60)  # 60 second timeout
+
+        model_time = time.time() - model_start
+
+        if not model_load_success or load_thread.is_alive():
+            # Model loading failed or timed out
+            print(
+                f"❌ Failed to load embedding model after {model_time:.2f}s – continuing without embeddings"
+            )
+            print("   - Status: Embedding search will be UNAVAILABLE")
+        else:
+            print(f"✅ Embedding model loaded successfully in {model_time:.2f}s")
+            print(f"   - Model: {generator.model_name}")
+            print(f"   - Dimension: {generator.embedding_dim}")
+            print("   - Status: Ready for semantic search")
+    except Exception as exc:
+        model_time = time.time() - model_start
+        print(f"❌ Failed to preload embedding model after {model_time:.2f}s: {exc}")
+        print("   - Status: Embedding search will be UNAVAILABLE")
+
+    # Start maintenance service with error protection
+    print("🔧 Starting maintenance service...")
+    maintenance_service = None
+    try:
+        maintenance_service = MaintenanceService()
+        maintenance_service.start_background_service()
+        app.state.maintenance_service = maintenance_service
+        print("✅ Maintenance service started")
+    except Exception as exc:
+        print(f"⚠️ Failed to start maintenance service: {exc}")
+        app.state.maintenance_service = None
+
+    # Start file watcher for automatic re-indexing if watch mode is enabled
+    file_watcher = None
+    if watch_mode:
+        print("👀 Starting file watcher for automatic re-indexing...")
+        try:
+            from serena.infrastructure.watcher import create_memory_watcher
+
+            # Create a simple memory adapter that works directly with the server's database
+            class ServerMemoryAdapter:
+                """Simple memory adapter for server-integrated file watcher."""
+
+                def __init__(self):
+                    self.db_path = settings.memory_db
+
+                def upsert(
+                    self,
+                    task_id: str,
+                    content: str,
+                    filepath: str = None,
+                    kind: str = "archive",
+                ):
+                    """Upsert content using the server's direct database access."""
+                    # Use the server's own upsert function
+                    import asyncio
+                    from serena.core.models import TaskKind, TaskStatus
+                    from datetime import datetime
+
+                    try:
+                        # Convert string kind back to enum if needed
+                        task_kind = None
+                        if kind:
+                            try:
+                                task_kind = TaskKind(kind)
+                            except ValueError:
+                                task_kind = TaskKind.ARCHIVE
+
+                        # Use the server's internal upsert method
+                        loop = None
+                        try:
+                            loop = asyncio.get_running_loop()
+                        except RuntimeError:
+                            pass
+
+                        if loop:
+                            # We're in an async context, but _upsert_archive_direct is async
+                            # For now, we'll skip the async processing during file watch events
+                            print(
+                                f"🔄 File change detected: {task_id} from {filepath} (queued for processing)"
+                            )
+                        else:
+                            # We're in a sync context, can run the async upsert
+                            from serena.database.session import get_db_session
+
+                            with get_db_session() as session:
+                                result = asyncio.run(
+                                    _upsert_archive_direct(
+                                        db=session,
+                                        task_id=task_id,
+                                        markdown_text=content,
+                                        filepath=filepath,
+                                        kind=task_kind,
+                                        async_write=settings.async_write,
+                                    )
+                                )
+                                return result
+                    except Exception as e:
+                        print(f"❌ Failed to upsert {task_id} from file watcher: {e}")
+                        return False
+
+                def delete(self, task_id: str):
+                    """Delete task from database."""
+                    try:
+                        from serena.database.session import get_db_session
+                        from serena.core.models import Archive
+
+                        with get_db_session() as session:
+                            archive = (
+                                session.query(Archive)
+                                .filter_by(task_id=task_id)
+                                .first()
+                            )
+                            if archive:
+                                indexedFile = (
+                                    session.query(IndexedFiles)
+                                    .filter_by(task_id=task_id)
+                                    .first()
+                                )
+                                session.delete(archive)
+                                session.delete(indexedFile)
+
+                                session.commit()
+                                return True
+                    except Exception as e:
+                        print(f"❌ Failed to delete {task_id} from file watcher: {e}")
+                    return False
+
+            # Create memory adapter and watcher
+            memory = ServerMemoryAdapter()
+
+            # Create watcher with callback for logging
+            def watcher_callback(action: str, task_id: str, filepath: str) -> None:
+                print(f"🔄 File watcher: {action} {task_id} from {filepath}")
+
+            file_watcher = create_memory_watcher(
+                memory=memory, auto_add_taskmaster=True, callback=watcher_callback
+            )
+
+            # Start the watcher
+            file_watcher.start(catch_up=True)
+
+            app.state.file_watcher = file_watcher
+            app.state.file_watcher_active = True
+            print(
+                "✅ File watcher started - files will be automatically re-indexed on changes"
+            )
+            print(f"   - Watching {len(file_watcher.watched_paths)} directories")
+            print(f"   - Tracking {len(file_watcher._tracked)} files")
+        except Exception as exc:
+            print(f"⚠️ Failed to start file watcher: {exc}")
+            app.state.file_watcher = None
+            app.state.file_watcher_active = False
+    else:
+        app.state.file_watcher = None
+        app.state.file_watcher_active = False
 
     startup_time = time.time() - startup_start
     print(f"🎉 Serena server startup completed in {startup_time:.2f}s")
+    if watch_mode:
+        print(
+            "👀 Watch mode enabled - files will be automatically re-indexed on changes"
+        )
 
     yield
 
-    # Graceful shutdown with proper timeout handling
-    import signal
-    import asyncio
-
+    # Graceful shutdown with proper timeout handling and resource cleanup
     shutdown_start = time.time()
     print("🛑 Serena server shutting down gracefully...")
+
+    # Set signal handlers for immediate cleanup
+    def force_exit_handler(signum, frame):
+        print(f"⚠️ Force exit signal {signum} received during shutdown")
+        os._exit(1)
+
+    signal.signal(signal.SIGTERM, force_exit_handler)
+    signal.signal(signal.SIGINT, force_exit_handler)
+
+    # Stop file watcher first if running
+    if hasattr(app.state, "file_watcher") and app.state.file_watcher:
+        print("   - Stopping file watcher...")
+        try:
+            app.state.file_watcher.stop()
+            print("   ✅ File watcher stopped")
+        except Exception as exc:
+            print(f"   ⚠️ File watcher shutdown error: {exc}")
 
     # Shutdown maintenance service
     if hasattr(app.state, "maintenance_service") and app.state.maintenance_service:
@@ -132,42 +316,99 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         from serena.infrastructure.write_queue import write_queue
 
-        # Get current queue status before shutdown
-        metrics = write_queue.get_metrics()
-        pending_ops = metrics.current_queue_size
+        if write_queue is not None:
+            # Get current queue status before shutdown
+            try:
+                metrics = write_queue.get_metrics()
+                pending_ops = metrics.current_queue_size
 
-        if pending_ops > 0:
-            print(f"   - Waiting for {pending_ops} pending operations...")
+                if pending_ops > 0:
+                    print(f"   - Waiting for {pending_ops} pending operations...")
 
-        # Attempt graceful shutdown with timeout
-        shutdown_timeout = min(30.0, max(10.0, pending_ops * 0.5))  # Dynamic timeout
-        shutdown_success = write_queue.shutdown(timeout=shutdown_timeout)
+                # Attempt graceful shutdown with timeout
+                shutdown_timeout = min(
+                    15.0, max(5.0, pending_ops * 0.3)
+                )  # Reduced timeout
+                shutdown_success = write_queue.shutdown(timeout=shutdown_timeout)
 
-        if shutdown_success:
-            print("   ✅ Write queue shutdown completed")
-        else:
-            print(f"   ⚠️ Write queue shutdown timeout after {shutdown_timeout}s")
+                if shutdown_success:
+                    print("   ✅ Write queue shutdown completed")
+                else:
+                    print(
+                        f"   ⚠️ Write queue shutdown timeout after {shutdown_timeout}s"
+                    )
 
-            # Get final metrics to see what was lost
-            final_metrics = write_queue.get_metrics()
-            if final_metrics.current_queue_size > 0:
-                print(
-                    f"   ⚠️ {final_metrics.current_queue_size} operations may have been lost"
-                )
+                    # Get final metrics to see what was lost
+                    try:
+                        final_metrics = write_queue.get_metrics()
+                        if final_metrics.current_queue_size > 0:
+                            print(
+                                f"   ⚠️ {final_metrics.current_queue_size} operations may have been lost"
+                            )
+                    except:
+                        pass
+            except Exception as e:
+                print(f"   ⚠️ Error during write queue metrics check: {e}")
+                # Force shutdown without metrics
+                try:
+                    write_queue.shutdown(timeout=5.0)
+                except:
+                    pass
 
     except Exception as exc:
         print(f"   ❌ Write queue shutdown error: {exc}")
 
-    # Close database connections
+    # Force cleanup of embedding resources
+    print("   - Cleaning up embedding resources...")
+    try:
+        generator = get_default_generator()
+        if hasattr(generator, "force_cleanup"):
+            generator.force_cleanup()
+        print("   ✅ Embedding resources cleaned up")
+    except Exception as exc:
+        print(f"   ⚠️ Embedding cleanup error: {exc}")
+
+    # Close database connections with timeout
     print("   - Closing database connections...")
     try:
         from serena.database.session import get_db_manager
 
         db_manager = get_db_manager()
-        db_manager.close()
-        print("   ✅ Database connections closed")
+
+        # Use threading to timeout database closure
+        def close_db():
+            try:
+                db_manager.close()
+            except Exception as e:
+                print(f"   ⚠️ Database close error: {e}")
+
+        close_thread = threading.Thread(target=close_db, daemon=True)
+        close_thread.start()
+        close_thread.join(timeout=5.0)
+
+        if close_thread.is_alive():
+            print("   ⚠️ Database close timed out")
+        else:
+            print("   ✅ Database connections closed")
     except Exception as exc:
         print(f"   ⚠️ Database cleanup error: {exc}")
+
+    # Final cleanup with forced thread termination
+    print("   - Final resource cleanup...")
+    try:
+        # Clear environment variables that might cause issues
+        for env_var in ["TOKENIZERS_PARALLELISM", "OMP_NUM_THREADS"]:
+            if env_var in os.environ:
+                del os.environ[env_var]
+
+        # Force garbage collection
+        import gc
+
+        gc.collect()
+
+        print("   ✅ Final cleanup completed")
+    except Exception as exc:
+        print(f"   ⚠️ Final cleanup error: {exc}")
 
     # Final cleanup
     shutdown_time = time.time() - shutdown_start
@@ -183,7 +424,7 @@ async def _upsert_archive_direct(
     kind: Optional["TaskKind"] = None,
     status: Optional["TaskStatus"] = None,
     completed_at: Optional[datetime] = None,
-    async_write: bool = True,
+    async_write: bool = settings.async_write,
 ) -> bool:
     """Direct archive upsert without using Memory class."""
 
@@ -287,7 +528,7 @@ async def _upsert_archive_direct(
                 )
 
                 if embedding_queued:
-                    print(f"Queued embeddings for task {task_id}")
+                    pass  # Embedding queued successfully
                 else:
                     print(
                         f"Failed to queue embeddings for task {task_id}, search will be unavailable until embeddings are generated"
@@ -733,7 +974,13 @@ def create_app() -> FastAPI:
             title = archive.title
 
             # Delete the archive (embeddings will be cascade deleted)
+            indexedFile = (
+                db.query(IndexedFiles)
+                .filter_by(task_id=task_id)
+                .first()
+            )
             db.delete(archive)
+            db.delete(indexedFile)
             db.commit()
 
             print(f"🗑️ Archive {task_id} deleted successfully: {title}")
@@ -1126,6 +1373,134 @@ def create_app() -> FastAPI:
             return create_error_response(
                 code=ErrorCode.EMBEDDING_GENERATION_FAILED,
                 message="Failed to generate embeddings",
+                details={"error": str(exc)},
+            )
+
+    @app.post("/embed/index", tags=["embedding"])
+    async def embed_index(request: dict):
+        """Index codebase or specific files for embedding."""
+        try:
+            from serena.infrastructure.code_embedding import CodeEmbeddingSystem
+            from pathlib import Path
+
+            # Initialize code embedding system
+            project_root = str(Path.cwd())
+            embedding_system = CodeEmbeddingSystem(
+                project_root=project_root,
+                db_path=settings.memory_db,
+            )
+
+            force_reindex = request.get("force_reindex", False)
+            files = request.get("files")
+
+            if files:
+                # Index specific files
+                processed = 0
+                errors = 0
+
+                for filepath in files:
+                    try:
+                        if embedding_system.embed_file(
+                            filepath, force_reindex=force_reindex
+                        ):
+                            processed += 1
+                        # Skip count is handled in the success response
+                    except Exception as e:
+                        print(f"❌ Failed to embed {filepath}: {e}")
+                        errors += 1
+
+                stats = {
+                    "files_found": len(files),
+                    "files_processed": processed,
+                    "files_skipped": len(files) - processed - errors,
+                    "errors": errors,
+                    "chunks_created": 0,  # Would need tracking in embed_file
+                    "embeddings_generated": 0,  # Would need tracking in embed_file
+                }
+            else:
+                # Index entire codebase
+                stats = embedding_system.embed_codebase(force_reindex=force_reindex)
+
+            return {
+                "success": True,
+                "message": "Embedding completed",
+                "stats": stats,
+            }
+
+        except Exception as exc:
+            print(f"Error during embedding: {exc}")
+            return create_error_response(
+                code=ErrorCode.EMBEDDING_GENERATION_FAILED,
+                message="Failed to embed codebase",
+                details={"error": str(exc)},
+            )
+
+    @app.post("/embed/search", tags=["embedding"])
+    async def embed_search(request: dict):
+        """Search embedded code using semantic similarity."""
+        try:
+            from serena.infrastructure.code_embedding import CodeEmbeddingSystem
+            from pathlib import Path
+
+            # Initialize code embedding system
+            project_root = str(Path.cwd())
+            embedding_system = CodeEmbeddingSystem(
+                project_root=project_root,
+                db_path=settings.memory_db,
+            )
+
+            query = request.get("query")
+            limit = request.get("limit", 10)
+
+            if not query:
+                return create_error_response(
+                    code=ErrorCode.VALIDATION_ERROR,
+                    message="Query parameter is required",
+                )
+
+            results = embedding_system.search_code(query, limit=limit)
+
+            return {
+                "success": True,
+                "message": f"Found {len(results)} results",
+                "results": results,
+            }
+
+        except Exception as exc:
+            print(f"Error during embed search: {exc}")
+            return create_error_response(
+                code=ErrorCode.SEARCH_FAILED,
+                message="Failed to search embedded code",
+                details={"error": str(exc)},
+            )
+
+    @app.get("/embed/stats", tags=["embedding"])
+    async def embed_stats():
+        """Get code embedding statistics."""
+        try:
+            from serena.infrastructure.code_embedding import CodeEmbeddingSystem
+            from pathlib import Path
+
+            # Initialize code embedding system
+            project_root = str(Path.cwd())
+            embedding_system = CodeEmbeddingSystem(
+                project_root=project_root,
+                db_path=settings.memory_db,
+            )
+
+            stats = embedding_system.get_stats()
+
+            return {
+                "success": True,
+                "message": "Statistics retrieved",
+                "stats": stats,
+            }
+
+        except Exception as exc:
+            print(f"Error getting embed stats: {exc}")
+            return create_error_response(
+                code=ErrorCode.STATS_RETRIEVAL_FAILED,
+                message="Failed to get embedding statistics",
                 details={"error": str(exc)},
             )
 

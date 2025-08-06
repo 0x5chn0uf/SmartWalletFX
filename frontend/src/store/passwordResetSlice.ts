@@ -18,6 +18,7 @@ export const requestReset = createAsyncThunk(
   async (email: string, { rejectWithValue }) => {
     try {
       await apiClient.post('/auth/password-reset-request', { email });
+      return { success: true };
     } catch (error: any) {
       if (error.response?.status === 429) {
         return rejectWithValue('Too many password reset requests. Please try again later.');
@@ -37,6 +38,7 @@ export const verifyResetToken = createAsyncThunk(
   async (token: string, { rejectWithValue }) => {
     try {
       await apiClient.post('/auth/password-reset-verify', { token });
+      return { success: true };
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.detail || 'Invalid or expired token');
     }
@@ -48,6 +50,7 @@ export const resetPassword = createAsyncThunk(
   async (payload: { token: string; password: string }, { rejectWithValue }) => {
     try {
       await apiClient.post('/auth/password-reset-complete', payload);
+      return { success: true };
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.detail || 'Failed to reset password. Please try again.'

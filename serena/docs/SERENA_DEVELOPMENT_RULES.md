@@ -24,6 +24,10 @@ Always use the official Serena CLI commands that communicate with the server:
 - `serena init` - Initialize database and configuration
 - `serena index [path]` - Index content via server (synchronous)
 - `serena search [query]` - Search indexed content
+- `serena embed <action>` - Selective codebase embedding and search
+  - `serena embed index` - Index code files for semantic search
+  - `serena embed search <query>` - Search embedded code
+  - `serena embed stats` - Show embedding statistics
 - `serena delete [id]` - Delete specific content by ID
 - `serena serve` - Start the simple local server
 - `serena maintenance` - Run maintenance operations

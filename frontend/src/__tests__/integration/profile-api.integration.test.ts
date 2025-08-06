@@ -381,7 +381,10 @@ describe('Profile API Integration Tests', () => {
 
     it('should handle file size too large', async () => {
       const formData = new FormData();
-      formData.append('file', new File(['x'.repeat(6 * 1024 * 1024)], 'large.jpg', { type: 'image/jpeg' }));
+      formData.append(
+        'file',
+        new File(['x'.repeat(6 * 1024 * 1024)], 'large.jpg', { type: 'image/jpeg' })
+      );
 
       const errorResponse = {
         response: {
@@ -635,7 +638,7 @@ describe('Profile API Integration Tests', () => {
     it('should handle session expiration during profile operations', async () => {
       // Remove session active to prevent interceptor from trying refresh
       localStorage.removeItem('session_active');
-      
+
       server.use(
         http.put(`${API_URL}/users/me/profile`, () => {
           return HttpResponse.json({ detail: 'Session expired' }, { status: 401 });

@@ -69,7 +69,7 @@ describe('Profile Schema Validation', () => {
       if (!result.success) {
         expect(result.error.issues).toHaveLength(1);
         expect(result.error.issues[0].path).toEqual(['email']);
-        expect(result.error.issues[0].code).toBe('invalid_format');
+        expect(result.error.issues[0].code).toBe('invalid_string');
       }
     });
 

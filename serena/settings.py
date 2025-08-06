@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Optional
 
 from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 
 # ---------------------------------------------------------------------------
 # Pydantic Settings implementation
@@ -311,7 +311,7 @@ class SerenaSettings(BaseSettings):
 
     # Performance configuration
     async_write: bool = Field(
-        default=True,
+        default=False,
         env="SERENA_ASYNC_WRITE",
         description="Write to DB via background queue instead of sync call.",
     )
@@ -343,6 +343,50 @@ class SerenaSettings(BaseSettings):
         description="Maximum content size in MB for indexing",
     )
 
+    # Code embedding configuration
+    embedding_chunk_size: int = Field(
+        default=4096,  # 4KB chunks
+        env="SERENA_EMBEDDING_CHUNK_SIZE",
+        description="Maximum size of code chunks in bytes for embedding",
+    )
+    embedding_overlap_lines: int = Field(
+        default=20,
+        env="SERENA_EMBEDDING_OVERLAP_LINES",
+        description="Number of lines to overlap between code chunks",
+    )
+    embedding_strip_comments: bool = Field(
+        default=True,
+        env="SERENA_EMBEDDING_STRIP_COMMENTS",
+        description="Whether to strip comments and docstrings from code before embedding",
+    )
+    embedding_include_globs: str = Field(
+        default="*.py,*.ts,*.tsx,*.js,*.jsx,backend/app/**/*.py,frontend/src/**/*.ts,frontend/src/**/*.tsx",
+        env="SERENA_EMBEDDING_INCLUDE_GLOBS",
+        description="Comma-separated glob patterns for files to include in code embedding",
+    )
+    embedding_exclude_globs: str = Field(
+        default="**/test*/**,**/tests/**,**/*test*,**/migrations/**,**/node_modules/**,**/.git/**,**/build/**,**/dist/**,**/__pycache__/**,**/*.pyc,**/*.min.js,**/*.map,**/coverage/**,**/.pytest_cache/**",
+        env="SERENA_EMBEDDING_EXCLUDE_GLOBS",
+        description="Comma-separated glob patterns for files to exclude from code embedding",
+    )
+
+    # Content indexing configuration (for serena index command)
+    index_directories: str = Field(
+        default=".taskmaster/memory-bank,.taskmaster/logs,.serena/memories,docs",
+        env="SERENA_INDEX_DIRECTORIES",
+        description="Comma-separated directory patterns for content indexing (serena index)",
+    )
+    index_include_globs: str = Field(
+        default="**/*.md,**/*.txt,**/*.json,**/*.yaml,**/*.yml",
+        env="SERENA_INDEX_INCLUDE_GLOBS",
+        description="Comma-separated glob patterns for files to include in content indexing",
+    )
+    index_exclude_globs: str = Field(
+        default="**/node_modules/**,**/.git/**,**/build/**,**/dist/**,**/__pycache__/**,**/*.pyc,**/coverage/**,**/.pytest_cache/**,CLAUDE.local.md",
+        env="SERENA_INDEX_EXCLUDE_GLOBS",
+        description="Comma-separated glob patterns for files to exclude from content indexing",
+    )
+
     # Maintenance section (parsed from JSON defaults, override via env prefixes
     maintenance: MaintenanceConfig = Field(
         default_factory=MaintenanceConfig,
@@ -356,6 +400,31 @@ class SerenaSettings(BaseSettings):
     @property
     def cors_methods_list(self) -> list[str]:
         return [m.strip() for m in self.cors_allow_methods.split(",") if m.strip()]
+
+    @property
+    def embedding_include_globs_list(self) -> list[str]:
+        """Get list of include glob patterns for code embedding."""
+        return [g.strip() for g in self.embedding_include_globs.split(",") if g.strip()]
+
+    @property
+    def embedding_exclude_globs_list(self) -> list[str]:
+        """Get list of exclude glob patterns for code embedding."""
+        return [g.strip() for g in self.embedding_exclude_globs.split(",") if g.strip()]
+
+    @property
+    def index_directories_list(self) -> list[str]:
+        """Get list of directories for content indexing."""
+        return [d.strip() for d in self.index_directories.split(",") if d.strip()]
+
+    @property
+    def index_include_globs_list(self) -> list[str]:
+        """Get list of include glob patterns for content indexing."""
+        return [g.strip() for g in self.index_include_globs.split(",") if g.strip()]
+
+    @property
+    def index_exclude_globs_list(self) -> list[str]:
+        """Get list of exclude glob patterns for content indexing."""
+        return [g.strip() for g in self.index_exclude_globs.split(",") if g.strip()]
 
     @property
     def is_production(self) -> bool:
@@ -453,14 +522,43 @@ class SerenaSettings(BaseSettings):
         for handler in root_logger.handlers[:]:
             root_logger.removeHandler(handler)
 
-        # Create formatter
-        formatter = logging.Formatter(self.log_format)
+        # Create custom formatter without date and replace logger names
+        class CustomFormatter(logging.Formatter):
+            def format(self, record):
+                # Replace specific logger names
+                if record.name == "watchfiles.main":
+                    record.name = "WATCHER"
+                elif record.name.startswith("serena.infrastructure.watcher"):
+                    record.name = "WATCHER"
+
+                # Format the message properly
+                if record.args:
+                    message = record.msg % record.args
+                else:
+                    message = record.msg
+
+                # Special format for WATCHER - no level indicator
+                if record.name == "WATCHER":
+                    return f"WATCHER - {message}"
+                else:
+                    # Use format without timestamp for other loggers
+                    return f"{record.name} - {record.levelname} - {message}"
+
+        formatter = CustomFormatter()
 
         # Console handler
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(level)
         console_handler.setFormatter(formatter)
         root_logger.addHandler(console_handler)
+
+        # Configure ALL watchfiles loggers to prevent timestamps
+        for logger_name in ["watchfiles", "watchfiles.main", "watchfiles.watcher"]:
+            logger = logging.getLogger(logger_name)
+            logger.handlers.clear()
+            logger.addHandler(console_handler)
+            logger.setLevel(level)
+            logger.propagate = False  # Prevent propagation to root logger
 
         # File handler (if specified)
         if self.log_file:
@@ -469,6 +567,13 @@ class SerenaSettings(BaseSettings):
                 file_handler.setLevel(level)
                 file_handler.setFormatter(formatter)
                 root_logger.addHandler(file_handler)
+                # Also add to watchfiles loggers
+                for logger_name in [
+                    "watchfiles",
+                    "watchfiles.main",
+                    "watchfiles.watcher",
+                ]:
+                    logging.getLogger(logger_name).addHandler(file_handler)
             except Exception as e:
                 root_logger.warning(
                     f"Warning: Could not set up file logging to {self.log_file}: {e}"
@@ -537,7 +642,7 @@ def get_production_config() -> SerenaSettings:
     return SerenaSettings(
         environment="production",
         log_level="INFO",
-        async_write=True,
+        async_write=False,
         write_batch_size=20,  # Larger batches in production
         write_queue_size=2000,  # Larger queue in production
         max_embedding_batch_size=50,  # More efficient batching
@@ -549,7 +654,7 @@ def get_development_config() -> SerenaSettings:
     return SerenaSettings(
         environment="development",
         log_level="DEBUG",
-        async_write=True,
+        async_write=False,
         write_batch_size=5,  # Smaller batches for faster feedback
         write_queue_size=100,  # Smaller queue for development
     )

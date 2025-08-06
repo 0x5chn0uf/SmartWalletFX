@@ -8,8 +8,6 @@ from typing import Dict, List, Optional, Set
 
 from serena.core.models import IndexedFiles, extract_task_id_from_path
 
-logger = logging.getLogger(__name__)
-
 from .content_extractors import extract_code_content, extract_title_from_content
 from .file_processors import (
     determine_content_kind,
@@ -49,20 +47,27 @@ class MemoryIndexer:
             self.memory = remote_memory
             print("✅ Using server-based memory for indexing (async writes enabled)")
 
-        # Default scan directories (synced with detect_taskmaster_directories)
-        self.scan_dirs = [
-            ".taskmaster/memory-bank",
-            ".taskmaster/memory-bank/reflections", 
+        # Use centralized directory and file patterns from settings
+        from serena.settings import settings
+
+        # Default scan directories from settings
+        self.scan_dirs = settings.index_directories_list + [
+            ".taskmaster/memory-bank/reflections",
             ".taskmaster/memory-bank/archives",
-            ".taskmaster/logs",
-            ".serena/memories",
-            "docs",
-            "backend/app",
-            "frontend/src",
         ]
 
-        # File extensions to index
-        self.extensions = {".md", ".txt", ".json", ".py", ".ts", ".tsx"}
+        # File extensions derived from include patterns
+        # Extract extensions from glob patterns like *.md, *.txt, etc.
+        self.extensions = set()
+        for pattern in settings.index_include_globs_list:
+            if pattern.startswith("*."):
+                self.extensions.add(
+                    pattern[1:]
+                )  # Remove '*' to get '.md', '.txt', etc.
+
+        # Fallback to common extensions if no patterns found
+        if not self.extensions:
+            self.extensions = {".md", ".txt", ".json", ".yaml", ".yml"}
 
         self.strategic_code_paths = {
             "backend/app/models/",
@@ -81,40 +86,46 @@ class MemoryIndexer:
 
         # Track processed files to avoid reprocessing
         self._processed_files: Set[str] = set()
-        
+
         # Load already processed files from database
         self._load_processed_files()
 
     def _load_processed_files(self) -> None:
         """Load already processed files from IndexedFiles table."""
         # Only works with RemoteMemory - for local database access
-        if hasattr(self.memory, 'db_path'):
+        if hasattr(self.memory, "db_path"):
             db_path = self.memory.db_path
             if db_path and Path(db_path).exists():
                 try:
                     from serena.database.session import get_db_session as get_session
+
                     with get_session(db_path) as session:
                         indexed_files = session.query(IndexedFiles).all()
                         for indexed_file in indexed_files:
                             self._processed_files.add(indexed_file.filepath)
-                    logger.info(f"Loaded {len(self._processed_files)} already processed files")
+                    print(
+                        f"Loaded {len(self._processed_files)} already processed files"
+                    )
                 except Exception as exc:
-                    logger.warning(f"Failed to load processed files from database: {exc}")
+                    print(f"Failed to load processed files from database: {exc}")
 
     def _is_file_already_indexed(self, file_path: str, content_hash: str) -> bool:
         """Check if file is already indexed with same content hash."""
-        if hasattr(self.memory, 'db_path'):
+        if hasattr(self.memory, "db_path"):
             db_path = self.memory.db_path
             if db_path and Path(db_path).exists():
                 try:
                     from serena.database.session import get_db_session as get_session
+
                     with get_session(db_path) as session:
-                        indexed_file = session.query(IndexedFiles).filter_by(
-                            filepath=file_path, sha256=content_hash
-                        ).first()
+                        indexed_file = (
+                            session.query(IndexedFiles)
+                            .filter_by(filepath=file_path, sha256=content_hash)
+                            .first()
+                        )
                         return indexed_file is not None
                 except Exception as exc:
-                    logger.debug(f"Error checking if file is indexed: {exc}")
+                    print(f"Error checking if file is indexed: {exc}")
         return False
 
     def scan_directories(
@@ -207,7 +218,7 @@ class MemoryIndexer:
     ) -> Dict[str, int]:
         """Index individual files directly."""
         start_time = time.time()
-        
+
         stats = {
             "files_found": 0,
             "files_indexed": 0,
@@ -222,27 +233,27 @@ class MemoryIndexer:
         # Validate and filter files
         scan_start = time.time()
         files_to_process = []
-        
+
         for file_path in files:
             p = Path(file_path)
-            
+
             if not p.exists():
-                logger.warning(f"File not found: {file_path}")
+                print(f"File not found: {file_path}")
                 stats["files_failed"] += 1
                 continue
-                
+
             if not p.is_file():
-                logger.warning(f"Path is not a file: {file_path}")
+                print(f"Path is not a file: {file_path}")
                 stats["files_failed"] += 1
                 continue
-                
+
             if p.suffix.lower() not in self.extensions:
-                logger.warning(f"Unsupported file extension: {file_path}")
+                print(f"Unsupported file extension: {file_path}")
                 stats["files_skipped"] += 1
                 continue
-                
+
             files_to_process.append(str(p.resolve()))  # Use absolute path
-        
+
         scan_time = time.time() - scan_start
         stats["scan_time_seconds"] = scan_time
         stats["files_found"] = len(files_to_process)
@@ -252,14 +263,16 @@ class MemoryIndexer:
             stats["total_time_seconds"] = time.time() - start_time
             return stats
 
-        print(f"Found {len(files_to_process)} valid files to process in {scan_time:.2f}s")
+        print(
+            f"Found {len(files_to_process)} valid files to process in {scan_time:.2f}s"
+        )
 
         # Process files with progress tracking
         indexing_start = time.time()
-        
+
         # Disable progress bar for single file to avoid clutter
         show_progress_bar = show_progress and len(files_to_process) > 1
-        
+
         if show_progress_bar:
             self._process_files_with_progress(files_to_process, force_reindex, stats)
         else:
@@ -267,12 +280,14 @@ class MemoryIndexer:
 
         indexing_time = time.time() - indexing_start
         total_time = time.time() - start_time
-        
+
         stats["indexing_time_seconds"] = indexing_time
         stats["total_time_seconds"] = total_time
 
         # Calculate throughput
-        files_per_second = stats["files_indexed"] / indexing_time if indexing_time > 0 else 0
+        files_per_second = (
+            stats["files_indexed"] / indexing_time if indexing_time > 0 else 0
+        )
 
         print(
             f"File indexing complete: {stats['files_indexed']} files indexed in {total_time:.2f}s "
@@ -328,7 +343,7 @@ class MemoryIndexer:
                         )
 
                 except Exception as e:  # noqa: BLE001
-                    print("Failed to process %s", file_path)
+                    print(f"Failed to process {file_path}: {e}")
                     stats["files_failed"] += 1
         else:
             # Enhanced parallel processing - always use individual processing for remote API
@@ -361,11 +376,11 @@ class MemoryIndexer:
                 with open(file_path, "r", encoding="utf-8") as f:
                     raw_content = f.read()
             except Exception:  # noqa: BLE001
-                logger.debug(f"Failed to read file {file_path}")
+                print(f"Failed to read file {file_path}")
                 return False
 
             if not raw_content.strip():
-                logger.debug(f"Empty file: {file_path}")
+                print(f"Empty file: {file_path}")
                 return False
 
             # Apply smart content extraction for code files
@@ -376,12 +391,15 @@ class MemoryIndexer:
 
             # Compute content hash for duplicate detection
             from serena.core.models import compute_content_hash
+
             content_hash = compute_content_hash(content)
 
             # Check if file is already indexed with same content
-            if not force_reindex and self._is_file_already_indexed(file_path, content_hash):
+            if not force_reindex and self._is_file_already_indexed(
+                file_path, content_hash
+            ):
                 self._processed_files.add(file_path)
-                logger.debug(f"File already indexed with same content: {file_path}")
+                print(f"File already indexed with same content: {file_path}")
                 return False
 
             # Extract task ID from file path or generate one for docs/design/code
@@ -389,7 +407,7 @@ class MemoryIndexer:
             if not task_id:
                 task_id = self._generate_id_for_file(file_path)
                 if not task_id:
-                    logger.debug(f"Could not extract task ID from {file_path}")
+                    print(f"Could not extract task ID from {file_path}")
                     return False
 
             # Determine metadata
@@ -411,11 +429,13 @@ class MemoryIndexer:
 
             if success:
                 self._processed_files.add(file_path)
-                
+
                 # Update IndexedFiles table if using local database
-                self._update_indexed_files_record(file_path, content_hash, kind, task_id)
-                
-                logger.debug(f"Indexed {file_path} as task {task_id}")
+                self._update_indexed_files_record(
+                    file_path, content_hash, kind, task_id
+                )
+
+                print(f"Indexed {file_path} as task {task_id}")
 
                 # Notify watcher to auto-add directory if configured
                 if self.watcher:
@@ -423,34 +443,42 @@ class MemoryIndexer:
 
                 return True
             else:
-                logger.warning(f"Failed to index {file_path}")
+                print(f"Failed to index {file_path}")
                 return False
 
         except Exception:  # noqa: BLE001
-            logger.exception(f"Error processing file {file_path}")
+            print(f"Error processing file {file_path}")
             return False
 
-    def _update_indexed_files_record(self, file_path: str, content_hash: str, kind, task_id: str) -> None:
+    def _update_indexed_files_record(
+        self, file_path: str, content_hash: str, kind, task_id: str
+    ) -> None:
         """Update IndexedFiles table with indexed file information."""
-        if hasattr(self.memory, 'db_path'):
+        if hasattr(self.memory, "db_path"):
             db_path = self.memory.db_path
             if db_path and Path(db_path).exists():
                 try:
                     from serena.database.session import get_db_session as get_session
                     from datetime import datetime
-                    
+
                     file_stat = Path(file_path).stat()
                     file_size = file_stat.st_size
                     last_modified = datetime.fromtimestamp(file_stat.st_mtime)
-                    
+
                     with get_session(db_path) as session:
                         # Try to find existing record
-                        existing = session.query(IndexedFiles).filter_by(filepath=file_path).first()
-                        
+                        existing = (
+                            session.query(IndexedFiles)
+                            .filter_by(filepath=file_path)
+                            .first()
+                        )
+
                         if existing:
                             # Update existing record
                             existing.sha256 = content_hash
-                            existing.kind = kind.value if hasattr(kind, 'value') else str(kind)
+                            existing.kind = (
+                                kind.value if hasattr(kind, "value") else str(kind)
+                            )
                             existing.task_id = task_id
                             existing.file_size = file_size
                             existing.last_modified = last_modified
@@ -460,20 +488,24 @@ class MemoryIndexer:
                             indexed_file = IndexedFiles(
                                 filepath=file_path,
                                 sha256=content_hash,
-                                kind=kind.value if hasattr(kind, 'value') else str(kind),
+                                kind=(
+                                    kind.value if hasattr(kind, "value") else str(kind)
+                                ),
                                 task_id=task_id,
                                 file_size=file_size,
                                 last_modified=last_modified,
                                 indexed_at=datetime.now(),
-                                updated_at=datetime.now()
+                                updated_at=datetime.now(),
                             )
                             session.add(indexed_file)
-                        
+
                         session.commit()
-                        logger.debug(f"Updated IndexedFiles record for {file_path}")
-                        
+                        print(f"Updated IndexedFiles record for {file_path}")
+
                 except Exception as exc:
-                    logger.warning(f"Failed to update IndexedFiles record for {file_path}: {exc}")
+                    print(
+                        f"Failed to update IndexedFiles record for {file_path}: {exc}"
+                    )
 
     def _generate_id_for_file(self, file_path: str) -> Optional[str]:
         """Generate appropriate ID based on file type and location."""
@@ -494,18 +526,20 @@ class MemoryIndexer:
             filename = Path(file_path).stem.lower()
             if filename in ["index", "main", "config", "settings"]:
                 return generate_path_based_id(file_path, filename)
-            
-            # For arbitrary files (e.g., individual files being indexed), 
+
+            # For arbitrary files (e.g., individual files being indexed),
             # generate ID from filename and parent directory to avoid collisions
             path_obj = Path(file_path)
-            parent_name = path_obj.parent.name if path_obj.parent.name != '.' else 'root'
-            
+            parent_name = (
+                path_obj.parent.name if path_obj.parent.name != "." else "root"
+            )
+
             # Clean up dots from parent name to avoid consecutive dots in ID
             # .taskmaster.memory-bank -> taskmaster-memory-bank
             clean_parent = parent_name.lstrip(".").replace(".", "-")
             if not clean_parent:
                 clean_parent = "root"
-                
+
             return f"{clean_parent}-{path_obj.stem}"
 
         return None
@@ -516,12 +550,12 @@ class MemoryIndexer:
             directories = self.scan_dirs
 
         if not self.watcher:
-            logger.info("Creating new file watcher for continuous monitoring")
+            print("Creating new file watcher for continuous monitoring")
             from serena.infrastructure.watcher import create_memory_watcher
 
             def indexer_callback(action: str, task_id: str, path: str) -> None:
                 """Callback for watcher events."""
-                logger.info(f"File {action}: {task_id} at {path}")
+                print(f"File {action}: {task_id} at {path}")
 
             self.watcher = create_memory_watcher(
                 memory=self.memory, auto_add_taskmaster=True, callback=indexer_callback
@@ -541,27 +575,25 @@ class MemoryIndexer:
 
         if files_to_track:
             added_count = self.watcher.add_files_to_tracking(files_to_track)
-            logger.info(f"Added {added_count} files to watcher tracking")
+            print(f"Added {added_count} files to watcher tracking")
 
         # Start the watcher
         try:
             self.watcher.start(catch_up=True)
-            logger.info(
-                f"File watcher started, monitoring {len(directories)} directories"
-            )
+            print(f"File watcher started, monitoring {len(directories)} directories")
 
             # Log tracking statistics
             stats = self.watcher.get_tracking_stats()
-            logger.info(f"Watcher stats: {stats}")
+            print(f"Watcher stats: {stats}")
 
         except Exception as exc:
-            logger.error(f"Failed to start file watcher: {exc}")
+            print(f"Failed to start file watcher: {exc}")
             raise
 
     def stop_watching(self) -> None:
         """Stop the file watcher if running."""
         if self.watcher and self.watcher.is_running():
             self.watcher.stop()
-            logger.info("File watcher stopped")
+            print("File watcher stopped")
         else:
-            logger.debug("No active file watcher to stop")
+            print("No active file watcher to stop")

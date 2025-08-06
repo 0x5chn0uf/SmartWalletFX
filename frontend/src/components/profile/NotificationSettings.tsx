@@ -102,11 +102,12 @@ const NotificationSettings: React.FC = () => {
 
       // Check if preferences differ from original user preferences
       const originalPrefs = user?.notification_preferences as NotificationPreferences;
-      const hasActualChanges = originalPrefs ? 
-        Object.keys(newPreferences).some(prefKey => {
-          const key = prefKey as keyof NotificationPreferences;
-          return newPreferences[key] !== (originalPrefs[key] ?? true);
-        }) : true;
+      const hasActualChanges = originalPrefs
+        ? Object.keys(newPreferences).some(prefKey => {
+            const key = prefKey as keyof NotificationPreferences;
+            return newPreferences[key] !== (originalPrefs[key] ?? true);
+          })
+        : true;
 
       setHasChanges(hasActualChanges);
     };

@@ -15,7 +15,7 @@ const mockUpdateNotificationPreferences = vi.fn();
 // Mock the userProfileSlice actions
 vi.mock('../../../store/slices/userProfileSlice', async () => {
   const actual = await vi.importActual('../../../store/slices/userProfileSlice');
-  
+
   // Create mock thunk with proper structure
   const mockThunk = (...args: any[]) => {
     mockUpdateNotificationPreferences(...args);
@@ -26,7 +26,7 @@ vi.mock('../../../store/slices/userProfileSlice', async () => {
   mockThunk.pending = { type: 'userProfile/updateNotificationPreferences/pending' };
   mockThunk.fulfilled = { type: 'userProfile/updateNotificationPreferences/fulfilled' };
   mockThunk.rejected = { type: 'userProfile/updateNotificationPreferences/rejected' };
-  
+
   return {
     ...actual,
     updateNotificationPreferences: mockThunk,
@@ -88,7 +88,9 @@ describe('NotificationSettings', () => {
     it('renders notification preferences title', () => {
       renderComponent();
 
-      expect(screen.getByRole('heading', { name: /notification preferences/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: /notification preferences/i })
+      ).toBeInTheDocument();
     });
 
     it('renders all notification options', () => {
@@ -130,7 +132,9 @@ describe('NotificationSettings', () => {
       renderComponent();
 
       expect(screen.getByText(/email delivery/i)).toBeInTheDocument();
-      expect(screen.getByText(/we strongly recommend keeping security alerts enabled/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/we strongly recommend keeping security alerts enabled/i)
+      ).toBeInTheDocument();
       expect(screen.getByText(/coming soon/i)).toBeInTheDocument();
     });
 
@@ -391,9 +395,11 @@ describe('NotificationSettings', () => {
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        expect(mockDispatch).toHaveBeenCalledWith(expect.objectContaining({
-          type: 'userProfile/updateNotificationPreferences/pending'
-        }));
+        expect(mockDispatch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'userProfile/updateNotificationPreferences/pending',
+          })
+        );
       });
     });
   });

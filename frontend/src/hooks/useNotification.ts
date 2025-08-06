@@ -17,19 +17,31 @@ const useNotification = () => {
   };
 
   const showSuccess = (message: string, autoHideDuration?: number) => {
-    showNotification(message, { severity: 'success', autoHideDuration });
+    showNotification(message, {
+      severity: 'success',
+      ...(autoHideDuration !== undefined && { autoHideDuration }),
+    });
   };
 
   const showError = (message: string, autoHideDuration?: number) => {
-    showNotification(message, { severity: 'error', autoHideDuration });
+    showNotification(message, {
+      severity: 'error',
+      ...(autoHideDuration !== undefined && { autoHideDuration }),
+    });
   };
 
   const showWarning = (message: string, autoHideDuration?: number) => {
-    showNotification(message, { severity: 'warning', autoHideDuration });
+    showNotification(message, {
+      severity: 'warning',
+      ...(autoHideDuration !== undefined && { autoHideDuration }),
+    });
   };
 
   const showInfo = (message: string, autoHideDuration?: number) => {
-    showNotification(message, { severity: 'info', autoHideDuration });
+    showNotification(message, {
+      severity: 'info',
+      ...(autoHideDuration !== undefined && { autoHideDuration }),
+    });
   };
 
   return {

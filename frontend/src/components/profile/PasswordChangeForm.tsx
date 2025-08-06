@@ -144,7 +144,7 @@ const PasswordChangeForm: React.FC = () => {
 
     try {
       await dispatch(changePassword(formData));
-      
+
       // Clear form on success
       if (!error) {
         setFormData({

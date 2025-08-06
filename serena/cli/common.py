@@ -7,8 +7,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from serena.core.errors import (ErrorCode, SerenaException,
-                                ServerUnavailableError)
+from serena.core.errors import ErrorCode, SerenaException, ServerUnavailableError
+
 # consolidated settings
 from serena.settings import settings
 
@@ -73,22 +73,22 @@ def remote_upsert(task_id: str, markdown_text: str, **meta) -> bool:
 
 
 def detect_taskmaster_directories() -> List[str]:
-    """Detect TaskMaster directories in the current project."""
+    """Detect TaskMaster directories in the current project using centralized configuration."""
     directories = []
 
-    # Common TaskMaster directory patterns (synced with MemoryIndexer.scan_dirs)
-    taskmaster_patterns = [
-        ".taskmaster/memory-bank",
+    # Use centralized directory patterns from settings
+    directory_patterns = settings.index_directories_list
+
+    # Add some additional patterns that are commonly used but may not be in base config
+    additional_patterns = [
         ".taskmaster/memory-bank/reflections",
         ".taskmaster/memory-bank/archives",
-        ".taskmaster/logs",
-        ".serena/memories",
-        "docs",
-        "backend/app",
-        "frontend/src",
     ]
 
-    for pattern in taskmaster_patterns:
+    # Combine patterns
+    all_patterns = directory_patterns + additional_patterns
+
+    for pattern in all_patterns:
         path = Path(pattern)
         if path.exists() and path.is_dir():
             directories.append(str(path))
@@ -104,10 +104,11 @@ class RemoteMemory:
         if not self.server_url.startswith("http"):
             self.server_url = f"http://{self.server_url}"
         self._session = None
-        
+
         # Add db_path property for IndexedFiles table access
         # This allows local tracking even when using remote API
         from serena.settings import database_config
+
         self.db_path = database_config.db_path
 
     @property
@@ -359,7 +360,7 @@ class RemoteMemory:
                 "status": "unavailable",
                 "error": str(e),
                 "database": {"archive_count": 0, "database_size": 0},
-                "server": {"available": False}
+                "server": {"available": False},
             }
 
 

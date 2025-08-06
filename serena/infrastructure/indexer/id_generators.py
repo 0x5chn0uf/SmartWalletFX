@@ -29,15 +29,23 @@ def generate_readme_id(file_path: str) -> str:
     """Generate a unique ID for README files based on their directory path."""
     path_obj = Path(file_path)
 
-    # If it's in the root, just use "readme"
-    if str(path_obj.parent) == "." or path_obj.parent.name == "":
+    # Convert absolute path to relative path from current working directory
+    try:
+        # Try to get relative path from current working directory
+        rel_path = path_obj.relative_to(Path.cwd())
+    except ValueError:
+        # If file_path is already relative or can't be made relative, use as-is
+        rel_path = path_obj
+
+    # If it's in the root, just use "readme"  
+    if str(rel_path.parent) == "." or rel_path.parent.name == "":
         return "doc-readme"
 
     # Generate ID based on directory path
-    # /project/docs/README.md -> doc-readme.docs
-    # /project/backend/README.md -> doc-readme.backend
-    # /project/docs/api/README.md -> doc-readme.docs.api
-    parent_path = str(path_obj.parent).replace("/", ".").replace("\\", ".")
+    # docs/README.md -> doc-readme.docs
+    # backend/README.md -> doc-readme.backend  
+    # docs/api/README.md -> doc-readme.docs.api
+    parent_path = str(rel_path.parent).replace("/", ".").replace("\\", ".")
 
     # Remove common prefixes to keep IDs clean (only if it's exactly "./" prefix)
     if parent_path.startswith("./") and len(parent_path) > 2 and parent_path[2] != ".":
@@ -50,22 +58,30 @@ def generate_path_based_id(file_path: str, base_name: str) -> str:
     """Generate a unique ID for common duplicate filenames using directory path."""
     path_obj = Path(file_path)
 
+    # Convert absolute path to relative path from current working directory
+    try:
+        # Try to get relative path from current working directory
+        rel_path = path_obj.relative_to(Path.cwd())
+    except ValueError:
+        # If file_path is already relative or can't be made relative, use as-is
+        rel_path = path_obj
+
     # If it's in the root, just use the base name
-    if str(path_obj.parent) == "." or path_obj.parent.name == "":
+    if str(rel_path.parent) == "." or rel_path.parent.name == "":
         return f"doc-{base_name}"
 
     # Generate ID based on directory path
-    # /project/frontend/src/index.ts -> doc-index.frontend.src
-    # /project/backend/config.py -> doc-config.backend
-    parent_path = str(path_obj.parent).replace("/", ".").replace("\\", ".")
+    # frontend/src/index.ts -> doc-index.frontend.src
+    # backend/config.py -> doc-config.backend
+    parent_path = str(rel_path.parent).replace("/", ".").replace("\\", ".")
 
     # Remove common prefixes to keep IDs clean (only if it's exactly "./" prefix)
     if parent_path.startswith("./") and len(parent_path) > 2 and parent_path[2] != ".":
         parent_path = parent_path[2:]
-    
+
     # Clean up leading dots from parent_path to avoid consecutive dots
     parent_path = parent_path.lstrip(".")
-    
+
     # Ensure we don't create empty parent_path
     if not parent_path:
         return f"doc-{base_name}"

@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import apiClient from '../services/api';
-import { UserProfile } from './authSlice';
+import { type UserProfile } from '../schemas/api';
 
 interface VerificationState {
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
@@ -34,6 +34,7 @@ export const resendVerification = createAsyncThunk(
   async (email: string, { rejectWithValue }) => {
     try {
       await apiClient.post('/auth/resend-verification', { email });
+      return { success: true };
     } catch (err: any) {
       return rejectWithValue(err.response?.data || 'Resend failed');
     }

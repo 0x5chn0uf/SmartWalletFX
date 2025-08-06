@@ -21,7 +21,11 @@ class CoreErrorHandling:
 
     def _get_trace_id(self, request: Request) -> str:
         """Get trace ID from request state."""
-        return getattr(request.state, "trace_id", "unknown")
+        try:
+            return getattr(request.state, "trace_id", "unknown")
+        except Exception:
+            # Fallback if request.state is not available
+            return "unknown"
 
     # Map status codes to error codes
     _CODE_MAP = {
@@ -38,17 +42,33 @@ class CoreErrorHandling:
         self, request: Request, exc: HTTPException
     ) -> JSONResponse:
         """Handle HTTP exceptions."""
-        trace_id = self._get_trace_id(request)
+        try:
+            trace_id = self._get_trace_id(request)
 
-        code = self._CODE_MAP.get(exc.status_code, "ERROR")
-        payload = ErrorResponse(
-            detail=exc.detail,
-            code=code,
-            status_code=exc.status_code,
-            trace_id=trace_id,
-        ).model_dump()
-        self.audit.error("http_exception", **payload)
-        return JSONResponse(status_code=exc.status_code, content=payload)
+            code = self._CODE_MAP.get(exc.status_code, "ERROR")
+            payload = ErrorResponse(
+                detail=exc.detail,
+                code=code,
+                status_code=exc.status_code,
+                trace_id=trace_id,
+            ).model_dump()
+            self.audit.error("http_exception", **payload)
+            return JSONResponse(status_code=exc.status_code, content=payload)
+        except Exception as e:
+            # Fallback error handling if something goes wrong in the error handler
+            print(f"Error in http_exception_handler: {e}")
+            import traceback
+
+            traceback.print_exc()
+            return JSONResponse(
+                status_code=exc.status_code,
+                content={
+                    "detail": str(exc.detail),
+                    "code": "ERROR",
+                    "status_code": exc.status_code,
+                    "trace_id": "error-handler-failure",
+                },
+            )
 
     async def validation_exception_handler(
         self, request: Request, exc: RequestValidationError

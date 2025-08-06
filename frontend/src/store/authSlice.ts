@@ -118,6 +118,7 @@ export const registerUser = createAsyncThunk(
         },
         { withCredentials: true }
       );
+      return { success: true };
     } catch (err: any) {
       if (axios.isAxiosError(err)) {
         return rejectWithValue({
