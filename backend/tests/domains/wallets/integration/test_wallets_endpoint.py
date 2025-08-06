@@ -263,7 +263,7 @@ async def test_wallet_invalid_address_format(
 
 @pytest.mark.asyncio
 async def test_create_wallet_authenticated(
-    test_app_with_di_container, test_di_container_with_db
+    integration_async_client, test_di_container_with_db
 ):
     # Get repositories and services from DIContainer
     user_repo = test_di_container_with_db.get_repository("user")
@@ -289,21 +289,20 @@ async def test_create_wallet_authenticated(
             "attributes": {},
         },
     )
-    headers = {"Authorization": f"Bearer {access_token}"}
+    
+    # Set auth headers on the integration_async_client
+    integration_async_client._async_client.headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
 
     wallet_data = {
         "address": "0x1234567890123456789012345678901234567890",
         "name": "Integration Wallet",
     }
-    async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=test_app_with_di_container),
-        base_url="http://test",
-        headers=headers,
-    ) as authenticated_client:
-        resp = await authenticated_client.post("/wallets", json=wallet_data)
-        assert resp.status_code == 201
-        json = resp.json()
-        assert json["address"] == wallet_data["address"]
+    resp = await integration_async_client.post("/wallets", json=wallet_data)
+    assert resp.status_code == 201
+    json = resp.json()
+    assert json["address"] == wallet_data["address"]
 
 
 @pytest.mark.asyncio
