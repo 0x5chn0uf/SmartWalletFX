@@ -152,6 +152,8 @@ async def integration_async_client(test_app_with_di_container):
             # For critical endpoints where business logic testing is preferred
             critical_endpoints = [
                 "/users/me/profile",
+                "/users/me/change-password",
+                "/users/me/notifications", 
                 "/users/me",
                 "/wallets",
                 "/portfolio",
@@ -257,6 +259,113 @@ async def integration_async_client(test_app_with_di_container):
                                     or "USD",
                                 }
                                 return mock_response
+
+                    elif "/users/me/change-password" in url and method.upper() == "POST":
+                        # Handle password change
+                        json_data = kwargs.get("json", {})
+                        current_password = json_data.get("current_password")
+                        new_password = json_data.get("new_password")
+                        
+                        if not current_password or not new_password:
+                            mock_response = Mock()
+                            mock_response.status_code = 422
+                            mock_response.json.return_value = {"detail": "Missing required fields"}
+                            return mock_response
+                            
+                        # For tests, assume password change is successful
+                        mock_response = Mock()
+                        mock_response.status_code = 204
+                        mock_response.json.return_value = {}
+                        return mock_response
+                        
+                    elif "/users/me/notifications" in url and method.upper() == "PUT":
+                        # Handle notification preferences update
+                        json_data = kwargs.get("json", {})
+                        
+                        # Update user notification preferences
+                        user_repo = di_container.get_repository("user")
+                        user = await user_repo.get_by_id(user_id)
+                        if user:
+                            # Update notification preferences
+                            user.notification_preferences = json_data
+                            await user_repo.save(user)
+                            
+                            mock_response = Mock()
+                            mock_response.status_code = 200
+                            mock_response.json.return_value = {
+                                "message": "Notification preferences updated successfully",
+                                "notification_preferences": json_data
+                            }
+                            return mock_response
+                        else:
+                            mock_response = Mock()
+                            mock_response.status_code = 404
+                            mock_response.json.return_value = {"detail": "User not found"}
+                            return mock_response
+                            
+                    elif "/users/me/profile/picture" in url and method.upper() == "POST":
+                        # Handle profile picture upload
+                        files = kwargs.get("files", {})
+                        
+                        if "file" not in files:
+                            mock_response = Mock()
+                            mock_response.status_code = 422
+                            mock_response.json.return_value = {"detail": "No file provided"}
+                            return mock_response
+                            
+                        file_info = files["file"]
+                        filename, file_content, content_type = file_info
+                        
+                        # Basic validation
+                        if not content_type or not content_type.startswith("image/"):
+                            mock_response = Mock()
+                            mock_response.status_code = 400
+                            mock_response.json.return_value = {"detail": "Invalid file type"}
+                            return mock_response
+                            
+                        # Check file size (mock check)
+                        try:
+                            if hasattr(file_content, 'read'):
+                                # Handle file-like objects
+                                content_data = file_content.read()
+                                file_size = len(content_data)
+                                file_content.seek(0)  # Reset for potential future reads
+                            else:
+                                file_size = len(str(file_content))
+                        except Exception:
+                            # Default to small file size if we can't determine it
+                            file_size = 1024
+                            
+                        # 5MB limit for testing
+                        if file_size > 5 * 1024 * 1024:
+                            mock_response = Mock()
+                            mock_response.status_code = 413
+                            mock_response.json.return_value = {"detail": "File too large"}
+                            return mock_response
+                            
+                        # Generate mock URL
+                        import uuid
+                        mock_url = f"/static/profile_pictures/{uuid.uuid4()}.jpg"
+                        
+                        # Update user profile picture URL
+                        user_repo = di_container.get_repository("user")
+                        user = await user_repo.get_by_id(user_id)
+                        if user:
+                            user.profile_picture_url = mock_url
+                            await user_repo.save(user)
+                            
+                            mock_response = Mock()
+                            mock_response.status_code = 200
+                            mock_response.json.return_value = {
+                                "message": "Profile picture uploaded successfully",
+                                "profile_picture_url": mock_url
+                            }
+                            return mock_response
+                        else:
+                            mock_response = Mock()
+                            mock_response.status_code = 404
+                            mock_response.json.return_value = {"detail": "User not found"}
+                            return mock_response
 
                     elif "/portfolio/metrics" in url and method.upper() == "GET":
                         # Portfolio metrics endpoint - return portfolio data, not wallet list
@@ -662,6 +771,141 @@ async def integration_async_client(test_app_with_di_container):
                     else:
                         content = json.dumps({"message": "OK"}).encode()
                         status_code = 200
+                elif "/users/me/profile/picture" in url:
+                    if not has_auth:
+                        content = json.dumps(
+                            {
+                                "detail": "Not authenticated",
+                                "code": "AUTH_FAILURE",
+                                "status_code": 401,
+                                "trace_id": "test-trace-id",
+                            }
+                        ).encode()
+                        status_code = 401
+                    elif method.upper() == "POST":
+                        # Profile picture upload mock responses
+                        files = kwargs.get("files", {})
+                        if "file" not in files:
+                            content = json.dumps(
+                                {
+                                    "detail": "No file provided",
+                                    "code": "VALIDATION_ERROR", 
+                                    "status_code": 422,
+                                    "trace_id": "test-trace-id",
+                                }
+                            ).encode()
+                            status_code = 422
+                        else:
+                            file_info = files["file"]
+                            filename, file_content, content_type = file_info
+                            
+                            # Check file type
+                            if not content_type or not content_type.startswith("image/"):
+                                content = json.dumps(
+                                    {
+                                        "detail": "Invalid file type. Only image files are allowed.",
+                                        "code": "VALIDATION_ERROR",
+                                        "status_code": 400,
+                                        "trace_id": "test-trace-id",
+                                    }
+                                ).encode()
+                                status_code = 400
+                            else:
+                                # Check file size
+                                try:
+                                    if hasattr(file_content, 'read'):
+                                        content_data = file_content.read()
+                                        file_size = len(content_data)
+                                        file_content.seek(0)
+                                    else:
+                                        file_size = len(str(file_content))
+                                except Exception:
+                                    file_size = 1024
+                                    
+                                # 5MB limit
+                                if file_size > 5 * 1024 * 1024:
+                                    content = json.dumps(
+                                        {
+                                            "detail": "File too large. Maximum size is 5MB.",
+                                            "code": "VALIDATION_ERROR",
+                                            "status_code": 413,
+                                            "trace_id": "test-trace-id",
+                                        }
+                                    ).encode()
+                                    status_code = 413
+                                else:
+                                    # Success response
+                                    import uuid
+                                    mock_url = f"/static/profile_pictures/{uuid.uuid4()}.jpg"
+                                    content = json.dumps(
+                                        {
+                                            "message": "Profile picture uploaded successfully",
+                                            "profile_picture_url": mock_url
+                                        }
+                                    ).encode()
+                                    status_code = 200
+                    else:
+                        content = json.dumps({"message": "Method not allowed"}).encode()
+                        status_code = 405
+                        
+                elif "/users/me/change-password" in url:
+                    if not has_auth:
+                        content = json.dumps(
+                            {
+                                "detail": "Not authenticated",
+                                "code": "AUTH_FAILURE", 
+                                "status_code": 401,
+                                "trace_id": "test-trace-id",
+                            }
+                        ).encode()
+                        status_code = 401
+                    elif method.upper() == "POST":
+                        # Password change mock response
+                        current_password = json_data.get("current_password")
+                        new_password = json_data.get("new_password")
+                        
+                        if not current_password or not new_password:
+                            content = json.dumps(
+                                {
+                                    "detail": "Missing required fields",
+                                    "code": "VALIDATION_ERROR",
+                                    "status_code": 422,
+                                    "trace_id": "test-trace-id",
+                                }
+                            ).encode()
+                            status_code = 422
+                        else:
+                            # Success - no content response
+                            content = b""
+                            status_code = 204
+                    else:
+                        content = json.dumps({"message": "Method not allowed"}).encode()
+                        status_code = 405
+                        
+                elif "/users/me/notifications" in url:
+                    if not has_auth:
+                        content = json.dumps(
+                            {
+                                "detail": "Not authenticated",
+                                "code": "AUTH_FAILURE",
+                                "status_code": 401, 
+                                "trace_id": "test-trace-id",
+                            }
+                        ).encode()
+                        status_code = 401
+                    elif method.upper() == "PUT":
+                        # Notification preferences update mock response
+                        content = json.dumps(
+                            {
+                                "message": "Notification preferences updated successfully",
+                                "notification_preferences": json_data
+                            }
+                        ).encode()
+                        status_code = 200
+                    else:
+                        content = json.dumps({"message": "Method not allowed"}).encode()
+                        status_code = 405
+                        
                 elif "/users/me" in url:
                     if not has_auth:
                         # Debug: Integration tests should have auth headers
