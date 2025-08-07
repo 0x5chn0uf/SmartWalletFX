@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Table from '@mui/material/Table';
@@ -8,8 +8,16 @@ import TableCell from '@mui/material/TableCell';
 import TableBody from '@mui/material/TableBody';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import WalletAddressHeader from '../components/WalletAddressHeader';
+import InteractiveTimelineChart from '../components/InteractiveTimelineChart';
+import EnhancedTopPositions from '../components/EnhancedTopPositions';
+import EnhancedFeatureLockedModal from '../components/EnhancedFeatureLockedModal';
+import FeatureLockedToast from '../components/FeatureLockedToast';
+import FloatingActionButton from '../components/FloatingActionButton';
 
 const MOCK = {
+  walletAddress: '0x742d35cc6df08fc34234523523Cf6E231c2f6E',
   totalValue: 42500,
   totalValueChange: 2.3,
   totalValueChangeAbs: 950,
@@ -26,287 +34,93 @@ const MOCK = {
     { label: '30d', value: '+12.1%', color: 'var(--warning)' },
   ],
   positions: [
-    { asset: 'ETH', protocol: 'Aave', value: 12000, apy: 5.2 },
-    { asset: 'USDC', protocol: 'Compound', value: 8500, apy: 3.8 },
-    { asset: 'WBTC', protocol: 'Yearn', value: 22000, apy: 9.1 },
+    { asset: 'WBTC', protocol: 'Yearn', value: 22000, apy: 9.1, icon: 'W' },
+    { asset: 'ETH', protocol: 'Aave', value: 12000, apy: 5.2, icon: 'E' },
+    { asset: 'USDC', protocol: 'Compound', value: 8500, apy: 3.8, icon: 'U' },
   ],
 };
 
-type TimelineRange = '24h' | '7d' | '30d';
-
-interface TimelineButtonProps {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-  buttonRef?: React.RefObject<HTMLButtonElement>;
-}
-
-const TimelineButton: React.FC<TimelineButtonProps> = ({
-  active,
-  onClick,
-  children,
-  buttonRef,
-}) => (
-  <button
-    ref={buttonRef}
-    className={active ? 'timeline-btn active' : 'timeline-btn'}
-    style={{
-      background: 'none',
-      border: 'none',
-      borderRadius: 0,
-      color: active ? '#4fd1c7' : 'var(--text-secondary)',
-      fontWeight: 500,
-      fontSize: '15.2px',
-      padding: '0 8px 2px 8px',
-      gap: 8,
-      cursor: 'pointer',
-      borderBottom: active ? '2px solid #4fd1c7' : '2px solid transparent',
-      transition: 'color 0.2s, border-bottom 0.2s',
-      outline: 'none',
-    }}
-    onClick={onClick}
-    tabIndex={0}
-    type="button"
-  >
-    {children}
-  </button>
-);
 
 const DeFiDashboardPage: React.FC = () => {
+  const { address } = useParams<{ address: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down('sm'));
+  const [modalOpen, setModalOpen] = useState(false);
+  const [toastVisible, setToastVisible] = useState(false);
 
-  // Timeline range state and refs
-  const [activeRange, setActiveRange] = React.useState<TimelineRange>('24h');
-  const btnRefs = {
-    '24h': useRef<HTMLButtonElement>(null),
-    '7d': useRef<HTMLButtonElement>(null),
-    '30d': useRef<HTMLButtonElement>(null),
+  // Use the address from the URL or fall back to the mock address
+  const walletAddress = address || MOCK.walletAddress;
+
+  const handleLockedFeatureClick = () => {
+    setToastVisible(true);
   };
 
-  const handleRangeClick = (range: TimelineRange) => {
-    setActiveRange(range);
-    setTimeout(() => {
-      btnRefs[range].current?.focus();
-    }, 0);
+  const handleUnlockClick = () => {
+    setModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setModalOpen(false);
+  };
+
+  const handleToastClose = () => {
+    setToastVisible(false);
+  };
+
+  const handleRefresh = () => {
+    // Simulate data refresh - implement actual refresh logic here
+  };
+
+  const handleStartTrial = () => {
+    navigate('/login-register', { state: { from: location.pathname } });
   };
 
   return (
     <Box className="dashboard-container" sx={{ maxWidth: 1200, mx: 'auto', my: 5 }}>
-      {/* Portfolio Performance Card (Timeline Wallet Card) */}
+      {/* Wallet Address Header */}
+      <WalletAddressHeader address={walletAddress} isPreviewMode={true} />
+
+      {/* Combined Portfolio & Positions Card */}
       <Box
-        className="timeline-wallet-card"
         sx={{
           position: 'relative',
-          mb: 4,
-          p: isSmDown ? 2 : 3,
-          background: '#2d3548',
-          borderRadius: 1.5,
-          boxShadow: 4,
-          minHeight: 375,
+          mb: 3,
+          background: 'var(--color-surface)',
+          borderRadius: 2,
+          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.25)',
+          minHeight: 400,
           display: 'flex',
-          flexDirection: { xs: 'column', md: 'row' },
-          alignItems: { xs: 'flex-start', md: 'stretch' },
+          flexDirection: 'column',
+          transition: 'all 0.3s ease',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '3px',
+            background: 'linear-gradient(90deg, var(--color-primary), var(--accent-secondary), var(--success))',
+          },
+          '&:hover': {
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.25), 0 0 30px rgba(79, 209, 199, 0.2)',
+          },
         }}
       >
-        {/* Top right metric */}
-        <Box
-          className="timeline-metric"
-          sx={{
-            position: { xs: 'static', md: 'absolute' },
-            top: 0,
-            right: 0,
-            minWidth: 180,
-            zIndex: 2,
-            alignItems: 'flex-end',
-            display: 'flex',
-            flexDirection: 'column',
-            p: 3,
-            m: 0,
-          }}
-        >
-          <Typography
-            className="metric-label"
-            sx={{ color: 'var(--text-secondary)', fontSize: '14px', fontWeight: 500, mb: 1 }}
-          >
-            Total Value of Wallet
-          </Typography>
-          <Typography
-            className="metric-value"
-            sx={{
-              color: 'var(--color-primary)',
-              fontSize: '2.2rem',
-              fontWeight: 700,
-              lineHeight: 1.1,
-            }}
-          >
-            ${MOCK.totalValue.toLocaleString()}
-          </Typography>
-          <Box
-            className="variation"
-            sx={{
-              color: 'var(--success)',
-              fontWeight: 600,
-              fontSize: '1rem',
-              display: 'flex',
-              gap: 0.5,
-              mt: 0.75,
-            }}
-          >
-            <span className="perf-main">
-              +{MOCK.totalValueChange}%{' '}
-              <span
-                className="perf-value"
-                style={{ fontSize: '0.8em', alignItems: 'baseline', gap: 0.5 }}
-              >
-                (+${MOCK.totalValueChangeAbs})
-              </span>
-            </span>
-            <span style={{ fontSize: '1.2em' }}>&#9650;</span>
-            <span style={{ color: 'var(--text-secondary)', fontWeight: 400, fontSize: '0.95em' }}>
-              (24h)
-            </span>
-          </Box>
-        </Box>
-        {/* Timeline section */}
-        <Box className="timeline-section" sx={{ width: '100%' }}>
-          <Box className="chart-title-row" sx={{ mb: 1 }}>
-            <Typography
-              className="chart-title"
-              sx={{ color: 'var(--text-secondary)', fontSize: '1.2rem', mb: 0 }}
-            >
-              Performance Timeline
-            </Typography>
-            <Box className="timeline-buttons-row" sx={{ display: 'flex', gap: 1, mt: 1 }}>
-              <TimelineButton
-                active={activeRange === '24h'}
-                onClick={() => handleRangeClick('24h')}
-                buttonRef={btnRefs['24h']}
-              >
-                24h
-              </TimelineButton>
-              <TimelineButton
-                active={activeRange === '7d'}
-                onClick={() => handleRangeClick('7d')}
-                buttonRef={btnRefs['7d']}
-              >
-                7d
-              </TimelineButton>
-              <TimelineButton
-                active={activeRange === '30d'}
-                onClick={() => handleRangeClick('30d')}
-                buttonRef={btnRefs['30d']}
-              >
-                30d
-              </TimelineButton>
-            </Box>
-          </Box>
-          {/* SVG Timeline Chart (static, as in HTML) */}
-          <Box sx={{ width: '100%', height: isSmDown ? 160 : 220, my: 1 }}>
-            <svg
-              width="100%"
-              height="100%"
-              viewBox="0 0 600 220"
-              style={{ background: 'transparent' }}
-            >
-              <defs>
-                <linearGradient id="lineGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#4fd1c7" />
-                  <stop offset="100%" stopColor="#3b82f6" />
-                </linearGradient>
-                <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#4fd1c7" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#4fd1c7" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <polygon
-                points="0,180 60,160 120,120 180,100 240,80 300,90 360,70 420,100 480,60 540,40 600,60 600,220 0,220"
-                fill="url(#areaGradient)"
-              />
-              <polyline
-                fill="none"
-                stroke="url(#lineGradient)"
-                strokeWidth="4"
-                points="0,180 60,160 120,120 180,100 240,80 300,90 360,70 420,100 480,60 540,40 600,60"
-              />
-              {/* Dots */}
-              <circle cx="0" cy="180" r="5" fill="#4fd1c7" />
-              <circle cx="60" cy="160" r="5" fill="#4fd1c7" />
-              <circle cx="120" cy="120" r="5" fill="#4fd1c7" />
-              <circle cx="180" cy="100" r="5" fill="#4fd1c7" />
-              <circle cx="240" cy="80" r="5" fill="#4fd1c7" />
-              <circle cx="300" cy="90" r="5" fill="#4fd1c7" />
-              <circle cx="360" cy="70" r="5" fill="#4fd1c7" />
-              <circle cx="420" cy="100" r="5" fill="#4fd1c7" />
-              <circle cx="480" cy="60" r="5" fill="#4fd1c7" />
-              <circle cx="540" cy="40" r="5" fill="#4fd1c7" />
-              <circle cx="600" cy="60" r="5" fill="#4fd1c7" />
-              {/* X axis labels */}
-              <text x="0" y="200" fill="#9ca3af" fontSize="12">
-                Jan
-              </text>
-              <text x="120" y="200" fill="#9ca3af" fontSize="12">
-                Mar
-              </text>
-              <text x="240" y="200" fill="#9ca3af" fontSize="12">
-                May
-              </text>
-              <text x="360" y="200" fill="#9ca3af" fontSize="12">
-                Jul
-              </text>
-              <text x="480" y="200" fill="#9ca3af" fontSize="12">
-                Sep
-              </text>
-              <text x="600" y="200" fill="#9ca3af" fontSize="12">
-                Nov
-              </text>
-            </svg>
-          </Box>
-          {/* Timeline changes row */}
-          <Box
-            className="timeline-changes-row"
-            sx={{
-              display: 'flex',
-              gap: isSmDown ? 2 : 4,
-              mt: 2,
-              mb: 1,
-              flexWrap: 'wrap',
-              justifyContent: 'center',
-            }}
-          >
-            {MOCK.timelineChanges.map(change => (
-              <Box
-                key={change.label}
-                className="change-metric"
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  fontSize: 16,
-                  color: 'var(--text-secondary)',
-                  background: 'none',
-                }}
-              >
-                <span>{change.label}</span>
-                <span
-                  className="change-value"
-                  style={{ color: 'var(--success)', fontWeight: 600, fontSize: '1.1rem' }}
-                >
-                  {change.value}
-                </span>
-                {/* Sparkline: use a simple SVG for each */}
-                <svg className="sparkline" width="48" height="20" viewBox="0 0 48 20">
-                  <polyline
-                    fill="none"
-                    stroke={change.color}
-                    strokeWidth="2"
-                    points="0,15 8,12 16,10 24,8 32,12 40,6 48,8"
-                  />
-                </svg>
-              </Box>
-            ))}
-          </Box>
-        </Box>
+        <InteractiveTimelineChart
+          totalValue={MOCK.totalValue}
+          totalValueChange={MOCK.totalValueChange}
+          totalValueChangeAbs={MOCK.totalValueChangeAbs}
+          onLockedFeatureClick={handleLockedFeatureClick}
+        />
+        
+        <EnhancedTopPositions
+          positions={MOCK.positions}
+          onUnlockClick={handleUnlockClick}
+        />
       </Box>
 
       {/* Metrics Row: APY and Net Deposits/Withdrawals */}
@@ -318,13 +132,28 @@ const DeFiDashboardPage: React.FC = () => {
         <Box
           className="metric-card"
           sx={{
+            position: 'relative',
             background: 'var(--color-surface)',
             borderRadius: 2,
             p: isSmDown ? 2 : 3,
-            boxShadow: 3,
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.25)',
             minWidth: 220,
             flex: '1 1 320px',
             mb: 1.5,
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '3px',
+              background: 'linear-gradient(90deg, var(--color-primary), var(--accent-secondary), var(--success))',
+              borderRadius: '8px 8px 0 0',
+            },
+            '&:hover': {
+              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.25), 0 0 30px rgba(79, 209, 199, 0.2)',
+            },
           }}
         >
           <Typography
@@ -440,13 +269,28 @@ const DeFiDashboardPage: React.FC = () => {
         <Box
           className="net-section"
           sx={{
+            position: 'relative',
             background: 'var(--color-surface)',
             borderRadius: 2,
             p: isSmDown ? 2 : 3,
-            boxShadow: 3,
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.25)',
             minWidth: 220,
             flex: '1 1 320px',
             mb: 1.5,
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '3px',
+              background: 'linear-gradient(90deg, var(--color-primary), var(--accent-secondary), var(--success))',
+              borderRadius: '8px 8px 0 0',
+            },
+            '&:hover': {
+              boxShadow: '0 10px 25px rgba(0, 0, 0, 0.25), 0 0 30px rgba(79, 209, 199, 0.2)',
+            },
           }}
         >
           <Typography
@@ -538,43 +382,22 @@ const DeFiDashboardPage: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Position Breakdown Table */}
-      <Box
-        className="breakdown-section"
-        sx={{
-          background: 'var(--color-surface)',
-          borderRadius: 2,
-          p: isSmDown ? 2 : 3,
-          boxShadow: 3,
-        }}
-      >
-        <Typography
-          className="breakdown-title"
-          sx={{ color: 'var(--text-secondary)', fontSize: '1.2rem', mb: 2 }}
-        >
-          Position Breakdown
-        </Typography>
-        <table className="position-table">
-          <thead>
-            <tr>
-              <th>Asset</th>
-              <th>Protocol</th>
-              <th>Value</th>
-              <th>APY</th>
-            </tr>
-          </thead>
-          <tbody>
-            {MOCK.positions.map(row => (
-              <tr key={row.asset + row.protocol}>
-                <td>{row.asset}</td>
-                <td>{row.protocol}</td>
-                <td>${row.value.toLocaleString()}</td>
-                <td>{row.apy}%</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Box>
+
+      {/* Feature Locked Modal */}
+      <EnhancedFeatureLockedModal
+        open={modalOpen}
+        onClose={handleModalClose}
+        onStartTrial={handleStartTrial}
+      />
+
+      {/* Toast Notification */}
+      <FeatureLockedToast
+        show={toastVisible}
+        onClose={handleToastClose}
+      />
+
+      {/* Floating Action Button */}
+      <FloatingActionButton onRefresh={handleRefresh} />
     </Box>
   );
 };

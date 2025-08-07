@@ -6,25 +6,36 @@ import { logoutUser } from '../store/authSlice';
 import { AppDispatch } from '../store';
 
 const Navbar = styled.nav`
-  height: 80px;
-  background: var(--color-surface);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  align-items: center;
+  padding: 16px 32px;
+  background: rgba(26, 31, 46, 0.8);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   position: sticky;
   top: 0;
   z-index: 10;
+
+  @media (max-width: 768px) {
+    padding: 16px;
+    flex-direction: column;
+    gap: 16px;
+  }
 `;
 
 const Logo = styled(RouterLink)`
-  font-size: 2rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--color-primary);
+  color: #4fd1c7;
   text-decoration: none;
   margin-left: 0;
+  font-weight: 800;
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 8px rgba(79, 209, 199, 0.2);
+  &:hover {
+    color: #4fd1c7;
+    text-decoration: none;
+  }
 `;
 
 const NavLinks = styled.div`
@@ -74,6 +85,7 @@ const NavBar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
+  
   // Hide navbar on auth-related pages
   if (
     location.pathname === '/' ||
@@ -85,6 +97,35 @@ const NavBar: React.FC = () => {
   ) {
     return null;
   }
+
+  // Special navbar for DeFi pages - show only Register
+  if (location.pathname.startsWith('/defi')) {
+    const SimpleRegisterLink = styled(RouterLink)`
+      color: #9ca3af;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 16px;
+      transition: color 0.2s;
+      &:hover {
+        color: #4fd1c7;
+      }
+    `;
+    
+    return (
+      <Navbar>
+        <Logo to="/">SmartWalletFX</Logo>
+        <NavLinks>
+          <SimpleRegisterLink 
+            to="/login-register"
+            state={{ from: location.pathname }}
+          >
+            Register
+          </SimpleRegisterLink>
+        </NavLinks>
+      </Navbar>
+    );
+  }
+
   return (
     <Navbar>
       <Logo to="/">SmartWalletFX</Logo>

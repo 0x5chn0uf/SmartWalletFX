@@ -8,7 +8,25 @@
 :root {
   /* === Colors === */
 
-  /* Brand Colors */
+  /* UI 3 Design System Colors */
+  --color-primary: #4fd1c7;
+  --color-surface: #242937;
+  --color-surface-elevated: #2d3548;
+  --text-primary: #ffffff;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --accent-secondary: #6366f1;
+  --background: #1a1f2e;
+  --nav-background: #1f2937;
+  --nav-hover: #374151;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.25);
+
+  /* Brand Colors (Legacy) */
   --color-brand-primary: #2563eb;
   --color-brand-secondary: #7c3aed;
   --color-brand-tertiary: #059669;
