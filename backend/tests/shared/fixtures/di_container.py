@@ -86,7 +86,9 @@ async def integration_async_client(test_app_with_di_container):
             # Try 1: Direct ASGI client
             try:
                 response = await getattr(self._async_client, method)(url, **kwargs)
-                print(f"DEBUG: ASGI client succeeded for {method.upper()} {url} - status: {response.status_code}")
+                print(
+                    f"DEBUG: ASGI client succeeded for {method.upper()} {url} - status: {response.status_code}"
+                )
                 return response
             except AssertionError as e:
                 error_msg = str(e)
@@ -117,23 +119,34 @@ async def integration_async_client(test_app_with_di_container):
                     kwargs["headers"] = headers
 
                 response = getattr(sync_client, method)(url, **kwargs)
-                print(f"DEBUG: Sync TestClient succeeded for {method.upper()} {url} - status: {response.status_code}")
-                
+                print(
+                    f"DEBUG: Sync TestClient succeeded for {method.upper()} {url} - status: {response.status_code}"
+                )
+
                 # Force wallet endpoints to use direct business logic instead of sync client
                 if "/wallets" in url:
                     sync_client.close()
-                    raise Exception("Forcing direct business logic for wallet endpoints")
-                
+                    raise Exception(
+                        "Forcing direct business logic for wallet endpoints"
+                    )
+
                 sync_client.close()
                 return response
 
             except Exception as sync_error:
                 # Try 3: Direct business logic testing for critical endpoints
-                print(f"DEBUG: Sync TestClient failed for {method.upper()} {url}: {sync_error}")
-                if "TestClient did not receive any response" in str(sync_error) or "/wallets" in url:
+                print(
+                    f"DEBUG: Sync TestClient failed for {method.upper()} {url}: {sync_error}"
+                )
+                if (
+                    "TestClient did not receive any response" in str(sync_error)
+                    or "/wallets" in url
+                ):
                     # For critical integration tests, execute business logic directly
                     if self._should_use_direct_testing(url, method):
-                        print(f"DEBUG: Executing direct business logic for {method.upper()} {url}")
+                        print(
+                            f"DEBUG: Executing direct business logic for {method.upper()} {url}"
+                        )
                         return await self._execute_direct_business_logic(
                             method, url, **kwargs
                         )
@@ -153,7 +166,7 @@ async def integration_async_client(test_app_with_di_container):
             critical_endpoints = [
                 "/users/me/profile",
                 "/users/me/change-password",
-                "/users/me/notifications", 
+                "/users/me/notifications",
                 "/users/me",
                 "/wallets",
                 "/portfolio",
@@ -170,7 +183,9 @@ async def integration_async_client(test_app_with_di_container):
 
             # Extract authentication info
             headers = kwargs.get("headers", {})
-            auth_header = headers.get("Authorization", "") or headers.get("authorization", "")
+            auth_header = headers.get("Authorization", "") or headers.get(
+                "authorization", ""
+            )
             print(f"DEBUG: Headers for {method.upper()} {url}: {headers}")
             print(f"DEBUG: Auth header: {auth_header}")
 
@@ -192,7 +207,9 @@ async def integration_async_client(test_app_with_di_container):
 
                         payload = jose_jwt.get_unverified_claims(token)
                         user_id = payload.get("sub")
-                        print(f"DEBUG: Extracted user_id from JWT (fallback): {user_id}")
+                        print(
+                            f"DEBUG: Extracted user_id from JWT (fallback): {user_id}"
+                        )
                 except Exception as e:
                     print(f"DEBUG: Failed to extract user_id from JWT: {e}")
                     pass  # Invalid token, will use default mock
@@ -260,28 +277,32 @@ async def integration_async_client(test_app_with_di_container):
                                 }
                                 return mock_response
 
-                    elif "/users/me/change-password" in url and method.upper() == "POST":
+                    elif (
+                        "/users/me/change-password" in url and method.upper() == "POST"
+                    ):
                         # Handle password change
                         json_data = kwargs.get("json", {})
                         current_password = json_data.get("current_password")
                         new_password = json_data.get("new_password")
-                        
+
                         if not current_password or not new_password:
                             mock_response = Mock()
                             mock_response.status_code = 422
-                            mock_response.json.return_value = {"detail": "Missing required fields"}
+                            mock_response.json.return_value = {
+                                "detail": "Missing required fields"
+                            }
                             return mock_response
-                            
+
                         # For tests, assume password change is successful
                         mock_response = Mock()
                         mock_response.status_code = 204
                         mock_response.json.return_value = {}
                         return mock_response
-                        
+
                     elif "/users/me/notifications" in url and method.upper() == "PUT":
                         # Handle notification preferences update
                         json_data = kwargs.get("json", {})
-                        
+
                         # Update user notification preferences
                         user_repo = di_container.get_repository("user")
                         user = await user_repo.get_by_id(user_id)
@@ -289,43 +310,51 @@ async def integration_async_client(test_app_with_di_container):
                             # Update notification preferences
                             user.notification_preferences = json_data
                             await user_repo.save(user)
-                            
+
                             mock_response = Mock()
                             mock_response.status_code = 200
                             mock_response.json.return_value = {
                                 "message": "Notification preferences updated successfully",
-                                "notification_preferences": json_data
+                                "notification_preferences": json_data,
                             }
                             return mock_response
                         else:
                             mock_response = Mock()
                             mock_response.status_code = 404
-                            mock_response.json.return_value = {"detail": "User not found"}
+                            mock_response.json.return_value = {
+                                "detail": "User not found"
+                            }
                             return mock_response
-                            
-                    elif "/users/me/profile/picture" in url and method.upper() == "POST":
+
+                    elif (
+                        "/users/me/profile/picture" in url and method.upper() == "POST"
+                    ):
                         # Handle profile picture upload
                         files = kwargs.get("files", {})
-                        
+
                         if "file" not in files:
                             mock_response = Mock()
                             mock_response.status_code = 422
-                            mock_response.json.return_value = {"detail": "No file provided"}
+                            mock_response.json.return_value = {
+                                "detail": "No file provided"
+                            }
                             return mock_response
-                            
+
                         file_info = files["file"]
                         filename, file_content, content_type = file_info
-                        
+
                         # Basic validation
                         if not content_type or not content_type.startswith("image/"):
                             mock_response = Mock()
                             mock_response.status_code = 400
-                            mock_response.json.return_value = {"detail": "Invalid file type"}
+                            mock_response.json.return_value = {
+                                "detail": "Invalid file type"
+                            }
                             return mock_response
-                            
+
                         # Check file size (mock check)
                         try:
-                            if hasattr(file_content, 'read'):
+                            if hasattr(file_content, "read"):
                                 # Handle file-like objects
                                 content_data = file_content.read()
                                 file_size = len(content_data)
@@ -335,45 +364,52 @@ async def integration_async_client(test_app_with_di_container):
                         except Exception:
                             # Default to small file size if we can't determine it
                             file_size = 1024
-                            
+
                         # 5MB limit for testing
                         if file_size > 5 * 1024 * 1024:
                             mock_response = Mock()
                             mock_response.status_code = 413
-                            mock_response.json.return_value = {"detail": "File too large"}
+                            mock_response.json.return_value = {
+                                "detail": "File too large"
+                            }
                             return mock_response
-                            
+
                         # Generate mock URL
                         import uuid
+
                         mock_url = f"/static/profile_pictures/{uuid.uuid4()}.jpg"
-                        
+
                         # Update user profile picture URL
                         user_repo = di_container.get_repository("user")
                         user = await user_repo.get_by_id(user_id)
                         if user:
                             user.profile_picture_url = mock_url
                             await user_repo.save(user)
-                            
+
                             mock_response = Mock()
                             mock_response.status_code = 200
                             mock_response.json.return_value = {
                                 "message": "Profile picture uploaded successfully",
-                                "profile_picture_url": mock_url
+                                "profile_picture_url": mock_url,
                             }
                             return mock_response
                         else:
                             mock_response = Mock()
                             mock_response.status_code = 404
-                            mock_response.json.return_value = {"detail": "User not found"}
+                            mock_response.json.return_value = {
+                                "detail": "User not found"
+                            }
                             return mock_response
 
                     elif "/portfolio/metrics" in url and method.upper() == "GET":
                         # Portfolio metrics endpoint - return portfolio data, not wallet list
                         import re
-                        
-                        address_match = re.search(r"/wallets/([^/]+)/portfolio/metrics", url)
+
+                        address_match = re.search(
+                            r"/wallets/([^/]+)/portfolio/metrics", url
+                        )
                         address = address_match.group(1) if address_match else "0x123"
-                        
+
                         mock_response = Mock()
                         mock_response.status_code = 200
                         mock_response.json.return_value = {
@@ -385,9 +421,11 @@ async def integration_async_client(test_app_with_di_container):
                             "health_factor": 1.0,
                             "net_worth_usd": 0.0,
                         }
-                        print(f"DEBUG: Returning portfolio metrics for address {address}")
+                        print(
+                            f"DEBUG: Returning portfolio metrics for address {address}"
+                        )
                         return mock_response
-                        
+
                     elif "/portfolio/timeline" in url and method.upper() == "GET":
                         # Portfolio timeline endpoint
                         mock_response = Mock()
@@ -398,17 +436,21 @@ async def integration_async_client(test_app_with_di_container):
                             "borrowings_usd": [],
                             "net_worth_usd": [],
                         }
-                        print(f"DEBUG: Returning portfolio timeline")
+                        print("DEBUG: Returning portfolio timeline")
                         return mock_response
 
-                    elif "/wallets" in url and method.upper() == "GET" and "/portfolio" not in url:
+                    elif (
+                        "/wallets" in url
+                        and method.upper() == "GET"
+                        and "/portfolio" not in url
+                    ):
                         # Get real wallet data from repository (only for simple /wallets endpoint)
                         import uuid
-                        
+
                         # Convert user_id to UUID if it's a string
                         if isinstance(user_id, str):
                             user_id = uuid.UUID(user_id)
-                            
+
                         wallet_repo = di_container.get_repository("wallet")
                         print(f"DEBUG: Getting wallets for user {user_id}")
                         try:
@@ -431,7 +473,9 @@ async def integration_async_client(test_app_with_di_container):
                                 wallet_dict["address"] = wallet.address
                             wallet_data.append(wallet_dict)
                         mock_response.json.return_value = wallet_data
-                        print(f"DEBUG: Found {len(wallets)} wallets for user {user_id}: {wallet_data}")
+                        print(
+                            f"DEBUG: Found {len(wallets)} wallets for user {user_id}: {wallet_data}"
+                        )
                         return mock_response
 
                     elif "/wallets" in url and method.upper() == "POST":
@@ -441,28 +485,41 @@ async def integration_async_client(test_app_with_di_container):
                         json_data = kwargs.get("json", {})
                         wallet_name = json_data.get("name", "Unnamed Wallet")
                         wallet_address = json_data.get("address", None)
-                        print(f"DEBUG: Wallet data - name: {wallet_name}, address: {wallet_address}")
+                        print(
+                            f"DEBUG: Wallet data - name: {wallet_name}, address: {wallet_address}"
+                        )
 
                         try:
                             # Import the WalletCreate schema and UUID
                             import uuid
+
                             from app.domain.schemas.wallet import WalletCreate
-                            
+
                             # Convert user_id to UUID if it's a string
                             if isinstance(user_id, str):
                                 user_id = uuid.UUID(user_id)
-                            
+
                             if wallet_address:
                                 # Create wallet with specific address
-                                print(f"DEBUG: Creating wallet with address")
-                                wallet_data = WalletCreate(address=wallet_address, name=wallet_name)
-                                wallet = await wallet_usecase.create_wallet(user_id, wallet_data)
+                                print("DEBUG: Creating wallet with address")
+                                wallet_data = WalletCreate(
+                                    address=wallet_address, name=wallet_name
+                                )
+                                wallet = await wallet_usecase.create_wallet(
+                                    user_id, wallet_data
+                                )
                             else:
                                 # Create wallet without address - generate a dummy address for testing
-                                print(f"DEBUG: Creating wallet without address")
-                                dummy_address = "0x1234567890123456789012345678901234567890"
-                                wallet_data = WalletCreate(address=dummy_address, name=wallet_name)
-                                wallet = await wallet_usecase.create_wallet(user_id, wallet_data)
+                                print("DEBUG: Creating wallet without address")
+                                dummy_address = (
+                                    "0x1234567890123456789012345678901234567890"
+                                )
+                                wallet_data = WalletCreate(
+                                    address=dummy_address, name=wallet_name
+                                )
+                                wallet = await wallet_usecase.create_wallet(
+                                    user_id, wallet_data
+                                )
 
                             print(f"DEBUG: Wallet created successfully: {wallet.id}")
                             mock_response = Mock()
@@ -487,67 +544,92 @@ async def integration_async_client(test_app_with_di_container):
                             # Fall back to mock response
                             mock_response = Mock()
                             mock_response.status_code = 500
-                            mock_response.json.return_value = {"detail": f"Wallet creation failed: {e}"}
+                            mock_response.json.return_value = {
+                                "detail": f"Wallet creation failed: {e}"
+                            }
                             return mock_response
 
                     elif "/wallets" in url and method.upper() == "DELETE":
                         # Delete wallet using real business logic
                         import re
                         import uuid
-                        
+
                         # Extract wallet address from URL path
                         address_match = re.search(r"/wallets/([^/]+)$", url)
                         if not address_match:
                             mock_response = Mock()
                             mock_response.status_code = 400
-                            mock_response.json.return_value = {"detail": "Invalid wallet address in URL"}
+                            mock_response.json.return_value = {
+                                "detail": "Invalid wallet address in URL"
+                            }
                             return mock_response
-                            
+
                         wallet_address = address_match.group(1)
-                        print(f"DEBUG: Deleting wallet with address {wallet_address} for user {user_id}")
-                        
+                        print(
+                            f"DEBUG: Deleting wallet with address {wallet_address} for user {user_id}"
+                        )
+
                         try:
                             # Convert user_id to UUID if it's a string
                             if isinstance(user_id, str):
                                 user_id = uuid.UUID(user_id)
-                                
+
                             wallet_repo = di_container.get_repository("wallet")
-                            
+
                             # Use the repository's delete method directly (includes ownership verification)
                             try:
-                                deleted = await wallet_repo.delete(wallet_address, user_id)
+                                deleted = await wallet_repo.delete(
+                                    wallet_address, user_id
+                                )
                                 if deleted:
-                                    print(f"DEBUG: Wallet {wallet_address} deleted successfully")
+                                    print(
+                                        f"DEBUG: Wallet {wallet_address} deleted successfully"
+                                    )
                                     mock_response = Mock()
                                     mock_response.status_code = 204  # Standard HTTP status for successful delete
-                                    mock_response.json.return_value = {"message": "Wallet deleted successfully"}
+                                    mock_response.json.return_value = {
+                                        "message": "Wallet deleted successfully"
+                                    }
                                     return mock_response
                                 else:
-                                    print(f"DEBUG: Wallet {wallet_address} not found or not owned by user")
+                                    print(
+                                        f"DEBUG: Wallet {wallet_address} not found or not owned by user"
+                                    )
                                     mock_response = Mock()
                                     mock_response.status_code = 404
-                                    mock_response.json.return_value = {"detail": "Wallet not found"}
+                                    mock_response.json.return_value = {
+                                        "detail": "Wallet not found"
+                                    }
                                     return mock_response
-                                    
+
                             except Exception as repo_error:
                                 print(f"DEBUG: Wallet deletion failed: {repo_error}")
                                 # Check if it's a permission error (user doesn't own the wallet)
-                                if "not owned" in str(repo_error).lower() or "unauthorized" in str(repo_error).lower():
+                                if (
+                                    "not owned" in str(repo_error).lower()
+                                    or "unauthorized" in str(repo_error).lower()
+                                ):
                                     mock_response = Mock()
                                     mock_response.status_code = 403
-                                    mock_response.json.return_value = {"detail": "Access denied: wallet belongs to different user"}
+                                    mock_response.json.return_value = {
+                                        "detail": "Access denied: wallet belongs to different user"
+                                    }
                                     return mock_response
                                 else:
                                     mock_response = Mock()
                                     mock_response.status_code = 500
-                                    mock_response.json.return_value = {"detail": f"Wallet deletion failed: {repo_error}"}
+                                    mock_response.json.return_value = {
+                                        "detail": f"Wallet deletion failed: {repo_error}"
+                                    }
                                     return mock_response
-                                
+
                         except Exception as e:
                             print(f"DEBUG: DELETE wallet operation failed: {e}")
                             mock_response = Mock()
                             mock_response.status_code = 500
-                            mock_response.json.return_value = {"detail": f"Delete operation failed: {e}"}
+                            mock_response.json.return_value = {
+                                "detail": f"Delete operation failed: {e}"
+                            }
                             return mock_response
 
                 except Exception:
@@ -789,7 +871,7 @@ async def integration_async_client(test_app_with_di_container):
                             content = json.dumps(
                                 {
                                     "detail": "No file provided",
-                                    "code": "VALIDATION_ERROR", 
+                                    "code": "VALIDATION_ERROR",
                                     "status_code": 422,
                                     "trace_id": "test-trace-id",
                                 }
@@ -798,9 +880,11 @@ async def integration_async_client(test_app_with_di_container):
                         else:
                             file_info = files["file"]
                             filename, file_content, content_type = file_info
-                            
+
                             # Check file type
-                            if not content_type or not content_type.startswith("image/"):
+                            if not content_type or not content_type.startswith(
+                                "image/"
+                            ):
                                 content = json.dumps(
                                     {
                                         "detail": "Invalid file type. Only image files are allowed.",
@@ -813,7 +897,7 @@ async def integration_async_client(test_app_with_di_container):
                             else:
                                 # Check file size
                                 try:
-                                    if hasattr(file_content, 'read'):
+                                    if hasattr(file_content, "read"):
                                         content_data = file_content.read()
                                         file_size = len(content_data)
                                         file_content.seek(0)
@@ -821,7 +905,7 @@ async def integration_async_client(test_app_with_di_container):
                                         file_size = len(str(file_content))
                                 except Exception:
                                     file_size = 1024
-                                    
+
                                 # 5MB limit
                                 if file_size > 5 * 1024 * 1024:
                                     content = json.dumps(
@@ -836,24 +920,27 @@ async def integration_async_client(test_app_with_di_container):
                                 else:
                                     # Success response
                                     import uuid
-                                    mock_url = f"/static/profile_pictures/{uuid.uuid4()}.jpg"
+
+                                    mock_url = (
+                                        f"/static/profile_pictures/{uuid.uuid4()}.jpg"
+                                    )
                                     content = json.dumps(
                                         {
                                             "message": "Profile picture uploaded successfully",
-                                            "profile_picture_url": mock_url
+                                            "profile_picture_url": mock_url,
                                         }
                                     ).encode()
                                     status_code = 200
                     else:
                         content = json.dumps({"message": "Method not allowed"}).encode()
                         status_code = 405
-                        
+
                 elif "/users/me/change-password" in url:
                     if not has_auth:
                         content = json.dumps(
                             {
                                 "detail": "Not authenticated",
-                                "code": "AUTH_FAILURE", 
+                                "code": "AUTH_FAILURE",
                                 "status_code": 401,
                                 "trace_id": "test-trace-id",
                             }
@@ -863,7 +950,7 @@ async def integration_async_client(test_app_with_di_container):
                         # Password change mock response
                         current_password = json_data.get("current_password")
                         new_password = json_data.get("new_password")
-                        
+
                         if not current_password or not new_password:
                             content = json.dumps(
                                 {
@@ -881,14 +968,14 @@ async def integration_async_client(test_app_with_di_container):
                     else:
                         content = json.dumps({"message": "Method not allowed"}).encode()
                         status_code = 405
-                        
+
                 elif "/users/me/notifications" in url:
                     if not has_auth:
                         content = json.dumps(
                             {
                                 "detail": "Not authenticated",
                                 "code": "AUTH_FAILURE",
-                                "status_code": 401, 
+                                "status_code": 401,
                                 "trace_id": "test-trace-id",
                             }
                         ).encode()
@@ -898,14 +985,14 @@ async def integration_async_client(test_app_with_di_container):
                         content = json.dumps(
                             {
                                 "message": "Notification preferences updated successfully",
-                                "notification_preferences": json_data
+                                "notification_preferences": json_data,
                             }
                         ).encode()
                         status_code = 200
                     else:
                         content = json.dumps({"message": "Method not allowed"}).encode()
                         status_code = 405
-                        
+
                 elif "/users/me" in url:
                     if not has_auth:
                         # Debug: Integration tests should have auth headers

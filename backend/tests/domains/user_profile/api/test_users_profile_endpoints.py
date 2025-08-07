@@ -402,7 +402,11 @@ class TestUserProfileEndpoints:
             assert data["message"] == "Profile picture uploaded successfully"
             assert data["profile_picture_url"].endswith(".jpg")
         except (RuntimeError, AssertionError) as e:
-            if "TestClient did not receive any response" in str(e) or "No response returned" in str(e) or "response_complete.is_set()" in str(e):
+            if (
+                "TestClient did not receive any response" in str(e)
+                or "No response returned" in str(e)
+                or "response_complete.is_set()" in str(e)
+            ):
                 pytest.skip(
                     "ASGI transport issue with file upload test_upload_profile_picture_success - test coverage provided by usecase-level tests"
                 )
@@ -440,7 +444,11 @@ class TestUserProfileEndpoints:
                     "Test passed - file upload endpoint accessible, validation mocked in test environment"
                 )
         except (RuntimeError, AssertionError) as e:
-            if "TestClient did not receive any response" in str(e) or "No response returned" in str(e) or "response_complete.is_set()" in str(e):
+            if (
+                "TestClient did not receive any response" in str(e)
+                or "No response returned" in str(e)
+                or "response_complete.is_set()" in str(e)
+            ):
                 pytest.skip(
                     "ASGI transport issue with file upload test_upload_profile_picture_invalid_file - test coverage provided by usecase-level tests"
                 )
@@ -478,7 +486,11 @@ class TestUserProfileEndpoints:
                     "Test passed - file upload endpoint accessible, validation mocked in test environment"
                 )
         except (RuntimeError, AssertionError) as e:
-            if "TestClient did not receive any response" in str(e) or "No response returned" in str(e) or "response_complete.is_set()" in str(e):
+            if (
+                "TestClient did not receive any response" in str(e)
+                or "No response returned" in str(e)
+                or "response_complete.is_set()" in str(e)
+            ):
                 pytest.skip(
                     "ASGI transport issue with file upload test_upload_profile_picture_too_large - test coverage provided by usecase-level tests"
                 )

@@ -289,7 +289,7 @@ async def test_create_wallet_authenticated(
             "attributes": {},
         },
     )
-    
+
     # Set auth headers on the integration_async_client
     integration_async_client._async_client.headers = {
         "Authorization": f"Bearer {access_token}"
