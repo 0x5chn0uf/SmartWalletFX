@@ -131,7 +131,7 @@ class DatabaseConfig(BaseModel):
         """Validate all configuration paths and settings.
 
         Raises:
-            SerenaException: If configuration is invalid
+            SaraException: If configuration is invalid
         """
         if self._validated:
             return

@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from sara.core.errors import (
     ErrorCode,
-    SerenaException,
+    SaraException,
     create_error_response,
     create_success_response,
 )
@@ -616,7 +616,7 @@ def create_app() -> FastAPI:
         try:
             response = await call_next(request)
             return response
-        except SerenaException as e:
+        except SaraException as e:
             # Handle Serena-specific exceptions
             print(
                 "Serena exception in %s %s: %s",

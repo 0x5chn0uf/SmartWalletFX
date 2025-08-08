@@ -49,8 +49,8 @@ yarn-error.log*
 *.sqlite
 *.db
 
-# Serena database files
-serena/database/memory_index.db*
+# Sara database files
+sara/database/memory_index.db*
 
 # Logs
 *.log
