@@ -1,6 +1,7 @@
 import time
 import uuid
 from datetime import datetime, timedelta
+from dateutil import parser as date_parser
 from typing import List
 
 from fastapi import HTTPException, status
@@ -411,6 +412,8 @@ class WalletUsecase:
         interval: str = "daily",
         limit: int = 30,
         offset: int = 0,
+        start_date: str = None,
+        end_date: str = None,
     ) -> PortfolioTimeline:
         """
         Get portfolio timeline for a wallet.
@@ -420,6 +423,8 @@ class WalletUsecase:
             interval: Time interval for the timeline.
             limit: Maximum number of data points to return.
             offset: Number of data points to skip.
+            start_date: Start date for timeline range (YYYY-MM-DD format).
+            end_date: End date for timeline range (YYYY-MM-DD format).
         Returns:
             PortfolioTimeline: Portfolio timeline object.
         """
@@ -440,6 +445,8 @@ class WalletUsecase:
             interval=interval,
             limit=limit,
             offset=offset,
+            start_date=start_date,
+            end_date=end_date,
         )
 
         try:
@@ -456,9 +463,59 @@ class WalletUsecase:
                 )
 
             # Get timeline data
-            # Calculate default time range (last 30 days)
-            to_ts = int(datetime.now().timestamp())
-            from_ts = int((datetime.now() - timedelta(days=30)).timestamp())
+            # Parse and validate date parameters
+            try:
+                if start_date and end_date:
+                    # Parse custom date range
+                    start_dt = date_parser.parse(start_date)
+                    end_dt = date_parser.parse(end_date)
+                    
+                    # Validate date range
+                    if start_dt >= end_dt:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Start date must be before end date"
+                        )
+                    
+                    # Check if end date is in future
+                    now = datetime.now(start_dt.tzinfo) if start_dt.tzinfo else datetime.now()
+                    if end_dt > now:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="End date cannot be in the future"
+                        )
+                    
+                    # Check maximum range (e.g., 1 year)
+                    max_range = timedelta(days=365)
+                    if end_dt - start_dt > max_range:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Date range cannot exceed 365 days"
+                        )
+                    
+                    from_ts = int(start_dt.timestamp())
+                    to_ts = int(end_dt.timestamp())
+                    
+                elif start_date or end_date:
+                    # If only one date is provided, calculate the other
+                    if start_date:
+                        start_dt = date_parser.parse(start_date)
+                        from_ts = int(start_dt.timestamp())
+                        to_ts = int(datetime.now().timestamp())
+                    else:
+                        end_dt = date_parser.parse(end_date)
+                        to_ts = int(end_dt.timestamp())
+                        from_ts = int((end_dt - timedelta(days=30)).timestamp())
+                else:
+                    # Default: last 30 days
+                    to_ts = int(datetime.now().timestamp())
+                    from_ts = int((datetime.now() - timedelta(days=30)).timestamp())
+                    
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Invalid date format. Please use YYYY-MM-DD format. Error: {str(e)}"
+                )
 
             timeline_data = await self.__portfolio_snapshot_repo.get_timeline(
                 address, from_ts, to_ts, limit, offset, interval

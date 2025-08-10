@@ -135,6 +135,8 @@ class DeFi:
         interval: str = "daily",
         limit: int = 30,
         offset: int = 0,
+        start_date: str = None,
+        end_date: str = None,
     ):
         """Get portfolio timeline for a specific wallet address."""
         start_time = time.time()
@@ -148,12 +150,14 @@ class DeFi:
             interval=interval,
             limit=limit,
             offset=offset,
+            start_date=start_date,
+            end_date=end_date,
             client_ip=client_ip,
         )
 
         try:
             result = await DeFi.__wallet_uc.get_portfolio_timeline(
-                user_id, address, interval, limit, offset
+                user_id, address, interval, limit, offset, start_date, end_date
             )
 
             duration = int((time.time() - start_time) * 1000)

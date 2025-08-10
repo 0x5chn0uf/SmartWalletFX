@@ -2,8 +2,8 @@ import api from './api';
 import { PortfolioSnapshot, TimelineResponse } from '../types/timeline';
 
 interface TimelineQueryParams {
-  startDate?: string;
-  endDate?: string;
+  start_date?: string;
+  end_date?: string;
   interval?: string;
   from_ts?: number;
   to_ts?: number;

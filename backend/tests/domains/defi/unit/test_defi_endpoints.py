@@ -44,7 +44,31 @@ async def test_timeline_endpoint_success(mock_wallet_uc, fake_request):
 
     assert res == tl
     mock_wallet_uc.get_portfolio_timeline.assert_awaited_once_with(
-        uid, addr, "daily", 30, 0
+        uid, addr, "daily", 30, 0, None, None
+    )
+
+
+@pytest.mark.asyncio
+async def test_timeline_endpoint_with_date_range(mock_wallet_uc, fake_request):
+    addr = "0x" + "a" * 40
+    uid = uuid.uuid4()
+
+    # Mock timeline return value for date range
+    tl = PortfolioTimeline(
+        timestamps=[1640995200, 1641081600], # Jan 1-2, 2022
+        collateral_usd=[200.0, 250.0], 
+        borrowings_usd=[100.0, 120.0]
+    )
+    mock_wallet_uc.get_portfolio_timeline.return_value = tl
+
+    with patch("app.api.endpoints.defi.get_user_id_from_request", return_value=uid):
+        res = await DeFi.get_portfolio_timeline_for_address(
+            fake_request, addr, "daily", 30, 0, "2022-01-01", "2022-01-02"
+        )
+
+    assert res == tl
+    mock_wallet_uc.get_portfolio_timeline.assert_awaited_once_with(
+        uid, addr, "daily", 30, 0, "2022-01-01", "2022-01-02"
     )
 
 

@@ -1,9 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
+import { useTimeline } from '../hooks/useTimeline';
 
 export type TimelineRange = '24h' | '7d' | '30d' | '90d';
 
@@ -19,6 +20,8 @@ interface InteractiveTimelineChartProps {
   totalValueChange: number;
   totalValueChangeAbs: number;
   onLockedFeatureClick?: () => void;
+  walletAddress?: string;
+  isAuthenticated?: boolean;
 }
 
 const timelineData: Record<TimelineRange, TimelineData[]> = {
@@ -81,6 +84,8 @@ const InteractiveTimelineChart: React.FC<InteractiveTimelineChartProps> = ({
   totalValueChange,
   totalValueChangeAbs,
   onLockedFeatureClick,
+  walletAddress,
+  isAuthenticated = false,
 }) => {
   const theme = useTheme();
   const isSmDown = useMediaQuery(theme.breakpoints.down('sm'));
@@ -99,8 +104,40 @@ const InteractiveTimelineChart: React.FC<InteractiveTimelineChartProps> = ({
 
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
+  // Convert time range to date range for API calls
+  const dateRange = useMemo(() => {
+    if (!walletAddress) return null;
+    
+    const now = new Date();
+    const endDate = now.toISOString().split('T')[0]; // Today in YYYY-MM-DD format
+    
+    let daysBack = 1;
+    switch (activeRange) {
+      case '24h': daysBack = 1; break;
+      case '7d': daysBack = 7; break;
+      case '30d': daysBack = 30; break;
+      case '90d': daysBack = 90; break;
+      default: daysBack = 1;
+    }
+    
+    const startDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
+    return {
+      start_date: startDate.toISOString().split('T')[0],
+      end_date: endDate,
+    };
+  }, [activeRange, walletAddress]);
+
+  // Fetch real timeline data from API
+  const { data: apiTimelineData, loading: timelineLoading } = useTimeline({
+    address: walletAddress || '',
+    start_date: dateRange?.start_date,
+    end_date: dateRange?.end_date,
+    interval: 'daily',
+    enabled: !!walletAddress && !!dateRange,
+  });
+
   const handleRangeClick = (range: TimelineRange) => {
-    if (range !== '24h') {
+    if (range !== '24h' && !isAuthenticated) {
       onLockedFeatureClick?.();
       return;
     }
@@ -148,7 +185,31 @@ const InteractiveTimelineChart: React.FC<InteractiveTimelineChartProps> = ({
     setTooltip(prev => ({ ...prev, visible: false }));
   };
 
-  const currentData = timelineData[activeRange];
+  // Transform API data to chart format or use mock data
+  const currentData = useMemo(() => {
+    if (apiTimelineData && apiTimelineData.length > 0) {
+      // Transform API data to chart format
+      const maxValue = Math.max(...apiTimelineData.map(item => item.total_collateral_usd || 0));
+      const minValue = Math.min(...apiTimelineData.map(item => item.total_collateral_usd || 0));
+      const valueRange = maxValue - minValue || 1;
+      
+      return apiTimelineData.map((item, index) => {
+        const value = item.total_collateral_usd || 0;
+        // Normalize y-coordinate: higher values should have lower y (closer to top)
+        const normalizedY = 240 - ((value - minValue) / valueRange) * 160; // Scale to 80-240 range
+        
+        return {
+          x: 50 + (index * (1100 / Math.max(apiTimelineData.length - 1, 1))), // Distribute across width
+          y: normalizedY,
+          value: `$${value.toLocaleString()}`,
+          date: new Date(item.timestamp * 1000).toLocaleDateString(),
+        };
+      });
+    }
+    
+    // Fallback to mock data
+    return timelineData[activeRange];
+  }, [apiTimelineData, activeRange]);
   const points = currentData.map(point => `${point.x},${point.y}`).join(' ');
   const areaPoints = `${points} ${currentData[currentData.length - 1].x},250 50,250`;
 
@@ -288,7 +349,7 @@ const InteractiveTimelineChart: React.FC<InteractiveTimelineChartProps> = ({
           >
             {(['24h', '7d', '30d', '90d'] as const).map(range => {
               const isActive = activeRange === range;
-              const isLocked = range !== '24h';
+              const isLocked = range !== '24h' && !isAuthenticated;
 
               return (
                 <Button

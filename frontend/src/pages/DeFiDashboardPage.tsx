@@ -115,6 +115,8 @@ const DeFiDashboardPage: React.FC = () => {
           totalValueChange={MOCK.totalValueChange}
           totalValueChangeAbs={MOCK.totalValueChangeAbs}
           onLockedFeatureClick={handleLockedFeatureClick}
+          walletAddress={walletAddress}
+          isAuthenticated={false} // TODO: Connect to actual auth state
         />
         
         <EnhancedTopPositions
