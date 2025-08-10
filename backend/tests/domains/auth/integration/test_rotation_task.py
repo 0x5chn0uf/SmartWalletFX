@@ -48,8 +48,8 @@ def _patch_redis_and_lock(monkeypatch):
     # Ensure JWKS cache invalidation does not spawn real async coroutines during tests.
     # This prevents "coroutine was never awaited" runtime warnings.
     monkeypatch.setattr(
-        "app.utils.jwks_cache.invalidate_jwks_cache_sync",
-        lambda: True,
+        "app.utils.jwks_cache.JWKSCacheUtils.invalidate_jwks_cache_sync",
+        lambda self: True,
     )
 
 

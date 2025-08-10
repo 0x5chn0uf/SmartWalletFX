@@ -18,7 +18,6 @@ from app.domain.interfaces.utils import EncryptionUtilsInterface
 __all__: Final[list[str]] = [
     "EncryptionError",
     "EncryptionUtils",
-    "encrypt_file",
 ]
 
 
@@ -83,19 +82,3 @@ class EncryptionUtils(EncryptionUtilsInterface):
             raise EncryptionError(error_msg) from exc
 
         return encrypted_path
-
-
-# Default instance for backward compatibility
-_default_encryption_utils = EncryptionUtils(Configuration())
-
-
-def encrypt_file(
-    file_path: Path,
-    *,
-    recipient: Optional[str] = None,
-    gpg_binary: str = GPG_BINARY,
-) -> Path:
-    """Legacy function for backward compatibility."""
-    return _default_encryption_utils.encrypt_file(
-        file_path, recipient=recipient, gpg_binary=gpg_binary
-    )

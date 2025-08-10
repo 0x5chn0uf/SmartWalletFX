@@ -10,7 +10,6 @@ from redis import Redis
 from app.core.config import Configuration
 from app.core.security.roles import ROLE_PERMISSIONS_MAP, UserRole
 from app.models.user import User
-from app.utils.jwks_cache import _build_redis_client
 from app.utils.rate_limiter import login_rate_limiter
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
@@ -120,7 +119,8 @@ __all__ = [
 async def get_redis() -> AsyncGenerator["Redis", None]:  # type: ignore[name-defined]
     """Provide a managed Redis client for request scope."""
 
-    client: Redis = _build_redis_client()
+    config = Configuration()
+    client: Redis = Redis.from_url(config.redis_url)
     try:
         yield client
     finally:

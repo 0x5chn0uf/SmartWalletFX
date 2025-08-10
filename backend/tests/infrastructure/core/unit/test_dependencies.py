@@ -190,7 +190,7 @@ async def test_get_redis():
     mock_client = Mock(spec=Redis)
     mock_client.close = AsyncMock()
 
-    with patch("app.api.dependencies._build_redis_client", return_value=mock_client):
+    with patch("redis.Redis.from_url", return_value=mock_client):
         redis_gen = get_redis()
         client = await redis_gen.__anext__()
         assert client is mock_client
@@ -210,7 +210,7 @@ async def test_get_redis_with_exception():
     mock_client = Mock(spec=Redis)
     mock_client.close = AsyncMock(side_effect=Exception("Close error"))
 
-    with patch("app.api.dependencies._build_redis_client", return_value=mock_client):
+    with patch("redis.Redis.from_url", return_value=mock_client):
         redis_gen = get_redis()
         client = await redis_gen.__anext__()
         assert client is mock_client

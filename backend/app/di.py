@@ -44,6 +44,7 @@ from app.usecase.auth_usecase import AuthUsecase
 # Usecase imports
 from app.usecase.email_verification_usecase import EmailVerificationUsecase
 from app.usecase.historical_balance_usecase import HistoricalBalanceUsecase
+from app.usecase.jwks_usecase import JWKSUsecase
 from app.usecase.oauth_usecase import OAuthUsecase
 from app.usecase.portfolio_snapshot_usecase import PortfolioSnapshotUsecase
 from app.usecase.token_balance_usecase import TokenBalanceUsecase
@@ -318,9 +319,13 @@ class DIContainer:
         )
         self.register_usecase("portfolio_snapshot", portfolio_snapshot_uc)
 
-        # User profile usecase
         user_profile_uc = UserProfileUsecase(user_repo, audit)
         self.register_usecase("user_profile", user_profile_uc)
+
+        jwks_cache_utils = self.get_utility("jwks_cache_utils")
+        jwt_key_utils = self.get_utility("jwt_key_utils")
+        jwks_uc = JWKSUsecase(jwks_cache_utils, jwt_key_utils, audit)
+        self.register_usecase("jwks", jwks_uc)
 
     def _initialize_endpoints(self):
         """Initialize and register endpoint singletons."""
@@ -360,7 +365,8 @@ class DIContainer:
         health_endpoint = Health()
         self.register_endpoint("health", health_endpoint)
 
-        jwks_endpoint = JWKS()
+        jwks_uc = self.get_usecase("jwks")
+        jwks_endpoint = JWKS(jwks_uc)
         self.register_endpoint("jwks", jwks_endpoint)
 
         oauth_endpoint = OAuth(oauth_uc)

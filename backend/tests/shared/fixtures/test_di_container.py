@@ -667,6 +667,21 @@ class TestDIContainer(DIContainer):
             mock_usecase = Mock(spec=WalletUsecase)
             self.register_usecase("wallet", mock_usecase)
 
+        # Add JWKS usecase
+        try:
+            from app.usecase.jwks_usecase import JWKSUsecase
+
+            jwks_cache_utils = self.get_utility("jwks_cache_utils")
+            jwt_key_utils = self.get_utility("jwt_key_utils")
+            jwks_uc = JWKSUsecase(jwks_cache_utils, jwt_key_utils, audit)
+            self.register_usecase("jwks", jwks_uc)
+        except Exception:
+            from app.usecase.jwks_usecase import JWKSUsecase
+
+            mock_usecase = Mock(spec=JWKSUsecase)
+            mock_usecase.get_jwks = AsyncMock()
+            self.register_usecase("jwks", mock_usecase)
+
         # For remaining usecases, use mocks for now
         remaining_usecases = {
             "token_balance": TokenBalanceUsecase,
@@ -746,8 +761,9 @@ class TestDIContainer(DIContainer):
             self.register_endpoint("health", mock_endpoint)
 
         try:
-            # JWKS endpoint (no dependencies)
-            jwks_endpoint = JWKS()
+            # JWKS endpoint
+            jwks_usecase = self.get_usecase("jwks")
+            jwks_endpoint = JWKS(jwks_usecase)
             self.register_endpoint("jwks", jwks_endpoint)
         except Exception:
             mock_endpoint = Mock(spec=JWKS)

@@ -21,9 +21,8 @@ from app.domain.schemas.jwks import JWK
 from app.utils.jwt_rotation import Key
 
 __all__ = [
-    "format_public_key_to_jwk",
-    "get_verifying_keys",
-    "get_signing_key",
+    "JWTKeyUtils",
+    "_b64url_uint",
 ]
 
 
@@ -94,65 +93,51 @@ class JWTKeyUtils(JWTKeyUtilsInterface):
 
         return valid_keys
 
+    def format_public_key_to_jwk(
+        self, public_key_pem: str | bytes, kid: str, *, alg: str = "RS256"
+    ) -> Dict[str, Any]:
+        """Convert an RSA public key to a JWK dictionary conforming to RFC-7517.
 
-# Default instance for backward compatibility
-_default_jwt_key_utils = JWTKeyUtils(Configuration())
+        Parameters
+        ----------
+        public_key_pem:
+            The PEM encoded RSA public key as *str* or *bytes*.
+        kid:
+            Key identifier to place in the resulting JWK (must match JWT *kid* header).
+        alg:
+            Signature algorithm – defaults to "RS256".
 
+        Returns
+        -------
+        Dict[str, Any]
+            A dictionary representation of the key that validates against
+            :class:`app.domain.schemas.jwks.JWK`.
+        """
+        if isinstance(public_key_pem, str):
+            key_bytes = public_key_pem.encode()
+        else:
+            key_bytes = public_key_pem
 
-def get_signing_key() -> tuple[str, str]:
-    """Get the active signing key and algorithm."""
-    return _default_jwt_key_utils.get_signing_key()
+        public_key = serialization.load_pem_public_key(
+            key_bytes, backend=default_backend()
+        )
 
+        if not isinstance(public_key, rsa.RSAPublicKey):
+            raise TypeError("Only RSA public keys are supported for JWKS export")
 
-def get_verifying_keys() -> list[Key]:
-    """Return all keys that are currently valid for verifying signatures."""
-    return _default_jwt_key_utils.get_verifying_keys()
+        numbers = public_key.public_numbers()
+        n_b64 = _b64url_uint(numbers.n)
+        e_b64 = _b64url_uint(numbers.e)
 
+        jwk_dict: Dict[str, Any] = {
+            "kty": "RSA",
+            "use": "sig",
+            "kid": kid,
+            "alg": alg,
+            "n": n_b64,
+            "e": e_b64,
+        }
 
-def format_public_key_to_jwk(
-    public_key_pem: str | bytes, kid: str, *, alg: str = "RS256"
-) -> Dict[str, Any]:
-    """Convert an RSA public key to a JWK dictionary conforming to RFC-7517.
-
-    Parameters
-    ----------
-    public_key_pem:
-        The PEM encoded RSA public key as *str* or *bytes*.
-    kid:
-        Key identifier to place in the resulting JWK (must match JWT *kid* header).
-    alg:
-        Signature algorithm – defaults to "RS256".
-
-    Returns
-    -------
-    Dict[str, Any]
-        A dictionary representation of the key that validates against
-        :class:`app.domain.schemas.jwks.JWK`.
-    """
-
-    if isinstance(public_key_pem, str):
-        key_bytes = public_key_pem.encode()
-    else:
-        key_bytes = public_key_pem
-
-    public_key = serialization.load_pem_public_key(key_bytes, backend=default_backend())
-
-    if not isinstance(public_key, rsa.RSAPublicKey):
-        raise TypeError("Only RSA public keys are supported for JWKS export")
-
-    numbers = public_key.public_numbers()
-    n_b64 = _b64url_uint(numbers.n)
-    e_b64 = _b64url_uint(numbers.e)
-
-    jwk_dict: Dict[str, Any] = {
-        "kty": "RSA",
-        "use": "sig",
-        "kid": kid,
-        "alg": alg,
-        "n": n_b64,
-        "e": e_b64,
-    }
-
-    # Validate via Pydantic – raises if invalid and ensures types/values
-    JWK(**jwk_dict)
-    return jwk_dict
+        # Validate via Pydantic – raises if invalid and ensures types/values
+        JWK(**jwk_dict)
+        return jwk_dict

@@ -126,7 +126,7 @@ def _apply_key_set_update(update: KeySetUpdate) -> None:
 
     # Import inside function so monkey-patching in tests is respected;
     # importing at call time picks up patched object.
-    from app.utils.jwks_cache import invalidate_jwks_cache_sync  # type: ignore
+    from app.utils.jwks_cache import JWKSCacheUtils
 
     now = datetime.now(timezone.utc)
 
@@ -147,7 +147,8 @@ def _apply_key_set_update(update: KeySetUpdate) -> None:
     # Invalidate JWKS cache to ensure fresh keys are published immediately
     # This is fire-and-forget - failures don't break the rotation process
     try:
-        success = invalidate_jwks_cache_sync()
+        jwks_cache_utils = JWKSCacheUtils(_config)
+        success = jwks_cache_utils.invalidate_jwks_cache_sync()
         if success:
             Audit.info("JWKS cache invalidated", reason="key_rotation")
             METRICS["cache_invalidation"].inc()

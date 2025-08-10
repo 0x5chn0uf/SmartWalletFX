@@ -24,7 +24,8 @@ def create_test_app():
 async def test_async_client_with_asgi_transport_fails():
     """Demonstrate failure when using httpx.AsyncClient with ASGI transport."""
     app = create_test_app()
-    async with httpx.AsyncClient(app=app, base_url="http://test") as client:
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.get("/ping")
         assert resp.status_code == 200
         assert resp.json() == {"message": "pong"}

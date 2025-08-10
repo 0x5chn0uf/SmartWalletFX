@@ -16,9 +16,8 @@ async def test_users_me_endpoint(test_app_with_di_container, test_di_container_w
         "password": "Str0ng!pwd",
     }
 
-    async with httpx.AsyncClient(
-        app=test_app_with_di_container, base_url="http://test"
-    ) as client:
+    transport = httpx.ASGITransport(app=test_app_with_di_container)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         resp = await client.post("/auth/register", json=payload)
         assert resp.status_code == 201
         user = await user_repo.get_by_email(payload["email"])
