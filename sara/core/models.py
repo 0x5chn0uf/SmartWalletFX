@@ -372,14 +372,15 @@ def extract_task_id_from_path(filepath: str) -> Optional[str]:
 
     filename = Path(filepath).stem
 
-    # Handle various naming patterns
-    # archive-123.md -> 123
-    # reflection-123.md -> 123
-    # task-123.md -> 123
+    # Handle various naming patterns with type prefixes to avoid collisions
+    # archive-123.md -> archive-123
+    # reflection-123.md -> reflection-123  
+    # task-123.md -> task-123
     # 123.md -> 123
 
     if filename.startswith(("archive-", "reflection-", "task-")):
-        return filename.split("-", 1)[1]
+        # Keep the full prefix to avoid ID collisions between archive-50 and reflection-50
+        return filename
     elif filename.isdigit():
         return filename
     elif "." in filename and filename.split(".")[0].isdigit():
